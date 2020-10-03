@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "../../interfaces/WETH.sol";
-import "../../interfaces/Strategy.sol";
+import "./ElfStrategy.sol";
 
 contract ELF is ERC20 {
     using SafeERC20 for IERC20;
@@ -63,7 +63,7 @@ contract ELF is ERC20 {
         // TODO: eventually this will be called seperately
         uint _bal = available();
         token.safeTransfer(strategy, _bal);
-        Strategy(strategy).allocateFunds(_bal);
+        ElfStrategy(strategy).allocate(_bal);
     }
 
     function withdraw(uint256 _shares) public {
@@ -74,7 +74,7 @@ contract ELF is ERC20 {
         uint256 b = token.balanceOf(address(this));
         if (b < r) {
             uint256 _withdraw = r.sub(b);
-            Strategy(strategy).deallocateFunds(_withdraw);
+            ElfStrategy(strategy).deallocate(_withdraw);
             uint256 _after = token.balanceOf(address(this));
             uint256 _diff = _after.sub(b);
             if (_diff < _withdraw) {

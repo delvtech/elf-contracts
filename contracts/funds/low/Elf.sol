@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../../interfaces/WETH.sol";
 import "./ElfStrategy.sol";
 
-contract ELF is ERC20 {
+contract Elf is ERC20 {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;

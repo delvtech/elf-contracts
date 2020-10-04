@@ -9,6 +9,8 @@ import "./assets/YearnDaiVault.sol";
 import "./assets/YearnUsdcVault.sol";
 import "./assets/YearnTusdVault.sol";
 
+import "../../converter/interface/converter.sol";
+
 contract ElfStrategy {
     using SafeERC20 for IERC20;
     using Address for address;
@@ -24,6 +26,11 @@ contract ElfStrategy {
 
     address public governance;
     address public fund;
+    address public converter;
+
+
+    address public constant aave = address(0x24a42fD28C976A61Df5D00D0599C34c4f90748c8);
+    address public constant eth = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
     constructor(address _fund) public {
         governance = msg.sender;
@@ -33,6 +40,11 @@ contract ElfStrategy {
     function setGovernance(address _governance) public {
         require(msg.sender == governance, "!governance");
         governance = _governance;
+    }
+
+    function setConverter(address _converter) public {
+        require(msg.sender == governance, "!governance");
+        converter = _converter;
     }
 
     function setAllocations(address[] memory _assets, uint256[] memory _percents, uint256 _numAllocations) public {
@@ -47,10 +59,11 @@ contract ElfStrategy {
 
     function allocate(uint256 _amount) public {
         require(msg.sender == fund, "!fund");
-
         for(uint256 i = 0; i < numAllocations; i++) {
-            // TODO: convert weth to asset base type (e.g. dai)
-        
+            // convert weth to asset base type (e.g. dai)
+            uint256 _assetAmount = _amount.mul(allocations[i].percent).div(100);
+            // 0 = loan, 1 = swap
+            Converter(converter).convert(eth, allocations[i].asset, _assetAmount, 0);
             // TODO: deposit into asset vault
         }
     }

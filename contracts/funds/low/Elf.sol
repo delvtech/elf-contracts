@@ -17,15 +17,14 @@ contract Elf is ERC20 {
     uint public min = 9990;
     uint public constant max = 10000;
     address public governance;
-    address public strategy;
+    address payable public strategy;
 
     constructor() public ERC20("Element Liquidity Fund","ELF") {
         governance = msg.sender;
     }
  
     function balance() public view returns (uint256) {
-        // todo: include strategies balance
-        return address(this).balance;
+        return address(this).balance.add(ElfStrategy(strategy).balanceOf());
     }
 
     function setGovernance(address _governance) public {
@@ -33,7 +32,7 @@ contract Elf is ERC20 {
         governance = _governance;
     }
 
-    function setStrategy(address _strategy) public {
+    function setStrategy(address payable _strategy) public {
         require(msg.sender == governance, "!governance");
         strategy = _strategy;
     }
@@ -43,20 +42,23 @@ contract Elf is ERC20 {
         return 0;
     }
 
+    function invest() public {
+        // todo: should we restrict who can call this?
+        strategy.transfer(address(this).balance);
+        ElfStrategy(strategy).allocate(address(this).balance);
+    }
+
     function deposit() public payable {
         uint256 _amount = msg.value;
-        uint256 _pool = address(this).balance;
+        uint256 _pool = balance();
         uint256 _shares = 0;
         if (totalSupply() == 0) {
             _shares = _amount;
-            _pool = _amount;
         } else {
             _shares = (_amount.mul(totalSupply())).div(_pool);
         }
         _mint(msg.sender, 1);
-        // TODO: eventually this will be called seperately
-        //IERC20(address(this)).safeTransfer(strategy, _amount);
-        //ElfStrategy(strategy).allocate(_amount);
+        invest();
     }
 
     function withdraw(uint256 _shares) public {
@@ -67,7 +69,8 @@ contract Elf is ERC20 {
         uint256 b = address(this).balance;
         if (b < r) {
             uint256 _withdraw = r.sub(b);
-            //ElfStrategy(strategy).deallocate(_withdraw);
+            ElfStrategy(strategy).deallocate(_withdraw);
+            ElfStrategy(strategy).withdraw();
             uint256 _after = address(this).balance;
             uint256 _diff = _after.sub(b);
             // todo: ??
@@ -78,7 +81,5 @@ contract Elf is ERC20 {
         msg.sender.transfer(r);
     }
 
-    receive() external payable {
-        deposit();
-    }
+    receive() external payable {}
 }

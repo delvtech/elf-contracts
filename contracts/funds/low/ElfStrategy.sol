@@ -68,7 +68,7 @@ contract ElfStrategy {
         }
     }
 
-    function deallocate(uint256 _amount) external {
+    function deallocate(uint256 _amount) public {
         require(msg.sender == fund, "!fund");
         
         for(uint256 i = 0; i < numAllocations; i++) {
@@ -76,13 +76,19 @@ contract ElfStrategy {
 
             // TODO: convert to weth
         }
-
     }
 
-    function balanceOf() public view returns (uint) {
-        // TODO
-        return 0;
+    function withdraw() public {
+        require(msg.sender == fund, "!fund");
+        msg.sender.transfer(address(this).balance);
     }
+
+    function balanceOf() public view returns (uint256) {
+        // TODO: add balances of assets
+        return address(this).balance;
+    }
+
+    receive() external payable { }
 
 
 }

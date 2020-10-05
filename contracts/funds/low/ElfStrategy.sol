@@ -1,4 +1,4 @@
-pragma solidity >=0.4.22 <0.8.0;
+pragma solidity >=0.5.8 <0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -21,16 +21,16 @@ contract ElfStrategy {
         uint256 percent;
     }
 
-    Allocation[] allocations;
-    uint256 numAllocations;
+    Allocation[] public allocations;
+    uint256 public numAllocations;
 
     address public governance;
     address public fund;
     address public converter;
 
-
-    address public constant aave = address(0x24a42fD28C976A61Df5D00D0599C34c4f90748c8);
-    address public constant eth = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+    address public constant ETH = address(
+        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
+    );
 
     constructor(address _fund) public {
         governance = msg.sender;
@@ -47,33 +47,41 @@ contract ElfStrategy {
         converter = _converter;
     }
 
-    function setAllocations(address[] memory _assets, uint256[] memory _percents, uint256 _numAllocations) public {
+    function setAllocations(
+        address[] memory _assets,
+        uint256[] memory _percents,
+        uint256 _numAllocations
+    ) public {
         require(msg.sender == governance, "!governance");
         // todo: validate that allocations add to 100
         delete allocations;
-        for(uint256 i = 0; i < _numAllocations; i++) {
-            allocations.push( Allocation(_assets[i], _percents[i]) );
+        for (uint256 i = 0; i < _numAllocations; i++) {
+            allocations.push(Allocation(_assets[i], _percents[i]));
         }
         numAllocations = _numAllocations;
     }
 
     function allocate(uint256 _amount) public {
         require(msg.sender == fund, "!fund");
-        for(uint256 i = 0; i < numAllocations; i++) {
+        for (uint256 i = 0; i < numAllocations; i++) {
             // convert weth to asset base type (e.g. dai)
             uint256 _assetAmount = _amount.mul(allocations[i].percent).div(100);
             // 0 = loan, 1 = swap
-            Converter(converter).convert(eth, allocations[i].asset, _assetAmount, 0);
+            Converter(converter).convert(
+                ETH,
+                allocations[i].asset,
+                _assetAmount,
+                0
+            );
             // TODO: deposit into asset vault
         }
     }
 
     function deallocate(uint256 _amount) public {
         require(msg.sender == fund, "!fund");
-        
-        for(uint256 i = 0; i < numAllocations; i++) {
-            // TODO: withdraw from  vault
 
+        for (uint256 i = 0; i < numAllocations; i++) {
+            // TODO: withdraw from  vault
             // TODO: convert to weth
         }
     }
@@ -88,7 +96,5 @@ contract ElfStrategy {
         return address(this).balance;
     }
 
-    receive() external payable { }
-
-
+    receive() external payable {}
 }

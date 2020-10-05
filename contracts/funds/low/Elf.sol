@@ -1,4 +1,4 @@
-pragma solidity >=0.4.22 <0.8.0;
+pragma solidity >=0.5.8 <0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -14,15 +14,13 @@ contract Elf is ERC20 {
     using Address for address;
     using SafeMath for uint256;
 
-    uint public min = 9990;
-    uint public constant max = 10000;
     address public governance;
     address payable public strategy;
 
-    constructor() public ERC20("Element Liquidity Fund","ELF") {
+    constructor() public ERC20("Element Liquidity Fund", "ELF") {
         governance = msg.sender;
     }
- 
+
     function balance() public view returns (uint256) {
         return address(this).balance.add(ElfStrategy(strategy).balanceOf());
     }
@@ -37,7 +35,7 @@ contract Elf is ERC20 {
         strategy = _strategy;
     }
 
-    function available() public view returns (uint) {
+    function available() public view returns (uint256) {
         // TODO: implement min/max logic
         return 0;
     }

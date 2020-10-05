@@ -1,7 +1,10 @@
-pragma solidity >=0.4.22 <0.8.0;
+pragma solidity >=0.5.8 <0.8.0;
 
-contract aave {
-   /* function depositCollateral(address _reserve, uint256 _amount) private {
+contract AaveLender {
+    address public constant AAVE = address(
+        0x24a42fD28C976A61Df5D00D0599C34c4f90748c8
+    );
+    /* function depositCollateral(address _reserve, uint256 _amount) private {
         uint256 _referral = 0; // todo: change referral when done testing
         /// Retrieve LendingPool address
         LendingPoolAddressesProvider provider = LendingPoolAddressesProvider(address(aave));

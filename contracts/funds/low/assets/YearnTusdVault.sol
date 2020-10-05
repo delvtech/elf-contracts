@@ -1,4 +1,4 @@
-pragma solidity >=0.4.22 <0.8.0;
+pragma solidity >=0.5.8 <0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -12,9 +12,15 @@ contract YearnTUsdVault {
     using Address for address;
     using SafeMath for uint256;
 
-    address constant public weth = address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    address constant public Tusd = address(0xdAC17F958D2ee523a2206206994597C13D831ec7);
-    address constant public yVaultTusd = address(0x37d19d1c4E1fa9DC47bD1eA12f742a0887eDa74a);
+    address public constant weth = address(
+        0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
+    );
+    address public constant Tusd = address(
+        0xdAC17F958D2ee523a2206206994597C13D831ec7
+    );
+    address public constant yVaultTusd = address(
+        0x37d19d1c4E1fa9DC47bD1eA12f742a0887eDa74a
+    );
 
     address public governance;
     address public strategy;
@@ -31,22 +37,22 @@ contract YearnTUsdVault {
 
     function withdraw(uint256 _amount) external {
         require(msg.sender == strategy, "!strategy");
-        uint _shares = _amount
-                .mul(1e18)
-                .div(YearnVault(yVaultTusd).getPricePerFullShare());
+        uint256 _shares = _amount.mul(1e18).div(
+            YearnVault(yVaultTusd).getPricePerFullShare()
+        );
 
         if (_shares > IERC20(yVaultTusd).balanceOf(address(this))) {
             _shares = IERC20(yVaultTusd).balanceOf(address(this));
         }
-        YearnVault(yVaultTusd).withdraw(_shares); 
+        YearnVault(yVaultTusd).withdraw(_shares);
     }
 
-    function balanceOf() public view returns (uint) {
+    function balanceOf() public view returns (uint256) {
         // TODO
         return 0;
     }
 
-    function _getPrice() internal view returns (uint p) {
+    function _getPrice() internal view returns (uint256 p) {
         // TODO: price oracle
         return 1;
     }

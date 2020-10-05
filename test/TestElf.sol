@@ -12,6 +12,8 @@ contract TestElf {
 
   function testDepositWithdraw() public {
     Elf elf = new Elf();
+    ElfStrategy strategy = new ElfStrategy(address(elf));
+    elf.setStrategy(address(strategy));
 
     (bool success, ) = address(elf).call{gas: 200317, value: 1 ether}(abi.encodeWithSignature("deposit()"));
     require(success, "Failed to transfer the funds, aborting.");

@@ -37,6 +37,7 @@ contract Elf is ERC20 {
 
     function invest() public {
         // todo: should we restrict who can call this?
+        // WB: if ppl want to pay the gas fees, then by all meeeeans
         strategy.transfer(address(this).balance);
         ElfStrategy(strategy).allocate(address(this).balance);
     }
@@ -50,6 +51,7 @@ contract Elf is ERC20 {
         } else {
             _shares = (_amount.mul(totalSupply())).div(_pool);
         }
+        // 1 is hardcoded here
         _mint(msg.sender, 1);
         invest();
     }

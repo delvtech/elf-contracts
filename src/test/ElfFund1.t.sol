@@ -2,12 +2,11 @@ pragma solidity ^0.6.7;
 
 import "ds-test/test.sol";
 
-// import "./ElfContracts.sol";
-import "./interfaces/ERC20Interfaces.sol";
-import "./test/AnAsset.sol";
-import "./test/AConverter.sol";
+import "../interfaces/ERC20Interfaces.sol";
+import "../test/AnAsset.sol";
+import "../test/AConverter.sol";
 
-import "./funds/low/Elf.sol";
+import "../funds/low/Elf.sol";
 
 contract ElfContractsTest is DSTest {
     Elf elf;
@@ -17,8 +16,6 @@ contract ElfContractsTest is DSTest {
     }
 
     function test_DepositWithdraw() public {
-        //Elf elf = new Elf();
-
         // Create Strategy for Elf
         assertEq(elf.governance(), address(this));
         ElfStrategy strategy = new ElfStrategy(address(elf));
@@ -46,37 +43,28 @@ contract ElfContractsTest is DSTest {
         strategy.setConverter(address(converter));
 
         // first call to deposit()
-        (bool success, ) = address(elf).call{gas: 200317, value: 1 ether}(
-            abi.encodeWithSignature("deposit()")
-        );
-        require(success, "Failed to transfer the funds, aborting.");
+        elf.deposit.value(1 ether)();
+
+        // balance is 1 ether because 1 ether has been invested() to the strategy
         assertEq(elf.balance(), 1 ether);
 
+        // withdraw
         elf.withdraw(1);
-        // assertEq(elf.balance(), 0 ether);
-        // Assert.equal(
-        //     elf.balanceOf(address(this)),
-        //     0,
-        //     "Shares are wrong after withdraw"
-        // );
+
+        assertEq(elf.balance(), 0 ether);
+        assertEq(elf.balanceOf(address(this)), 0 ether);
 
         // second call to deposit()
-        // (success, ) = address(elf).call{gas: 200317, value: 1 ether}(
-        //     abi.encodeWithSignature("deposit()")
-        // );
-        // // require(success, "Failed to transfer the funds, aborting.");
-        // assertEq(elf.balance(), 1 ether);
-        // assertEq(elf.balanceOf(address(this)), 1 ether);
-        // Assert.equal(
-        //     elf.balance(),
-        //     1 ether,
-        //     "Balance is wrong after 2nd deposit"
-        // );
-        // Assert.equal(
-        //     elf.balanceOf(address(this)),
-        //     1,
-        //     "Shares are wrong after 2nd deposit"
-        // );
+        elf.deposit.value(1 ether)();
+
+        assertEq(elf.balance(), 1 ether);
+        assertEq(elf.balanceOf(address(this)), 1);
+
+        // withdraw again
+        elf.withdraw(1);
+
+        assertEq(elf.balance(), 0 ether);
+        assertEq(elf.balanceOf(address(this)), 0 ether);
     }
 
     function testFail_basic_sanity() public {

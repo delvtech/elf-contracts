@@ -21,8 +21,11 @@ contract ElfStrategy {
     IERC20 weth;
 
     struct Allocation {
-        address asset;
+        address fromAsset;
+        address toAsset;
         uint256 percent;
+        uint256 conversionType; // 0 = loan, 1 = swap
+        uint256 implementation; // 0 = aave,balancer, 1 = compound,uniswap
     }
 
     Allocation[] public allocations;
@@ -53,15 +56,18 @@ contract ElfStrategy {
     }
 
     function setAllocations(
-        address[] memory _assets,
+        address[] memory _fromAsset,
+        address[] memory _toAsset,
         uint256[] memory _percents,
+        uint256[] memory _conversionType,
+        uint256[] memory _implementation,
         uint256 _numAllocations
     ) public {
         require(msg.sender == governance, "!governance");
         // todo: validate that allocations add to 100
         delete allocations;
         for (uint256 i = 0; i < _numAllocations; i++) {
-            allocations.push(Allocation(_assets[i], _percents[i]));
+            allocations.push(Allocation(_fromAsset[i], _toAsset[i], _percents[i],_conversionType[i],_implementation[i]));
         }
         numAllocations = _numAllocations;
     }
@@ -71,12 +77,13 @@ contract ElfStrategy {
         for (uint256 i = 0; i < numAllocations; i++) {
             // convert weth to asset base type (e.g. dai)
             uint256 _assetAmount = _amount.mul(allocations[i].percent).div(100);
-            // 0 = loan, 1 = swap
+            
             IElementConverter(converter).convert(
-                ETH,
-                allocations[i].asset,
+                allocations[i].fromAsset,
+                allocations[i].toAsset,
                 _assetAmount,
-                0
+                allocations[i].conversionType,
+                allocations[i].implementation
             );
             // TODO: deposit into asset vault
         }

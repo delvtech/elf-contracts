@@ -2,7 +2,12 @@ pragma solidity ^0.6.7;
 
 import "ds-test/test.sol";
 
-import "../interfaces/ERC20Interfaces.sol";
+import "../interfaces/IERC20.sol";
+import "../libraries/SafeMath.sol";
+import "../libraries/Address.sol";
+import "../libraries/SafeERC20.sol";
+import "../interfaces/ERC20.sol";
+
 import "../test/AnAsset.sol";
 import "../test/AConverter.sol";
 

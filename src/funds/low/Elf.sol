@@ -1,7 +1,13 @@
 pragma solidity >=0.5.8 <0.8.0;
 
-import "../../interfaces/ERC20Interfaces.sol";
+import "../../interfaces/IERC20.sol";
+import "../../interfaces/ERC20.sol";
 import "../../interfaces/WETH.sol";
+
+import "../../libraries/SafeMath.sol";
+import "../../libraries/Address.sol";
+import "../../libraries/SafeERC20.sol";
+
 import "./ElfStrategy.sol";
 
 contract Elf is ERC20 {

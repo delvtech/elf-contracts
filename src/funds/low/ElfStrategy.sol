@@ -1,11 +1,10 @@
 pragma solidity >=0.5.8 <0.8.0;
 
-// import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-// import "@openzeppelin/contracts/math/SafeMath.sol";
-// import "@openzeppelin/contracts/utils/Address.sol";
-// import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "../../interfaces/IERC20.sol";
 
-import "../../interfaces/ERC20Interfaces.sol";
+import "../../libraries/SafeMath.sol";
+import "../../libraries/Address.sol";
+import "../../libraries/SafeERC20.sol";
 
 import "./assets/YearnDaiVault.sol";
 import "./assets/YearnUsdcVault.sol";

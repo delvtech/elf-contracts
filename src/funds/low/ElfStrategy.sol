@@ -11,7 +11,7 @@ import "./assets/YearnDaiVault.sol";
 import "./assets/YearnUsdcVault.sol";
 import "./assets/YearnTusdVault.sol";
 
-import "../../converter/interface/ElementConverter.sol";
+import "../../converter/interface/IElementConverter.sol";
 
 contract ElfStrategy {
     using SafeERC20 for IERC20;
@@ -72,12 +72,12 @@ contract ElfStrategy {
             // convert weth to asset base type (e.g. dai)
             uint256 _assetAmount = _amount.mul(allocations[i].percent).div(100);
             // 0 = loan, 1 = swap
-            // ElementConverter(converter).convert(
-            //     address(weth),
-            //     allocations[i].asset,
-            //     _assetAmount,
-            //     0
-            // );
+            IElementConverter(converter).convert(
+                ETH,
+                allocations[i].asset,
+                _assetAmount,
+                0
+            );
             // TODO: deposit into asset vault
         }
     }

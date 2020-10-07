@@ -1,6 +1,6 @@
 pragma solidity >=0.5.8 <0.8.0;
 
-interface ElementLender {
+interface IElementLender {
     function deposit(
         address _reserve,
         uint256 _amount,

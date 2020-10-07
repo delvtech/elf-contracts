@@ -1,0 +1,17 @@
+{
+  "name": "elf-contracts",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "solhint": "./node_modules/.bin/solhint -f table src/**/*.sol src/**/**/*.sol",
+    "prettier": "./node_modules/.bin/prettier --write ."
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "prettier": "^2.1.2",
+    "prettier-plugin-solidity": "^1.0.0-alpha.58",
+    "solhint": "^3.2.1",
+    "solhint-plugin-prettier": "0.0.5"
+  }
+}

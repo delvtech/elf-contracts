@@ -52,7 +52,7 @@ contract ElfContractsTest is DSTest {
         require(success, "Failed to transfer the funds, aborting.");
         assertEq(elf.balance(), 1 ether);
 
-        elf.withdraw();
+        elf.withdraw(1);
         // assertEq(elf.balance(), 0 ether);
         // Assert.equal(
         //     elf.balanceOf(address(this)),

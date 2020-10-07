@@ -15,6 +15,8 @@ contract Elf is ERC20 {
     using Address for address;
     using SafeMath for uint256;
 
+    IERC20 public weth;
+
     address public governance;
     address payable public strategy;
 
@@ -48,10 +50,12 @@ contract Elf is ERC20 {
         ElfStrategy(strategy).allocate(address(this).balance);
     }
 
+    // for depositing WETH, remove payable later
     function deposit() public payable {
         uint256 _amount = msg.value;
         uint256 _pool = balance();
         uint256 _shares = 0;
+        weth.safeTransferFrom(msg.sender, address(this), _amount);
         if (totalSupply() == 0) {
             _shares = _amount;
         } else {
@@ -59,6 +63,11 @@ contract Elf is ERC20 {
         }
         _mint(msg.sender, _shares);
         invest();
+    }
+
+    // for depositing ETH (subsequently wrapped and deposited)
+    function depositETH() public payable {
+        // call WETH.deposit()
     }
 
     function withdraw(uint256 _shares) public {

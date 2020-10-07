@@ -1,6 +1,7 @@
 pragma solidity >=0.5.8 <0.8.0;
 
 import "../../interfaces/IERC20.sol";
+import "../../interfaces/WETH.sol";
 
 import "../../libraries/SafeMath.sol";
 import "../../libraries/Address.sol";
@@ -16,6 +17,8 @@ contract ElfStrategy {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
+
+    WETH weth;
 
     struct Allocation {
         address asset;
@@ -33,9 +36,10 @@ contract ElfStrategy {
         0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
     );
 
-    constructor(address _fund) public {
+    constructor(address _fund, address payable _weth) public {
         governance = msg.sender;
         fund = _fund;
+        weth = WETH(_weth);
     }
 
     function setGovernance(address _governance) public {
@@ -94,7 +98,7 @@ contract ElfStrategy {
 
     function balanceOf() public view returns (uint256) {
         // TODO: add balances of assets
-        return address(this).balance;
+        return weth.balanceOf(address(this));
     }
 
     receive() external payable {}

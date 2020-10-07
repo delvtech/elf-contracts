@@ -51,8 +51,7 @@ contract Elf is ERC20 {
         } else {
             _shares = (_amount.mul(totalSupply())).div(_pool);
         }
-        // 1 is hardcoded here
-        _mint(msg.sender, 1);
+        _mint(msg.sender, _shares);
         invest();
     }
 

@@ -5,6 +5,7 @@ interface IElementConverter {
         address _from,
         address _to,
         uint256 _amount,
-        uint256 _conversionType
+        uint256 _conversionType,
+        uint256 _implementation
     ) external;
 }

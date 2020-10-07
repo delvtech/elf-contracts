@@ -1,18 +1,21 @@
 pragma solidity >=0.5.8 <0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
+import "../../interfaces/IERC20.sol";
+import "../../interfaces/ERC20.sol";
 import "../../interfaces/WETH.sol";
+
+import "../../libraries/SafeMath.sol";
+import "../../libraries/Address.sol";
+import "../../libraries/SafeERC20.sol";
+
 import "./ElfStrategy.sol";
 
 contract Elf is ERC20 {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
+
+    IERC20 public weth;
 
     address public governance;
     address payable public strategy;
@@ -42,21 +45,29 @@ contract Elf is ERC20 {
 
     function invest() public {
         // todo: should we restrict who can call this?
+        // WB: if ppl want to pay the gas fees, then by all meeeeans
         strategy.transfer(address(this).balance);
         ElfStrategy(strategy).allocate(address(this).balance);
     }
 
+    // for depositing WETH, remove payable later
     function deposit() public payable {
         uint256 _amount = msg.value;
         uint256 _pool = balance();
         uint256 _shares = 0;
+        //weth.safeTransferFrom(msg.sender, address(this), _amount);
         if (totalSupply() == 0) {
             _shares = _amount;
         } else {
             _shares = (_amount.mul(totalSupply())).div(_pool);
         }
-        _mint(msg.sender, 1);
+        _mint(msg.sender, _shares);
         invest();
+    }
+
+    // for depositing ETH (subsequently wrapped and deposited)
+    function depositETH() public payable {
+        // call WETH.deposit()
     }
 
     function withdraw(uint256 _shares) public {

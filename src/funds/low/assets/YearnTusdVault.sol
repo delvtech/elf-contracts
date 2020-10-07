@@ -1,13 +1,13 @@
 pragma solidity >=0.5.8 <0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-
+import "../../../interfaces/IERC20.sol";
 import "../../../interfaces/YearnVault.sol";
 
-contract YearnDaiVault {
+import "../../../libraries/SafeMath.sol";
+import "../../../libraries/Address.sol";
+import "../../../libraries/SafeERC20.sol";
+
+contract YearnTUsdVault {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -15,11 +15,11 @@ contract YearnDaiVault {
     address public constant weth = address(
         0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
     );
-    address public constant dai = address(
-        0x6B175474E89094C44Da98b954EedeAC495271d0F
+    address public constant Tusd = address(
+        0xdAC17F958D2ee523a2206206994597C13D831ec7
     );
-    address public constant yVaultDAI = address(
-        0xACd43E627e64355f1861cEC6d3a6688B31a6F952
+    address public constant yVaultTusd = address(
+        0x37d19d1c4E1fa9DC47bD1eA12f742a0887eDa74a
     );
 
     address public governance;
@@ -28,23 +28,23 @@ contract YearnDaiVault {
     constructor(address _strategy) public {
         governance = msg.sender;
         strategy = _strategy;
+        _approve();
     }
 
     function deposit() external {
-        // approve yVaultDAI use DAI
-        YearnVault(yVaultDAI).depositAll();
+        YearnVault(yVaultTusd).depositAll();
     }
 
     function withdraw(uint256 _amount) external {
         require(msg.sender == strategy, "!strategy");
         uint256 _shares = _amount.mul(1e18).div(
-            YearnVault(yVaultDAI).getPricePerFullShare()
+            YearnVault(yVaultTusd).getPricePerFullShare()
         );
 
-        if (_shares > IERC20(yVaultDAI).balanceOf(address(this))) {
-            _shares = IERC20(yVaultDAI).balanceOf(address(this));
+        if (_shares > IERC20(yVaultTusd).balanceOf(address(this))) {
+            _shares = IERC20(yVaultTusd).balanceOf(address(this));
         }
-        YearnVault(yVaultDAI).withdraw(_shares);
+        YearnVault(yVaultTusd).withdraw(_shares);
     }
 
     function balanceOf() public view returns (uint256) {
@@ -54,6 +54,10 @@ contract YearnDaiVault {
 
     function _getPrice() internal view returns (uint256 p) {
         // TODO: price oracle
-        return 0;
+        return 1;
+    }
+
+    function _approve() internal {
+        // TODO
     }
 }

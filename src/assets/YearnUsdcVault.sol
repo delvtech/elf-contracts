@@ -1,11 +1,11 @@
 pragma solidity >=0.5.8 <0.8.0;
 
-import "../../../interfaces/IERC20.sol";
-import "../../../interfaces/YearnVault.sol";
+import "../interfaces/IERC20.sol";
+import "../interfaces/YearnVault.sol";
 
-import "../../../libraries/SafeMath.sol";
-import "../../../libraries/Address.sol";
-import "../../../libraries/SafeERC20.sol";
+import "../libraries/SafeMath.sol";
+import "../libraries/Address.sol";
+import "../libraries/SafeERC20.sol";
 
 contract YearnUsdcVault {
     using SafeERC20 for IERC20;
@@ -31,8 +31,13 @@ contract YearnUsdcVault {
         _approve();
     }
 
-    function deposit() external {
-        YearnVault(yVaultUsdc).depositAll();
+    function getAddress() external view returns (address){
+        return yVaultUsdc;
+    }
+
+    function deposit(uint256 _amount, address _sender) external {
+        IERC20(usdc).safeTransfer(msg.sender, _amount);
+        YearnVault(yVaultUsdc).deposit(_amount);
     }
 
     function withdraw(uint256 _amount) external {

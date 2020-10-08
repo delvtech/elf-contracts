@@ -1,6 +1,7 @@
 pragma solidity >=0.5.8 <0.8.0;
 
 import "../../interfaces/IERC20.sol";
+import "../../interfaces/WETH.sol";
 
 import "../../libraries/SafeMath.sol";
 import "../../libraries/Address.sol";
@@ -16,6 +17,8 @@ contract ElfStrategy {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
+
+    IERC20 weth;
 
     struct Allocation {
         address asset;
@@ -33,9 +36,10 @@ contract ElfStrategy {
         0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
     );
 
-    constructor(address _fund) public {
+    constructor(address _fund, address payable _weth) public {
         governance = msg.sender;
         fund = _fund;
+        weth = IERC20(_weth);
     }
 
     function setGovernance(address _governance) public {
@@ -68,12 +72,12 @@ contract ElfStrategy {
             // convert weth to asset base type (e.g. dai)
             uint256 _assetAmount = _amount.mul(allocations[i].percent).div(100);
             // 0 = loan, 1 = swap
-            ElementConverter(converter).convert(
-                ETH,
-                allocations[i].asset,
-                _assetAmount,
-                0
-            );
+            // ElementConverter(converter).convert(
+            //     address(weth),
+            //     allocations[i].asset,
+            //     _assetAmount,
+            //     0
+            // );
             // TODO: deposit into asset vault
         }
     }
@@ -87,14 +91,17 @@ contract ElfStrategy {
         }
     }
 
-    function withdraw() public {
+    // withdraw a certain amount
+    function withdraw(uint _amount) public {
         require(msg.sender == fund, "!fund");
-        msg.sender.transfer(address(this).balance);
+        weth.safeTransfer(msg.sender, _amount);
     }
+
+    // possibly a withdrawAll() function
 
     function balanceOf() public view returns (uint256) {
         // TODO: add balances of assets
-        return address(this).balance;
+        return weth.balanceOf(address(this));
     }
 
     receive() external payable {}

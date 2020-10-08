@@ -1,11 +1,11 @@
 pragma solidity >=0.5.8 <0.8.0;
 
-import "../../../interfaces/IERC20.sol";
-import "../../../interfaces/YearnVault.sol";
+import "../interfaces/IERC20.sol";
+import "../interfaces/YearnVault.sol";
 
-import "../../../libraries/SafeMath.sol";
-import "../../../libraries/Address.sol";
-import "../../../libraries/SafeERC20.sol";
+import "../libraries/SafeMath.sol";
+import "../libraries/Address.sol";
+import "../libraries/SafeERC20.sol";
 
 contract YearnDaiVault {
     using SafeERC20 for IERC20;
@@ -30,9 +30,14 @@ contract YearnDaiVault {
         strategy = _strategy;
     }
 
-    function deposit() external {
+    function getAddress() external view returns (address){
+        return yVaultDAI;
+    }
+
+    function deposit(uint256 _amount, address _sender) external {
+        IERC20(dai).safeTransfer(msg.sender, _amount);
         // approve yVaultDAI use DAI
-        YearnVault(yVaultDAI).depositAll();
+        YearnVault(yVaultDAI).deposit(_amount);
     }
 
     function withdraw(uint256 _amount) external {

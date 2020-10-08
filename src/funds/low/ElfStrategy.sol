@@ -7,11 +7,12 @@ import "../../libraries/SafeMath.sol";
 import "../../libraries/Address.sol";
 import "../../libraries/SafeERC20.sol";
 
-import "./assets/YearnDaiVault.sol";
-import "./assets/YearnUsdcVault.sol";
-import "./assets/YearnTusdVault.sol";
+import "../../assets/YearnDaiVault.sol";
+import "../../assets/YearnUsdcVault.sol";
+import "../../assets/YearnTusdVault.sol";
 
 import "../../converter/interface/IElementConverter.sol";
+import "../../assets/interface/IElementAsset.sol";
 
 contract ElfStrategy {
     using SafeERC20 for IERC20;
@@ -21,9 +22,10 @@ contract ElfStrategy {
     IERC20 weth;
 
     struct Allocation {
-        address fromAsset;
-        address toAsset;
+        address fromToken;
+        address toToken;
         uint256 percent;
+        address asset;
         uint256 conversionType; // 0 = loan, 1 = swap
         uint256 implementation; // 0 = aave,balancer, 1 = compound,uniswap
     }
@@ -56,9 +58,10 @@ contract ElfStrategy {
     }
 
     function setAllocations(
-        address[] memory _fromAsset,
-        address[] memory _toAsset,
+        address[] memory _fromToken,
+        address[] memory _toToken,
         uint256[] memory _percents,
+        address[] memory _asset,
         uint256[] memory _conversionType,
         uint256[] memory _implementation,
         uint256 _numAllocations
@@ -67,7 +70,7 @@ contract ElfStrategy {
         // todo: validate that allocations add to 100
         delete allocations;
         for (uint256 i = 0; i < _numAllocations; i++) {
-            allocations.push(Allocation(_fromAsset[i], _toAsset[i], _percents[i],_conversionType[i],_implementation[i]));
+            allocations.push(Allocation(_fromToken[i], _toToken[i], _percents[i],_asset[i],_conversionType[i],_implementation[i]));
         }
         numAllocations = _numAllocations;
     }
@@ -75,17 +78,18 @@ contract ElfStrategy {
     function allocate(uint256 _amount) public {
         require(msg.sender == fund, "!fund");
         for (uint256 i = 0; i < numAllocations; i++) {
-            // convert weth to asset base type (e.g. dai)
             uint256 _assetAmount = _amount.mul(allocations[i].percent).div(100);
-            
+            // convert weth to asset base type (e.g. dai)
             IElementConverter(converter).convert(
-                allocations[i].fromAsset,
-                allocations[i].toAsset,
+                allocations[i].fromToken,
+                allocations[i].toToken,
                 _assetAmount,
                 allocations[i].conversionType,
-                allocations[i].implementation
+                allocations[i].implementation,
+                address(this)
             );
-            // TODO: deposit into asset vault
+            // deposit into investment asset
+            IElementAsset(allocations[i].asset).deposit(IElementConverter(converter).balanceOf(allocations[i].toToken), address(this));
         }
     }
 

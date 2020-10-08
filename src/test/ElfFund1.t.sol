@@ -11,6 +11,8 @@ import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
 
 import "../test/AnAsset.sol";
+
+import "../test/AToken.sol";
 import "../converter/ElementConverter.sol";
 
 import "../funds/low/Elf.sol";
@@ -57,15 +59,20 @@ contract ElfContractsTest is DSTest {
     User user2;
     User user3;
 
-    AnAsset fromAsset1;
-    AnAsset fromAsset2;
-    AnAsset fromAsset3;
-    AnAsset fromAsset4;
+    AToken fromToken1;
+    AToken fromToken2;
+    AToken fromToken3;
+    AToken fromToken4;
 
-    AnAsset toAsset1;
-    AnAsset toAsset2;
-    AnAsset toAsset3;
-    AnAsset toAsset4;
+    AToken toToken1;
+    AToken toToken2;
+    AToken toToken3;
+    AToken toToken4;
+
+    AnAsset asset1;
+    AnAsset asset2;
+    AnAsset asset3;
+    AnAsset asset4;
 
     ElementConverter converter1;
     ElementConverter converter2;
@@ -73,9 +80,10 @@ contract ElfContractsTest is DSTest {
     ElementConverter converter4;
 
     // for testing a basic 4x25% asset percent split
-    address[] fromAssets = new address[](4);
-    address[] toAssets = new address[](4);
+    address[] fromTokens = new address[](4);
+    address[] toTokens = new address[](4);
     uint256[] percents = new uint256[](4);
+    address[] assets = new address[](4);
     uint256[] conversionType = new uint256[](4);
     uint256[] implementation = new uint256[](4);
 
@@ -88,27 +96,33 @@ contract ElfContractsTest is DSTest {
 
         elf         = new Elf(address(weth));
         strategy    = new ElfStrategy(address(elf), address(weth));
+        fromToken1  = new AToken(address(strategy));
+        toToken1  = new AToken(address(strategy));
         converter1  = new ElementConverter();
-        fromAsset1  = new AnAsset(address(strategy));
-        toAsset1  = new AnAsset(address(strategy));
+        asset1 = new AnAsset(address(strategy));
 
         elf.setStrategy(address(strategy));
         strategy.setConverter(address(converter1));
 
-        fromAssets[0] = address(fromAsset1);
-        fromAssets[1] = address(fromAsset1);
-        fromAssets[2] = address(fromAsset1);
-        fromAssets[3] = address(fromAsset1);
+        fromTokens[0] = address(fromToken1);
+        fromTokens[1] = address(fromToken1);
+        fromTokens[2] = address(fromToken1);
+        fromTokens[3] = address(fromToken1);
 
-        toAssets[0] = address(toAsset1);
-        toAssets[1] = address(toAsset1);
-        toAssets[2] = address(toAsset1);
-        toAssets[3] = address(toAsset1);
+        toTokens[0] = address(toToken1);
+        toTokens[1] = address(toToken1);
+        toTokens[2] = address(toToken1);
+        toTokens[3] = address(toToken1);
 
         percents[0] = uint256(25);
         percents[1] = uint256(25);
         percents[2] = uint256(25);
         percents[3] = uint256(25);
+
+        assets[0] = address(asset1);
+        assets[1] = address(asset1);
+        assets[2] = address(asset1);
+        assets[3] = address(asset1);
 
         conversionType[0] = uint256(0);
         conversionType[1] = uint256(0);
@@ -120,7 +134,7 @@ contract ElfContractsTest is DSTest {
         implementation[2] = uint256(0);
         implementation[3] = uint256(0);
 
-        strategy.setAllocations(fromAssets, toAssets, percents, conversionType, implementation, numAllocations);
+        strategy.setAllocations(fromTokens, toTokens, percents, assets, conversionType, implementation, numAllocations);
 
         user1 = new User();
         user2 = new User();

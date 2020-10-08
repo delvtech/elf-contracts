@@ -1,11 +1,11 @@
 pragma solidity >=0.5.8 <0.8.0;
 
-import "../../../interfaces/IERC20.sol";
-import "../../../interfaces/YearnVault.sol";
+import "../interfaces/IERC20.sol";
+import "../interfaces/YearnVault.sol";
 
-import "../../../libraries/SafeMath.sol";
-import "../../../libraries/Address.sol";
-import "../../../libraries/SafeERC20.sol";
+import "../libraries/SafeMath.sol";
+import "../libraries/Address.sol";
+import "../libraries/SafeERC20.sol";
 
 contract YearnTUsdVault {
     using SafeERC20 for IERC20;
@@ -15,10 +15,10 @@ contract YearnTUsdVault {
     address public constant weth = address(
         0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
     );
-    address public constant Tusd = address(
+    address public constant usdt = address(
         0xdAC17F958D2ee523a2206206994597C13D831ec7
     );
-    address public constant yVaultTusd = address(
+    address public constant yVaultUsdT = address(
         0x37d19d1c4E1fa9DC47bD1eA12f742a0887eDa74a
     );
 
@@ -31,20 +31,25 @@ contract YearnTUsdVault {
         _approve();
     }
 
-    function deposit() external {
-        YearnVault(yVaultTusd).depositAll();
+    function getAddress() external view returns (address){
+        return yVaultUsdT;
+    }
+
+    function deposit(uint256 _amount, address _sender) external {
+        IERC20(usdt).safeTransfer(msg.sender, _amount);
+        YearnVault(yVaultUsdT).deposit(_amount);
     }
 
     function withdraw(uint256 _amount) external {
         require(msg.sender == strategy, "!strategy");
         uint256 _shares = _amount.mul(1e18).div(
-            YearnVault(yVaultTusd).getPricePerFullShare()
+            YearnVault(yVaultUsdT).getPricePerFullShare()
         );
 
-        if (_shares > IERC20(yVaultTusd).balanceOf(address(this))) {
-            _shares = IERC20(yVaultTusd).balanceOf(address(this));
+        if (_shares > IERC20(yVaultUsdT).balanceOf(address(this))) {
+            _shares = IERC20(yVaultUsdT).balanceOf(address(this));
         }
-        YearnVault(yVaultTusd).withdraw(_shares);
+        YearnVault(yVaultUsdT).withdraw(_shares);
     }
 
     function balanceOf() public view returns (uint256) {

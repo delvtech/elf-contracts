@@ -46,13 +46,11 @@ contract ElementConverter {
         uint256 _implementation
 
     ) external {
-        IERC20(_from).safeTransfer(msg.sender, _amount);
         if (_conversionType == 0) {
             loan(_implementation);
         } else if (_conversionType == 1) {
             swap(_implementation);
         }
-    
     }
 
     function swap(uint256 _implementation) internal {

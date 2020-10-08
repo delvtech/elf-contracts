@@ -16,14 +16,14 @@ contract Elf is ERC20 {
     using Address for address;
     using SafeMath for uint256;
 
-    WETH public weth;
+    IERC20 public weth;
 
     address public governance;
     address payable public strategy;
 
     constructor(address payable _weth) public ERC20("Element Liquidity Fund", "ELF") {
         governance = msg.sender;
-        weth = WETH(_weth);
+        weth = IERC20(_weth);
     }
 
     function balance() public view returns (uint256) {
@@ -58,7 +58,7 @@ contract Elf is ERC20 {
         uint256 _amount = amount;
         uint256 _pool = balance();
         uint256 _shares = 0;
-        weth.transferFrom(msg.sender, address(this), _amount);
+        weth.safeTransferFrom(msg.sender, address(this), _amount);
         if (totalSupply() == 0) {
             _shares = _amount;
         } else {
@@ -72,7 +72,7 @@ contract Elf is ERC20 {
     function depositETH() public payable {
         uint256 _pool = balance();
         uint256 _amount = msg.value;
-        weth.deposit.value(_amount)();
+        WETH(payable(address(weth))).deposit.value(_amount)();
         uint256 _shares = 0;
         if (totalSupply() == 0) {
             _shares = _amount;
@@ -83,8 +83,8 @@ contract Elf is ERC20 {
         invest();
     }
 
-    // because funds are invested immediately into the 
-    // strategy after depositing, there will currently be 
+    // because funds are invested immediately into the
+    // strategy after depositing, there will currently be
     // no weth balance in this fund
     function withdraw(uint256 _shares) public {
         uint256 r = (balance().mul(_shares)).div(totalSupply());

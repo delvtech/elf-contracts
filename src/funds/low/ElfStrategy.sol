@@ -18,7 +18,7 @@ contract ElfStrategy {
     using Address for address;
     using SafeMath for uint256;
 
-    WETH weth;
+    IERC20 weth;
 
     struct Allocation {
         address asset;
@@ -39,7 +39,7 @@ contract ElfStrategy {
     constructor(address _fund, address payable _weth) public {
         governance = msg.sender;
         fund = _fund;
-        weth = WETH(_weth);
+        weth = IERC20(_weth);
     }
 
     function setGovernance(address _governance) public {
@@ -94,7 +94,7 @@ contract ElfStrategy {
     // withdraw a certain amount
     function withdraw(uint _amount) public {
         require(msg.sender == fund, "!fund");
-        weth.transfer(msg.sender, _amount);
+        weth.safeTransfer(msg.sender, _amount);
     }
 
     // possibly a withdrawAll() function

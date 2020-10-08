@@ -76,16 +76,6 @@ contract ElfContractsTest is DSTest {
         hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
         weth = new WETH();
 
-        assets[0]   = address(asset1);
-        assets[1]   = address(asset1);
-        assets[2]   = address(asset1);
-        assets[3]   = address(asset1);
-
-        percents[0] = uint256(25);
-        percents[1] = uint256(25);
-        percents[2] = uint256(25);
-        percents[3] = uint256(25);
-
         uint256 numAllocations = uint256(4);
 
         elf         = new Elf(address(weth));
@@ -96,6 +86,17 @@ contract ElfContractsTest is DSTest {
         elf.setStrategy(address(strategy));
         converter1.setAsset(address(asset1));
         strategy.setConverter(address(converter1));
+
+        assets[0]   = address(asset1);
+        assets[1]   = address(asset1);
+        assets[2]   = address(asset1);
+        assets[3]   = address(asset1);
+
+        percents[0] = uint256(25);
+        percents[1] = uint256(25);
+        percents[2] = uint256(25);
+        percents[3] = uint256(25);
+
         strategy.setAllocations(assets, percents, numAllocations);
 
         user1 = new User();
@@ -131,7 +132,6 @@ contract ElfContractsTest is DSTest {
 
 
     function test_depositingETH() public {
-        AnAsset asset1 = new AnAsset(address(strategy));
 
         // user1 deposits 1 ether to the elf
         user1.call_depositETH{value: 1 ether}(address(elf));

@@ -72,12 +72,12 @@ contract ElfStrategy {
             // convert weth to asset base type (e.g. dai)
             uint256 _assetAmount = _amount.mul(allocations[i].percent).div(100);
             // 0 = loan, 1 = swap
-            ElementConverter(converter).convert(
-                ETH,
-                allocations[i].asset,
-                _assetAmount,
-                0
-            );
+            // ElementConverter(converter).convert(
+            //     address(weth),
+            //     allocations[i].asset,
+            //     _assetAmount,
+            //     0
+            // );
             // TODO: deposit into asset vault
         }
     }
@@ -91,10 +91,13 @@ contract ElfStrategy {
         }
     }
 
-    function withdraw() public {
+    // withdraw a certain amount
+    function withdraw(uint _amount) public {
         require(msg.sender == fund, "!fund");
-        msg.sender.transfer(address(this).balance);
+        weth.transfer(msg.sender, _amount);
     }
+
+    // possibly a withdrawAll() function
 
     function balanceOf() public view returns (uint256) {
         // TODO: add balances of assets

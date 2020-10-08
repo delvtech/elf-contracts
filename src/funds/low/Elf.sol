@@ -83,24 +83,34 @@ contract Elf is ERC20 {
         invest();
     }
 
+    // because funds are invested immediately into the 
+    // strategy after depositing, there will currently be 
+    // no weth balance in this fund
     function withdraw(uint256 _shares) public {
         uint256 r = (balance().mul(_shares)).div(totalSupply());
         _burn(msg.sender, _shares);
 
         // Check balance
-        uint256 b = address(this).balance;
+        uint256 b = weth.balanceOf(address(this));
+        // if balance of this fund is less than 
+        // the withdraw, go get funds from strat
         if (b < r) {
+            // get difference to withdraw
             uint256 _withdraw = r.sub(b);
+            // dealocate that difference
             ElfStrategy(strategy).deallocate(_withdraw);
-            ElfStrategy(strategy).withdraw();
-            uint256 _after = address(this).balance;
+            // withdraw that difference from strat
+            ElfStrategy(strategy).withdraw(_withdraw);
+            // new balance
+            uint256 _after = weth.balanceOf(address(this));
             uint256 _diff = _after.sub(b);
             // todo: ??
             if (_diff < _withdraw) {
                 r = b.add(_diff);
             }
         }
-        msg.sender.transfer(r);
+        // transfer r to msg.sender
+        weth.transfer(msg.sender, r);
     }
 
     receive() external payable {

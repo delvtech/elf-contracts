@@ -1,3 +1,5 @@
 *.json
 *.js
+*.md
+*.yaml
 lib/

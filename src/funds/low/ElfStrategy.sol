@@ -70,7 +70,16 @@ contract ElfStrategy {
         // todo: validate that allocations add to 100
         delete allocations;
         for (uint256 i = 0; i < _numAllocations; i++) {
-            allocations.push(Allocation(_fromToken[i], _toToken[i], _percents[i],_asset[i],_conversionType[i],_implementation[i]));
+            allocations.push(
+                Allocation(
+                    _fromToken[i],
+                    _toToken[i],
+                    _percents[i],
+                    _asset[i],
+                    _conversionType[i],
+                    _implementation[i]
+                )
+            );
         }
         numAllocations = _numAllocations;
     }
@@ -89,7 +98,10 @@ contract ElfStrategy {
                 address(this)
             );
             // deposit into investment asset
-            IElementAsset(allocations[i].asset).deposit(IElementConverter(converter).balanceOf(allocations[i].toToken), address(this));
+            IElementAsset(allocations[i].asset).deposit(
+                IElementConverter(converter).balanceOf(allocations[i].toToken),
+                address(this)
+            );
         }
     }
 
@@ -103,7 +115,7 @@ contract ElfStrategy {
     }
 
     // withdraw a certain amount
-    function withdraw(uint _amount) public {
+    function withdraw(uint256 _amount) public {
         require(msg.sender == fund, "!fund");
         weth.safeTransfer(msg.sender, _amount);
     }

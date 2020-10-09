@@ -12,7 +12,6 @@ contract AnAsset {
     using Address for address;
     using SafeMath for uint256;
 
-
     address public governance;
     address public strategy;
 
@@ -21,9 +20,7 @@ contract AnAsset {
         strategy = _strategy;
     }
 
-    function deposit(uint256 _amount, address _sender) external {
-        
-    }
+    function deposit(uint256 _amount, address _sender) external {}
 
     function withdraw(uint256 _amount) external {
         require(msg.sender == strategy, "!strategy");

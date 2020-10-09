@@ -31,7 +31,7 @@ contract YearnTUsdVault {
         _approve();
     }
 
-    function getAddress() external view returns (address){
+    function getAddress() external view returns (address) {
         return yVaultUsdT;
     }
 

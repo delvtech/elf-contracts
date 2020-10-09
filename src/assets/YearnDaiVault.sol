@@ -30,7 +30,7 @@ contract YearnDaiVault {
         strategy = _strategy;
     }
 
-    function getAddress() external view returns (address){
+    function getAddress() external view returns (address) {
         return yVaultDAI;
     }
 

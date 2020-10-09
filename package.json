@@ -4,6 +4,7 @@
   "description": "",
   "scripts": {
     "solhint": "./node_modules/.bin/solhint -f table src/**/*.sol src/**/**/*.sol",
+    "style-check": "./node_modules/.bin/prettier --check .",
     "prettier": "./node_modules/.bin/prettier --write ."
   },
   "author": "",

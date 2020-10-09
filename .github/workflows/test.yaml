@@ -14,16 +14,19 @@ jobs:
       runs-on: ubuntu-latest
 
       steps:
-      - name: Check out github repository
+      - name: check out github repository
         uses: actions/checkout@v2
         with:
           fetch-depth: 1
 
-      - name: Install dapp.tools
+      - name: install dapp.tools
         run: curl -L https://nixos.org/nix/install | sh && source /home/runner/.nix-profile/etc/profile.d/nix.sh && curl https://dapp.tools/install | sh
 
       - name: init
         run: export PATH=/home/runner/.nix-profile/bin/:$PATH && make init
+      
+      - name: lint
+        run: export PATH=/home/runner/.nix-profile/bin/:$PATH && make fmt-ci
 
       - name: test
         run: export PATH=/home/runner/.nix-profile/bin/:$PATH && make test

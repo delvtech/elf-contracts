@@ -9,5 +9,6 @@ interface IElementConverter {
         uint256 _implementation,
         address _sender
     ) external;
+
     function balanceOf(address _token) external view returns (uint256);
 }

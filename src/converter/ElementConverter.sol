@@ -45,7 +45,6 @@ contract ElementConverter {
         uint256 _conversionType,
         uint256 _implementation,
         address _sender
-
     ) external {
         if (_conversionType == 0) {
             loan(_implementation);
@@ -54,13 +53,9 @@ contract ElementConverter {
         }
     }
 
-    function swap(uint256 _implementation) internal {
+    function swap(uint256 _implementation) internal {}
 
-    }
-
-    function loan(uint256 _implementation) internal {
-
-    }
+    function loan(uint256 _implementation) internal {}
 
     function balanceOf(address token) public view returns (uint256) {
         // TODO

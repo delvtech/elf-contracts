@@ -18,19 +18,23 @@ import "../converter/ElementConverter.sol";
 import "../funds/low/Elf.sol";
 
 interface Hevm {
-    function warp(uint) external;
-    function store(address, bytes32, bytes32) external;
+    function warp(uint256) external;
+
+    function store(
+        address,
+        bytes32,
+        bytes32
+    ) external;
 }
 
 contract User {
-
     // max uint approve for spending
     function approve(address _token, address _guy) public {
-        IERC20(_token).approve(_guy, uint(-1));
+        IERC20(_token).approve(_guy, uint256(-1));
     }
 
     // depositing WETH and minting
-    function call_deposit(address payable _obj, uint _amount) public {
+    function call_deposit(address payable _obj, uint256 _amount) public {
         Elf(_obj).deposit(_amount);
     }
 
@@ -40,7 +44,7 @@ contract User {
     }
 
     // withdraw specific shares
-    function call_withdraw(address payable _obj, uint _amount) public {
+    function call_withdraw(address payable _obj, uint256 _amount) public {
         Elf(_obj).withdraw(_amount);
     }
 
@@ -94,11 +98,11 @@ contract ElfContractsTest is DSTest {
 
         uint256 numAllocations = uint256(4);
 
-        elf         = new Elf(address(weth));
-        strategy    = new ElfStrategy(address(elf), address(weth));
-        fromToken1  = new AToken(address(strategy));
-        toToken1  = new AToken(address(strategy));
-        converter1  = new ElementConverter();
+        elf = new Elf(address(weth));
+        strategy = new ElfStrategy(address(elf), address(weth));
+        fromToken1 = new AToken(address(strategy));
+        toToken1 = new AToken(address(strategy));
+        converter1 = new ElementConverter();
         asset1 = new AnAsset(address(strategy));
 
         elf.setStrategy(address(strategy));
@@ -134,7 +138,15 @@ contract ElfContractsTest is DSTest {
         implementation[2] = uint256(0);
         implementation[3] = uint256(0);
 
-        strategy.setAllocations(fromTokens, toTokens, percents, assets, conversionType, implementation, numAllocations);
+        strategy.setAllocations(
+            fromTokens,
+            toTokens,
+            percents,
+            assets,
+            conversionType,
+            implementation,
+            numAllocations
+        );
 
         user1 = new User();
         user2 = new User();
@@ -167,9 +179,7 @@ contract ElfContractsTest is DSTest {
         assertEq(weth.balanceOf(address(user3)), 1000 ether);
     }
 
-
     function test_depositingETH() public {
-
         // user1 deposits 1 ether to the elf
         user1.call_depositETH{value: 1 ether}(address(elf));
         // weth balance of the fund is zero
@@ -215,7 +225,7 @@ contract ElfContractsTest is DSTest {
 
         // user3 deposits 1 ether to the elf, but because that's only 50% the pool, they input 0.5 ether (in units)
         user3.call_depositETH.value(1 ether)(address(elf));
-        // totalSupply is now 2 ether 
+        // totalSupply is now 2 ether
         assertEq(elf.totalSupply(), 3 ether);
         assertEq(elf.balance(), 3 ether);
         assertEq(elf.balanceOf(address(user3)), 1 ether);
@@ -243,7 +253,7 @@ contract ElfContractsTest is DSTest {
         // user3 deposits 1 ether to the elf, but because that's only 50% the pool, they input 0.5 ether (in units)
         user3.approve(address(weth), address(elf));
         user3.call_deposit(address(elf), 1 ether);
-        // totalSupply is now 2 ether 
+        // totalSupply is now 2 ether
         assertEq(elf.totalSupply(), 3 ether);
         assertEq(elf.balance(), 3 ether);
         assertEq(elf.balanceOf(address(user3)), 1 ether);

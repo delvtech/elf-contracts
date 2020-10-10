@@ -39,7 +39,10 @@ contract User {
     }
 
     // deposit ETH, converting to WETH, and minting
-    function call_depositETH(address payable _obj, uint256 _amount) public payable {
+    function call_depositETH(address payable _obj, uint256 _amount)
+        public
+        payable
+    {
         Elf(_obj).depositETH{value: _amount}();
     }
 

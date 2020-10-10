@@ -120,12 +120,12 @@ contract Elf is ERC20 {
     }
 
     function withdrawETH(uint256 _shares) public {
-        uint r = (balance().mul(_shares)).div(totalSupply());
+        uint256 r = (balance().mul(_shares)).div(totalSupply());
         _burn(msg.sender, _shares);
 
-        uint b = weth.balanceOf(address(this));
+        uint256 b = weth.balanceOf(address(this));
         if (b < r) {
-            uint _withdraw = r.sub(b);
+            uint256 _withdraw = r.sub(b);
             ElfStrategy(strategy).deallocate(_withdraw);
             ElfStrategy(strategy).withdraw(_withdraw);
             uint256 _after = weth.balanceOf(address(this));

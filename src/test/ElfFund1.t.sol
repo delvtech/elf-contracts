@@ -38,14 +38,19 @@ contract User {
         Elf(_obj).deposit(_amount);
     }
 
-    // deposith ETH, converting to WETH, and minting
-    function call_depositETH(address payable _obj) public payable {
-        Elf(_obj).depositETH{value: msg.value}();
+    // deposit ETH, converting to WETH, and minting
+    function call_depositETH(address payable _obj, uint256 _amount) public payable {
+        Elf(_obj).depositETH{value: _amount}();
     }
 
-    // withdraw specific shares
+    // withdraw specific shares to WETH
     function call_withdraw(address payable _obj, uint256 _amount) public {
         Elf(_obj).withdraw(_amount);
+    }
+
+    // withdraw specific shares to ETH
+    function call_withdrawETH(address payable _obj, uint256 _amount) public {
+        Elf(_obj).withdrawETH(_amount);
     }
 
     // to be able to receive funds
@@ -180,95 +185,114 @@ contract ElfContractsTest is DSTest {
     }
 
     function test_depositingETH() public {
-        // user1 deposits 1 ether to the elf
-        user1.call_depositETH{value: 1 ether}(address(elf));
-        // weth balance of the fund is zero
+        user1.call_depositETH(address(elf), 1 ether);
         assertEq(weth.balanceOf(address(this)), 0 ether);
-        // weth balance of the strategy is 1 (it was invest()'ed)
         assertEq(weth.balanceOf(address(strategy)), 1 ether);
-        // totalSupply is now equal to 1 ether
         assertEq(elf.totalSupply(), 1 ether);
-        // balance() is now equal to 1 ether
+        assertEq(weth.balanceOf(address(strategy)), 1 ether);
         assertEq(elf.balance(), 1 ether);
     }
 
     function test_depositingWETH() public {
-        // user1 deposits 1 ether to the elf
         user1.approve(address(weth), address(elf));
         user1.call_deposit(address(elf), 1 ether);
-        // weth balance of the fund is zero
         assertEq(weth.balanceOf(address(this)), 0 ether);
-        // weth balance of the strategy is 1 (it was invest()'ed)
         assertEq(weth.balanceOf(address(strategy)), 1 ether);
-        // totalSupply is now equal to 1 ether
         assertEq(elf.totalSupply(), 1 ether);
-        // balance() is now equal to 1 ether
         assertEq(elf.balance(), 1 ether);
     }
 
     function test_multipleETHDeposits() public {
-        // user1 deposits 1 ether to the elf
-        user1.call_depositETH{value: 1 ether}(address(elf));
-        // totalSupply is now equal to 1 ether
+        user1.call_depositETH(address(elf), 1 ether);
         assertEq(elf.totalSupply(), 1 ether);
-        // balance() is now equal to 1 ether
+        assertEq(weth.balanceOf(address(strategy)), 1 ether);
         assertEq(elf.balance(), 1 ether);
-        // user fund token balance is now 1 ether
         assertEq(elf.balanceOf(address(user1)), 1 ether);
 
-        // user2 deposits 1 ether to the elf, but because that's only 50% the pool, they input 0.5 ether (in units)
-        user2.call_depositETH.value(1 ether)(address(elf));
-        // totalSupply is now 2 ether
+        user2.call_depositETH(address(elf), 1 ether);
         assertEq(elf.totalSupply(), 2 ether);
+        assertEq(weth.balanceOf(address(strategy)), 2 ether);
         assertEq(elf.balance(), 2 ether);
         assertEq(elf.balanceOf(address(user2)), 1 ether);
 
-        // user3 deposits 1 ether to the elf, but because that's only 50% the pool, they input 0.5 ether (in units)
-        user3.call_depositETH.value(1 ether)(address(elf));
-        // totalSupply is now 2 ether
+        user3.call_depositETH(address(elf), 1 ether);
         assertEq(elf.totalSupply(), 3 ether);
+        assertEq(weth.balanceOf(address(strategy)), 3 ether);
         assertEq(elf.balance(), 3 ether);
         assertEq(elf.balanceOf(address(user3)), 1 ether);
     }
 
     function test_multipleWETHDeposits() public {
-        // user1 deposits 1 ether to the elf
         user1.approve(address(weth), address(elf));
         user1.call_deposit(address(elf), 1 ether);
-        // totalSupply is now equal to 1 ether
         assertEq(elf.totalSupply(), 1 ether);
-        // balance() is now equal to 1 ether
         assertEq(elf.balance(), 1 ether);
-        // user fund token balance is now 1 ether
         assertEq(elf.balanceOf(address(user1)), 1 ether);
 
-        // user2 deposits 1 ether to the elf, but because that's only 50% the pool, they input 0.5 ether (in units)
         user2.approve(address(weth), address(elf));
         user2.call_deposit(address(elf), 1 ether);
-        // totalSupply is now 2 ether
         assertEq(elf.totalSupply(), 2 ether);
         assertEq(elf.balance(), 2 ether);
         assertEq(elf.balanceOf(address(user2)), 1 ether);
 
-        // user3 deposits 1 ether to the elf, but because that's only 50% the pool, they input 0.5 ether (in units)
         user3.approve(address(weth), address(elf));
         user3.call_deposit(address(elf), 1 ether);
-        // totalSupply is now 2 ether
         assertEq(elf.totalSupply(), 3 ether);
         assertEq(elf.balance(), 3 ether);
         assertEq(elf.balanceOf(address(user3)), 1 ether);
     }
 
-    function test_multipleDepositsAndWithdraw() public {
-        user1.call_depositETH{value: 1 ether}(address(elf));
-        user2.call_depositETH{value: 1 ether}(address(elf));
-        user3.call_depositETH{value: 1 ether}(address(elf));
+    function test_multipleWETHDepositsAndWithdraws() public {
+        assertEq(weth.balanceOf(address(user1)), 1000 ether);
+        assertEq(weth.balanceOf(address(user2)), 1000 ether);
+        assertEq(weth.balanceOf(address(user3)), 1000 ether);
+
+        user1.approve(address(weth), address(elf));
+        user2.approve(address(weth), address(elf));
+        user3.approve(address(weth), address(elf));
+
+        user1.call_deposit(address(elf), 1 ether);
+        user2.call_deposit(address(elf), 1 ether);
+        user3.call_deposit(address(elf), 1 ether);
+
+        assertEq(weth.balanceOf(address(user1)), 999 ether);
+        assertEq(weth.balanceOf(address(user2)), 999 ether);
+        assertEq(weth.balanceOf(address(user3)), 999 ether);
 
         assertEq(elf.totalSupply(), 3 ether);
+        assertEq(weth.balanceOf(address(strategy)), 3 ether);
 
         user1.call_withdraw(address(elf), 1 ether);
         user2.call_withdraw(address(elf), 1 ether);
         user3.call_withdraw(address(elf), 1 ether);
+
+        assertEq(weth.balanceOf(address(user1)), 1000 ether);
+        assertEq(weth.balanceOf(address(user2)), 1000 ether);
+        assertEq(weth.balanceOf(address(user3)), 1000 ether);
+    }
+
+    function test_multipleETHDepositsAndWithdraws() public {
+        assertEq(address(user1).balance, 1000 ether);
+        assertEq(address(user2).balance, 1000 ether);
+        assertEq(address(user3).balance, 1000 ether);
+
+        user1.call_depositETH(address(elf), 1 ether);
+        user2.call_depositETH(address(elf), 1 ether);
+        user3.call_depositETH(address(elf), 1 ether);
+
+        assertEq(address(user1).balance, 999 ether);
+        assertEq(address(user2).balance, 999 ether);
+        assertEq(address(user3).balance, 999 ether);
+
+        assertEq(elf.totalSupply(), 3 ether);
+        assertEq(weth.balanceOf(address(strategy)), 3 ether);
+
+        user1.call_withdrawETH(address(elf), 1 ether);
+        user2.call_withdrawETH(address(elf), 1 ether);
+        user3.call_withdrawETH(address(elf), 1 ether);
+
+        assertEq(elf.totalSupply(), 0 ether);
+        assertEq(weth.balanceOf(address(strategy)), 0 ether);
 
         assertEq(address(user1).balance, 1000 ether);
         assertEq(address(user2).balance, 1000 ether);

@@ -52,10 +52,7 @@ contract Elf is ERC20 {
     }
 
     function invest() public {
-        // todo: should we restrict who can call this?
-        // WB: if ppl want to pay the gas fees, then by all meeeeans
-        weth.transfer(address(strategy), weth.balanceOf(address(this)));
-
+        weth.safeTransfer(address(strategy), weth.balanceOf(address(this)));
         ElfStrategy(strategy).allocate(weth.balanceOf(strategy));
     }
 
@@ -116,7 +113,7 @@ contract Elf is ERC20 {
             }
         }
         // transfer r to msg.sender
-        weth.transfer(msg.sender, r);
+        weth.safeTransfer(msg.sender, r);
     }
 
     function withdrawETH(uint256 _shares) public {

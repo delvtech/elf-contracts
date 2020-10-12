@@ -22,7 +22,7 @@ contract AnAsset {
 
     function deposit(uint256 _amount, address _sender) external {}
 
-    function withdraw(uint256 _amount) external {
+    function withdraw(uint256 _amount, address _sender) external {
         require(msg.sender == strategy, "!strategy");
     }
 

@@ -109,8 +109,21 @@ contract ElfStrategy {
         require(msg.sender == fund, "!fund");
 
         for (uint256 i = 0; i < numAllocations; i++) {
-            // TODO: withdraw from  vault
-            // TODO: convert to weth
+            // withdraw from asset
+            IElementAsset(allocations[i].asset).withdraw(
+                IElementConverter(converter).balanceOf(allocations[i].toToken),
+                address(this)
+            );
+            // convert base asset to weth
+            uint256 _assetAmount = _amount.mul(allocations[i].percent).div(100);
+            IElementConverter(converter).convert(
+                allocations[i].toToken,
+                allocations[i].fromToken,
+                _assetAmount,
+                allocations[i].conversionType,
+                allocations[i].implementation,
+                address(this)
+            );
         }
     }
 

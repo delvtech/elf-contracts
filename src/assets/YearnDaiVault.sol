@@ -40,7 +40,7 @@ contract YearnDaiVault {
         YearnVault(yVaultDAI).deposit(_amount);
     }
 
-    function withdraw(uint256 _amount) external {
+    function withdraw(uint256 _amount, address _sender) external {
         require(msg.sender == strategy, "!strategy");
         uint256 _shares = _amount.mul(1e18).div(
             YearnVault(yVaultDAI).getPricePerFullShare()

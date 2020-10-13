@@ -26,8 +26,7 @@ contract ElfStrategy {
         address toToken;
         uint256 percent;
         address asset;
-        uint256 conversionType; // 0 = loan, 1 = withdraw, 2 = swap
-        uint256 implementation; // 0 = aave,balancer, 1 = compound,uniswap
+        uint256 converterType; // aave,compound,balancer,uniswap
     }
 
     Allocation[] public allocations;
@@ -62,8 +61,7 @@ contract ElfStrategy {
         address[] memory _toToken,
         uint256[] memory _percents,
         address[] memory _asset,
-        uint256[] memory _conversionType,
-        uint256[] memory _implementation,
+        uint256[] memory _converterType,
         uint256 _numAllocations
     ) public {
         require(msg.sender == governance, "!governance");
@@ -76,8 +74,7 @@ contract ElfStrategy {
                     _toToken[i],
                     _percents[i],
                     _asset[i],
-                    _conversionType[i],
-                    _implementation[i]
+                    _converterType[i]
                 )
             );
         }
@@ -94,8 +91,8 @@ contract ElfStrategy {
                 allocations[i].fromToken,
                 allocations[i].toToken,
                 _assetAmount,
-                allocations[i].conversionType,
-                allocations[i].implementation,
+                allocations[i].converterType,
+                true,
                 address(this)
             );
             // deposit into investment asset
@@ -130,8 +127,8 @@ contract ElfStrategy {
                 allocations[i].toToken,
                 allocations[i].fromToken,
                 _assetAmount,
-                1, //TODO: this tells the converter to withdraw.  need a better way to do this
-                allocations[i].implementation,
+                allocations[i].converterType,
+                false,
                 address(this)
             );
         }

@@ -91,7 +91,6 @@ contract ElfContractsTest is DSTest {
     uint256[] percents = new uint256[](4);
     address[] assets = new address[](4);
     uint256[] conversionType = new uint256[](4);
-    uint256[] implementation = new uint256[](4);
 
     function setUp() public {
         // hevm "cheatcode", see: https://github.com/dapphub/dapptools/tree/master/src/hevm#cheat-codes
@@ -139,18 +138,12 @@ contract ElfContractsTest is DSTest {
         conversionType[2] = uint256(0);
         conversionType[3] = uint256(0);
 
-        implementation[0] = uint256(0);
-        implementation[1] = uint256(0);
-        implementation[2] = uint256(0);
-        implementation[3] = uint256(0);
-
         strategy.setAllocations(
             fromTokens,
             toTokens,
             percents,
             assets,
             conversionType,
-            implementation,
             numAllocations
         );
 

@@ -19,8 +19,9 @@ contract ElementConverter {
     address public lender;
     address public swapper;
 
-    constructor() public {
+    constructor(address _weth) public {
         governance = msg.sender;
+        weth = IERC20(_weth);
     }
 
     function setGovernance(address _governance) public {
@@ -47,18 +48,21 @@ contract ElementConverter {
         address _sender
     ) external {
         if (_conversionType == 0) {
-            loan(_implementation);
+            IERC20(_from).safeTransfer(lender, _amount);
+            IElementLender(lender).deposit(_from, _amount, _sender);
+            IElementLender(lender).borrow(_to, _amount, 0, _sender);
         } else if (_conversionType == 1) {
-            swap(_implementation);
+            IERC20(_from).safeTransfer(lender, _amount);
+            IElementLender(lender).withdraw(_to, _amount, _sender);
+        } else if (_conversionType == 2) {
+            // swap
         }
     }
 
-    function swap(uint256 _implementation) internal {}
-
-    function loan(uint256 _implementation) internal {}
-
-    function balanceOf(address token) public view returns (uint256) {
-        // TODO
-        return 0;
+    function balanceOf() public view returns (uint256) {
+        return
+            weth.balanceOf(address(this)).add(
+                IElementLender(lender).balanceOf()
+            );
     }
 }

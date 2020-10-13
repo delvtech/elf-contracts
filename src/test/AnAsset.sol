@@ -12,18 +12,23 @@ contract AnAsset {
     using Address for address;
     using SafeMath for uint256;
 
+    address public token;
     address public governance;
     address public strategy;
 
-    constructor(address _strategy) public {
+    constructor(address _strategy, address _token) public {
         governance = msg.sender;
         strategy = _strategy;
+        token = _token;
     }
 
-    function deposit(uint256 _amount, address _sender) external {}
+    function deposit(uint256 _amount, address _sender) external {
+        require(msg.sender == strategy, "!strategy");
+    }
 
     function withdraw(uint256 _amount, address _sender) external {
         require(msg.sender == strategy, "!strategy");
+        IERC20(token).safeTransfer(_sender, _amount);
     }
 
     function balanceOf() public view returns (uint256) {

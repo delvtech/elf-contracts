@@ -10,5 +10,5 @@ interface IElementConverter {
         address _sender
     ) external;
 
-    function balanceOf(address _token) external view returns (uint256);
+    function balanceOf() external view returns (uint256);
 }

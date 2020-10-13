@@ -15,7 +15,7 @@ contract YearnUsdcVault {
     address public constant weth = address(
         0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
     );
-    address public constant usdc = address(
+    address public constant token = address(
         0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
     );
     address public constant yVaultUsdc = address(
@@ -36,7 +36,7 @@ contract YearnUsdcVault {
     }
 
     function deposit(uint256 _amount, address _sender) external {
-        IERC20(usdc).safeTransfer(msg.sender, _amount);
+        require(msg.sender == strategy, "!strategy");
         YearnVault(yVaultUsdc).deposit(_amount);
     }
 
@@ -50,6 +50,7 @@ contract YearnUsdcVault {
             _shares = IERC20(yVaultUsdc).balanceOf(address(this));
         }
         YearnVault(yVaultUsdc).withdraw(_shares);
+        IERC20(token).safeTransfer(msg.sender, _amount);
     }
 
     function balanceOf() public view returns (uint256) {

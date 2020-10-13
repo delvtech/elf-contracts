@@ -43,18 +43,19 @@ contract ElementConverter {
         address _from,
         address _to,
         uint256 _amount,
-        uint256 _conversionType,
-        uint256 _implementation,
+        uint256 _converterType,
+        bool _isAlloc,
         address _sender
     ) external {
-        if (_conversionType == 0) {
+        if (_converterType == 0) {
             IERC20(_from).safeTransfer(lender, _amount);
-            IElementLender(lender).deposit(_from, _amount, _sender);
-            IElementLender(lender).borrow(_to, _amount, 0, _sender);
-        } else if (_conversionType == 1) {
-            IERC20(_from).safeTransfer(lender, _amount);
-            IElementLender(lender).withdraw(_to, _amount, _sender);
-        } else if (_conversionType == 2) {
+            if (_isAlloc) {
+                IElementLender(lender).deposit(_from, _amount, _sender);
+                IElementLender(lender).borrow(_to, _amount, 0, _sender);
+            } else {
+                IElementLender(lender).withdraw(_to, _amount, _sender);
+            }
+        } else if (_converterType == 1) {
             // swap
         }
     }

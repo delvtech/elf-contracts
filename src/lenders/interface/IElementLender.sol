@@ -4,7 +4,6 @@ interface IElementLender {
     function deposit(
         address _reserve,
         uint256 _amount,
-        uint16 _referralCode,
         address _sender
     ) external payable;
 
@@ -12,8 +11,14 @@ interface IElementLender {
         address _reserve,
         uint256 _amount,
         uint256 _interestRateModel,
-        uint16 _referralCode
+        address _sender
     ) external;
+
+    function withdraw(
+        address _reserve,
+        uint256 _amount,
+        address _sender
+    ) external payable;
 
     function balanceOf() external view returns (uint256);
 }

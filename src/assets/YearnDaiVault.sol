@@ -15,7 +15,7 @@ contract YearnDaiVault {
     address public constant weth = address(
         0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
     );
-    address public constant dai = address(
+    address public constant token = address(
         0x6B175474E89094C44Da98b954EedeAC495271d0F
     );
     address public constant yVaultDAI = address(
@@ -35,7 +35,7 @@ contract YearnDaiVault {
     }
 
     function deposit(uint256 _amount, address _sender) external {
-        IERC20(dai).safeTransfer(msg.sender, _amount);
+        require(msg.sender == strategy, "!strategy");
         // approve yVaultDAI use DAI
         YearnVault(yVaultDAI).deposit(_amount);
     }
@@ -50,6 +50,7 @@ contract YearnDaiVault {
             _shares = IERC20(yVaultDAI).balanceOf(address(this));
         }
         YearnVault(yVaultDAI).withdraw(_shares);
+        IERC20(token).safeTransfer(_sender, _amount);
     }
 
     function balanceOf() public view returns (uint256) {

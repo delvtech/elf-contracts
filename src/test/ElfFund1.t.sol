@@ -11,6 +11,7 @@ import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
 
 import "../test/AnAsset.sol";
+import "../test/ALender.sol";
 
 import "../test/AToken.sol";
 import "../converter/ElementConverter.sol";
@@ -71,11 +72,6 @@ contract ElfContractsTest is DSTest {
     User user2;
     User user3;
 
-    AToken fromToken1;
-    AToken fromToken2;
-    AToken fromToken3;
-    AToken fromToken4;
-
     AToken toToken1;
     AToken toToken2;
     AToken toToken3;
@@ -87,9 +83,7 @@ contract ElfContractsTest is DSTest {
     AnAsset asset4;
 
     ElementConverter converter1;
-    ElementConverter converter2;
-    ElementConverter converter3;
-    ElementConverter converter4;
+    ALender lender1;
 
     // for testing a basic 4x25% asset percent split
     address[] fromTokens = new address[](4);
@@ -108,18 +102,22 @@ contract ElfContractsTest is DSTest {
 
         elf = new Elf(address(weth));
         strategy = new ElfStrategy(address(elf), address(weth));
-        fromToken1 = new AToken(address(strategy));
         toToken1 = new AToken(address(strategy));
-        converter1 = new ElementConverter();
-        asset1 = new AnAsset(address(strategy));
+        converter1 = new ElementConverter(address(weth));
+        lender1 = new ALender(address(converter1), address(weth));
+        asset1 = new AnAsset(address(strategy), address(toToken1));
+        asset2 = new AnAsset(address(strategy), address(toToken1));
+        asset3 = new AnAsset(address(strategy), address(toToken1));
+        asset4 = new AnAsset(address(strategy), address(toToken1));
 
         elf.setStrategy(address(strategy));
         strategy.setConverter(address(converter1));
+        converter1.setLender(address(lender1));
 
-        fromTokens[0] = address(fromToken1);
-        fromTokens[1] = address(fromToken1);
-        fromTokens[2] = address(fromToken1);
-        fromTokens[3] = address(fromToken1);
+        fromTokens[0] = address(weth);
+        fromTokens[1] = address(weth);
+        fromTokens[2] = address(weth);
+        fromTokens[3] = address(weth);
 
         toTokens[0] = address(toToken1);
         toTokens[1] = address(toToken1);
@@ -132,9 +130,9 @@ contract ElfContractsTest is DSTest {
         percents[3] = uint256(25);
 
         assets[0] = address(asset1);
-        assets[1] = address(asset1);
-        assets[2] = address(asset1);
-        assets[3] = address(asset1);
+        assets[1] = address(asset2);
+        assets[2] = address(asset3);
+        assets[3] = address(asset4);
 
         conversionType[0] = uint256(0);
         conversionType[1] = uint256(0);
@@ -163,6 +161,7 @@ contract ElfContractsTest is DSTest {
         address(user1).transfer(1000 ether);
         address(user2).transfer(1000 ether);
         address(user3).transfer(1000 ether);
+        address(lender1).transfer(1000 ether);
 
         hevm.store(
             address(weth),
@@ -179,20 +178,30 @@ contract ElfContractsTest is DSTest {
             keccak256(abi.encode(address(user3), uint256(3))), // Mint user 3 1000 WETH
             bytes32(uint256(1000 ether))
         );
+        hevm.store(
+            address(toToken1),
+            keccak256(abi.encode(address(lender1), uint256(0))), // Mint lender 1 1000 toTokens
+            bytes32(uint256(1000 ether))
+        );
     }
 
     function test_correctUserBalances() public {
         assertEq(weth.balanceOf(address(user1)), 1000 ether);
         assertEq(weth.balanceOf(address(user2)), 1000 ether);
         assertEq(weth.balanceOf(address(user3)), 1000 ether);
+        assertEq(toToken1.balanceOf(address(lender1)), 1000 ether);
     }
 
     function test_depositingETH() public {
         user1.call_depositETH(address(elf), 1 ether);
         assertEq(weth.balanceOf(address(this)), 0 ether);
-        assertEq(weth.balanceOf(address(strategy)), 1 ether);
+        assertEq(weth.balanceOf(address(strategy)), 0 ether);
+        assertEq(weth.balanceOf(address(lender1)), 1 ether);
+        assertEq(toToken1.balanceOf(address(asset1)), 250 finney);
+        assertEq(toToken1.balanceOf(address(asset2)), 250 finney);
+        assertEq(toToken1.balanceOf(address(asset3)), 250 finney);
+        assertEq(toToken1.balanceOf(address(asset4)), 250 finney);
         assertEq(elf.totalSupply(), 1 ether);
-        assertEq(weth.balanceOf(address(strategy)), 1 ether);
         assertEq(elf.balance(), 1 ether);
     }
 
@@ -200,7 +209,12 @@ contract ElfContractsTest is DSTest {
         user1.approve(address(weth), address(elf));
         user1.call_deposit(address(elf), 1 ether);
         assertEq(weth.balanceOf(address(this)), 0 ether);
-        assertEq(weth.balanceOf(address(strategy)), 1 ether);
+        assertEq(weth.balanceOf(address(strategy)), 0 ether);
+        assertEq(weth.balanceOf(address(lender1)), 1 ether);
+        assertEq(toToken1.balanceOf(address(asset1)), 250 finney);
+        assertEq(toToken1.balanceOf(address(asset2)), 250 finney);
+        assertEq(toToken1.balanceOf(address(asset3)), 250 finney);
+        assertEq(toToken1.balanceOf(address(asset4)), 250 finney);
         assertEq(elf.totalSupply(), 1 ether);
         assertEq(elf.balance(), 1 ether);
     }
@@ -208,19 +222,37 @@ contract ElfContractsTest is DSTest {
     function test_multipleETHDeposits() public {
         user1.call_depositETH(address(elf), 1 ether);
         assertEq(elf.totalSupply(), 1 ether);
-        assertEq(weth.balanceOf(address(strategy)), 1 ether);
+        assertEq(weth.balanceOf(address(this)), 0 ether);
+        assertEq(weth.balanceOf(address(strategy)), 0 ether);
+        assertEq(weth.balanceOf(address(lender1)), 1 ether);
+        assertEq(toToken1.balanceOf(address(asset1)), 250 finney);
+        assertEq(toToken1.balanceOf(address(asset2)), 250 finney);
+        assertEq(toToken1.balanceOf(address(asset3)), 250 finney);
+        assertEq(toToken1.balanceOf(address(asset4)), 250 finney);
         assertEq(elf.balance(), 1 ether);
         assertEq(elf.balanceOf(address(user1)), 1 ether);
 
         user2.call_depositETH(address(elf), 1 ether);
         assertEq(elf.totalSupply(), 2 ether);
-        assertEq(weth.balanceOf(address(strategy)), 2 ether);
+        assertEq(weth.balanceOf(address(this)), 0 ether);
+        assertEq(weth.balanceOf(address(strategy)), 0 ether);
+        assertEq(weth.balanceOf(address(lender1)), 2 ether);
+        assertEq(toToken1.balanceOf(address(asset1)), 500 finney);
+        assertEq(toToken1.balanceOf(address(asset2)), 500 finney);
+        assertEq(toToken1.balanceOf(address(asset3)), 500 finney);
+        assertEq(toToken1.balanceOf(address(asset4)), 500 finney);
         assertEq(elf.balance(), 2 ether);
         assertEq(elf.balanceOf(address(user2)), 1 ether);
 
         user3.call_depositETH(address(elf), 1 ether);
         assertEq(elf.totalSupply(), 3 ether);
-        assertEq(weth.balanceOf(address(strategy)), 3 ether);
+        assertEq(weth.balanceOf(address(this)), 0 ether);
+        assertEq(weth.balanceOf(address(strategy)), 0 ether);
+        assertEq(weth.balanceOf(address(lender1)), 3 ether);
+        assertEq(toToken1.balanceOf(address(asset1)), 750 finney);
+        assertEq(toToken1.balanceOf(address(asset2)), 750 finney);
+        assertEq(toToken1.balanceOf(address(asset3)), 750 finney);
+        assertEq(toToken1.balanceOf(address(asset4)), 750 finney);
         assertEq(elf.balance(), 3 ether);
         assertEq(elf.balanceOf(address(user3)), 1 ether);
     }
@@ -263,11 +295,17 @@ contract ElfContractsTest is DSTest {
         assertEq(weth.balanceOf(address(user3)), 999 ether);
 
         assertEq(elf.totalSupply(), 3 ether);
-        assertEq(weth.balanceOf(address(strategy)), 3 ether);
+        assertEq(weth.balanceOf(address(lender1)), 3 ether);
+        assertEq(toToken1.balanceOf(address(lender1)), 997 ether);
 
         user1.call_withdraw(address(elf), 1 ether);
         user2.call_withdraw(address(elf), 1 ether);
         user3.call_withdraw(address(elf), 1 ether);
+
+        assertEq(elf.totalSupply(), 0 ether);
+        assertEq(weth.balanceOf(address(strategy)), 0 ether);
+        assertEq(weth.balanceOf(address(lender1)), 0 ether);
+        assertEq(toToken1.balanceOf(address(lender1)), 1000 ether);
 
         assertEq(weth.balanceOf(address(user1)), 1000 ether);
         assertEq(weth.balanceOf(address(user2)), 1000 ether);
@@ -288,7 +326,8 @@ contract ElfContractsTest is DSTest {
         assertEq(address(user3).balance, 999 ether);
 
         assertEq(elf.totalSupply(), 3 ether);
-        assertEq(weth.balanceOf(address(strategy)), 3 ether);
+        assertEq(weth.balanceOf(address(lender1)), 3 ether);
+        assertEq(toToken1.balanceOf(address(lender1)), 997 ether);
 
         user1.call_withdrawETH(address(elf), 1 ether);
         user2.call_withdrawETH(address(elf), 1 ether);
@@ -296,6 +335,8 @@ contract ElfContractsTest is DSTest {
 
         assertEq(elf.totalSupply(), 0 ether);
         assertEq(weth.balanceOf(address(strategy)), 0 ether);
+        assertEq(weth.balanceOf(address(lender1)), 0 ether);
+        assertEq(toToken1.balanceOf(address(lender1)), 1000 ether);
 
         assertEq(address(user1).balance, 1000 ether);
         assertEq(address(user2).balance, 1000 ether);

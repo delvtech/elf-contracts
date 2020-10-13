@@ -26,7 +26,7 @@ contract ElfStrategy {
         address toToken;
         uint256 percent;
         address asset;
-        uint256 conversionType; // 0 = loan, 1 = swap
+        uint256 conversionType; // 0 = loan, 1 = withdraw, 2 = swap
         uint256 implementation; // 0 = aave,balancer, 1 = compound,uniswap
     }
 
@@ -86,6 +86,7 @@ contract ElfStrategy {
 
     function allocate(uint256 _amount) public {
         require(msg.sender == fund, "!fund");
+        weth.safeTransfer(converter, _amount);
         for (uint256 i = 0; i < numAllocations; i++) {
             uint256 _assetAmount = _amount.mul(allocations[i].percent).div(100);
             // convert weth to asset base type (e.g. dai)
@@ -98,8 +99,14 @@ contract ElfStrategy {
                 address(this)
             );
             // deposit into investment asset
+            // TODO:  this is dumb.
+            IERC20(allocations[i].toToken).safeTransfer(
+                allocations[i].asset,
+                _assetAmount
+            );
+            // TODO: this assumes a 1 to 1 trade of fromToken to toToken
             IElementAsset(allocations[i].asset).deposit(
-                IElementConverter(converter).balanceOf(allocations[i].toToken),
+                _assetAmount,
                 address(this)
             );
         }
@@ -109,18 +116,24 @@ contract ElfStrategy {
         require(msg.sender == fund, "!fund");
 
         for (uint256 i = 0; i < numAllocations; i++) {
+            uint256 _assetAmount = _amount.mul(allocations[i].percent).div(100);
             // withdraw from asset
+            // TODO: this assumes a 1 to 1 trade of fromToken to toToken
             IElementAsset(allocations[i].asset).withdraw(
-                IElementConverter(converter).balanceOf(allocations[i].toToken),
+                _assetAmount,
                 address(this)
             );
+            // TODO:  this is dumb.
+            IERC20(allocations[i].toToken).safeTransfer(
+                converter,
+                _assetAmount
+            );
             // convert base asset to weth
-            uint256 _assetAmount = _amount.mul(allocations[i].percent).div(100);
             IElementConverter(converter).convert(
                 allocations[i].toToken,
                 allocations[i].fromToken,
                 _assetAmount,
-                allocations[i].conversionType,
+                1, //TODO: this tells the converter to withdraw.  need a better way to do this
                 allocations[i].implementation,
                 address(this)
             );
@@ -136,8 +149,10 @@ contract ElfStrategy {
     // possibly a withdrawAll() function
 
     function balanceOf() public view returns (uint256) {
-        // TODO: add balances of assets
-        return weth.balanceOf(address(this));
+        return
+            weth.balanceOf(address(this)).add(
+                IElementConverter(converter).balanceOf()
+            );
     }
 
     receive() external payable {}

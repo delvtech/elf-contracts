@@ -15,7 +15,7 @@ contract YearnTUsdVault {
     address public constant weth = address(
         0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
     );
-    address public constant Tusd = address(
+    address public constant token = address(
         0xdAC17F958D2ee523a2206206994597C13D831ec7
     );
     address public constant yVaultTusd = address(
@@ -36,7 +36,7 @@ contract YearnTUsdVault {
     }
 
     function deposit(uint256 _amount, address _sender) external {
-        IERC20(Tusd).safeTransfer(msg.sender, _amount);
+        require(msg.sender == strategy, "!strategy");
         YearnVault(yVaultTusd).deposit(_amount);
     }
 
@@ -50,6 +50,7 @@ contract YearnTUsdVault {
             _shares = IERC20(yVaultTusd).balanceOf(address(this));
         }
         YearnVault(yVaultTusd).withdraw(_shares);
+        IERC20(token).safeTransfer(msg.sender, _amount);
     }
 
     function balanceOf() public view returns (uint256) {

@@ -1,4 +1,4 @@
-name: Tests
+name: Test
 
 on:
   push:
@@ -23,10 +23,7 @@ jobs:
         run: curl -L https://nixos.org/nix/install | sh && source /home/runner/.nix-profile/etc/profile.d/nix.sh && curl https://dapp.tools/install | sh
 
       - name: init
-        run: export PATH=/home/runner/.nix-profile/bin/:$PATH && make init
-      
-      - name: lint
-        run: export PATH=/home/runner/.nix-profile/bin/:$PATH && make fmt-ci
+        run: export PATH=/home/runner/.nix-profile/bin/:$PATH && dapp update
 
       - name: test
         run: export PATH=/home/runner/.nix-profile/bin/:$PATH && make test

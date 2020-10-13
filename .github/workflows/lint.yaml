@@ -1,0 +1,29 @@
+name: Lint
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+
+jobs:
+
+    solidity:
+      runs-on: ubuntu-latest
+
+      steps:
+      - name: check out github repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+
+      - name: init
+        run: npm install
+      
+      - name: fmt
+        run: make fmt-ci
+
+      - name: lint
+        run: echo "not configured"

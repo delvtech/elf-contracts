@@ -1,4 +1,4 @@
-name: Tests
+name: Test
 
 on:
   push:
@@ -14,19 +14,16 @@ jobs:
       runs-on: ubuntu-latest
 
       steps:
-      - name: check out github repository
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+      - uses: cachix/install-nix-action@v11
         with:
-          fetch-depth: 1
+          nix_path: nixpkgs=channel:nixos-unstable
 
       - name: install dapp.tools
-        run: curl -L https://nixos.org/nix/install | sh && source /home/runner/.nix-profile/etc/profile.d/nix.sh && curl https://dapp.tools/install | sh
+        run: curl https://dapp.tools/install | sh
 
       - name: init
-        run: export PATH=/home/runner/.nix-profile/bin/:$PATH && make init
-      
-      - name: lint
-        run: export PATH=/home/runner/.nix-profile/bin/:$PATH && make fmt-ci
+        run: export PATH=/home/runner/.nix-profile/bin/:$PATH && dapp update
 
       - name: test
         run: export PATH=/home/runner/.nix-profile/bin/:$PATH && make test

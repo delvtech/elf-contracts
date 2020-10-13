@@ -35,7 +35,7 @@ contract YearnTUsdVault {
         return yVaultTusd;
     }
 
-    function deposit(uint256 _amount, address _sender) external {
+    function deposit(uint256 _amount) external {
         require(msg.sender == strategy, "!strategy");
         YearnVault(yVaultTusd).deposit(_amount);
     }
@@ -50,7 +50,7 @@ contract YearnTUsdVault {
             _shares = IERC20(yVaultTusd).balanceOf(address(this));
         }
         YearnVault(yVaultTusd).withdraw(_shares);
-        IERC20(token).safeTransfer(msg.sender, _amount);
+        IERC20(token).safeTransfer(_sender, _amount);
     }
 
     function balanceOf() public view returns (uint256) {

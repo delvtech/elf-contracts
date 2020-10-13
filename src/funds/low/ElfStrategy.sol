@@ -105,10 +105,7 @@ contract ElfStrategy {
                 _assetAmount
             );
             // TODO: this assumes a 1 to 1 trade of fromToken to toToken
-            IElementAsset(allocations[i].asset).deposit(
-                _assetAmount,
-                address(this)
-            );
+            IElementAsset(allocations[i].asset).deposit(_assetAmount);
         }
     }
 

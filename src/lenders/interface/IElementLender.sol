@@ -14,11 +14,22 @@ interface IElementLender {
         address _sender
     ) external;
 
+    function repay(
+        address _reserve,
+        uint256 _amount,
+        address _sender
+    ) external;
+
     function withdraw(
         address _reserve,
         uint256 _amount,
         address _sender
-    ) external payable;
+    ) external;
+
+    function getLendingPrice(address fromToken, address toToken)
+        external
+        view
+        returns (uint256);
 
     function balanceOf() external view returns (uint256);
 }

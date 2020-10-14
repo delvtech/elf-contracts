@@ -32,12 +32,6 @@ contract AnAsset {
     }
 
     function balanceOf() public view returns (uint256) {
-        // TODO
-        return 0;
-    }
-
-    function _getPrice() internal view returns (uint256 p) {
-        // TODO: price oracle
-        return 0;
+        return IERC20(token).balanceOf(address(this));
     }
 }

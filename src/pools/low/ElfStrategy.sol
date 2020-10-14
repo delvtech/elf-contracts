@@ -13,6 +13,7 @@ import "../../assets/YearnTusdVault.sol";
 
 import "../../converter/interface/IElementConverter.sol";
 import "../../assets/interface/IElementAsset.sol";
+import "../../oracles/interface/IElementPriceOracle.sol";
 
 contract ElfStrategy {
     using SafeERC20 for IERC20;
@@ -35,6 +36,7 @@ contract ElfStrategy {
     address public governance;
     address public pool;
     address public converter;
+    address public priceOracle;
 
     address public constant ETH = address(
         0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
@@ -54,6 +56,11 @@ contract ElfStrategy {
     function setConverter(address _converter) public {
         require(msg.sender == governance, "!governance");
         converter = _converter;
+    }
+
+    function setPriceOracle(address _priceOracle) public {
+        require(msg.sender == governance, "!governance");
+        priceOracle = _priceOracle;
     }
 
     function setAllocations(
@@ -85,24 +92,27 @@ contract ElfStrategy {
         require(msg.sender == pool, "!pool ");
         weth.safeTransfer(converter, _amount);
         for (uint256 i = 0; i < numAllocations; i++) {
-            uint256 _assetAmount = _amount.mul(allocations[i].percent).div(100);
+            uint256 _fromTokenAmount = _amount.mul(allocations[i].percent).div(
+                100
+            );
             // convert weth to asset base type (e.g. dai)
             IElementConverter(converter).convert(
                 allocations[i].fromToken,
                 allocations[i].toToken,
-                _assetAmount,
+                _fromTokenAmount,
                 allocations[i].converterType,
                 true,
                 address(this)
             );
+            uint256 _toTokenAmount = IERC20(allocations[i].toToken).balanceOf(
+                address(this)
+            );
             // deposit into investment asset
-            // TODO:  this is dumb.
             IERC20(allocations[i].toToken).safeTransfer(
                 allocations[i].asset,
-                _assetAmount
+                _toTokenAmount
             );
-            // TODO: this assumes a 1 to 1 trade of fromToken to toToken
-            IElementAsset(allocations[i].asset).deposit(_assetAmount);
+            IElementAsset(allocations[i].asset).deposit(_toTokenAmount);
         }
     }
 
@@ -110,14 +120,18 @@ contract ElfStrategy {
         require(msg.sender == pool, "!pool ");
 
         for (uint256 i = 0; i < numAllocations; i++) {
-            uint256 _assetAmount = _amount.mul(allocations[i].percent).div(100);
+            // convert from weth to asset price
+            uint256 _assetAmount = _amount
+                .mul(allocations[i].percent)
+                .div(100)
+                .mul(_getPrice(allocations[i].asset));
+
             // withdraw from asset
-            // TODO: this assumes a 1 to 1 trade of fromToken to toToken
             IElementAsset(allocations[i].asset).withdraw(
                 _assetAmount,
                 address(this)
             );
-            // TODO:  this is dumb.
+
             IERC20(allocations[i].toToken).safeTransfer(
                 converter,
                 _assetAmount
@@ -145,8 +159,13 @@ contract ElfStrategy {
     function balanceOf() public view returns (uint256) {
         return
             weth.balanceOf(address(this)).add(
+                // TODO: add up all asset balances instead
                 IElementConverter(converter).balanceOf()
             );
+    }
+
+    function _getPrice(address _token) internal view returns (uint256 p) {
+        return IElementPriceOracle(priceOracle).getPrice(_token, address(weth));
     }
 
     receive() external payable {}

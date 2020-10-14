@@ -53,6 +53,7 @@ contract ElementConverter {
                 IElementLender(lender).deposit(_from, _amount, _sender);
                 IElementLender(lender).borrow(_to, _amount, 0, _sender);
             } else {
+                IElementLender(lender).repay(_from, _amount, _sender);
                 IElementLender(lender).withdraw(_to, _amount, _sender);
             }
         } else if (_converterType == 1) {

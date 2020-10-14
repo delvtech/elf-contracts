@@ -33,16 +33,16 @@ contract ElfStrategy {
     uint256 public numAllocations;
 
     address public governance;
-    address public fund;
+    address public pool;
     address public converter;
 
     address public constant ETH = address(
         0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
     );
 
-    constructor(address _fund, address payable _weth) public {
+    constructor(address _pool, address payable _weth) public {
         governance = msg.sender;
-        fund = _fund;
+        pool = _pool;
         weth = IERC20(_weth);
     }
 
@@ -82,7 +82,7 @@ contract ElfStrategy {
     }
 
     function allocate(uint256 _amount) public {
-        require(msg.sender == fund, "!fund");
+        require(msg.sender == pool, "!pool ");
         weth.safeTransfer(converter, _amount);
         for (uint256 i = 0; i < numAllocations; i++) {
             uint256 _assetAmount = _amount.mul(allocations[i].percent).div(100);
@@ -107,7 +107,7 @@ contract ElfStrategy {
     }
 
     function deallocate(uint256 _amount) public {
-        require(msg.sender == fund, "!fund");
+        require(msg.sender == pool, "!pool ");
 
         for (uint256 i = 0; i < numAllocations; i++) {
             uint256 _assetAmount = _amount.mul(allocations[i].percent).div(100);
@@ -136,7 +136,7 @@ contract ElfStrategy {
 
     // withdraw a certain amount
     function withdraw(uint256 _amount) public {
-        require(msg.sender == fund, "!fund");
+        require(msg.sender == pool, "!pool ");
         weth.safeTransfer(msg.sender, _amount);
     }
 

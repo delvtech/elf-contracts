@@ -21,10 +21,7 @@ contract Elf is ERC20 {
     address public governance;
     address payable public strategy;
 
-    constructor(address payable _weth)
-        public
-        ERC20("Element Liquidity Fund", "ELF")
-    {
+    constructor(address payable _weth) public ERC20("ELement Finance", "ELF") {
         governance = msg.sender;
         weth = IERC20(_weth);
     }
@@ -88,14 +85,14 @@ contract Elf is ERC20 {
 
     // because funds are invested immediately into the
     // strategy after depositing, there will currently be
-    // no weth balance in this fund
+    // no weth balance in this pool
     function withdraw(uint256 _shares) public {
         uint256 r = (balance().mul(_shares)).div(totalSupply());
         _burn(msg.sender, _shares);
 
         // Check balance
         uint256 b = weth.balanceOf(address(this));
-        // if balance of this fund is less than
+        // if balance of this is less than
         // the withdraw, go get funds from strat
         if (b < r) {
             // get difference to withdraw

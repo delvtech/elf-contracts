@@ -120,27 +120,34 @@ contract ElfStrategy {
         require(msg.sender == pool, "!pool ");
 
         for (uint256 i = 0; i < numAllocations; i++) {
-            // convert from weth to asset price
-            uint256 _assetAmount = _amount
-                .mul(allocations[i].percent)
-                .div(100)
-                .mul(_getPrice(allocations[i].asset));
+            uint256 totalAssetAmount = IElementAsset(allocations[i].asset)
+                .balanceOf();
+
+            // calculate the % of total being withdrawn and withdraw that % from each asset
+            uint256 _assetWithdrawAmount = totalAssetAmount.mul(_amount).div(
+                balanceOf()
+            );
 
             // withdraw from asset
             IElementAsset(allocations[i].asset).withdraw(
-                _assetAmount,
+                _assetWithdrawAmount,
                 address(this)
             );
 
             IERC20(allocations[i].toToken).safeTransfer(
                 converter,
-                _assetAmount
+                _assetWithdrawAmount
             );
+
+            //TODO: in reality, if the assets have grown in value we will need to convert in 2 steps:
+            // 1. payback the amount loaned
+            // 2. swap the additional assets earned to ETH
+
             // convert base asset to weth
             IElementConverter(converter).convert(
                 allocations[i].toToken,
                 allocations[i].fromToken,
-                _assetAmount,
+                _assetWithdrawAmount,
                 allocations[i].converterType,
                 false,
                 address(this)
@@ -157,11 +164,15 @@ contract ElfStrategy {
     // possibly a withdrawAll() function
 
     function balanceOf() public view returns (uint256) {
-        return
-            weth.balanceOf(address(this)).add(
-                // TODO: add up all asset balances instead
-                IElementConverter(converter).balanceOf()
+        uint256 assetBalance = 0;
+        for (uint256 i = 0; i < numAllocations; i++) {
+            assetBalance = assetBalance.add(
+                IElementAsset(allocations[i].asset).balanceOf().div(
+                    _getPrice(allocations[i].asset)
+                )
             );
+        }
+        return weth.balanceOf(address(this)).add(assetBalance);
     }
 
     function _getPrice(address _token) internal view returns (uint256 p) {

@@ -104,7 +104,6 @@ contract Elf is ERC20 {
             // new balance
             uint256 _after = weth.balanceOf(address(this));
             uint256 _diff = _after.sub(b);
-            // todo: ??
             if (_diff < _withdraw) {
                 r = b.add(_diff);
             }

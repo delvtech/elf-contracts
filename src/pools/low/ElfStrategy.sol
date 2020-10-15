@@ -139,10 +139,6 @@ contract ElfStrategy {
                 _assetWithdrawAmount
             );
 
-            //TODO: in reality, if the assets have grown in value we will need to convert in 2 steps:
-            // 1. payback the amount loaned
-            // 2. swap the additional assets earned to ETH
-
             // convert base asset to weth
             IElementConverter(converter).convert(
                 allocations[i].toToken,

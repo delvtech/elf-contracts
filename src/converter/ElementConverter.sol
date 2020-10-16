@@ -101,9 +101,9 @@ contract ElementConverter {
 
     function swap(
         address _from,
-        address _to,
+        address _to, // solhint-disable no-unused-vars
         uint256 _amount,
-        address _sender
+        address _sender // solhint-disable no-unused-vars
     ) internal {
         // TODO: implement swapper interface and test implementation
         IERC20(_from).safeTransfer(swapper, _amount);

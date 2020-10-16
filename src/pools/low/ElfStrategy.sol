@@ -20,7 +20,7 @@ contract ElfStrategy {
     using Address for address;
     using SafeMath for uint256;
 
-    IERC20 weth;
+    IERC20 private weth;
 
     struct Allocation {
         address fromToken;
@@ -175,5 +175,6 @@ contract ElfStrategy {
         return IElementPriceOracle(priceOracle).getPrice(_token, address(weth));
     }
 
+    // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 }

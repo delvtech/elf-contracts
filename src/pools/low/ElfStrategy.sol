@@ -7,10 +7,6 @@ import "../../libraries/SafeMath.sol";
 import "../../libraries/Address.sol";
 import "../../libraries/SafeERC20.sol";
 
-import "../../assets/YearnDaiVault.sol";
-import "../../assets/YearnUsdcVault.sol";
-import "../../assets/YearnTusdVault.sol";
-
 import "../../converter/interface/IElementConverter.sol";
 import "../../assets/interface/IElementAsset.sol";
 import "../../oracles/interface/IElementPriceOracle.sol";

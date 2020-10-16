@@ -83,7 +83,7 @@ contract ElementConverter {
         uint256 _amount,
         address _sender
     ) internal returns (uint256) {
-        uint256 _totalLoanAmount = IElementLender(lender).balanceOf() *
+        uint256 _totalLoanAmount = IElementLender(lender).balance() *
             IElementLender(lender).getLendingPrice(_from, _to);
         uint256 _repayAmount = 0;
         uint256 _diff = 0;
@@ -109,10 +109,8 @@ contract ElementConverter {
         IERC20(_from).safeTransfer(swapper, _amount);
     }
 
-    function balanceOf() public view returns (uint256) {
+    function balance() public view returns (uint256) {
         return
-            weth.balanceOf(address(this)).add(
-                IElementLender(lender).balanceOf()
-            );
+            weth.balanceOf(address(this)).add(IElementLender(lender).balance());
     }
 }

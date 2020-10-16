@@ -5,5 +5,5 @@ interface IElementAsset {
 
     function withdraw(uint256 _amount, address _sender) external;
 
-    function balanceOf() external view returns (uint256);
+    function balance() external view returns (uint256);
 }

@@ -51,18 +51,13 @@ abstract contract BaseElementYVaultAsset {
 
     function deposit(uint256 _amount) external {
         require(msg.sender == strategy, "!strategy");
-        IERC20(token).safeTransfer(
-                vault,
-                _amount
-        );
+        IERC20(token).safeTransfer(vault, _amount);
         YearnVault(vault).deposit(_amount);
     }
 
     function withdraw(uint256 _amount, address _sender) external {
         require(msg.sender == strategy, "!strategy");
-        uint256 _shares = _amount.div(
-            YearnVault(vault).getPricePerFullShare()
-        );
+        uint256 _shares = _amount.div(YearnVault(vault).getPricePerFullShare());
 
         if (_shares > IERC20(vault).balanceOf(address(this))) {
             _shares = IERC20(vault).balanceOf(address(this));
@@ -71,7 +66,7 @@ abstract contract BaseElementYVaultAsset {
         IERC20(token).safeTransfer(_sender, _amount);
     }
 
-    function balanceOf() public view returns (uint256) {
+    function balance() public view returns (uint256) {
         return IERC20(vault).balanceOf(address(this));
     }
 

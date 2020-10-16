@@ -28,9 +28,7 @@ contract Elf is ERC20 {
 
     function balance() public view returns (uint256) {
         return
-            weth.balanceOf(address(this)).add(
-                ElfStrategy(strategy).balanceOf()
-            );
+            weth.balanceOf(address(this)).add(ElfStrategy(strategy).balance());
     }
 
     function setGovernance(address _governance) public {
@@ -41,11 +39,6 @@ contract Elf is ERC20 {
     function setStrategy(address payable _strategy) public {
         require(msg.sender == governance, "!governance");
         strategy = _strategy;
-    }
-
-    function available() public view returns (uint256) {
-        // TODO: implement min/max logic
-        return 0;
     }
 
     function invest() public {

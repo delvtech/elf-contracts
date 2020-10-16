@@ -117,11 +117,11 @@ contract ElfStrategy {
 
         for (uint256 i = 0; i < numAllocations; i++) {
             uint256 totalAssetAmount = IElementAsset(allocations[i].asset)
-                .balanceOf();
+                .balance();
 
             // calculate the % of total being withdrawn and withdraw that % from each asset
             uint256 _assetWithdrawAmount = totalAssetAmount.mul(_amount).div(
-                balanceOf()
+                balance()
             );
 
             // withdraw from asset
@@ -155,11 +155,11 @@ contract ElfStrategy {
 
     // possibly a withdrawAll() function
 
-    function balanceOf() public view returns (uint256) {
+    function balance() public view returns (uint256) {
         uint256 assetBalance = 0;
         for (uint256 i = 0; i < numAllocations; i++) {
             assetBalance = assetBalance.add(
-                IElementAsset(allocations[i].asset).balanceOf().div(
+                IElementAsset(allocations[i].asset).balance().div(
                     _getPrice(allocations[i].asset)
                 )
             );

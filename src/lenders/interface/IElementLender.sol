@@ -31,5 +31,5 @@ interface IElementLender {
         view
         returns (uint256);
 
-    function balanceOf() external view returns (uint256);
+    function balance() external view returns (uint256);
 }

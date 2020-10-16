@@ -81,7 +81,7 @@ contract ALender {
         return IElementPriceOracle(priceOracle).getPrice(fromToken, toToken);
     }
 
-    function balanceOf() public view returns (uint256) {
+    function balance() public view returns (uint256) {
         return weth.balanceOf(address(this));
     }
 

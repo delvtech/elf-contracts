@@ -130,13 +130,13 @@ contract ElfContractsTest is DSTest {
         // provide the test lender with a price oracle
         lender1.setPriceOracle(address(priceOracle));
 
-        // 4 test token implementations 
+        // 4 test token implementations
         dai = new AToken(address(lender1));
         tusd = new AToken(address(lender1));
         usdc = new AToken(address(lender1));
         usdt = new AToken(address(lender1));
 
-        // 4 test vault implementations associated 
+        // 4 test vault implementations associated
         // with the 4 test token implementations
         ydai = new AYVault(address(dai));
         ytusd = new AYVault(address(tusd));
@@ -181,7 +181,7 @@ contract ElfContractsTest is DSTest {
         conversionType[0] = uint256(0);
         conversionType[1] = uint256(0);
         conversionType[2] = uint256(0);
-        conversionType[3] = uint256(0);      
+        conversionType[3] = uint256(0);
         strategy.setAllocations(
             fromTokens,
             toTokens,
@@ -229,37 +229,34 @@ contract ElfContractsTest is DSTest {
         assertEq(weth.balanceOf(address(this)), 0 ether);
         assertEq(weth.balanceOf(address(strategy)), 0 ether);
         assertEq(weth.balanceOf(address(lender1)), 1 ether);
-        
+
         // verify that the dai asset and dai vault contain the expected balances
         uint256 expectedTokenBalance = lender1.getLendingPrice(
             address(weth),
             address(dai)
         ) * 250 finney;
-        assertEq(ydaiAsset.balanceOf(), expectedTokenBalance); // NOTE: dai to ydai is 1:1
+        assertEq(ydaiAsset.balance(), expectedTokenBalance); // NOTE: dai to ydai is 1:1
         assertEq(IERC20(dai).balanceOf(address(ydai)), expectedTokenBalance);
 
         // verify that the tusd asset and tusd vault contain the expected balances
-        expectedTokenBalance = lender1.getLendingPrice(
-            address(weth),
-            address(tusd)
-        ) * 250 finney;
-        assertEq(ytusdAsset.balanceOf(), expectedTokenBalance); // NOTE: tusd to ytusd is 1:1
+        expectedTokenBalance =
+            lender1.getLendingPrice(address(weth), address(tusd)) *
+            250 finney;
+        assertEq(ytusdAsset.balance(), expectedTokenBalance); // NOTE: tusd to ytusd is 1:1
         assertEq(IERC20(tusd).balanceOf(address(ytusd)), expectedTokenBalance);
 
         // verify that the usdc asset and usdc vault contain the expected balances
-        expectedTokenBalance = lender1.getLendingPrice(
-            address(weth),
-            address(usdc)
-        ) * 250 finney;
-        assertEq(yusdcAsset.balanceOf(), expectedTokenBalance); // NOTE: usdc to yusdc is 1:1
+        expectedTokenBalance =
+            lender1.getLendingPrice(address(weth), address(usdc)) *
+            250 finney;
+        assertEq(yusdcAsset.balance(), expectedTokenBalance); // NOTE: usdc to yusdc is 1:1
         assertEq(IERC20(usdc).balanceOf(address(yusdc)), expectedTokenBalance);
 
         // verify that the usdt asset and usdt vault contain the expected balances
-        expectedTokenBalance = lender1.getLendingPrice(
-            address(weth),
-            address(usdt)
-        ) * 250 finney;
-        assertEq(yusdtAsset.balanceOf(), expectedTokenBalance); // NOTE: usdt to yusdt is 1:1
+        expectedTokenBalance =
+            lender1.getLendingPrice(address(weth), address(usdt)) *
+            250 finney;
+        assertEq(yusdtAsset.balance(), expectedTokenBalance); // NOTE: usdt to yusdt is 1:1
         assertEq(IERC20(usdt).balanceOf(address(yusdt)), expectedTokenBalance);
 
         // verify that the proper amount of elf was minted
@@ -283,28 +280,25 @@ contract ElfContractsTest is DSTest {
             address(weth),
             address(dai)
         ) * 250 finney;
-        assertEq(ydaiAsset.balanceOf(), expectedTokenBalance);
+        assertEq(ydaiAsset.balance(), expectedTokenBalance);
 
         // verify that the tusd asset and tusd vault contain the expected balances
-        expectedTokenBalance = lender1.getLendingPrice(
-            address(weth),
-            address(tusd)
-        ) * 250 finney;
-        assertEq(ytusdAsset.balanceOf(), expectedTokenBalance);
+        expectedTokenBalance =
+            lender1.getLendingPrice(address(weth), address(tusd)) *
+            250 finney;
+        assertEq(ytusdAsset.balance(), expectedTokenBalance);
 
         // verify that the usdc asset and usdc vault contain the expected balances
-        expectedTokenBalance = lender1.getLendingPrice(
-            address(weth),
-            address(usdc)
-        ) * 250 finney;
-        assertEq(yusdcAsset.balanceOf(), expectedTokenBalance);
+        expectedTokenBalance =
+            lender1.getLendingPrice(address(weth), address(usdc)) *
+            250 finney;
+        assertEq(yusdcAsset.balance(), expectedTokenBalance);
 
         // verify that the usdt asset and usdt vault contain the expected balances
-        expectedTokenBalance = lender1.getLendingPrice(
-            address(weth),
-            address(usdt)
-        ) * 250 finney;
-        assertEq(yusdtAsset.balanceOf(), expectedTokenBalance);
+        expectedTokenBalance =
+            lender1.getLendingPrice(address(weth), address(usdt)) *
+            250 finney;
+        assertEq(yusdtAsset.balance(), expectedTokenBalance);
 
         // verify that the proper amount of elf was minted
         assertEq(elf.totalSupply(), 1 ether);
@@ -323,22 +317,22 @@ contract ElfContractsTest is DSTest {
             address(weth),
             address(dai)
         ) * 250 finney;
-        assertEq(ydaiAsset.balanceOf(), expectedDaiBalance);
+        assertEq(ydaiAsset.balance(), expectedDaiBalance);
         uint256 expectedTusdBalance = lender1.getLendingPrice(
             address(weth),
             address(tusd)
         ) * 250 finney;
-        assertEq(ytusdAsset.balanceOf(), expectedTusdBalance);
+        assertEq(ytusdAsset.balance(), expectedTusdBalance);
         uint256 expectedUsdcBalance = lender1.getLendingPrice(
             address(weth),
             address(usdc)
         ) * 250 finney;
-        assertEq(yusdcAsset.balanceOf(), expectedUsdcBalance);
+        assertEq(yusdcAsset.balance(), expectedUsdcBalance);
         uint256 expectedUsdtBalance = lender1.getLendingPrice(
             address(weth),
             address(usdt)
         ) * 250 finney;
-        assertEq(yusdtAsset.balanceOf(), expectedUsdtBalance);
+        assertEq(yusdtAsset.balance(), expectedUsdtBalance);
         assertEq(elf.balance(), 1 ether);
         assertEq(elf.balanceOf(address(user1)), 1 ether);
 
@@ -351,19 +345,19 @@ contract ElfContractsTest is DSTest {
         expectedDaiBalance +=
             lender1.getLendingPrice(address(weth), address(dai)) *
             250 finney;
-        assertEq(ydaiAsset.balanceOf(), expectedDaiBalance);
+        assertEq(ydaiAsset.balance(), expectedDaiBalance);
         expectedTusdBalance +=
             lender1.getLendingPrice(address(weth), address(tusd)) *
             250 finney;
-        assertEq(ytusdAsset.balanceOf(), expectedTusdBalance);
+        assertEq(ytusdAsset.balance(), expectedTusdBalance);
         expectedUsdcBalance +=
             lender1.getLendingPrice(address(weth), address(usdc)) *
             250 finney;
-        assertEq(yusdcAsset.balanceOf(), expectedUsdcBalance);
+        assertEq(yusdcAsset.balance(), expectedUsdcBalance);
         expectedUsdtBalance +=
             lender1.getLendingPrice(address(weth), address(usdt)) *
             250 finney;
-        assertEq(yusdtAsset.balanceOf(), expectedUsdtBalance);
+        assertEq(yusdtAsset.balance(), expectedUsdtBalance);
         assertEq(elf.balance(), 2 ether);
         assertEq(elf.balanceOf(address(user2)), 1 ether);
 
@@ -376,25 +370,24 @@ contract ElfContractsTest is DSTest {
         expectedDaiBalance +=
             lender1.getLendingPrice(address(weth), address(dai)) *
             250 finney;
-        assertEq(ydaiAsset.balanceOf(), expectedDaiBalance);
+        assertEq(ydaiAsset.balance(), expectedDaiBalance);
         expectedTusdBalance +=
             lender1.getLendingPrice(address(weth), address(tusd)) *
             250 finney;
-        assertEq(ytusdAsset.balanceOf(), expectedTusdBalance);
+        assertEq(ytusdAsset.balance(), expectedTusdBalance);
         expectedUsdcBalance +=
             lender1.getLendingPrice(address(weth), address(usdc)) *
             250 finney;
-        assertEq(yusdcAsset.balanceOf(), expectedUsdcBalance);
+        assertEq(yusdcAsset.balance(), expectedUsdcBalance);
         expectedUsdtBalance +=
             lender1.getLendingPrice(address(weth), address(usdt)) *
             250 finney;
-        assertEq(yusdtAsset.balanceOf(), expectedUsdtBalance);
+        assertEq(yusdtAsset.balance(), expectedUsdtBalance);
         assertEq(elf.balance(), 3 ether);
         assertEq(elf.balanceOf(address(user3)), 1 ether);
     }
 
     function test_multipleWETHDeposits() public {
-
         // Deposit 1
         user1.approve(address(weth), address(elf));
         user1.call_deposit(address(elf), 1 ether);

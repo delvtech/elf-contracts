@@ -26,4 +26,4 @@ jobs:
         run: make fmt-ci
 
       - name: lint
-        run: echo "not configured"
+        run: make lint

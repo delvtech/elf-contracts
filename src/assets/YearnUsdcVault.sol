@@ -12,6 +12,7 @@ contract YearnUsdcVault {
     using Address for address;
     using SafeMath for uint256;
 
+    /* solhint-disable const-name-snakecase */
     address public constant weth = address(
         0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
     );
@@ -21,6 +22,7 @@ contract YearnUsdcVault {
     address public constant yVaultUsdc = address(
         0x597aD1e0c13Bfe8025993D9e79C69E1c0233522e
     );
+    /* solhint-enable const-name-snakecase */
 
     address public governance;
     address public strategy;
@@ -28,7 +30,6 @@ contract YearnUsdcVault {
     constructor(address _strategy) public {
         governance = msg.sender;
         strategy = _strategy;
-        _approve();
     }
 
     function getAddress() external view returns (address) {
@@ -61,9 +62,5 @@ contract YearnUsdcVault {
     function _getPrice() internal view returns (uint256 p) {
         // TODO: price oracle
         return 1;
-    }
-
-    function _approve() internal {
-        // TODO
     }
 }

@@ -12,6 +12,7 @@ contract YearnDaiVault {
     using Address for address;
     using SafeMath for uint256;
 
+    /* solhint-disable const-name-snakecase */
     address public constant weth = address(
         0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
     );
@@ -21,6 +22,7 @@ contract YearnDaiVault {
     address public constant yVaultDAI = address(
         0xACd43E627e64355f1861cEC6d3a6688B31a6F952
     );
+    /* solhint-enable const-name-snakecase */
 
     address public governance;
     address public strategy;

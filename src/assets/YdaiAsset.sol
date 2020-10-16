@@ -25,4 +25,5 @@ contract YdaiAsset is BaseElementYVaultAsset {
         public
         BaseElementYVaultAsset(msg.sender, _strategy, VAULT, DAI)
     {} // solhint-disable no-empty-blocks
+    
 }

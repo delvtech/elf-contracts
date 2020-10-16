@@ -14,7 +14,6 @@ contract YusdtAsset is BaseElementYVaultAsset {
     using Address for address;
     using SafeMath for uint256;
 
-    /* solhint-disable const-name-snakecase */
     address public constant USDT = address(
         0xdAC17F958D2ee523a2206206994597C13D831ec7
     );

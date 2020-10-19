@@ -16,7 +16,7 @@ contract ElementUserSwaps {
         uint _minAmountOut,
         uint _maxPrice
     ) external returns (uint, uint) {
-        IBalancerSwaps(BPOOL).swapExactAmountIn(_tokenIn, _tokenAmountIn, _tokenOut, _minAmountOut, _maxPrice);
+        return IBalancerSwaps(BPOOL).swapExactAmountIn(_tokenIn, _tokenAmountIn, _tokenOut, _minAmountOut, _maxPrice);
     }
 
     function swapExactAmountOut(
@@ -26,6 +26,6 @@ contract ElementUserSwaps {
         uint _tokenAmountOut,
         uint _maxPrice
     ) external returns (uint, uint) {
-        IBalancerSwaps(BPOOL).swapExactAmountOut(_tokenIn, _maxAmountIn, _tokenOut, _tokenAmountOut, _maxPrice);
+        return IBalancerSwaps(BPOOL).swapExactAmountOut(_tokenIn, _maxAmountIn, _tokenOut, _tokenAmountOut, _maxPrice);
     }
 }

@@ -25,6 +25,11 @@ contract ALender {
         weth = IERC20(_weth);
     }
 
+    function setGovernance(address _governance) public {
+        require(msg.sender == governance, "!governance");
+        governance = _governance;
+    }
+
     function setPriceOracle(address _priceOracle) public {
         require(msg.sender == governance, "!governance");
         priceOracle = _priceOracle;

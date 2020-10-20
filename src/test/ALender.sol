@@ -91,5 +91,5 @@ contract ALender {
     }
 
     // to be able to receive funds
-    fallback() external payable {}
+    receive() external payable {}
 }

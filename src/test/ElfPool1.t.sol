@@ -63,7 +63,7 @@ contract User {
     }
 
     // to be able to receive funds
-    fallback() external payable {}
+    receive() external payable {}
 }
 
 contract ElfContractsTest is DSTest {
@@ -498,5 +498,5 @@ contract ElfContractsTest is DSTest {
     }
 
     // require for withdraw tests to work
-    fallback() external payable {}
+    receive() external payable {}
 }

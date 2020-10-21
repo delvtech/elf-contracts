@@ -10,13 +10,13 @@ import "../libraries/SafeMath.sol";
 import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
 
-import "../test/AYVault.sol";
-import "../test/ALender.sol";
+import "./AYVault.sol";
+import "./ALender.sol";
+import "./AToken.sol";
+import "./APriceOracle.sol";
+import "./ElfDeploy.sol";
 
-import "../test/AToken.sol";
-import "../test/APriceOracle.sol";
 import "../converter/ElementConverter.sol";
-
 import "../assets/YdaiAsset.sol";
 import "../assets/YtusdAsset.sol";
 import "../assets/YusdcAsset.sol";
@@ -72,6 +72,10 @@ contract ElfContractsTest is DSTest {
 
     Elf elf;
     ElfStrategy strategy;
+    ElementConverter converter;
+
+    ALender lender1;
+    APriceOracle priceOracle;
 
     User user1;
     User user2;
@@ -92,10 +96,6 @@ contract ElfContractsTest is DSTest {
     YusdcAsset yusdcAsset;
     YusdtAsset yusdtAsset;
 
-    ElementConverter converter1;
-    ALender lender1;
-    APriceOracle priceOracle;
-
     // for testing a basic 4x25% asset percent split
     address[] fromTokens = new address[](4);
     address[] toTokens = new address[](4);
@@ -106,90 +106,27 @@ contract ElfContractsTest is DSTest {
     function setUp() public {
         // hevm "cheatcode", see: https://github.com/dapphub/dapptools/tree/master/src/hevm#cheat-codes
         hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
-        weth = new WETH();
-
-        // core element contracts
-        elf = new Elf(address(weth));
-        strategy = new ElfStrategy(address(elf), address(weth));
-        converter1 = new ElementConverter(address(weth));
-
-        // test lender implementation
-        lender1 = new ALender(address(converter1), address(weth));
-        // test price oracle implementation
-        priceOracle = new APriceOracle();
-
-        // the core contracts need to know the address of each downstream contract:
-        // elf -> strategy
-        // strategy -> converter, price oracle
-        // converter -> lender
-        elf.setStrategy(address(strategy));
-        strategy.setConverter(address(converter1));
-        strategy.setPriceOracle(address(priceOracle));
-        converter1.setLender(address(lender1));
-
-        // provide the test lender with a price oracle
-        lender1.setPriceOracle(address(priceOracle));
-
-        // 4 test token implementations
-        dai = new AToken(address(lender1));
-        tusd = new AToken(address(lender1));
-        usdc = new AToken(address(lender1));
-        usdt = new AToken(address(lender1));
-
-        // 4 test vault implementations associated
-        // with the 4 test token implementations
-        ydai = new AYVault(address(dai));
-        ytusd = new AYVault(address(tusd));
-        yusdc = new AYVault(address(usdc));
-        yusdt = new AYVault(address(usdt));
-
-        // each asset represents a wrapper around an associated vault
-        ydaiAsset = new YdaiAsset(address(strategy));
-        ytusdAsset = new YtusdAsset(address(strategy));
-        yusdcAsset = new YusdcAsset(address(strategy));
-        yusdtAsset = new YusdtAsset(address(strategy));
-
-        // this test requires that we override the hardcoded
-        // vault and token addresses with test implementations
-        ydaiAsset.setVault(address(ydai));
-        ydaiAsset.setToken(address(dai));
-        ytusdAsset.setVault(address(ytusd));
-        ytusdAsset.setToken(address(tusd));
-        yusdcAsset.setVault(address(yusdc));
-        yusdcAsset.setToken(address(usdc));
-        yusdtAsset.setVault(address(yusdt));
-        yusdtAsset.setToken(address(usdt));
-
-        // the following block of code initializes the allocations for this test
-        uint256 numAllocations = uint256(4);
-        fromTokens[0] = address(weth);
-        fromTokens[1] = address(weth);
-        fromTokens[2] = address(weth);
-        fromTokens[3] = address(weth);
-        toTokens[0] = address(dai);
-        toTokens[1] = address(tusd);
-        toTokens[2] = address(usdc);
-        toTokens[3] = address(usdt);
-        percents[0] = uint256(25);
-        percents[1] = uint256(25);
-        percents[2] = uint256(25);
-        percents[3] = uint256(25);
-        assets[0] = address(ydaiAsset);
-        assets[1] = address(ytusdAsset);
-        assets[2] = address(yusdcAsset);
-        assets[3] = address(yusdtAsset);
-        conversionType[0] = uint256(0);
-        conversionType[1] = uint256(0);
-        conversionType[2] = uint256(0);
-        conversionType[3] = uint256(0);
-        strategy.setAllocations(
-            fromTokens,
-            toTokens,
-            percents,
-            assets,
-            conversionType,
-            numAllocations
-        );
+        ElfDeploy _elfDeploy = new ElfDeploy();
+        _elfDeploy.init();
+        weth = _elfDeploy.weth();
+        elf = _elfDeploy.elf();
+        strategy = _elfDeploy.strategy();
+        converter = _elfDeploy.converter();
+        lender1 = _elfDeploy.lender();
+        priceOracle = _elfDeploy.priceOracle();
+        _elfDeploy.config();
+        dai = _elfDeploy.dai();
+        tusd = _elfDeploy.tusd();
+        usdc = _elfDeploy.usdc();
+        usdt = _elfDeploy.usdt();
+        ydai = _elfDeploy.ydai();
+        ytusd = _elfDeploy.ytusd();
+        yusdc = _elfDeploy.yusdc();
+        yusdt = _elfDeploy.yusdt();
+        ydaiAsset = _elfDeploy.ydaiAsset();
+        ytusdAsset = _elfDeploy.ytusdAsset();
+        yusdcAsset = _elfDeploy.yusdcAsset();
+        yusdtAsset = _elfDeploy.yusdtAsset();
 
         // create 3 users and provide funds
         user1 = new User();

@@ -1,14 +1,15 @@
 #!/bin/bash
 
-## TODO: Estimate ETH_GAS
+set -e 
 
-ELF_DEPLOY_ADDRESS=$(export ETH_GAS=50000000; dapp create ElfDeploy 2>&1 | tail -n 1)
+ELF_DEPLOY_ADDRESS=$(export ETH_GAS=20000000; dapp create ElfDeploy 2>&1 | tail -n 1)
+
 echo "ELF_DEPLOY=$ELF_DEPLOY_ADDRESS"
 
 echo ""
 
 echo "Deploying contracts..."
-seth send --gas 50000000 $ELF_DEPLOY_ADDRESS "init()"
+seth send --gas 8000000 $ELF_DEPLOY_ADDRESS "init()"
 
 echo ""
 
@@ -18,5 +19,5 @@ echo "ELF=$ELF_ADDRESS"
 echo ""
 
 echo "Configuring contracts..."
-seth send --gas 50000000 $ELF_DEPLOY_ADDRESS "config()"
+seth send --gas 20000000 $ELF_DEPLOY_ADDRESS "config()"
 

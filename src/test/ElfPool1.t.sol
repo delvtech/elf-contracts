@@ -352,6 +352,19 @@ contract ElfContractsTest is DSTest {
         assertEq(weth.balanceOf(address(user1)), 1000 ether);
         assertEq(weth.balanceOf(address(user2)), 1000 ether);
         assertEq(weth.balanceOf(address(user3)), 1000 ether);
+        assertEq(dai.balanceOf(address(lender1)), 1000000000000000000000 ether);
+        assertEq(
+            tusd.balanceOf(address(lender1)),
+            1000000000000000000000 ether
+        );
+        assertEq(
+            usdc.balanceOf(address(lender1)),
+            1000000000000000000000 ether
+        );
+        assertEq(
+            usdt.balanceOf(address(lender1)),
+            1000000000000000000000 ether
+        );
 
         // 3 deposits
         user1.approve(address(weth), address(elf));
@@ -365,10 +378,23 @@ contract ElfContractsTest is DSTest {
         assertEq(weth.balanceOf(address(user3)), 999 ether);
         assertEq(elf.totalSupply(), 3 ether);
         assertEq(weth.balanceOf(address(lender1)), 3 ether);
-        assertEq(dai.balanceOf(address(lender1)), 998500 finney); // 100 - 3/4 * 2 Dai/ 1 ETH
-        assertEq(tusd.balanceOf(address(lender1)), 998500 finney); // 100 - 3/4 * 2 tusd/ 1 ETH
-        assertEq(usdc.balanceOf(address(lender1)), 998500 finney); // 100 - 3/4 * 2 usdc/ 1 ETH
-        assertEq(usdt.balanceOf(address(lender1)), 998500 finney); // 100 - 3/4 * 2 usdt/ 1 ETH
+
+        assertEq(
+            dai.balanceOf(address(lender1)),
+            699625 * 1000000000000000 ether
+        ); // - 3/4 * 400.5 Dai/ 1 ETH
+        assertEq(
+            tusd.balanceOf(address(lender1)),
+            699625 * 1000000000000000 ether
+        ); // - 3/4 * 400.5 tusd/ 1 ETH
+        assertEq(
+            usdc.balanceOf(address(lender1)),
+            699625 * 1000000000000000 ether
+        ); // - 3/4 * 400.5 usdc/ 1 ETH
+        assertEq(
+            usdt.balanceOf(address(lender1)),
+            699625 * 1000000000000000 ether
+        ); // - 3/4 * 400.5 usdt/ 1 ETH
 
         // 3 withdraws
         user1.call_withdraw(address(elf), 1 ether);
@@ -377,10 +403,19 @@ contract ElfContractsTest is DSTest {
         assertEq(elf.totalSupply(), 0 ether);
         assertEq(weth.balanceOf(address(strategy)), 0 ether);
         assertEq(weth.balanceOf(address(lender1)), 0 ether);
-        assertEq(dai.balanceOf(address(lender1)), 1000 ether);
-        assertEq(tusd.balanceOf(address(lender1)), 1000 ether);
-        assertEq(usdc.balanceOf(address(lender1)), 1000 ether);
-        assertEq(usdt.balanceOf(address(lender1)), 1000 ether);
+        assertEq(dai.balanceOf(address(lender1)), 1000000000000000000000 ether);
+        assertEq(
+            tusd.balanceOf(address(lender1)),
+            1000000000000000000000 ether
+        );
+        assertEq(
+            usdc.balanceOf(address(lender1)),
+            1000000000000000000000 ether
+        );
+        assertEq(
+            usdt.balanceOf(address(lender1)),
+            1000000000000000000000 ether
+        );
 
         // validate ending balance
         assertEq(weth.balanceOf(address(user1)), 1000 ether);
@@ -393,6 +428,19 @@ contract ElfContractsTest is DSTest {
         assertEq(address(user1).balance, 1000 ether);
         assertEq(address(user2).balance, 1000 ether);
         assertEq(address(user3).balance, 1000 ether);
+        assertEq(dai.balanceOf(address(lender1)), 1000000000000000000000 ether);
+        assertEq(
+            tusd.balanceOf(address(lender1)),
+            1000000000000000000000 ether
+        );
+        assertEq(
+            usdc.balanceOf(address(lender1)),
+            1000000000000000000000 ether
+        );
+        assertEq(
+            usdt.balanceOf(address(lender1)),
+            1000000000000000000000 ether
+        );
 
         // 3 deposits
         user1.call_depositETH(address(elf), 1 ether);
@@ -403,10 +451,22 @@ contract ElfContractsTest is DSTest {
         assertEq(address(user3).balance, 999 ether);
         assertEq(elf.totalSupply(), 3 ether);
         assertEq(weth.balanceOf(address(lender1)), 3 ether);
-        assertEq(dai.balanceOf(address(lender1)), 998500 finney); // 100 - 3/4 * 2 Dai/ 1 ETH
-        assertEq(tusd.balanceOf(address(lender1)), 998500 finney); // 100 - 3/4 * 2 tusd/ 1 ETH
-        assertEq(usdc.balanceOf(address(lender1)), 998500 finney); // 100 - 3/4 * 2 usdc/ 1 ETH
-        assertEq(usdt.balanceOf(address(lender1)), 998500 finney); // 100 - 3/4 * 2 usdt/ 1 ETH
+        assertEq(
+            dai.balanceOf(address(lender1)),
+            699625 * 1000000000000000 ether
+        ); // - 3/4 * 400.5 Dai/ 1 ETH
+        assertEq(
+            tusd.balanceOf(address(lender1)),
+            699625 * 1000000000000000 ether
+        ); // - 3/4 * 400.5 tusd/ 1 ETH
+        assertEq(
+            usdc.balanceOf(address(lender1)),
+            699625 * 1000000000000000 ether
+        ); // - 3/4 * 400.5 usdc/ 1 ETH
+        assertEq(
+            usdt.balanceOf(address(lender1)),
+            699625 * 1000000000000000 ether
+        ); // - 3/4 * 400.5 usdt/ 1 ETH
 
         // 3 withdraws
         user1.call_withdrawETH(address(elf), 1 ether);
@@ -415,10 +475,19 @@ contract ElfContractsTest is DSTest {
         assertEq(elf.totalSupply(), 0 ether);
         assertEq(weth.balanceOf(address(strategy)), 0 ether);
         assertEq(weth.balanceOf(address(lender1)), 0 ether);
-        assertEq(dai.balanceOf(address(lender1)), 1000 ether);
-        assertEq(tusd.balanceOf(address(lender1)), 1000 ether);
-        assertEq(usdc.balanceOf(address(lender1)), 1000 ether);
-        assertEq(usdt.balanceOf(address(lender1)), 1000 ether);
+        assertEq(dai.balanceOf(address(lender1)), 1000000000000000000000 ether);
+        assertEq(
+            tusd.balanceOf(address(lender1)),
+            1000000000000000000000 ether
+        );
+        assertEq(
+            usdc.balanceOf(address(lender1)),
+            1000000000000000000000 ether
+        );
+        assertEq(
+            usdt.balanceOf(address(lender1)),
+            1000000000000000000000 ether
+        );
 
         // validate ending balance
         assertEq(address(user1).balance, 1000 ether);

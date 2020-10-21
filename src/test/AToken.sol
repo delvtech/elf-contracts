@@ -13,7 +13,7 @@ contract AToken is ERC20 {
     using SafeMath for uint256;
 
     constructor(address sender) public ERC20("a token", "TOKEN") {
-        mint(sender, 1000000000000000000000);
+        mint(sender, 1000000000000000000000000000000000000000);
     }
 
     function mint(address account, uint256 amount) internal {

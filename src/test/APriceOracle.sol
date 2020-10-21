@@ -19,6 +19,6 @@ contract APriceOracle {
         view
         returns (uint256)
     {
-        return 2;
+        return 400.5 ether; // 400.5 tokens per eth
     }
 }

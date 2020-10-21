@@ -74,7 +74,11 @@ contract ElementConverter {
     ) internal {
         IERC20(_from).safeTransfer(lender, _amount);
         IElementLender(lender).deposit(_from, _amount, _sender);
-        IElementLender(lender).borrow(_to, _amount, 0, _sender);
+        // _amount is in weth and we need to borrow in AToken ()
+        uint256 _convertedAmount = _amount.mul(
+            IElementLender(lender).getLendingPrice(_from, _to)
+        );
+        IElementLender(lender).borrow(_to, _convertedAmount, 0, _sender);
     }
 
     function settleLoan(
@@ -83,8 +87,9 @@ contract ElementConverter {
         uint256 _amount,
         address _sender
     ) internal returns (uint256) {
-        uint256 _totalLoanAmount = IElementLender(lender).balance() *
-            IElementLender(lender).getLendingPrice(_from, _to);
+        uint256 _totalLoanAmount = IElementLender(lender).balance().mul(
+            IElementLender(lender).getLendingPrice(_from, _to)
+        );
         uint256 _repayAmount = 0;
         uint256 _diff = 0;
         if (_amount <= _totalLoanAmount) {

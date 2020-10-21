@@ -50,11 +50,7 @@ contract ALender {
         address _sender
     ) external {
         require(msg.sender == converter, "!converter");
-        // _amount is in weth and we need to borrow in AToken ()
-        uint256 _convertedAmount = _amount.mul(
-            getLendingPrice(address(weth), _reserve)
-        );
-        IERC20(_reserve).safeTransfer(_sender, _convertedAmount);
+        IERC20(_reserve).safeTransfer(_sender, _amount);
     }
 
     function repay(

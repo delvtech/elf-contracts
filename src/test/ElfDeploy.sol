@@ -22,29 +22,29 @@ import "../assets/YusdtAsset.sol";
 import "../pools/low/Elf.sol";
 
 contract ElfDeploy {
-    WETH weth;
+    WETH public weth;
 
-    Elf elf;
-    ElfStrategy strategy;
+    Elf public elf;
+    ElfStrategy public strategy;
+    ElementConverter public converter;
 
-    AToken dai;
-    AToken tusd;
-    AToken usdc;
-    AToken usdt;
+    ALender public lender;
+    APriceOracle public priceOracle;
 
-    AYVault ydai;
-    AYVault ytusd;
-    AYVault yusdc;
-    AYVault yusdt;
+    AToken public dai;
+    AToken public tusd;
+    AToken public usdc;
+    AToken public usdt;
 
-    YdaiAsset ydaiAsset;
-    YtusdAsset ytusdAsset;
-    YusdcAsset yusdcAsset;
-    YusdtAsset yusdtAsset;
+    AYVault public ydai;
+    AYVault public ytusd;
+    AYVault public yusdc;
+    AYVault public yusdt;
 
-    ElementConverter converter;
-    ALender lender;
-    APriceOracle priceOracle;
+    YdaiAsset public ydaiAsset;
+    YtusdAsset public ytusdAsset;
+    YusdcAsset public yusdcAsset;
+    YusdtAsset public yusdtAsset;
 
     // for testing a basic 4x25% asset percent split
     address[] fromTokens = new address[](4);
@@ -53,38 +53,35 @@ contract ElfDeploy {
     address[] assets = new address[](4);
     uint256[] conversionType = new uint256[](4);
 
-    function setUp(
-        address _weth,
-        address _elf,
-        address _strategy,
-        address _converter,
-        address _lender,
-        address _priceOracle
-    ) public {
-        weth = WETH(payable(_weth));
-        elf = Elf(payable(_elf));
-        strategy = ElfStrategy(payable(_strategy));
-        converter = ElementConverter(_converter);
-        lender = ALender(payable(_lender));
-        priceOracle = APriceOracle(_priceOracle);
+    function init() public {
+        weth = new WETH();
+        // core element contracts
+        elf = new Elf(address(weth));
+        strategy = new ElfStrategy(address(elf), address(weth));
+        converter = new ElementConverter(address(weth));
+        // test implementations
+        lender = new ALender(address(converter), address(weth));
+        priceOracle = new APriceOracle();
+    }
 
+    function config() public {
         // the core contracts need to know the address of each downstream contract:
         // elf -> strategy
         // strategy -> converter, price oracle
         // converter -> lender
-        elf.setStrategy(payable(_strategy));
-        strategy.setConverter(_converter);
-        strategy.setPriceOracle(_priceOracle);
-        converter.setLender(payable(_lender));
+        elf.setStrategy(payable(strategy));
+        strategy.setConverter(address(converter));
+        strategy.setPriceOracle(address(priceOracle));
+        converter.setLender(payable(lender));
 
         // provide the test lender with a price oracle
-        lender.setPriceOracle(_priceOracle);
+        lender.setPriceOracle(address(priceOracle));
 
         // 4 test token implementations
-        dai = new AToken(payable(_lender));
-        tusd = new AToken(payable(_lender));
-        usdc = new AToken(payable(_lender));
-        usdt = new AToken(payable(_lender));
+        dai = new AToken(payable(lender));
+        tusd = new AToken(payable(lender));
+        usdc = new AToken(payable(lender));
+        usdt = new AToken(payable(lender));
 
         // 4 test vault implementations associated
         // with the 4 test token implementations
@@ -94,10 +91,10 @@ contract ElfDeploy {
         yusdt = new AYVault(address(usdt));
 
         // each asset represents a wrapper around an associated vault
-        ydaiAsset = new YdaiAsset(payable(_strategy));
-        ytusdAsset = new YtusdAsset(payable(_strategy));
-        yusdcAsset = new YusdcAsset(payable(_strategy));
-        yusdtAsset = new YusdtAsset(payable(_strategy));
+        ydaiAsset = new YdaiAsset(payable(strategy));
+        ytusdAsset = new YtusdAsset(payable(strategy));
+        yusdcAsset = new YusdcAsset(payable(strategy));
+        yusdtAsset = new YusdtAsset(payable(strategy));
 
         // this test requires that we override the hardcoded
         // vault and token addresses with test implementations
@@ -110,8 +107,15 @@ contract ElfDeploy {
         yusdtAsset.setVault(address(yusdt));
         yusdtAsset.setToken(address(usdt));
 
+        // for testing a basic 4x25% asset percent split
+        fromTokens = new address[](4);
+        toTokens = new address[](4);
+        percents = new uint256[](4);
+        assets = new address[](4);
+        conversionType = new uint256[](4);
+        uint256 _numAllocations = uint256(4);
+
         // the following block of code initializes the allocations for this test
-        uint256 numAllocations = uint256(4);
         fromTokens[0] = address(weth);
         fromTokens[1] = address(weth);
         fromTokens[2] = address(weth);
@@ -138,7 +142,7 @@ contract ElfDeploy {
             percents,
             assets,
             conversionType,
-            numAllocations
+            _numAllocations
         );
     }
 }

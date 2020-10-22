@@ -21,3 +21,7 @@ echo ""
 echo "Configuring contracts..."
 seth send --gas 20000000 $ELF_DEPLOY_ADDRESS "config()"
 
+echo "Fund user account..."
+seth send --value 99999999999999999999999999999999999999999999999999999999 0x5ff0fc256b230e974f3ea67eee1b1239b97a4aa7
+                  
+

@@ -1,5 +1,7 @@
 pragma solidity ^0.6.7;
 
+import "ds-value/value.sol";
+
 import "../interfaces/IERC20.sol";
 import "../interfaces/ERC20.sol";
 import "../interfaces/WETH.sol";
@@ -144,5 +146,12 @@ contract ElfDeploy {
             conversionType,
             _numAllocations
         );
+    }
+
+    function createMockOracle(address _auth, bytes32 _initVar) external returns (address) {
+        DSValue mockOracle = new DSValue();
+        mockOracle.poke(_initVar);
+        mockOracle.setOwner(_auth);
+        return address(mockOracle);
     }
 }

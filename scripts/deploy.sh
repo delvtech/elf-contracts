@@ -24,4 +24,5 @@ seth send --gas 20000000 $ELF_DEPLOY_ADDRESS "config()"
 echo "Fund user account..."
 seth send --value 99999999999999999999999999999999999999999999999999999999 0x5ff0fc256b230e974f3ea67eee1b1239b97a4aa7
                   
-
+echo "Creating mock oracle priced at 1 ether..."
+seth send --gas 8000000 $ELF_DEPLOY_ADDRESS "createMockOracle(address,bytes32)" 0x5ff0fc256b230e974f3ea67eee1b1239b97a4aa7 $(seth --to-dec 1000000000000000000)

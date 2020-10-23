@@ -12,13 +12,28 @@ contract APriceOracle {
     using Address for address;
     using SafeMath for uint256;
 
+    uint256 val1 = 400.5 ether;
+    uint256 val2 = 1 ether;
+
     constructor() public {}
 
-    function getPrice(address fromToken, address toToken)
+    function getPrice(address _fromToken, address _toToken)
         public
         view
         returns (uint256)
     {
-        return 400.5 ether; // 400.5 tokens per eth
+        return val1;
+    }
+
+    function setPrice(uint256 _val) public {
+        val1 = _val;
+    }
+
+    function getPrice2() public view returns (uint256) {
+        return val2;
+    }
+
+    function setPrice2(uint256 _val) public returns (uint256) {
+        val2 = _val;
     }
 }

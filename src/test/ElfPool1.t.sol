@@ -15,6 +15,7 @@ import "./ALender.sol";
 import "./AToken.sol";
 import "./APriceOracle.sol";
 import "./ElfDeploy.sol";
+import "../lenders/aave/AaveLender.sol";
 
 import "../converter/ElementConverter.sol";
 import "../assets/YdaiAsset.sol";
@@ -74,6 +75,8 @@ contract ElfContractsTest is DSTest {
     ElfStrategy strategy;
     ElementConverter converter;
 
+    AaveLender aaveLender;
+
     ALender lender1;
     APriceOracle priceOracle;
 
@@ -102,6 +105,10 @@ contract ElfContractsTest is DSTest {
     uint256[] percents = new uint256[](4);
     address[] assets = new address[](4);
     uint256[] conversionType = new uint256[](4);
+
+    address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address public constant CORE = 0x3dfd23A6c5E8BbcFc9581d2E864a68feb6a076d3;
+    address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
     function setUp() public {
         // hevm "cheatcode", see: https://github.com/dapphub/dapptools/tree/master/src/hevm#cheat-codes
@@ -149,6 +156,11 @@ contract ElfContractsTest is DSTest {
             address(weth),
             keccak256(abi.encode(address(user3), uint256(3))), // Mint user 3 1000 WETH
             bytes32(uint256(1000 ether))
+        );
+        hevm.store(
+            address(DAI),
+            keccak256(abi.encode(address(this), uint256(2))), // Mint this address 100000 DAI
+            bytes32(uint256(100000 ether))
         );
     }
 
@@ -493,6 +505,45 @@ contract ElfContractsTest is DSTest {
         assertEq(address(user1).balance, 1000 ether);
         assertEq(address(user2).balance, 1000 ether);
         assertEq(address(user3).balance, 1000 ether);
+    }
+
+    function test_aave_DAI_deposit_integration() public {
+        aaveLender = new AaveLender();
+        IERC20 dai = IERC20(DAI);
+
+        dai.transfer(address(aaveLender), 25 ether);
+        aaveLender.depositCollateral{value: 0 ether}(DAI, 25 ether);
+    }
+
+    function test_aave_DAI_deposit_redeem_integration() public {
+        aaveLender = new AaveLender();
+        IERC20 dai = IERC20(DAI);
+
+        dai.transfer(address(aaveLender), 25 ether);
+        aaveLender.depositCollateral{value: 0 ether}(DAI, 25 ether);
+        aaveLender.redeem(address(dai), 5 ether);
+    }
+
+    function test_aave_ETH_deposit_integration() public {
+        aaveLender = new AaveLender();
+
+        aaveLender.depositCollateral{value: 25 ether}(ETH, 25 ether);
+    }
+
+    function test_aave_ETH_deposit_DAI_borrow_integration() public {
+        aaveLender = new AaveLender();
+
+        aaveLender.depositCollateral{value: 25 ether}(ETH, 25 ether);
+        aaveLender.borrowBaseAsset(DAI, 100 ether, 2);
+    }
+
+    function test_aave_DAI_deposit_ETH_borrow_integration() public {
+        aaveLender = new AaveLender();
+        IERC20 dai = IERC20(DAI);
+
+        dai.transfer(address(aaveLender), 5000 ether);
+        aaveLender.depositCollateral{value: 0 ether}(DAI, 5000 ether);
+        aaveLender.borrowBaseAsset(DAI, 1 ether, 2);
     }
 
     function testFail_basic_sanity() public {

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e 
+set -e
 
 ELF_DEPLOY_ADDRESS=$(export ETH_GAS=20000000; dapp create ElfDeploy 2>&1 | tail -n 1)
 
@@ -22,6 +22,6 @@ echo "Configuring contracts..."
 seth send --gas 20000000 $ELF_DEPLOY_ADDRESS "config()"
 
 echo "Fund user account..."
-seth send --value 99999999999999999999999999999999999999999999999999999999 0x5ff0fc256b230e974f3ea67eee1b1239b97a4aa7
-                  
+seth send --value 500 0x5ff0fc256b230e974f3ea67eee1b1239b97a4aa7
+
 

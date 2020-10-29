@@ -2,6 +2,7 @@ pragma solidity >=0.5.8 <0.8.0;
 
 import "../interfaces/IERC20.sol";
 import "../interfaces/YearnVault.sol";
+import "../interfaces/IBPool.sol";
 
 import "../libraries/SafeMath.sol";
 import "../libraries/Address.sol";
@@ -12,20 +13,24 @@ abstract contract BaseElementYVaultAsset {
     using Address for address;
     using SafeMath for uint256;
 
+    YearnVault public vault;
+
     address public governance;
-    address public strategy;
-    address public vault;
+    address public allocator;
     address public token;
+
+    // address to redeposit vault shares
+    address public secondary;
 
     constructor(
         address _governance,
-        address _strategy,
+        address _allocator,
         address _vault,
         address _token
     ) internal {
         governance = _governance;
-        strategy = _strategy;
-        vault = _vault;
+        allocator = _allocator;
+        vault = YearnVault(_vault);
         token = _token;
     }
 
@@ -34,14 +39,14 @@ abstract contract BaseElementYVaultAsset {
         governance = _governance;
     }
 
-    function setStrategy(address _strategy) external {
+    function setAllocator(address _allocator) external {
         require(msg.sender == governance, "!governance");
-        strategy = _strategy;
+        allocator = _allocator;
     }
 
     function setVault(address _vault) external {
         require(msg.sender == governance, "!governance");
-        vault = _vault;
+        vault = YearnVault(_vault);
     }
 
     function setToken(address _token) external {
@@ -50,27 +55,52 @@ abstract contract BaseElementYVaultAsset {
     }
 
     function deposit(uint256 _amount) external {
-        require(msg.sender == strategy, "!strategy");
-        IERC20(token).safeTransfer(vault, _amount);
-        YearnVault(vault).deposit(_amount);
+        require(msg.sender == allocator, "!allocator");
+        IERC20(token).safeApprove(address(vault), 0);
+        IERC20(token).safeApprove(address(vault), _amount);
+        vault.deposit(_amount);
+
+        if (secondary != address(0)) {
+            uint256 lpTokensOut = IBPool(secondary).joinswapExternAmountIn(
+                address(vault),
+                _amount,
+                0
+            );
+
+            IBPool(secondary).transfer(address(msg.sender), lpTokensOut);
+        } else {
+            vault.transfer(address(msg.sender), vault.balanceOf(address(this)));
+        }
     }
 
     function withdraw(uint256 _amount, address _sender) external {
-        require(msg.sender == strategy, "!strategy");
-        uint256 _shares = _amount.div(YearnVault(vault).getPricePerFullShare());
+        require(msg.sender == allocator, "!allocator");
+        uint256 shares;
 
-        if (_shares > IERC20(vault).balanceOf(address(this))) {
-            _shares = IERC20(vault).balanceOf(address(this));
+        if (secondary != address(0)) {
+            uint256 tokenAmountOut = IBPool(secondary).exitswapPoolAmountIn(
+                address(vault),
+                IBPool(secondary).balanceOf(address(this)),
+                0
+            );
+            shares = tokenAmountOut.div(vault.getPricePerFullShare());
+        } else {
+            shares = _amount.div(vault.getPricePerFullShare());
         }
-        YearnVault(vault).withdraw(_shares);
-        IERC20(token).safeTransfer(_sender, _amount);
+
+        vault.withdraw(shares);
+
+        IERC20(token).safeTransfer(
+            _sender,
+            IERC20(token).balanceOf(address(this))
+        );
     }
 
     function balance() public view returns (uint256) {
-        return IERC20(vault).balanceOf(address(this));
+        return vault.balanceOf(address(allocator));
     }
 
     function approve() public {
-        IERC20(token).approve(vault, uint256(-1));
+        IERC20(token).approve(address(vault), uint256(-1));
     }
 }

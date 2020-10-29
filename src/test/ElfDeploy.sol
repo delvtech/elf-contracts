@@ -10,6 +10,7 @@ import "../libraries/SafeERC20.sol";
 
 import "../test/AYVault.sol";
 import "../test/ALender.sol";
+import "../test/ASPV.sol";
 
 import "../test/AToken.sol";
 import "../test/APriceOracle.sol";
@@ -25,16 +26,24 @@ contract ElfDeploy {
     WETH public weth;
 
     Elf public elf;
-    ElfStrategy public strategy;
-    ElementConverter public converter;
+    ElfAllocator public allocator;
 
     ALender public lender;
-    APriceOracle public priceOracle;
+
+    APriceOracle public priceOracle1;
+    APriceOracle public priceOracle2;
+    APriceOracle public priceOracle3;
+    APriceOracle public priceOracle4;
 
     AToken public dai;
     AToken public tusd;
     AToken public usdc;
     AToken public usdt;
+
+    ASPV public spv1;
+    ASPV public spv2;
+    ASPV public spv3;
+    ASPV public spv4;
 
     AYVault public ydai;
     AYVault public ytusd;
@@ -49,40 +58,37 @@ contract ElfDeploy {
     // for testing a basic 4x25% asset percent split
     address[] fromTokens = new address[](4);
     address[] toTokens = new address[](4);
+    address[] vehicles = new address[](4);
     uint256[] percents = new uint256[](4);
     address[] assets = new address[](4);
-    uint256[] conversionType = new uint256[](4);
 
     function init() public {
         weth = new WETH();
         // core element contracts
         elf = new Elf(address(weth));
-        strategy = new ElfStrategy(address(elf), address(weth));
-        converter = new ElementConverter(address(weth));
+        allocator = new ElfAllocator(address(elf), address(weth));
         // test implementations
-        lender = new ALender(address(converter), address(weth));
-        priceOracle = new APriceOracle();
+        priceOracle1 = new APriceOracle();
+        priceOracle2 = new APriceOracle();
+        priceOracle3 = new APriceOracle();
+        priceOracle4 = new APriceOracle();
     }
 
     function config() public {
         // the core contracts need to know the address of each downstream contract:
-        // elf -> strategy
-        // strategy -> converter, price oracle
+        // elf -> allocator
+        // allocator -> converter, price oracle
         // converter -> lender
-        elf.setStrategy(payable(strategy));
-        strategy.setConverter(address(converter));
-        strategy.setPriceOracle(address(priceOracle));
-        converter.setLender(payable(lender));
 
-        // provide the test lender with a price oracle
-        lender.setPriceOracle(address(priceOracle));
+        elf.setAllocator(payable(allocator));
+        allocator.setPriceOracle(address(priceOracle1));
+
+        dai = new AToken(address(this));
+        tusd = new AToken(address(this));
+        usdc = new AToken(address(this));
+        usdt = new AToken(address(this));
 
         // 4 test token implementations
-        dai = new AToken(payable(lender));
-        tusd = new AToken(payable(lender));
-        usdc = new AToken(payable(lender));
-        usdt = new AToken(payable(lender));
-
         // 4 test vault implementations associated
         // with the 4 test token implementations
         ydai = new AYVault(address(dai));
@@ -90,11 +96,38 @@ contract ElfDeploy {
         yusdc = new AYVault(address(usdc));
         yusdt = new AYVault(address(usdt));
 
+        spv1 = new ASPV(address(weth), address(dai), address(allocator));
+        spv2 = new ASPV(address(weth), address(tusd), address(allocator));
+        spv3 = new ASPV(address(weth), address(usdc), address(allocator));
+        spv4 = new ASPV(address(weth), address(usdt), address(allocator));
+
+        // provide the test lender with a price oracle
+        spv1.setPriceOracle(address(priceOracle1));
+        spv2.setPriceOracle(address(priceOracle2));
+        spv3.setPriceOracle(address(priceOracle3));
+        spv4.setPriceOracle(address(priceOracle4));
+
         // each asset represents a wrapper around an associated vault
-        ydaiAsset = new YdaiAsset(payable(strategy));
-        ytusdAsset = new YtusdAsset(payable(strategy));
-        yusdcAsset = new YusdcAsset(payable(strategy));
-        yusdtAsset = new YusdtAsset(payable(strategy));
+        ydaiAsset = new YdaiAsset(
+            payable(allocator),
+            address(ydai),
+            address(dai)
+        );
+        ytusdAsset = new YtusdAsset(
+            payable(allocator),
+            address(ytusd),
+            address(tusd)
+        );
+        yusdcAsset = new YusdcAsset(
+            payable(allocator),
+            address(yusdc),
+            address(usdc)
+        );
+        yusdtAsset = new YusdtAsset(
+            payable(allocator),
+            address(usdt),
+            address(yusdt)
+        );
 
         // this test requires that we override the hardcoded
         // vault and token addresses with test implementations
@@ -112,7 +145,6 @@ contract ElfDeploy {
         toTokens = new address[](4);
         percents = new uint256[](4);
         assets = new address[](4);
-        conversionType = new uint256[](4);
         uint256 _numAllocations = uint256(4);
 
         // the following block of code initializes the allocations for this test
@@ -132,16 +164,17 @@ contract ElfDeploy {
         assets[1] = address(ytusdAsset);
         assets[2] = address(yusdcAsset);
         assets[3] = address(yusdtAsset);
-        conversionType[0] = uint256(0);
-        conversionType[1] = uint256(0);
-        conversionType[2] = uint256(0);
-        conversionType[3] = uint256(0);
-        strategy.setAllocations(
+        vehicles[0] = address(spv1);
+        vehicles[1] = address(spv2);
+        vehicles[2] = address(spv3);
+        vehicles[3] = address(spv4);
+
+        allocator.setAllocations(
             fromTokens,
             toTokens,
+            vehicles,
             percents,
             assets,
-            conversionType,
             _numAllocations
         );
     }

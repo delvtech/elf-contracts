@@ -9,7 +9,7 @@ import "../../libraries/SafeMath.sol";
 import "../../libraries/Address.sol";
 import "../../libraries/SafeERC20.sol";
 
-import "./ElfStrategy.sol";
+import "./ElfAllocator.sol";
 
 contract Elf is ERC20 {
     using SafeERC20 for IERC20;
@@ -19,7 +19,7 @@ contract Elf is ERC20 {
     IERC20 public weth;
 
     address public governance;
-    address payable public strategy;
+    address payable public allocator;
 
     constructor(address payable _weth) public ERC20("ELement Finance", "ELF") {
         governance = msg.sender;
@@ -28,7 +28,9 @@ contract Elf is ERC20 {
 
     function balance() public view returns (uint256) {
         return
-            weth.balanceOf(address(this)).add(ElfStrategy(strategy).balance());
+            weth.balanceOf(address(this)).add(
+                ElfAllocator(allocator).balance()
+            );
     }
 
     function setGovernance(address _governance) public {
@@ -36,22 +38,22 @@ contract Elf is ERC20 {
         governance = _governance;
     }
 
-    function setStrategy(address payable _strategy) public {
+    function setAllocator(address payable _allocator) public {
         require(msg.sender == governance, "!governance");
-        strategy = _strategy;
+        allocator = _allocator;
     }
 
     function invest() public {
-        weth.safeTransfer(address(strategy), weth.balanceOf(address(this)));
-        ElfStrategy(strategy).allocate(weth.balanceOf(strategy));
+        weth.safeTransfer(address(allocator), weth.balanceOf(address(this)));
+        ElfAllocator(allocator).allocate(weth.balanceOf(allocator));
     }
 
-    // for depositing WETH, remove payable later
     function deposit(uint256 amount) public {
         uint256 _amount = amount;
         uint256 _pool = balance();
         uint256 _shares = 0;
         weth.safeTransferFrom(msg.sender, address(this), _amount);
+
         if (totalSupply() == 0) {
             _shares = _amount;
         } else {
@@ -61,7 +63,6 @@ contract Elf is ERC20 {
         invest();
     }
 
-    // for depositing ETH (subsequently wrapped and deposited)
     function depositETH() public payable {
         uint256 _pool = balance();
         uint256 _amount = msg.value;
@@ -76,32 +77,13 @@ contract Elf is ERC20 {
         invest();
     }
 
-    // because funds are invested immediately into the
-    // strategy after depositing, there will currently be
-    // no weth balance in this pool
     function withdraw(uint256 _shares) public {
         uint256 r = (balance().mul(_shares)).div(totalSupply());
         _burn(msg.sender, _shares);
 
-        // Check balance
-        uint256 b = weth.balanceOf(address(this));
-        // if balance of this is less than
-        // the withdraw, go get funds from strat
-        if (b < r) {
-            // get difference to withdraw
-            uint256 _withdraw = r.sub(b);
-            // dealocate that difference
-            ElfStrategy(strategy).deallocate(_withdraw);
-            // withdraw that difference from strat
-            ElfStrategy(strategy).withdraw(_withdraw);
-            // new balance
-            uint256 _after = weth.balanceOf(address(this));
-            uint256 _diff = _after.sub(b);
-            if (_diff < _withdraw) {
-                r = b.add(_diff);
-            }
-        }
-        // transfer r to msg.sender
+        ElfAllocator(allocator).deallocate(r);
+        ElfAllocator(allocator).withdraw(r);
+
         weth.safeTransfer(msg.sender, r);
     }
 
@@ -110,16 +92,9 @@ contract Elf is ERC20 {
         _burn(msg.sender, _shares);
 
         uint256 b = weth.balanceOf(address(this));
-        if (b < r) {
-            uint256 _withdraw = r.sub(b);
-            ElfStrategy(strategy).deallocate(_withdraw);
-            ElfStrategy(strategy).withdraw(_withdraw);
-            uint256 _after = weth.balanceOf(address(this));
-            uint256 _diff = _after.sub(b);
-            if (_diff < _withdraw) {
-                r = b.add(_diff);
-            }
-        }
+
+        ElfAllocator(allocator).deallocate(r);
+        ElfAllocator(allocator).withdraw(r);
 
         WETH(payable(address(weth))).withdraw(r);
         payable(msg.sender).transfer(r);

@@ -16,7 +16,7 @@ contract AToken is ERC20 {
         mint(sender, 1000000000000000000000000000000000000000);
     }
 
-    function mint(address account, uint256 amount) internal {
+    function mint(address account, uint256 amount) public {
         _mint(account, amount);
     }
 }

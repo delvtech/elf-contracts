@@ -22,7 +22,7 @@ contract AYVault is ERC20 {
 
     function deposit(uint256 _amount) external {
         uint256 _shares = _amount; // calculate shares (currently 1:1)
-        //IERC20(token).safeTransferFrom(msg.sender, address(this), _amount); // pull deposit from sender
+        IERC20(token).safeTransferFrom(msg.sender, address(this), _amount); // pull deposit from sender
         _mint(msg.sender, _shares); // mint shares for sender
     }
 

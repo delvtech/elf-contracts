@@ -101,6 +101,12 @@ contract ElfDeploy {
         spv3 = new ASPV(address(weth), address(usdc), address(allocator));
         spv4 = new ASPV(address(weth), address(usdt), address(allocator));
 
+        // mint some stablecoins to spvs
+        dai.mint(address(spv1), 10000000 ether);
+        tusd.mint(address(spv2), 10000000 ether);
+        usdc.mint(address(spv3), 10000000 ether);
+        usdt.mint(address(spv4), 10000000 ether);
+
         // provide the test lender with a price oracle
         spv1.setPriceOracle(address(priceOracle1));
         spv2.setPriceOracle(address(priceOracle2));

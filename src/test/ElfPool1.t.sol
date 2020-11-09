@@ -140,12 +140,6 @@ contract ElfContractsTest is DSTest {
         spv3 = _elfDeploy.spv3();
         spv4 = _elfDeploy.spv4();
 
-        // mint some stablecoins to spvs
-        dai.mint(address(spv1), 10000000 ether);
-        tusd.mint(address(spv2), 10000000 ether);
-        usdc.mint(address(spv3), 10000000 ether);
-        usdt.mint(address(spv4), 10000000 ether);
-
         // yvaults
         ydai = _elfDeploy.ydai();
         ytusd = _elfDeploy.ytusd();

@@ -19,4 +19,4 @@ echo "ELF=$ELF_ADDRESS"
 echo ""
 
 echo "Configuring contracts..."
-seth --rpc-accounts send --gas 20000000 $ELF_DEPLOY_ADDRESS "config()"
+seth --rpc-accounts send --gas 30000000 $ELF_DEPLOY_ADDRESS "config()"

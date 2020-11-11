@@ -69,7 +69,7 @@ contract ElfAllocator {
         uint256 _numAllocations
     ) public {
         require(msg.sender == governance, "!governance");
-        // todo: validate that allocations add to 100
+        uint256 _totalAllocations;
         delete allocations;
         for (uint256 i = 0; i < _numAllocations; i++) {
             allocations.push(
@@ -81,7 +81,9 @@ contract ElfAllocator {
                     _asset[i]
                 )
             );
+            _totalAllocations = _totalAllocations.add(_percents[i]);
         }
+        require(_totalAllocations == 100, "!100");
         numAllocations = _numAllocations;
     }
 

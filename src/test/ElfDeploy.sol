@@ -66,14 +66,15 @@ contract ElfDeploy {
         // core element contracts
         elf = new Elf(address(weth));
         allocator = new ElfAllocator(address(elf), address(weth));
+    }
+
+    function config() public {
         // test implementations
         priceOracle1 = new APriceOracle();
         priceOracle2 = new APriceOracle();
         priceOracle3 = new APriceOracle();
         priceOracle4 = new APriceOracle();
-    }
 
-    function config() public {
         // the core contracts need to know the address of each downstream contract:
         // elf -> allocator
         // allocator -> converter, price oracle
@@ -182,5 +183,9 @@ contract ElfDeploy {
             assets,
             _numAllocations
         );
+    }
+
+    function changeGovernance(address _governance) public {
+        allocator.setGovernance(_governance);
     }
 }

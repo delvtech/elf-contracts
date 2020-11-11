@@ -14,7 +14,6 @@ import "../test/ASPV.sol";
 
 import "../test/AToken.sol";
 import "../test/APriceOracle.sol";
-import "../converter/ElementConverter.sol";
 
 import "../assets/YdaiAsset.sol";
 import "../assets/YtusdAsset.sol";

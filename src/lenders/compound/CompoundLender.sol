@@ -73,12 +73,12 @@ contract CompLender {
     }
 
     function depositAndBorrow() public {
-        IWETH(WETH).withdraw(IERC20(WETH).balanceOf(address(this)));
+        IWETH(WETH).withdraw(IWETH(WETH).balanceOf(address(this)));
         if (address(this).balance > 0) {
             _lockETH(address(this).balance);
-            _drawUSDC();
+            // _drawUSDC();
         }
-        IERC20(USDC).safeTransfer(allocator, IERC20(USDC).balanceOf(address(this)));
+        // IERC20(USDC).safeTransfer(allocator, IERC20(USDC).balanceOf(address(this)));
     }
 
     function _getPrice() internal view returns(uint256 p) {
@@ -86,7 +86,7 @@ contract CompLender {
     }
 
     function _lockETH(uint256 eth) internal {
-        cETH.mint{value: eth}();
+        cETH.mint.value(eth)();
     }
 
     function _drawUSDC() public {

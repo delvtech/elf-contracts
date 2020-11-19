@@ -21,31 +21,15 @@ interface Hevm {
     ) external;
 }
 
-contract Test {
-    function supplyEthToCompound()
-        public
-        payable
-    {
-        // Create a reference to the corresponding cToken contract
-        ICEth cToken = ICEth(0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5);
-
-        cToken.mint.value(msg.value).gas(250000)();
-    }
-}
-
 contract CompLenderTest is DSTest {
     Hevm public hevm;
-    APriceOracle public price;
     IWETH public weth;
     CompLender public comp;
     IERC20 public usdc;
-    Test public t;
 
     function setUp() public {
         // hevm "cheatcode", see: https://github.com/dapphub/dapptools/tree/master/src/hevm#cheat-codes
         hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
-        price = new APriceOracle();
-        t = new Test();
 
         weth = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
@@ -57,17 +41,51 @@ contract CompLenderTest is DSTest {
 
         assertEq(weth.balanceOf(address(this)), 1000 ether);
 
-        weth.withdraw(10 ether);
-        t.supplyEthToCompound{value: 1 ether}();
-
-        comp = new CompLender(address(price), address(this));
+        comp = new CompLender(address(this));
         usdc = IERC20(comp.USDC());
         weth.transfer(address(comp), 10 ether);
+        usdc.approve(address(comp), 1000000000000000);
+        weth.withdraw(10 ether);
+        comp.cETH().mint{value: 10 ether}();
     }
 
-    function test_draw() public {
-        // comp.depositAndBorrow();
-        // assertTrue(usdc.balanceOf(address(this)) == 0);
+    function test_integration() public {
+        uint256 usdcBal = usdc.balanceOf(address(this));
+
+        // Deposit WETH and borrow USDC
+        comp.depositAndBorrow();
+        assertTrue(usdc.balanceOf(address(this)) > usdcBal);
+        usdcBal = usdc.balanceOf(address(this));
+
+        uint256 debt = comp.getTotalDebtAmount();
+        assertTrue(debt > 0);
+
+        // Withdraw half our WETH and pay back USDC
+        comp.withdraw(5 ether);
+        assertTrue(usdc.balanceOf(address(this)) < usdcBal);
+        usdcBal = usdc.balanceOf(address(this));
+
+        weth.transfer(address(comp), 10 ether);
+        comp.depositAndBorrow();
+        assertTrue(usdc.balanceOf(address(this)) > usdcBal);
+        usdcBal = usdc.balanceOf(address(this));
+
+        uint256 ratio = comp.getCurrentRatio();
+        assertTrue(ratio < 760000000000000000);
+        assertTrue(ratio > 740000000000000000);
+
+        // assertTrue(!comp.shouldDraw());
+
+        // // Set ETH price
+        // hevm.store(
+        //     address(0x922018674c12a7F0D394ebEEf9B58F186CdE13c1),
+        //     keccak256(abi.encode(keccak256("ETH"), uint256(0))), // Mint us 1000 WETH
+        //     bytes32(uint256(500e6))
+        // );
+
+        // assertTrue(!comp.shouldDraw());
+        // assertTrue(comp.shouldDrawCurrent());
+        // assertTrue(comp.shouldDraw());
     }
 
     receive() external payable {}

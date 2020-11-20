@@ -8,7 +8,7 @@ import "../libraries/SafeMath.sol";
 import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
 
-abstract contract BaseElementYVaultAsset {
+abstract contract BaseElfYVaultAsset {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;

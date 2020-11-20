@@ -9,8 +9,8 @@ import "../../libraries/SafeMath.sol";
 import "../../libraries/Address.sol";
 import "../../libraries/SafeERC20.sol";
 
-import "../../assets/interface/IElementAsset.sol";
-import "../../oracles/interface/IElementPriceOracle.sol";
+import "../../assets/interface/IElfAsset.sol";
+import "../../oracles/interface/IElfPriceOracle.sol";
 
 contract ElfAllocator {
     using SafeERC20 for IERC20;
@@ -106,7 +106,7 @@ contract ElfAllocator {
                 borrowed
             );
 
-            IElementAsset(allocations[i].asset).deposit(borrowed);
+            IElfAsset(allocations[i].asset).deposit(borrowed);
         }
     }
 
@@ -114,7 +114,7 @@ contract ElfAllocator {
         require(msg.sender == pool, "!pool ");
 
         for (uint256 i = 0; i < numAllocations; i++) {
-            address vault = IElementAsset(allocations[i].asset).vault();
+            address vault = IElfAsset(allocations[i].asset).vault();
             uint256 totalAssetAmount = IERC20(vault).balanceOf(address(this));
 
             uint256 _assetWithdrawAmount = totalAssetAmount.mul(_amount).div(
@@ -126,7 +126,7 @@ contract ElfAllocator {
                 _assetWithdrawAmount
             );
 
-            IElementAsset(allocations[i].asset).withdraw(
+            IElfAsset(allocations[i].asset).withdraw(
                 _assetWithdrawAmount,
                 address(this)
             );

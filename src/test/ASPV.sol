@@ -3,7 +3,7 @@ pragma solidity 0.6.7;
 import "../interfaces/IERC20.sol";
 import "../interfaces/ERC20.sol";
 
-import "../oracles/interface/IElementPriceOracle.sol";
+import "../oracles/interface/IElfPriceOracle.sol";
 
 import "../libraries/SafeMath.sol";
 import "../libraries/Address.sol";
@@ -67,7 +67,7 @@ contract ASPV {
         view
         returns (uint256)
     {
-        return IElementPriceOracle(priceOracle).getPrice(_fromToken, _toToken);
+        return IElfPriceOracle(priceOracle).getPrice(_fromToken, _toToken);
     }
 
     function balance() public view returns (uint256) {

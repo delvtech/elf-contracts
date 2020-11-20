@@ -56,7 +56,7 @@ contract ElfDeploy {
     // for testing a basic 4x25% asset percent split
     address[] fromTokens = new address[](4);
     address[] toTokens = new address[](4);
-    address[] vehicles = new address[](4);
+    address[] lenders = new address[](4);
     uint256[] percents = new uint256[](4);
     address[] assets = new address[](4);
 
@@ -169,15 +169,15 @@ contract ElfDeploy {
         assets[1] = address(ytusdAsset);
         assets[2] = address(yusdcAsset);
         assets[3] = address(yusdtAsset);
-        vehicles[0] = address(lender1);
-        vehicles[1] = address(lender2);
-        vehicles[2] = address(lender3);
-        vehicles[3] = address(lender4);
+        lenders[0] = address(lender1);
+        lenders[1] = address(lender2);
+        lenders[2] = address(lender3);
+        lenders[3] = address(lender4);
 
         allocator.setAllocations(
             fromTokens,
             toTokens,
-            vehicles,
+            lenders,
             percents,
             assets,
             _numAllocations

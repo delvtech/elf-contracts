@@ -83,6 +83,40 @@ contract ElfAllocator {
         numAllocations = _numAllocations;
     }
 
+    function getAllocations()
+        external
+        view
+        returns (
+            address[] memory,
+            address[] memory,
+            address[] memory,
+            uint256[] memory,
+            address[] memory,
+            uint256
+        )
+    {
+        address[] memory fromTokens = new address[](numAllocations);
+        address[] memory toTokens = new address[](numAllocations);
+        address[] memory lenders = new address[](numAllocations);
+        uint256[] memory percents = new uint256[](numAllocations);
+        address[] memory assets = new address[](numAllocations);
+        for (uint256 i = 0; i < numAllocations; i++) {
+            fromTokens[i] = allocations[i].fromToken;
+            toTokens[i] = allocations[i].toToken;
+            lenders[i] = allocations[i].lender;
+            percents[i] = allocations[i].percent;
+            assets[i] = allocations[i].asset;
+        }
+        return (
+            fromTokens,
+            toTokens,
+            lenders,
+            percents,
+            assets,
+            numAllocations
+        );
+    }
+
     function allocate(uint256 _amount) public {
         require(msg.sender == pool, "allocator/must-be-pool");
 

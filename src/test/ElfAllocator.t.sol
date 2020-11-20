@@ -65,6 +65,21 @@ contract ElfAllocatorTest is DSTest {
         yusdcAsset = elfDeploy.yusdcAsset();
     }
 
+    // verify that this can only be changed by governance contract
+    function testFail_setGovernance() public {
+        allocator.setGovernance(address(this));
+    }
+
+    // verify that this can only be changed by governance contract
+    function testFail_setConverter() public {
+        allocator.setConverter(address(this));
+    }
+
+    // verify that this can only be changed by governance contract
+    function testFail_setPriceOracle() public {
+        allocator.setPriceOracle(address(this));
+    }
+
     // Verify that allocations that don't sum to 100% fail when calling setAllocations
     function testFail_AllocationPercent() public {
         elfDeploy.changeGovernance(address(this));
@@ -141,5 +156,7 @@ contract ElfAllocatorTest is DSTest {
             assets,
             _numAllocations
         );
+
+        assertEq(allocator.numAllocations(), 3);
     }
 }

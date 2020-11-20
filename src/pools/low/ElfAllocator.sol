@@ -35,10 +35,6 @@ contract ElfAllocator {
     address public converter;
     address public priceOracle;
 
-    address public constant ETH = address(
-        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
-    );
-
     constructor(address _pool, address payable _weth) public {
         governance = msg.sender;
         pool = _pool;
@@ -154,18 +150,12 @@ contract ElfAllocator {
         weth.safeTransfer(msg.sender, _amount);
     }
 
-    // possibly a withdrawAll() function
-
     function balance() public view returns (uint256) {
         uint256 balances;
         for (uint256 i = 0; i < numAllocations; i++) {
             balances = balances.add(ISPV(allocations[i].vehicle).balances());
         }
         return weth.balanceOf(address(this)).add(balances);
-    }
-
-    function _getPrice(address _token) internal view returns (uint256 p) {
-        return IElementPriceOracle(priceOracle).getPrice(_token, address(weth));
     }
 
     // solhint-disable-next-line no-empty-blocks

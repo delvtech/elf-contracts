@@ -10,7 +10,6 @@ import "../libraries/SafeERC20.sol";
 
 import "../test/AYVault.sol";
 import "../test/ALender.sol";
-import "../test/ASPV.sol";
 
 import "../test/AToken.sol";
 import "../test/APriceOracle.sol";
@@ -39,10 +38,10 @@ contract ElfDeploy {
     AToken public usdc;
     AToken public usdt;
 
-    ASPV public spv1;
-    ASPV public spv2;
-    ASPV public spv3;
-    ASPV public spv4;
+    ALender public lender1;
+    ALender public lender2;
+    ALender public lender3;
+    ALender public lender4;
 
     AYVault public ydai;
     AYVault public ytusd;
@@ -57,7 +56,7 @@ contract ElfDeploy {
     // for testing a basic 4x25% asset percent split
     address[] fromTokens = new address[](4);
     address[] toTokens = new address[](4);
-    address[] vehicles = new address[](4);
+    address[] lenders = new address[](4);
     uint256[] percents = new uint256[](4);
     address[] assets = new address[](4);
 
@@ -96,22 +95,22 @@ contract ElfDeploy {
         yusdc = new AYVault(address(usdc));
         yusdt = new AYVault(address(usdt));
 
-        spv1 = new ASPV(address(weth), address(dai), address(allocator));
-        spv2 = new ASPV(address(weth), address(tusd), address(allocator));
-        spv3 = new ASPV(address(weth), address(usdc), address(allocator));
-        spv4 = new ASPV(address(weth), address(usdt), address(allocator));
+        lender1 = new ALender(address(weth), address(dai), address(allocator));
+        lender2 = new ALender(address(weth), address(tusd), address(allocator));
+        lender3 = new ALender(address(weth), address(usdc), address(allocator));
+        lender4 = new ALender(address(weth), address(usdt), address(allocator));
 
-        // mint some stablecoins to spvs
-        dai.mint(address(spv1), 10000000 ether);
-        tusd.mint(address(spv2), 10000000 ether);
-        usdc.mint(address(spv3), 10000000 ether);
-        usdt.mint(address(spv4), 10000000 ether);
+        // mint some stablecoins
+        dai.mint(address(lender1), 10000000 ether);
+        tusd.mint(address(lender2), 10000000 ether);
+        usdc.mint(address(lender3), 10000000 ether);
+        usdt.mint(address(lender4), 10000000 ether);
 
         // provide the test lender with a price oracle
-        spv1.setPriceOracle(address(priceOracle1));
-        spv2.setPriceOracle(address(priceOracle2));
-        spv3.setPriceOracle(address(priceOracle3));
-        spv4.setPriceOracle(address(priceOracle4));
+        lender1.setPriceOracle(address(priceOracle1));
+        lender2.setPriceOracle(address(priceOracle2));
+        lender3.setPriceOracle(address(priceOracle3));
+        lender4.setPriceOracle(address(priceOracle4));
 
         // each asset represents a wrapper around an associated vault
         ydaiAsset = new YdaiAsset(
@@ -170,15 +169,15 @@ contract ElfDeploy {
         assets[1] = address(ytusdAsset);
         assets[2] = address(yusdcAsset);
         assets[3] = address(yusdtAsset);
-        vehicles[0] = address(spv1);
-        vehicles[1] = address(spv2);
-        vehicles[2] = address(spv3);
-        vehicles[3] = address(spv4);
+        lenders[0] = address(lender1);
+        lenders[1] = address(lender2);
+        lenders[2] = address(lender3);
+        lenders[3] = address(lender4);
 
         allocator.setAllocations(
             fromTokens,
             toTokens,
-            vehicles,
+            lenders,
             percents,
             assets,
             _numAllocations

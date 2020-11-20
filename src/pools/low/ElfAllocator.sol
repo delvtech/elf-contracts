@@ -3,14 +3,14 @@ pragma solidity >=0.5.8 <0.8.0;
 import "../../interfaces/IERC20.sol";
 import "../../interfaces/WETH.sol";
 import "../../interfaces/IBPool.sol";
-import "../../interfaces/ISPV.sol";
 
 import "../../libraries/SafeMath.sol";
 import "../../libraries/Address.sol";
 import "../../libraries/SafeERC20.sol";
 
-import "../../assets/interface/IElementAsset.sol";
-import "../../oracles/interface/IElementPriceOracle.sol";
+import "../../lenders/interface/IElfLender.sol";
+import "../../assets/interface/IElfAsset.sol";
+import "../../oracles/interface/IElfPriceOracle.sol";
 
 contract ElfAllocator {
     using SafeERC20 for IERC20;
@@ -22,7 +22,7 @@ contract ElfAllocator {
     struct Allocation {
         address fromToken;
         address toToken;
-        address vehicle;
+        address lender;
         uint256 percent;
         address asset;
     }
@@ -59,7 +59,7 @@ contract ElfAllocator {
     function setAllocations(
         address[] memory _fromToken,
         address[] memory _toToken,
-        address[] memory _vehicles,
+        address[] memory _lenders,
         uint256[] memory _percents,
         address[] memory _asset,
         uint256 _numAllocations
@@ -72,7 +72,7 @@ contract ElfAllocator {
                 Allocation(
                     _fromToken[i],
                     _toToken[i],
-                    _vehicles[i],
+                    _lenders[i],
                     _percents[i],
                     _asset[i]
                 )
@@ -92,10 +92,12 @@ contract ElfAllocator {
             );
 
             IERC20(allocations[i].fromToken).safeTransfer(
-                allocations[i].vehicle,
+                allocations[i].lender,
                 _fromTokenAmount
             );
-            ISPV(allocations[i].vehicle).depositAndBorrow(_fromTokenAmount);
+            IElfLender(allocations[i].lender).depositAndBorrow(
+                _fromTokenAmount
+            );
 
             uint256 borrowed = IERC20(allocations[i].toToken).balanceOf(
                 address(this)
@@ -106,7 +108,7 @@ contract ElfAllocator {
                 borrowed
             );
 
-            IElementAsset(allocations[i].asset).deposit(borrowed);
+            IElfAsset(allocations[i].asset).deposit(borrowed);
         }
     }
 
@@ -114,7 +116,7 @@ contract ElfAllocator {
         require(msg.sender == pool, "!pool ");
 
         for (uint256 i = 0; i < numAllocations; i++) {
-            address vault = IElementAsset(allocations[i].asset).vault();
+            address vault = IElfAsset(allocations[i].asset).vault();
             uint256 totalAssetAmount = IERC20(vault).balanceOf(address(this));
 
             uint256 _assetWithdrawAmount = totalAssetAmount.mul(_amount).div(
@@ -126,7 +128,7 @@ contract ElfAllocator {
                 _assetWithdrawAmount
             );
 
-            IElementAsset(allocations[i].asset).withdraw(
+            IElfAsset(allocations[i].asset).withdraw(
                 _assetWithdrawAmount,
                 address(this)
             );
@@ -136,11 +138,11 @@ contract ElfAllocator {
             );
 
             IERC20(allocations[i].toToken).safeTransfer(
-                allocations[i].vehicle,
+                allocations[i].lender,
                 balance
             );
 
-            ISPV(allocations[i].vehicle).repayAndWithdraw(balance);
+            IElfLender(allocations[i].lender).repayAndWithdraw(balance);
         }
     }
 
@@ -153,7 +155,9 @@ contract ElfAllocator {
     function balance() public view returns (uint256) {
         uint256 balances;
         for (uint256 i = 0; i < numAllocations; i++) {
-            balances = balances.add(ISPV(allocations[i].vehicle).balances());
+            balances = balances.add(
+                IElfLender(allocations[i].lender).balances()
+            );
         }
         return weth.balanceOf(address(this)).add(balances);
     }

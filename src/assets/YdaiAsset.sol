@@ -8,9 +8,9 @@ import "../libraries/SafeMath.sol";
 import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
 
-import "./BaseElementYVaultAsset.sol";
+import "./BaseElfYVaultAsset.sol";
 
-contract YdaiAsset is BaseElementYVaultAsset {
+contract YdaiAsset is BaseElfYVaultAsset {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -19,5 +19,5 @@ contract YdaiAsset is BaseElementYVaultAsset {
         address _allocator,
         address _vault,
         address _dai
-    ) public BaseElementYVaultAsset(msg.sender, _allocator, _vault, _dai) {} // solhint-disable no-empty-blocks
+    ) public BaseElfYVaultAsset(msg.sender, _allocator, _vault, _dai) {} // solhint-disable no-empty-blocks
 }

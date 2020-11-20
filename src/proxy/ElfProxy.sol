@@ -1,9 +1,8 @@
-pragma solidity 0.6.7;
+pragma solidity >=0.5.8 <0.8.0;
 
-import "./interfaces/IElePool.sol";
+import "../interfaces/IERC20.sol";
 
-contract EleProxy {
-
+contract ElfProxy {
     function deposit(address _pool, uint256 _amount) external {
         (bool success, ) = _pool.delegatecall(
             abi.encodeWithSignature("deposit(uint256)", _amount)
@@ -33,16 +32,14 @@ contract EleProxy {
     }
 
     function getPoolBalance(address _pool) external returns (uint256) {
-        return 1337 * 10 ** 18;
+        return 1337 * 10**18;
     }
 
-    function getLender() // loop through an array
+    function getLender() external {}
 
     function getPoolAPY(address _pool) external returns (uint256) {
-
-        return 125 * 10 ** 18;
+        return 125 * 10**18;
     }
 
     // function getpoolAssetsAndAllocations(address _pool) external returns ()
-
 }

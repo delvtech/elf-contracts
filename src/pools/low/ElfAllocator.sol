@@ -3,12 +3,12 @@ pragma solidity >=0.5.8 <0.8.0;
 import "../../interfaces/IERC20.sol";
 import "../../interfaces/WETH.sol";
 import "../../interfaces/IBPool.sol";
-import "../../interfaces/ISPV.sol";
 
 import "../../libraries/SafeMath.sol";
 import "../../libraries/Address.sol";
 import "../../libraries/SafeERC20.sol";
 
+import "../../lenders/interface/IElfLender.sol";
 import "../../assets/interface/IElfAsset.sol";
 import "../../oracles/interface/IElfPriceOracle.sol";
 
@@ -95,7 +95,9 @@ contract ElfAllocator {
                 allocations[i].vehicle,
                 _fromTokenAmount
             );
-            ISPV(allocations[i].vehicle).depositAndBorrow(_fromTokenAmount);
+            IElfLender(allocations[i].vehicle).depositAndBorrow(
+                _fromTokenAmount
+            );
 
             uint256 borrowed = IERC20(allocations[i].toToken).balanceOf(
                 address(this)
@@ -140,7 +142,7 @@ contract ElfAllocator {
                 balance
             );
 
-            ISPV(allocations[i].vehicle).repayAndWithdraw(balance);
+            IElfLender(allocations[i].vehicle).repayAndWithdraw(balance);
         }
     }
 
@@ -153,7 +155,9 @@ contract ElfAllocator {
     function balance() public view returns (uint256) {
         uint256 balances;
         for (uint256 i = 0; i < numAllocations; i++) {
-            balances = balances.add(ISPV(allocations[i].vehicle).balances());
+            balances = balances.add(
+                IElfLender(allocations[i].vehicle).balances()
+            );
         }
         return weth.balanceOf(address(this)).add(balances);
     }

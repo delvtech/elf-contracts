@@ -10,7 +10,6 @@ import "../libraries/SafeMath.sol";
 import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
 
-import "./ASPV.sol";
 import "./AToken.sol";
 import "./ElfDeploy.sol";
 
@@ -31,9 +30,9 @@ contract ElfAllocatorTest is DSTest {
     AToken tusd;
     AToken usdc;
 
-    ASPV spv1;
-    ASPV spv2;
-    ASPV spv3;
+    ALender lender1;
+    ALender lender2;
+    ALender lender3;
 
     YdaiAsset ydaiAsset;
     YtusdAsset ytusdAsset;
@@ -55,9 +54,9 @@ contract ElfAllocatorTest is DSTest {
         usdc = elfDeploy.usdc();
 
         // lending contracts
-        spv1 = elfDeploy.spv1();
-        spv2 = elfDeploy.spv2();
-        spv3 = elfDeploy.spv3();
+        lender1 = elfDeploy.lender1();
+        lender2 = elfDeploy.lender2();
+        lender3 = elfDeploy.lender3();
 
         // element asset proxies
         ydaiAsset = elfDeploy.ydaiAsset();
@@ -105,9 +104,9 @@ contract ElfAllocatorTest is DSTest {
         assets[0] = address(ydaiAsset);
         assets[1] = address(ytusdAsset);
         assets[2] = address(yusdcAsset);
-        vehicles[0] = address(spv1);
-        vehicles[1] = address(spv2);
-        vehicles[2] = address(spv3);
+        vehicles[0] = address(lender1);
+        vehicles[1] = address(lender2);
+        vehicles[2] = address(lender3);
 
         allocator.setAllocations(
             fromTokens,
@@ -144,9 +143,9 @@ contract ElfAllocatorTest is DSTest {
         assets[0] = address(ydaiAsset);
         assets[1] = address(ytusdAsset);
         assets[2] = address(yusdcAsset);
-        vehicles[0] = address(spv1);
-        vehicles[1] = address(spv2);
-        vehicles[2] = address(spv3);
+        vehicles[0] = address(lender1);
+        vehicles[1] = address(lender2);
+        vehicles[2] = address(lender3);
 
         allocator.setAllocations(
             fromTokens,

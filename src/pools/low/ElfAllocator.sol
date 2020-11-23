@@ -83,6 +83,10 @@ contract ElfAllocator {
         numAllocations = _numAllocations;
     }
 
+    function getNumAllocations() external view returns (uint256) {
+        return numAllocations;
+    }
+
     function getAllocations()
         external
         view

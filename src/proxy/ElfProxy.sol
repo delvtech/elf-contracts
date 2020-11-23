@@ -1,24 +1,24 @@
 pragma solidity >=0.5.8 <0.8.0;
 
 import "../interfaces/IERC20.sol";
-import "../pools/low/Elf.sol";
-import "../pools/low/ElfAllocator.sol";
+import "../pools/low/interface/IElf.sol";
+import "../pools/low/interface/IElfAllocator.sol";
 
 contract ElfProxy {
     function deposit(address payable _pool, uint256 _amount) external {
-        Elf(_pool).depositFrom(msg.sender, _amount);
+        IElf(_pool).depositFrom(msg.sender, _amount);
     }
 
     function depositETH(address payable _pool) external payable {
-        Elf(_pool).depositETHFrom{value: msg.value}(msg.sender);
+        IElf(_pool).depositETHFrom{value: msg.value}(msg.sender);
     }
 
     function withdraw(address payable _pool, uint256 _shares) external {
-        Elf(_pool).withdrawFrom(msg.sender, _shares);
+        IElf(_pool).withdrawFrom(msg.sender, _shares);
     }
 
     function withdrawETH(address payable _pool, uint256 _shares) external {
-        Elf(_pool).withdrawETHFrom(msg.sender, _shares);
+        IElf(_pool).withdrawETHFrom(msg.sender, _shares);
     }
 
     function getPoolBalance(address payable _pool)
@@ -26,7 +26,7 @@ contract ElfProxy {
         view
         returns (uint256)
     {
-        return Elf(_pool).balance();
+        return IElf(_pool).balance();
     }
 
     function getPoolAPY(address payable _pool) external view returns (uint256) {
@@ -38,7 +38,7 @@ contract ElfProxy {
         view
         returns (uint256)
     {
-        return ElfAllocator(Elf(_pool).allocator()).numAllocations();
+        return IElfAllocator(IElf(_pool).getAllocator()).getNumAllocations();
     }
 
     function getPoolAllocations(address payable _pool)
@@ -53,6 +53,6 @@ contract ElfProxy {
             uint256
         )
     {
-        return ElfAllocator(Elf(_pool).allocator()).getAllocations();
+        return IElfAllocator(IElf(_pool).getAllocator()).getAllocations();
     }
 }

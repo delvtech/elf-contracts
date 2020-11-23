@@ -13,6 +13,9 @@ seth --rpc-accounts send --gas 9000000 $ELF_DEPLOY_ADDRESS "init()"
 
 echo ""
 
+PROXY_ADDRESS=$(seth call $ELF_DEPLOY_ADDRESS "proxy()(address)")
+echo "PROXY=$PROXY_ADDRESS"
+
 ELF_ADDRESS=$(seth call $ELF_DEPLOY_ADDRESS "elf()(address)")
 echo "ELF=$ELF_ADDRESS"
 

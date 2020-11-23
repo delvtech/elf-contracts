@@ -26,31 +26,32 @@ contract Elf is ERC20 {
         weth = IERC20(_weth);
     }
 
-    function balance() public view returns (uint256) {
-        return
-            weth.balanceOf(address(this)).add(
-                ElfAllocator(allocator).balance()
-            );
+    function balance() external view returns (uint256) {
+        return ElfAllocator(allocator).balance();
     }
 
-    function setGovernance(address _governance) public {
+    function setGovernance(address _governance) external {
         require(msg.sender == governance, "!governance");
         governance = _governance;
     }
 
-    function setAllocator(address payable _allocator) public {
+    function setAllocator(address payable _allocator) external {
         require(msg.sender == governance, "!governance");
         allocator = _allocator;
     }
 
-    function invest() public {
+    function getAllocator() external view returns (address payable) {
+        return allocator;
+    }
+
+    function _invest() internal {
         weth.safeTransfer(address(allocator), weth.balanceOf(address(this)));
         ElfAllocator(allocator).allocate(weth.balanceOf(allocator));
     }
 
-    function deposit(uint256 amount) public {
+    function deposit(uint256 amount) external {
         uint256 _amount = amount;
-        uint256 _pool = balance();
+        uint256 _pool = ElfAllocator(allocator).balance();
         uint256 _shares = 0;
         weth.safeTransferFrom(msg.sender, address(this), _amount);
 
@@ -60,11 +61,26 @@ contract Elf is ERC20 {
             _shares = (_amount.mul(totalSupply())).div(_pool);
         }
         _mint(msg.sender, _shares);
-        invest();
+        _invest();
+    }
+
+    function depositFrom(address sender, uint256 amount) external {
+        uint256 _amount = amount;
+        uint256 _pool = ElfAllocator(allocator).balance();
+        uint256 _shares = 0;
+        weth.safeTransferFrom(sender, address(this), _amount);
+
+        if (totalSupply() == 0) {
+            _shares = _amount;
+        } else {
+            _shares = (_amount.mul(totalSupply())).div(_pool);
+        }
+        _mint(sender, _shares);
+        _invest();
     }
 
     function depositETH() public payable {
-        uint256 _pool = balance();
+        uint256 _pool = ElfAllocator(allocator).balance();
         uint256 _amount = msg.value;
         WETH(payable(address(weth))).deposit{value: _amount}();
         uint256 _shares = 0;
@@ -74,11 +90,27 @@ contract Elf is ERC20 {
             _shares = (_amount.mul(totalSupply())).div(_pool);
         }
         _mint(msg.sender, _shares);
-        invest();
+        _invest();
     }
 
-    function withdraw(uint256 _shares) public {
-        uint256 r = (balance().mul(_shares)).div(totalSupply());
+    function depositETHFrom(address sender) external payable {
+        uint256 _pool = ElfAllocator(allocator).balance();
+        uint256 _amount = msg.value;
+        WETH(payable(address(weth))).deposit{value: _amount}();
+        uint256 _shares = 0;
+        if (totalSupply() == 0) {
+            _shares = _amount;
+        } else {
+            _shares = (_amount.mul(totalSupply())).div(_pool);
+        }
+        _mint(sender, _shares);
+        _invest();
+    }
+
+    function withdraw(uint256 _shares) external {
+        uint256 r = (ElfAllocator(allocator).balance().mul(_shares)).div(
+            totalSupply()
+        );
         _burn(msg.sender, _shares);
 
         ElfAllocator(allocator).deallocate(r);
@@ -87,8 +119,22 @@ contract Elf is ERC20 {
         weth.safeTransfer(msg.sender, r);
     }
 
-    function withdrawETH(uint256 _shares) public {
-        uint256 r = (balance().mul(_shares)).div(totalSupply());
+    function withdrawFrom(address sender, uint256 _shares) external {
+        uint256 r = (ElfAllocator(allocator).balance().mul(_shares)).div(
+            totalSupply()
+        );
+        _burn(sender, _shares);
+
+        ElfAllocator(allocator).deallocate(r);
+        ElfAllocator(allocator).withdraw(r);
+
+        weth.safeTransfer(sender, r);
+    }
+
+    function withdrawETH(uint256 _shares) external {
+        uint256 r = (ElfAllocator(allocator).balance().mul(_shares)).div(
+            totalSupply()
+        );
         _burn(msg.sender, _shares);
 
         uint256 b = weth.balanceOf(address(this));
@@ -98,6 +144,21 @@ contract Elf is ERC20 {
 
         WETH(payable(address(weth))).withdraw(r);
         payable(msg.sender).transfer(r);
+    }
+
+    function withdrawETHFrom(address sender, uint256 _shares) external {
+        uint256 r = (ElfAllocator(allocator).balance().mul(_shares)).div(
+            totalSupply()
+        );
+        _burn(sender, _shares);
+
+        uint256 b = weth.balanceOf(address(this));
+
+        ElfAllocator(allocator).deallocate(r);
+        ElfAllocator(allocator).withdraw(r);
+
+        WETH(payable(address(weth))).withdraw(r);
+        payable(sender).transfer(r);
     }
 
     receive() external payable {

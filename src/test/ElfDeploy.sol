@@ -1,4 +1,4 @@
-pragma solidity ^0.6.7;
+pragma solidity >=0.5.8 <0.8.0;
 
 import "../interfaces/IERC20.sol";
 import "../interfaces/ERC20.sol";
@@ -19,10 +19,12 @@ import "../assets/YtusdAsset.sol";
 import "../assets/YusdcAsset.sol";
 import "../assets/YusdtAsset.sol";
 import "../pools/low/Elf.sol";
+import "../proxy/ElfProxy.sol";
 
 contract ElfDeploy {
     WETH public weth;
 
+    ElfProxy public proxy;
     Elf public elf;
     ElfAllocator public allocator;
 
@@ -62,8 +64,8 @@ contract ElfDeploy {
 
     function init() public {
         weth = new WETH();
-        // core element contracts
         elf = new Elf(address(weth));
+        proxy = new ElfProxy();
         allocator = new ElfAllocator(address(elf), address(weth));
     }
 

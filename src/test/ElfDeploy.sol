@@ -189,5 +189,6 @@ contract ElfDeploy {
 
     function changeGovernance(address _governance) public {
         allocator.setGovernance(_governance);
+        ydaiAsset.setGovernance(_governance);
     }
 }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.5.8 <0.8.0;
 
 import "../../interfaces/IERC20.sol";
@@ -137,8 +138,6 @@ contract Elf is ERC20 {
         );
         _burn(msg.sender, _shares);
 
-        uint256 b = weth.balanceOf(address(this));
-
         ElfAllocator(allocator).deallocate(r);
         ElfAllocator(allocator).withdraw(r);
 
@@ -151,8 +150,6 @@ contract Elf is ERC20 {
             totalSupply()
         );
         _burn(sender, _shares);
-
-        uint256 b = weth.balanceOf(address(this));
 
         ElfAllocator(allocator).deallocate(r);
         ElfAllocator(allocator).withdraw(r);

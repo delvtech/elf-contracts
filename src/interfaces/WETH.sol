@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.5.16;
 
 contract WETH {
@@ -19,14 +20,14 @@ contract WETH {
 
     function deposit() public payable {
         balanceOf[msg.sender] += msg.value;
-        Deposit(msg.sender, msg.value);
+        emit Deposit(msg.sender, msg.value);
     }
 
     function withdraw(uint256 wad) public {
         require(balanceOf[msg.sender] >= wad);
         balanceOf[msg.sender] -= wad;
         msg.sender.transfer(wad);
-        Withdrawal(msg.sender, wad);
+        emit Withdrawal(msg.sender, wad);
     }
 
     function totalSupply() public view returns (uint256) {
@@ -35,7 +36,7 @@ contract WETH {
 
     function approve(address guy, uint256 wad) public returns (bool) {
         allowance[msg.sender][guy] = wad;
-        Approval(msg.sender, guy, wad);
+        emit Approval(msg.sender, guy, wad);
         return true;
     }
 
@@ -58,7 +59,7 @@ contract WETH {
         balanceOf[src] -= wad;
         balanceOf[dst] += wad;
 
-        Transfer(src, dst, wad);
+        emit Transfer(src, dst, wad);
 
         return true;
     }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.5.8 <0.8.0;
 
 import "../interfaces/IERC20.sol";
@@ -14,8 +15,8 @@ contract ALender {
     using Address for address;
     using SafeMath for uint256;
 
-    IERC20 weth;
-    IERC20 borrowAsset;
+    IERC20 public weth;
+    IERC20 public borrowAsset;
 
     uint256 public balances;
     uint256 public liabilities;
@@ -58,7 +59,6 @@ contract ALender {
         balances = balances.sub(_amount);
         liabilities = liabilities.sub(_amount);
 
-        uint256 bal = weth.balanceOf(address(this));
         weth.transfer(msg.sender, _amount);
     }
 

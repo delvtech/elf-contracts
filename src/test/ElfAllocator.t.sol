@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.5.8 <0.8.0;
 
 import "ds-test/test.sol";
@@ -20,23 +21,23 @@ import "../assets/YusdtAsset.sol";
 import "../pools/low/Elf.sol";
 
 contract ElfAllocatorTest is DSTest {
-    WETH weth;
+    WETH public weth;
 
-    ElfDeploy elfDeploy;
-    Elf elf;
-    ElfAllocator allocator;
+    ElfDeploy public elfDeploy;
+    Elf public elf;
+    ElfAllocator public allocator;
 
-    AToken dai;
-    AToken tusd;
-    AToken usdc;
+    AToken public dai;
+    AToken public tusd;
+    AToken public usdc;
 
-    ALender lender1;
-    ALender lender2;
-    ALender lender3;
+    ALender public lender1;
+    ALender public lender2;
+    ALender public lender3;
 
-    YdaiAsset ydaiAsset;
-    YtusdAsset ytusdAsset;
-    YusdcAsset yusdcAsset;
+    YdaiAsset public ydaiAsset;
+    YtusdAsset public ytusdAsset;
+    YusdcAsset public yusdcAsset;
 
     function setUp() public {
         elfDeploy = new ElfDeploy();

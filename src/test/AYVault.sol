@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.5.8 <0.8.0;
 
 import "../interfaces/IERC20.sol";
@@ -46,7 +47,7 @@ contract AYVault is ERC20 {
         IERC20(token).safeTransfer(msg.sender, _amount);
     }
 
-    function getPricePerFullShare() external view returns (uint256) {
+    function getPricePerFullShare() external pure returns (uint256) {
         return 1;
     }
 }

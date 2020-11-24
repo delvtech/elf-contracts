@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.5.8 <0.8.0;
 
 import "../interfaces/IERC20.sol";
@@ -29,7 +30,8 @@ contract ElfProxy {
         return IElf(_pool).balance();
     }
 
-    function getPoolAPY(address payable _pool) external view returns (uint256) {
+    function getPoolAPY(address payable _pool) external pure returns (uint256) {
+        require(_pool != address(0));
         return 125 * 10**18;
     }
 

@@ -138,8 +138,6 @@ contract Elf is ERC20 {
         );
         _burn(msg.sender, _shares);
 
-        uint256 b = weth.balanceOf(address(this));
-
         ElfAllocator(allocator).deallocate(r);
         ElfAllocator(allocator).withdraw(r);
 
@@ -152,8 +150,6 @@ contract Elf is ERC20 {
             totalSupply()
         );
         _burn(sender, _shares);
-
-        uint256 b = weth.balanceOf(address(this));
 
         ElfAllocator(allocator).deallocate(r);
         ElfAllocator(allocator).withdraw(r);

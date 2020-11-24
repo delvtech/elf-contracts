@@ -67,47 +67,47 @@ contract User {
 }
 
 contract ElfContractsTest is DSTest {
-    Hevm hevm;
-    WETH weth;
+    Hevm public hevm;
+    WETH public weth;
 
-    Elf elf;
-    ElfAllocator allocator;
+    Elf public elf;
+    ElfAllocator public allocator;
 
-    APriceOracle priceOracle1;
-    APriceOracle priceOracle2;
-    APriceOracle priceOracle3;
-    APriceOracle priceOracle4;
+    APriceOracle public priceOracle1;
+    APriceOracle public priceOracle2;
+    APriceOracle public priceOracle3;
+    APriceOracle public priceOracle4;
 
-    User user1;
-    User user2;
-    User user3;
+    User public user1;
+    User public user2;
+    User public user3;
 
-    AToken dai;
-    AToken tusd;
-    AToken usdc;
-    AToken usdt;
+    AToken public dai;
+    AToken public tusd;
+    AToken public usdc;
+    AToken public usdt;
 
-    ALender lender1;
-    ALender lender2;
-    ALender lender3;
-    ALender lender4;
+    ALender public lender1;
+    ALender public lender2;
+    ALender public lender3;
+    ALender public lender4;
 
-    AYVault ydai;
-    AYVault ytusd;
-    AYVault yusdc;
-    AYVault yusdt;
+    AYVault public ydai;
+    AYVault public ytusd;
+    AYVault public yusdc;
+    AYVault public yusdt;
 
-    YdaiAsset ydaiAsset;
-    YtusdAsset ytusdAsset;
-    YusdcAsset yusdcAsset;
-    YusdtAsset yusdtAsset;
+    YdaiAsset public ydaiAsset;
+    YtusdAsset public ytusdAsset;
+    YusdcAsset public yusdcAsset;
+    YusdtAsset public yusdtAsset;
 
     // for testing a basic 4x25% asset percent split
-    address[] fromTokens = new address[](4);
-    address[] toTokens = new address[](4);
-    uint256[] percents = new uint256[](4);
-    address[] assets = new address[](4);
-    uint256[] conversionType = new uint256[](4);
+    address[] public fromTokens = new address[](4);
+    address[] public toTokens = new address[](4);
+    uint256[] public percents = new uint256[](4);
+    address[] public assets = new address[](4);
+    uint256[] public conversionType = new uint256[](4);
 
     function setUp() public {
         // hevm "cheatcode", see: https://github.com/dapphub/dapptools/tree/master/src/hevm#cheat-codes

@@ -57,11 +57,11 @@ contract ElfDeploy {
     YusdtAsset public yusdtAsset;
 
     // for testing a basic 4x25% asset percent split
-    address[] fromTokens = new address[](4);
-    address[] toTokens = new address[](4);
-    address[] lenders = new address[](4);
-    uint256[] percents = new uint256[](4);
-    address[] assets = new address[](4);
+    address[] public fromTokens = new address[](4);
+    address[] public toTokens = new address[](4);
+    address[] public lenders = new address[](4);
+    uint256[] public percents = new uint256[](4);
+    address[] public assets = new address[](4);
 
     function init() public {
         weth = new WETH();

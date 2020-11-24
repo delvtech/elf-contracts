@@ -15,8 +15,8 @@ contract ALender {
     using Address for address;
     using SafeMath for uint256;
 
-    IERC20 weth;
-    IERC20 borrowAsset;
+    IERC20 public weth;
+    IERC20 public borrowAsset;
 
     uint256 public balances;
     uint256 public liabilities;

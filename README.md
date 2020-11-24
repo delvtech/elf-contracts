@@ -16,7 +16,9 @@ git clone git@github.com:element-fi/elf-contracts.git
 ```
 
 ```
-cd elf-contracts && make init
+cd elf-contracts
+npm install
+make init
 ```
 
 ### Build

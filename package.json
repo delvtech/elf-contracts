@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "solhint": "./node_modules/.bin/solhint -f table src/**/*.sol src/**/**/*.sol",
-    "style-check": "./node_modules/.bin/prettier --check .",
-    "prettier": "./node_modules/.bin/prettier --write ."
+    "solhint": "npx solhint -f table src/**/*.sol src/**/**/*.sol",
+    "style-check": "npx prettier --check .",
+    "prettier": "npx prettier --write ."
   },
   "husky": {
     "hooks": {

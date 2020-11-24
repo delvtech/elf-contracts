@@ -63,7 +63,7 @@ contract User {
     }
 
     // to be able to receive funds
-    receive() external payable {}
+    receive() external payable {} // solhint-disable-line no-empty-blocks
 }
 
 contract ElfContractsTest is DSTest {
@@ -571,5 +571,5 @@ contract ElfContractsTest is DSTest {
     }
 
     // require for withdraw tests to work
-    receive() external payable {}
+    receive() external payable {} // solhint-disable-line no-empty-blocks
 }

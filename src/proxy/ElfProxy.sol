@@ -6,7 +6,6 @@ import "../pools/low/interface/IElf.sol";
 import "../pools/low/interface/IElfAllocator.sol";
 
 contract ElfProxy {
-
     function deposit(address payable _pool, uint256 _amount) external {
         IElf(_pool).depositFrom(msg.sender, _amount);
     }

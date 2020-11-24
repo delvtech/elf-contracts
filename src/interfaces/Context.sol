@@ -2,7 +2,7 @@
 pragma solidity >=0.5.16;
 
 contract Context {
-    constructor() {}
+    constructor () public {} // solhint-disable-line no-empty-blocks
 
     function _msgSender() internal view returns (address payable) {
         return msg.sender;

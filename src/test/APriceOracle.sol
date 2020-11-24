@@ -13,15 +13,17 @@ contract APriceOracle {
     using Address for address;
     using SafeMath for uint256;
 
-    uint256 price = 400.5 ether;
+    uint256 public price = 400.5 ether;
 
-    constructor() public {}
+    constructor() public {} // solhint-disable-line no-empty-blocks
 
     function getPrice(address _fromToken, address _toToken)
         public
         view
         returns (uint256)
     {
+        require(_fromToken != address(0));
+        require(_toToken != address(0));
         return price;
     }
 

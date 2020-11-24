@@ -59,7 +59,6 @@ contract ALender {
         balances = balances.sub(_amount);
         liabilities = liabilities.sub(_amount);
 
-        uint256 bal = weth.balanceOf(address(this));
         weth.transfer(msg.sender, _amount);
     }
 

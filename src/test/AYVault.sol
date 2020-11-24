@@ -47,7 +47,7 @@ contract AYVault is ERC20 {
         IERC20(token).safeTransfer(msg.sender, _amount);
     }
 
-    function getPricePerFullShare() external view returns (uint256) {
+    function getPricePerFullShare() external pure returns (uint256) {
         return 1;
     }
 }

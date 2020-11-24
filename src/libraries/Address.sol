@@ -27,8 +27,8 @@ library Address {
             "Address: insufficient balance"
         );
 
-        // solhint-disable-next-line avoid-call-value
-        (bool success, ) = recipient.call.value(amount)("");
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, ) = recipient.call{value: amount}("");
         require(
             success,
             "Address: unable to send value, recipient may have reverted"

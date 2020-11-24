@@ -33,7 +33,6 @@ contract ElfAllocator {
 
     address public governance;
     address public pool;
-    address public converter;
     address public priceOracle;
 
     constructor(address _pool, address payable _weth) public {
@@ -47,9 +46,9 @@ contract ElfAllocator {
         governance = _governance;
     }
 
-    function setConverter(address _converter) public {
+    function setPool(address _pool) public {
         require(msg.sender == governance, "!governance");
-        converter = _converter;
+        pool = _pool;
     }
 
     function setPriceOracle(address _priceOracle) public {

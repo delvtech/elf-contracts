@@ -97,7 +97,7 @@ library SafeERC20 {
             // solhint-disable-next-line max-line-length
             require(
                 abi.decode(returndata, (bool)),
-                "SafeERC20: ERC20 operation did not succeed"
+                "SafeERC20: ERC20 operation failed"
             );
         }
     }

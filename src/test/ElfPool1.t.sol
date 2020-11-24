@@ -174,6 +174,16 @@ contract ElfContractsTest is DSTest {
         );
     }
 
+    // verify that this can only be changed by governance contract
+    function testFail_setGovernance() public {
+        elf.setGovernance(address(this));
+    }
+
+    // verify that this can only be changed by governance contract
+    function testFail_setAllocator() public {
+        elf.setAllocator(address(allocator));
+    }
+
     function test_correctUserBalances() public {
         assertEq(weth.balanceOf(address(user1)), 1000 ether);
         assertEq(weth.balanceOf(address(user2)), 1000 ether);

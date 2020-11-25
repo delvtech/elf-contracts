@@ -32,7 +32,7 @@ contract ElfProxy {
 
     function getPoolAPY(address payable _pool) external pure returns (uint256) {
         require(_pool != address(0));
-        return 125 * 10**18;
+        return 2.13 * 10**18;
     }
 
     function getNumPoolAllocations(address payable _pool)

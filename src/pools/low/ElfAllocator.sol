@@ -35,24 +35,37 @@ contract ElfAllocator {
     address public pool;
     address public priceOracle;
 
+    /**
+     * @dev modifier to only allow the governance contract to call the function.
+     */
+    modifier onlyGovernance {
+        require(msg.sender == governance, "Caller is not governance contract");
+        _;
+    }
+
+    /**
+     * @dev modifier to only allow the pool contract to call the function.
+     */
+    modifier onlyPool {
+        require(msg.sender == pool, "Caller is not the pool contract");
+        _;
+    }
+
     constructor(address _pool, address payable weth) public {
         governance = msg.sender;
         pool = _pool;
         _weth = IERC20(weth);
     }
 
-    function setGovernance(address _governance) public {
-        require(msg.sender == governance, "!governance");
+    function setGovernance(address _governance) public onlyGovernance {
         governance = _governance;
     }
 
-    function setPool(address _pool) public {
-        require(msg.sender == governance, "!governance");
+    function setPool(address _pool) public onlyGovernance {
         pool = _pool;
     }
 
-    function setPriceOracle(address _priceOracle) public {
-        require(msg.sender == governance, "!governance");
+    function setPriceOracle(address _priceOracle) public onlyGovernance {
         priceOracle = _priceOracle;
     }
 
@@ -63,10 +76,11 @@ contract ElfAllocator {
         uint256[] memory _percents,
         address[] memory _asset,
         uint256 _numAllocations
-    ) public {
-        require(msg.sender == governance, "!governance");
+    ) public onlyGovernance {
         uint256 _totalAllocations;
+
         delete allocations;
+
         for (uint256 i = 0; i < _numAllocations; i++) {
             allocations.push(
                 Allocation(
@@ -79,7 +93,9 @@ contract ElfAllocator {
             );
             _totalAllocations = _totalAllocations.add(_percents[i]);
         }
+
         require(_totalAllocations == 100, "!100");
+
         numAllocations = _numAllocations;
     }
 
@@ -121,9 +137,7 @@ contract ElfAllocator {
         );
     }
 
-    function allocate(uint256 _amount) public {
-        require(msg.sender == pool, "allocator/must-be-pool");
-
+    function allocate(uint256 _amount) public onlyPool {
         for (uint256 i = 0; i < numAllocations; i++) {
             uint256 _fromTokenAmount = _amount.mul(allocations[i].percent).div(
                 100
@@ -150,9 +164,7 @@ contract ElfAllocator {
         }
     }
 
-    function deallocate(uint256 _amount) public {
-        require(msg.sender == pool, "!pool ");
-
+    function deallocate(uint256 _amount) public onlyPool {
         for (uint256 i = 0; i < numAllocations; i++) {
             address vault = IElfAsset(allocations[i].asset).vault();
             uint256 totalAssetAmount = IERC20(vault).balanceOf(address(this));
@@ -185,8 +197,7 @@ contract ElfAllocator {
     }
 
     // withdraw a certain amount
-    function withdraw(uint256 _amount) public {
-        require(msg.sender == pool, "!pool ");
+    function withdraw(uint256 _amount) public onlyPool {
         _weth.safeTransfer(msg.sender, _amount);
     }
 

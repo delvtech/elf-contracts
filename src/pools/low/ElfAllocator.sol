@@ -18,7 +18,7 @@ contract ElfAllocator {
     using Address for address;
     using SafeMath for uint256;
 
-    IERC20 private weth;
+    IERC20 private _weth;
 
     struct Allocation {
         address fromToken;
@@ -35,10 +35,10 @@ contract ElfAllocator {
     address public pool;
     address public priceOracle;
 
-    constructor(address _pool, address payable _weth) public {
+    constructor(address _pool, address payable weth) public {
         governance = msg.sender;
         pool = _pool;
-        weth = IERC20(_weth);
+        _weth = IERC20(weth);
     }
 
     function setGovernance(address _governance) public {
@@ -187,7 +187,7 @@ contract ElfAllocator {
     // withdraw a certain amount
     function withdraw(uint256 _amount) public {
         require(msg.sender == pool, "!pool ");
-        weth.safeTransfer(msg.sender, _amount);
+        _weth.safeTransfer(msg.sender, _amount);
     }
 
     function balance() public view returns (uint256) {
@@ -197,7 +197,7 @@ contract ElfAllocator {
                 IElfLender(allocations[i].lender).balances()
             );
         }
-        return weth.balanceOf(address(this)).add(balances);
+        return _weth.balanceOf(address(this)).add(balances);
     }
 
     // solhint-disable-next-line no-empty-blocks

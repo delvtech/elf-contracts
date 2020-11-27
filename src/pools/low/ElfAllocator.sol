@@ -99,6 +99,7 @@ contract ElfAllocator {
         numAllocations = _numAllocations;
     }
 
+    // Why would we need this? numAllocations already retreivable from allocator.numAllocations().
     function getNumAllocations() external view returns (uint256) {
         return numAllocations;
     }

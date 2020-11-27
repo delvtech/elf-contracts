@@ -180,6 +180,71 @@ contract ElfAllocatorTest is DSTest {
         assertEq(allocator.numAllocations(), 3);
     }
 
+    // Verify the we get back the allocations we set
+    function test_getAllocations() public {
+        elfDeploy.changeGovernance(address(this));
+
+        // for testing asset percent split
+        address[] memory fromTokens = new address[](3);
+        address[] memory toTokens = new address[](3);
+        uint256[] memory percents = new uint256[](3);
+        address[] memory assets = new address[](3);
+        address[] memory lenders = new address[](3);
+        uint256 _numAllocations = uint256(3);
+
+        // the following block of code initializes the allocations for this test
+        fromTokens[0] = address(weth);
+        fromTokens[1] = address(weth);
+        fromTokens[2] = address(weth);
+        toTokens[0] = address(dai);
+        toTokens[1] = address(tusd);
+        toTokens[2] = address(usdc);
+        percents[0] = uint256(33);
+        percents[1] = uint256(33);
+        percents[2] = uint256(34);
+        assets[0] = address(ydaiAsset);
+        assets[1] = address(ytusdAsset);
+        assets[2] = address(yusdcAsset);
+        lenders[0] = address(lender1);
+        lenders[1] = address(lender2);
+        lenders[2] = address(lender3);
+
+        allocator.setAllocations(
+            fromTokens,
+            toTokens,
+            lenders,
+            percents,
+            assets,
+            _numAllocations
+        );
+
+        (
+            address[] memory fromTokensResult,
+            address[] memory toTokensResult,
+            address[] memory lendersResult,
+            uint256[] memory percentsResult,
+            address[] memory assetsResult,
+            uint256 numAllocationsResult
+        ) = allocator.getAllocations();
+
+        for (uint256 i = 0; i < fromTokens.length; i++) {
+            assertEq(fromTokens[i], fromTokensResult[i]);
+        }
+        for (uint256 i = 0; i < fromTokens.length; i++) {
+            assertEq(toTokens[i], toTokensResult[i]);
+        }
+        for (uint256 i = 0; i < fromTokens.length; i++) {
+            assertEq(lenders[i], lendersResult[i]);
+        }
+        for (uint256 i = 0; i < fromTokens.length; i++) {
+            assertEq(percents[i], percentsResult[i]);
+        }
+        for (uint256 i = 0; i < fromTokens.length; i++) {
+            assertEq(assets[i], assetsResult[i]);
+        }
+        assertEq(_numAllocations, numAllocationsResult);
+    }
+
     function test_Allocate() public {
         elfDeploy.changeGovernance(address(this));
         allocator.setPool(address(this));

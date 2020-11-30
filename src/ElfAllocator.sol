@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.5.8 <0.8.0;
 
-import "../../interfaces/IERC20.sol";
-import "../../interfaces/IBPool.sol";
+import "./interfaces/IERC20.sol";
+import "./interfaces/IBPool.sol";
 
-import "../../libraries/SafeMath.sol";
-import "../../libraries/Address.sol";
-import "../../libraries/SafeERC20.sol";
+import "./libraries/SafeMath.sol";
+import "./libraries/Address.sol";
+import "./libraries/SafeERC20.sol";
 
-import "../../lenders/interface/IElfLender.sol";
-import "../../assets/interface/IElfAssetProxy.sol";
-import "../../oracles/interface/IElfPriceOracle.sol";
+import "./lenders/interface/IElfLender.sol";
+import "./assets/interface/IElfAssetProxy.sol";
+import "./oracles/interface/IElfPriceOracle.sol";
 
 contract ElfAllocator {
     using SafeERC20 for IERC20;

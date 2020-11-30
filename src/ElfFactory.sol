@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.5.8 <0.8.0;
 
-import "./pools/low/Elf.sol";
+import "./Elf.sol";
 
 contract ElfFactory {
     event LOG_NEW_POOL(

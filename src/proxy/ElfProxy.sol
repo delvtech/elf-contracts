@@ -2,8 +2,8 @@
 pragma solidity >=0.5.8 <0.8.0;
 
 import "../interfaces/IERC20.sol";
-import "../pools/low/interface/IElf.sol";
-import "../pools/low/interface/IElfAllocator.sol";
+import "../interfaces/IElf.sol";
+import "../interfaces/IElfAllocator.sol";
 
 contract ElfProxy {
     function deposit(address payable _pool, uint256 _amount) external {

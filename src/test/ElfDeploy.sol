@@ -15,7 +15,7 @@ import "./AToken.sol";
 import "./APriceOracle.sol";
 
 import "../assets/YVaultAssetProxy.sol";
-import "../pools/low/Elf.sol";
+import "../Elf.sol";
 import "../proxy/ElfProxy.sol";
 import "../ElfFactory.sol";
 

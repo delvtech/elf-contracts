@@ -18,7 +18,7 @@ import "./ElfDeploy.sol";
 import "./WETH.sol";
 
 import "../assets/YVaultAssetProxy.sol";
-import "../pools/low/Elf.sol";
+import "../Elf.sol";
 
 interface Hevm {
     function warp(uint256) external;

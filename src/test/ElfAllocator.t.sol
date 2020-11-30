@@ -177,7 +177,7 @@ contract ElfAllocatorTest is DSTest {
             _numAllocations
         );
 
-        assertEq(allocator.numAllocations(), 3);
+        assertEq(allocator.getNumAllocations(), 3);
     }
 
     // Verify the we get back the allocations we set

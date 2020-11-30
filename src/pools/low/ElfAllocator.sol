@@ -2,7 +2,6 @@
 pragma solidity >=0.5.8 <0.8.0;
 
 import "../../interfaces/IERC20.sol";
-import "../../interfaces/WETH.sol";
 import "../../interfaces/IBPool.sol";
 
 import "../../libraries/SafeMath.sol";
@@ -10,7 +9,7 @@ import "../../libraries/Address.sol";
 import "../../libraries/SafeERC20.sol";
 
 import "../../lenders/interface/IElfLender.sol";
-import "../../assets/interface/IElfAsset.sol";
+import "../../assets/interface/IElfAssetProxy.sol";
 import "../../oracles/interface/IElfPriceOracle.sol";
 
 contract ElfAllocator {
@@ -160,13 +159,13 @@ contract ElfAllocator {
                 borrowed
             );
 
-            IElfAsset(allocations[i].asset).deposit(borrowed);
+            IElfAssetProxy(allocations[i].asset).deposit(borrowed);
         }
     }
 
     function deallocate(uint256 _amount) public onlyPool {
         for (uint256 i = 0; i < _numAllocations; i++) {
-            address vault = IElfAsset(allocations[i].asset).vault();
+            address vault = IElfAssetProxy(allocations[i].asset).vault();
             uint256 totalAssetAmount = IERC20(vault).balanceOf(address(this));
 
             uint256 _assetWithdrawAmount = totalAssetAmount.mul(_amount).div(
@@ -178,7 +177,7 @@ contract ElfAllocator {
                 _assetWithdrawAmount
             );
 
-            IElfAsset(allocations[i].asset).withdraw(
+            IElfAssetProxy(allocations[i].asset).withdraw(
                 _assetWithdrawAmount,
                 address(this)
             );

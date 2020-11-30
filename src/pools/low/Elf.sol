@@ -4,7 +4,6 @@ pragma solidity >=0.5.8 <0.8.0;
 import "../../interfaces/IERC20.sol";
 import "../../interfaces/ERC20.sol";
 import "../../interfaces/IWETH.sol";
-import "../../interfaces/WETH.sol";
 
 import "../../libraries/SafeMath.sol";
 import "../../libraries/Address.sol";
@@ -83,7 +82,7 @@ contract Elf is ERC20 {
     function depositETH() public payable {
         uint256 _pool = ElfAllocator(allocator).balance();
         uint256 _amount = msg.value;
-        WETH(payable(address(weth))).deposit{value: _amount}();
+        IWETH(payable(address(weth))).deposit{value: _amount}();
         uint256 _shares = 0;
         if (totalSupply() == 0) {
             _shares = _amount;
@@ -97,7 +96,7 @@ contract Elf is ERC20 {
     function depositETHFrom(address sender) external payable {
         uint256 _pool = ElfAllocator(allocator).balance();
         uint256 _amount = msg.value;
-        WETH(payable(address(weth))).deposit{value: _amount}();
+        IWETH(payable(address(weth))).deposit{value: _amount}();
         uint256 _shares = 0;
         if (totalSupply() == 0) {
             _shares = _amount;
@@ -141,7 +140,7 @@ contract Elf is ERC20 {
         ElfAllocator(allocator).deallocate(r);
         ElfAllocator(allocator).withdraw(r);
 
-        WETH(payable(address(weth))).withdraw(r);
+        IWETH(payable(address(weth))).withdraw(r);
         payable(msg.sender).transfer(r);
     }
 
@@ -154,7 +153,7 @@ contract Elf is ERC20 {
         ElfAllocator(allocator).deallocate(r);
         ElfAllocator(allocator).withdraw(r);
 
-        WETH(payable(address(weth))).withdraw(r);
+        IWETH(payable(address(weth))).withdraw(r);
         payable(sender).transfer(r);
     }
 

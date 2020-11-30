@@ -3,14 +3,15 @@ pragma solidity >=0.5.8 <0.8.0;
 
 import "../interfaces/IERC20.sol";
 import "../interfaces/YearnVault.sol";
+import "../interfaces/IBPool.sol";
 
 import "../libraries/SafeMath.sol";
 import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
 
-import "./BaseElfYVaultAsset.sol";
+import "./YVaultAssetProxy.sol";
 
-contract YusdcAsset is BaseElfYVaultAsset {
+contract YdaiAssetProxy is YVaultAssetProxy {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -18,6 +19,6 @@ contract YusdcAsset is BaseElfYVaultAsset {
     constructor(
         address _allocator,
         address _vault,
-        address _usdc
-    ) public BaseElfYVaultAsset(msg.sender, _allocator, _vault, _usdc) {} // solhint-disable no-empty-blocks
+        address _dai
+    ) public YVaultAssetProxy(msg.sender, _allocator, _vault, _dai) {} // solhint-disable no-empty-blocks
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.5.8 <0.8.0;
 
-interface IElfAsset {
+interface IElfAssetProxy {
     function vault() external returns (address);
 
     function deposit(uint256 _amount) external;

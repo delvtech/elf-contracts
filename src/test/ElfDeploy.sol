@@ -20,11 +20,13 @@ import "../assets/YusdcAssetProxy.sol";
 import "../assets/YusdtAssetProxy.sol";
 import "../pools/low/Elf.sol";
 import "../proxy/ElfProxy.sol";
+import "../ElfFactory.sol";
 
 contract ElfDeploy {
     WETH public weth;
 
     ElfProxy public proxy;
+    ElfFactory public factory;
     Elf public elf;
     ElfAllocator public allocator;
 
@@ -64,9 +66,10 @@ contract ElfDeploy {
 
     function init() public {
         weth = new WETH();
-        elf = new Elf(address(weth));
         proxy = new ElfProxy();
-        allocator = new ElfAllocator(address(elf), address(weth));
+        factory = new ElfFactory();
+        elf = factory.newPool(address(weth));
+        allocator = ElfAllocator(elf.getAllocator());
     }
 
     function config() public {
@@ -81,7 +84,6 @@ contract ElfDeploy {
         // allocator -> converter, price oracle
         // converter -> lender
 
-        elf.setAllocator(payable(allocator));
         allocator.setPriceOracle(address(priceOracle1));
 
         dai = new AToken(address(this));

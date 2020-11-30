@@ -5,7 +5,8 @@
     "avoid-throw": "off",
     "avoid-suicide": "error",
     "avoid-sha3": "warn",
-    "reason-string": "off"
+    "reason-string": "off",
+    "private-vars-leading-underscore": "error"
   },
   "plugins": ["prettier"]
 }

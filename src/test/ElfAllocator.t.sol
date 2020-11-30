@@ -31,7 +31,7 @@ interface Hevm {
 }
 
 contract ElfAllocatorTest is DSTest {
-    Hevm hevm;
+    Hevm public hevm;
     WETH public weth;
 
     ElfDeploy public elfDeploy;

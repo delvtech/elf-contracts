@@ -29,7 +29,7 @@ contract ElfAllocator {
     }
 
     Allocation[] public allocations;
-    uint256 public numAllocations;
+    uint256 private _numAllocations;
 
     address public governance;
     address public pool;
@@ -75,13 +75,13 @@ contract ElfAllocator {
         address[] memory _lenders,
         uint256[] memory _percents,
         address[] memory _asset,
-        uint256 _numAllocations
+        uint256 numAllocations
     ) public onlyGovernance {
         uint256 _totalAllocations;
 
         delete allocations;
 
-        for (uint256 i = 0; i < _numAllocations; i++) {
+        for (uint256 i = 0; i < numAllocations; i++) {
             allocations.push(
                 Allocation(
                     _fromToken[i],
@@ -96,12 +96,11 @@ contract ElfAllocator {
 
         require(_totalAllocations == 100, "!100");
 
-        numAllocations = _numAllocations;
+        _numAllocations = numAllocations;
     }
 
-    // Why would we need this? numAllocations already retreivable from allocator.numAllocations().
     function getNumAllocations() external view returns (uint256) {
-        return numAllocations;
+        return _numAllocations;
     }
 
     function getAllocations()
@@ -116,12 +115,12 @@ contract ElfAllocator {
             uint256
         )
     {
-        address[] memory fromTokens = new address[](numAllocations);
-        address[] memory toTokens = new address[](numAllocations);
-        address[] memory lenders = new address[](numAllocations);
-        uint256[] memory percents = new uint256[](numAllocations);
-        address[] memory assets = new address[](numAllocations);
-        for (uint256 i = 0; i < numAllocations; i++) {
+        address[] memory fromTokens = new address[](_numAllocations);
+        address[] memory toTokens = new address[](_numAllocations);
+        address[] memory lenders = new address[](_numAllocations);
+        uint256[] memory percents = new uint256[](_numAllocations);
+        address[] memory assets = new address[](_numAllocations);
+        for (uint256 i = 0; i < _numAllocations; i++) {
             fromTokens[i] = allocations[i].fromToken;
             toTokens[i] = allocations[i].toToken;
             lenders[i] = allocations[i].lender;
@@ -134,12 +133,12 @@ contract ElfAllocator {
             lenders,
             percents,
             assets,
-            numAllocations
+            _numAllocations
         );
     }
 
     function allocate(uint256 _amount) public onlyPool {
-        for (uint256 i = 0; i < numAllocations; i++) {
+        for (uint256 i = 0; i < _numAllocations; i++) {
             uint256 _fromTokenAmount = _amount.mul(allocations[i].percent).div(
                 100
             );
@@ -166,7 +165,7 @@ contract ElfAllocator {
     }
 
     function deallocate(uint256 _amount) public onlyPool {
-        for (uint256 i = 0; i < numAllocations; i++) {
+        for (uint256 i = 0; i < _numAllocations; i++) {
             address vault = IElfAsset(allocations[i].asset).vault();
             uint256 totalAssetAmount = IERC20(vault).balanceOf(address(this));
 
@@ -204,7 +203,7 @@ contract ElfAllocator {
 
     function balance() public view returns (uint256) {
         uint256 balances;
-        for (uint256 i = 0; i < numAllocations; i++) {
+        for (uint256 i = 0; i < _numAllocations; i++) {
             balances = balances.add(
                 IElfLender(allocations[i].lender).balances()
             );

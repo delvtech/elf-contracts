@@ -17,10 +17,7 @@ import "./APriceOracle.sol";
 import "./ElfDeploy.sol";
 import "./WETH.sol";
 
-import "../assets/YdaiAssetProxy.sol";
-import "../assets/YtusdAssetProxy.sol";
-import "../assets/YusdcAssetProxy.sol";
-import "../assets/YusdtAssetProxy.sol";
+import "../assets/YVaultAssetProxy.sol";
 import "../pools/low/Elf.sol";
 
 interface Hevm {
@@ -97,10 +94,10 @@ contract ElfContractsTest is DSTest {
     AYVault public yusdc;
     AYVault public yusdt;
 
-    YdaiAssetProxy public ydaiAsset;
-    YtusdAssetProxy public ytusdAsset;
-    YusdcAssetProxy public yusdcAsset;
-    YusdtAssetProxy public yusdtAsset;
+    YVaultAssetProxy public ydaiAsset;
+    YVaultAssetProxy public ytusdAsset;
+    YVaultAssetProxy public yusdcAsset;
+    YVaultAssetProxy public yusdtAsset;
 
     // for testing a basic 4x25% asset percent split
     address[] public fromTokens = new address[](4);

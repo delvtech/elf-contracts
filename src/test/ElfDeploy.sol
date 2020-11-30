@@ -14,10 +14,7 @@ import "./WETH.sol";
 import "./AToken.sol";
 import "./APriceOracle.sol";
 
-import "../assets/YdaiAssetProxy.sol";
-import "../assets/YtusdAssetProxy.sol";
-import "../assets/YusdcAssetProxy.sol";
-import "../assets/YusdtAssetProxy.sol";
+import "../assets/YVaultAssetProxy.sol";
 import "../pools/low/Elf.sol";
 import "../proxy/ElfProxy.sol";
 import "../ElfFactory.sol";
@@ -52,10 +49,10 @@ contract ElfDeploy {
     AYVault public yusdc;
     AYVault public yusdt;
 
-    YdaiAssetProxy public ydaiAsset;
-    YtusdAssetProxy public ytusdAsset;
-    YusdcAssetProxy public yusdcAsset;
-    YusdtAssetProxy public yusdtAsset;
+    YVaultAssetProxy public ydaiAsset;
+    YVaultAssetProxy public ytusdAsset;
+    YVaultAssetProxy public yusdcAsset;
+    YVaultAssetProxy public yusdtAsset;
 
     // for testing a basic 4x25% asset percent split
     address[] public fromTokens = new address[](4);
@@ -115,37 +112,26 @@ contract ElfDeploy {
         lender4.setPriceOracle(address(priceOracle4));
 
         // each asset represents a wrapper around an associated vault
-        ydaiAsset = new YdaiAssetProxy(
-            payable(allocator),
+        ydaiAsset = new YVaultAssetProxy(
+            address(allocator),
             address(ydai),
             address(dai)
         );
-        ytusdAsset = new YtusdAssetProxy(
-            payable(allocator),
+        ytusdAsset = new YVaultAssetProxy(
+            address(allocator),
             address(ytusd),
             address(tusd)
         );
-        yusdcAsset = new YusdcAssetProxy(
-            payable(allocator),
+        yusdcAsset = new YVaultAssetProxy(
+            address(allocator),
             address(yusdc),
             address(usdc)
         );
-        yusdtAsset = new YusdtAssetProxy(
-            payable(allocator),
-            address(usdt),
-            address(yusdt)
+        yusdtAsset = new YVaultAssetProxy(
+            address(allocator),
+            address(yusdt),
+            address(usdt)
         );
-
-        // this test requires that we override the hardcoded
-        // vault and token addresses with test implementations
-        ydaiAsset.setVault(address(ydai));
-        ydaiAsset.setToken(address(dai));
-        ytusdAsset.setVault(address(ytusd));
-        ytusdAsset.setToken(address(tusd));
-        yusdcAsset.setVault(address(yusdc));
-        yusdcAsset.setToken(address(usdc));
-        yusdtAsset.setVault(address(yusdt));
-        yusdtAsset.setToken(address(usdt));
 
         // for testing a basic 4x25% asset percent split
         fromTokens = new address[](4);

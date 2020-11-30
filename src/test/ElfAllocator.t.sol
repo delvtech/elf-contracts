@@ -14,10 +14,7 @@ import "./AToken.sol";
 import "./ElfDeploy.sol";
 import "./WETH.sol";
 
-import "../assets/YdaiAssetProxy.sol";
-import "../assets/YtusdAssetProxy.sol";
-import "../assets/YusdcAssetProxy.sol";
-import "../assets/YusdtAssetProxy.sol";
+import "../assets/YVaultAssetProxy.sol";
 import "../pools/low/Elf.sol";
 
 interface Hevm {
@@ -46,9 +43,9 @@ contract ElfAllocatorTest is DSTest {
     ALender public lender2;
     ALender public lender3;
 
-    YdaiAssetProxy public ydaiAsset;
-    YtusdAssetProxy public ytusdAsset;
-    YusdcAssetProxy public yusdcAsset;
+    YVaultAssetProxy public ydaiAsset;
+    YVaultAssetProxy public ytusdAsset;
+    YVaultAssetProxy public yusdcAsset;
 
     function setUp() public {
         // hevm "cheatcode", see: https://github.com/dapphub/dapptools/tree/master/src/hevm#cheat-codes

@@ -20,7 +20,18 @@ import "../assets/YusdcAsset.sol";
 import "../assets/YusdtAsset.sol";
 import "../pools/low/Elf.sol";
 
+interface Hevm {
+    function warp(uint256) external;
+
+    function store(
+        address,
+        bytes32,
+        bytes32
+    ) external;
+}
+
 contract ElfAllocatorTest is DSTest {
+    Hevm hevm;
     WETH public weth;
 
     ElfDeploy public elfDeploy;
@@ -40,6 +51,8 @@ contract ElfAllocatorTest is DSTest {
     YusdcAsset public yusdcAsset;
 
     function setUp() public {
+        // hevm "cheatcode", see: https://github.com/dapphub/dapptools/tree/master/src/hevm#cheat-codes
+        hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
         elfDeploy = new ElfDeploy();
         elfDeploy.init();
 
@@ -63,6 +76,13 @@ contract ElfAllocatorTest is DSTest {
         ydaiAsset = elfDeploy.ydaiAsset();
         ytusdAsset = elfDeploy.ytusdAsset();
         yusdcAsset = elfDeploy.yusdcAsset();
+
+        address(this).transfer(1000 ether);
+        hevm.store(
+            address(weth),
+            keccak256(abi.encode(address(this), uint256(3))), // Mint user 1 1000 WETH
+            bytes32(uint256(1000 ether))
+        );
     }
 
     // verify that this can only be changed by governance contract
@@ -81,7 +101,7 @@ contract ElfAllocatorTest is DSTest {
     }
 
     // Verify that allocations that don't sum to 100% fail when calling setAllocations
-    function testFail_AllocationPercent() public {
+    function testFail_setAllocationPercent() public {
         elfDeploy.changeGovernance(address(this));
 
         // for testing asset percent split
@@ -120,7 +140,7 @@ contract ElfAllocatorTest is DSTest {
     }
 
     // Verify that allocations that sum to 100% DON'T fail when calling setAllocations
-    function test_AllocationPercent() public {
+    function test_setAllocationPercent() public {
         elfDeploy.changeGovernance(address(this));
 
         // for testing asset percent split
@@ -159,4 +179,96 @@ contract ElfAllocatorTest is DSTest {
 
         assertEq(allocator.numAllocations(), 3);
     }
+
+    function test_Allocate() public {
+        elfDeploy.changeGovernance(address(this));
+        allocator.setPool(address(this));
+
+        // setup allocations
+        address[] memory fromTokens = new address[](3);
+        address[] memory toTokens = new address[](3);
+        uint256[] memory percents = new uint256[](3);
+        address[] memory assets = new address[](3);
+        address[] memory lenders = new address[](3);
+        uint256 _numAllocations = uint256(3);
+        fromTokens[0] = address(weth);
+        fromTokens[1] = address(weth);
+        fromTokens[2] = address(weth);
+        toTokens[0] = address(dai);
+        toTokens[1] = address(tusd);
+        toTokens[2] = address(usdc);
+        percents[0] = uint256(33);
+        percents[1] = uint256(33);
+        percents[2] = uint256(34);
+        assets[0] = address(ydaiAsset);
+        assets[1] = address(ytusdAsset);
+        assets[2] = address(yusdcAsset);
+        lenders[0] = address(lender1);
+        lenders[1] = address(lender2);
+        lenders[2] = address(lender3);
+        allocator.setAllocations(
+            fromTokens,
+            toTokens,
+            lenders,
+            percents,
+            assets,
+            _numAllocations
+        );
+
+        uint256 amount = weth.balanceOf(address(this));
+        weth.transfer(address(allocator), amount);
+        allocator.allocate(amount);
+        assertEq(
+            weth.balanceOf(address(lender1)) +
+                weth.balanceOf(address(lender2)) +
+                weth.balanceOf(address(lender3)),
+            amount
+        );
+    }
+
+    function test_Deallocate() public {
+        elfDeploy.changeGovernance(address(this));
+        allocator.setPool(address(this));
+
+        // setup allocations
+        address[] memory fromTokens = new address[](3);
+        address[] memory toTokens = new address[](3);
+        uint256[] memory percents = new uint256[](3);
+        address[] memory assets = new address[](3);
+        address[] memory lenders = new address[](3);
+        uint256 _numAllocations = uint256(3);
+        fromTokens[0] = address(weth);
+        fromTokens[1] = address(weth);
+        fromTokens[2] = address(weth);
+        toTokens[0] = address(dai);
+        toTokens[1] = address(tusd);
+        toTokens[2] = address(usdc);
+        percents[0] = uint256(33);
+        percents[1] = uint256(33);
+        percents[2] = uint256(34);
+        assets[0] = address(ydaiAsset);
+        assets[1] = address(ytusdAsset);
+        assets[2] = address(yusdcAsset);
+        lenders[0] = address(lender1);
+        lenders[1] = address(lender2);
+        lenders[2] = address(lender3);
+        allocator.setAllocations(
+            fromTokens,
+            toTokens,
+            lenders,
+            percents,
+            assets,
+            _numAllocations
+        );
+
+        uint256 amount = weth.balanceOf(address(this));
+        weth.transfer(address(allocator), amount);
+        allocator.allocate(amount);
+
+        allocator.deallocate(amount);
+
+        assertEq(weth.balanceOf(address(allocator)), amount);
+    }
+
+    receive() external payable {}
 }

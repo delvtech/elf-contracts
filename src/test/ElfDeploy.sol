@@ -3,22 +3,21 @@ pragma solidity >=0.5.8 <0.8.0;
 
 import "../interfaces/IERC20.sol";
 import "../interfaces/ERC20.sol";
-import "../interfaces/WETH.sol";
 
 import "../libraries/SafeMath.sol";
 import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
 
-import "../test/AYVault.sol";
-import "../test/ALender.sol";
+import "./AYVault.sol";
+import "./ALender.sol";
+import "./WETH.sol";
+import "./AToken.sol";
+import "./APriceOracle.sol";
 
-import "../test/AToken.sol";
-import "../test/APriceOracle.sol";
-
-import "../assets/YdaiAsset.sol";
-import "../assets/YtusdAsset.sol";
-import "../assets/YusdcAsset.sol";
-import "../assets/YusdtAsset.sol";
+import "../assets/YdaiAssetProxy.sol";
+import "../assets/YtusdAssetProxy.sol";
+import "../assets/YusdcAssetProxy.sol";
+import "../assets/YusdtAssetProxy.sol";
 import "../pools/low/Elf.sol";
 import "../proxy/ElfProxy.sol";
 
@@ -51,10 +50,10 @@ contract ElfDeploy {
     AYVault public yusdc;
     AYVault public yusdt;
 
-    YdaiAsset public ydaiAsset;
-    YtusdAsset public ytusdAsset;
-    YusdcAsset public yusdcAsset;
-    YusdtAsset public yusdtAsset;
+    YdaiAssetProxy public ydaiAsset;
+    YtusdAssetProxy public ytusdAsset;
+    YusdcAssetProxy public yusdcAsset;
+    YusdtAssetProxy public yusdtAsset;
 
     // for testing a basic 4x25% asset percent split
     address[] public fromTokens = new address[](4);
@@ -116,22 +115,22 @@ contract ElfDeploy {
         lender4.setPriceOracle(address(priceOracle4));
 
         // each asset represents a wrapper around an associated vault
-        ydaiAsset = new YdaiAsset(
+        ydaiAsset = new YdaiAssetProxy(
             payable(allocator),
             address(ydai),
             address(dai)
         );
-        ytusdAsset = new YtusdAsset(
+        ytusdAsset = new YtusdAssetProxy(
             payable(allocator),
             address(ytusd),
             address(tusd)
         );
-        yusdcAsset = new YusdcAsset(
+        yusdcAsset = new YusdcAssetProxy(
             payable(allocator),
             address(yusdc),
             address(usdc)
         );
-        yusdtAsset = new YusdtAsset(
+        yusdtAsset = new YusdtAssetProxy(
             payable(allocator),
             address(usdt),
             address(yusdt)

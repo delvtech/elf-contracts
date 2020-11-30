@@ -5,7 +5,6 @@ import "ds-test/test.sol";
 
 import "../interfaces/IERC20.sol";
 import "../interfaces/ERC20.sol";
-import "../interfaces/WETH.sol";
 
 import "../libraries/SafeMath.sol";
 import "../libraries/Address.sol";
@@ -16,11 +15,12 @@ import "./ALender.sol";
 import "./AToken.sol";
 import "./APriceOracle.sol";
 import "./ElfDeploy.sol";
+import "./WETH.sol";
 
-import "../assets/YdaiAsset.sol";
-import "../assets/YtusdAsset.sol";
-import "../assets/YusdcAsset.sol";
-import "../assets/YusdtAsset.sol";
+import "../assets/YdaiAssetProxy.sol";
+import "../assets/YtusdAssetProxy.sol";
+import "../assets/YusdcAssetProxy.sol";
+import "../assets/YusdtAssetProxy.sol";
 import "../pools/low/Elf.sol";
 
 interface Hevm {
@@ -97,10 +97,10 @@ contract ElfContractsTest is DSTest {
     AYVault public yusdc;
     AYVault public yusdt;
 
-    YdaiAsset public ydaiAsset;
-    YtusdAsset public ytusdAsset;
-    YusdcAsset public yusdcAsset;
-    YusdtAsset public yusdtAsset;
+    YdaiAssetProxy public ydaiAsset;
+    YtusdAssetProxy public ytusdAsset;
+    YusdcAssetProxy public yusdcAsset;
+    YusdtAssetProxy public yusdtAsset;
 
     // for testing a basic 4x25% asset percent split
     address[] public fromTokens = new address[](4);

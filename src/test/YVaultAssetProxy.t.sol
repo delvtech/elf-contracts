@@ -4,7 +4,7 @@ import "ds-test/test.sol";
 
 import "../interfaces/IERC20.sol";
 import "../interfaces/ERC20.sol";
-import "../interfaces/WETH.sol";
+import "../interfaces/IWETH.sol";
 
 import "../libraries/SafeMath.sol";
 import "../libraries/Address.sol";
@@ -13,10 +13,10 @@ import "../libraries/SafeERC20.sol";
 import "./AToken.sol";
 import "./ElfDeploy.sol";
 
-import "../assets/YdaiAsset.sol";
-import "../assets/YtusdAsset.sol";
-import "../assets/YusdcAsset.sol";
-import "../assets/YusdtAsset.sol";
+import "../assets/YdaiAssetProxy.sol";
+import "../assets/YtusdAssetProxy.sol";
+import "../assets/YusdcAssetProxy.sol";
+import "../assets/YusdtAssetProxy.sol";
 import "../pools/low/Elf.sol";
 
 interface Hevm {
@@ -29,7 +29,7 @@ interface Hevm {
     ) external;
 }
 
-contract BaseElfYVaultAssetTest is DSTest {
+contract YVaultAssetProxyTest is DSTest {
     Hevm hevm;
     WETH weth;
 
@@ -41,7 +41,7 @@ contract BaseElfYVaultAssetTest is DSTest {
 
     ALender lender1;
 
-    YdaiAsset ydaiAsset;
+    YdaiAssetProxy ydaiAsset;
 
     function setUp() public {
         // hevm "cheatcode", see: https://github.com/dapphub/dapptools/tree/master/src/hevm#cheat-codes

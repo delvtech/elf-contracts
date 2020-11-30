@@ -84,8 +84,6 @@ contract ElfDeploy {
         // allocator -> converter, price oracle
         // converter -> lender
 
-        allocator.setPriceOracle(address(priceOracle1));
-
         dai = new AToken(address(this));
         tusd = new AToken(address(this));
         usdc = new AToken(address(this));

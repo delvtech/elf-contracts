@@ -95,11 +95,6 @@ contract ElfAllocatorTest is DSTest {
         allocator.setPool(address(elf));
     }
 
-    // verify that this can only be changed by governance contract
-    function testFail_setPriceOracle() public {
-        allocator.setPriceOracle(address(elfDeploy.priceOracle1()));
-    }
-
     // Verify that allocations that don't sum to 100% fail when calling setAllocations
     function testFail_setAllocationPercent() public {
         elfDeploy.changeGovernance(address(this));

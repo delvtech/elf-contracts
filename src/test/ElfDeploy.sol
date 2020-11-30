@@ -16,7 +16,7 @@ import "./APriceOracle.sol";
 
 import "../assets/YVaultAssetProxy.sol";
 import "../Elf.sol";
-import "../proxy/ElfProxy.sol";
+import "../ElfProxy.sol";
 import "../ElfFactory.sol";
 
 contract ElfDeploy {

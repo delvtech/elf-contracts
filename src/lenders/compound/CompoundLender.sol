@@ -58,12 +58,12 @@ contract CompLender {
 
     constructor(address _allocator) public {
         //pre-set approvals
-        IERC20(COMP).approve(uniswapRouter, uint(-1));
-        IERC20(USDC).approve(address(cUSDC), uint(-1));
+        IERC20(COMP).approve(uniswapRouter, uint256(-1));
+        IERC20(USDC).approve(address(cUSDC), uint256(-1));
         allocator = _allocator;
     }
 
-    function getPrice() public view returns(uint) {
+    function getPrice() public view returns (uint256) {
         return FEED.getUnderlyingPrice(address(cETH));
     }
 
@@ -203,7 +203,7 @@ contract CompLender {
         require(cETH.redeemUnderlying(eth) == 0, "redeem failed");
 
         //  Wrap ETH
-        IWETH(WETH).deposit{value:eth}();
+        IWETH(WETH).deposit{value: eth}();
         IERC20(WETH).safeTransfer(allocator, eth);
     }
 
@@ -212,7 +212,7 @@ contract CompLender {
         return (700000000000000000 > borrowRatio);
     }
 
-     function shouldDrawCurrent() external returns (bool) {
+    function shouldDrawCurrent() external returns (bool) {
         uint256 borrowRatio = getCurrentRatio();
         return (700000000000000000 > borrowRatio);
     }
@@ -230,7 +230,6 @@ contract CompLender {
         uint256 borrowRatio = getCurrentRatio();
         return (800000000000000000 < borrowRatio);
     }
-
 
     function repay() external {
         uint256 borrowed = cUSDC.borrowBalanceCurrent(address(this));

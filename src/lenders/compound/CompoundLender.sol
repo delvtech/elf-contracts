@@ -94,7 +94,7 @@ contract CompLender {
         cETH.mint.value(eth)();
     }
 
-    function _drawUSDC() public {
+    function _drawUSDC() internal {
         (uint256 error, uint256 liquidity, ) = COMPOUND.getAccountLiquidity(
             address(this)
         );
@@ -119,8 +119,9 @@ contract CompLender {
         (uint256 error, uint256 liquidity, ) = COMPOUND.getAccountLiquidity(
             address(this)
         );
-        uint256 borrowed = cUSDC.borrowBalanceCurrent(address(this)).mul(1e12);
         require(error == 0, "error getting liquidity");
+
+        uint256 borrowed = cUSDC.borrowBalanceCurrent(address(this)).mul(1e12);
 
         // Get the total USD value of our borrowing power
         uint256 totalBorrowPower = liquidity.add(borrowed);
@@ -132,8 +133,9 @@ contract CompLender {
         (uint256 error, uint256 liquidity, ) = COMPOUND.getAccountLiquidity(
             address(this)
         );
-        uint256 borrowed = cUSDC.borrowBalanceStored(address(this)).mul(1e12);
         require(error == 0, "error getting liquidity");
+
+        uint256 borrowed = cUSDC.borrowBalanceStored(address(this)).mul(1e12);
 
         // Get the total USD value of our borrowing power
         uint256 totalBorrowPower = liquidity.add(borrowed);
@@ -163,6 +165,7 @@ contract CompLender {
     }
 
     function withdraw(uint256 eth) external {
+        require(msg.sender == allocator, "not allocator");
         _withdraw(eth);
         IERC20(WETH).safeTransfer(
             allocator,
@@ -201,7 +204,7 @@ contract CompLender {
 
         //  Wrap ETH
         IWETH(WETH).deposit{value:eth}();
-        IWETH(WETH).transfer(allocator, eth);
+        IERC20(WETH).safeTransfer(allocator, eth);
     }
 
     function shouldDraw() external view returns (bool) {

@@ -70,11 +70,6 @@ contract ElfContractsTest is DSTest {
     Elf public elf;
     ElfAllocator public allocator;
 
-    APriceOracle public priceOracle1;
-    APriceOracle public priceOracle2;
-    APriceOracle public priceOracle3;
-    APriceOracle public priceOracle4;
-
     User public user1;
     User public user2;
     User public user3;
@@ -117,11 +112,6 @@ contract ElfContractsTest is DSTest {
         allocator = _elfDeploy.allocator();
 
         _elfDeploy.config();
-
-        priceOracle1 = _elfDeploy.priceOracle1();
-        priceOracle2 = _elfDeploy.priceOracle2();
-        priceOracle3 = _elfDeploy.priceOracle3();
-        priceOracle4 = _elfDeploy.priceOracle4();
 
         // stablecoins
         dai = _elfDeploy.dai();

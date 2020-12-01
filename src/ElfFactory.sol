@@ -4,7 +4,7 @@ pragma solidity >=0.5.8 <0.8.0;
 import "./Elf.sol";
 
 contract ElfFactory {
-    event LOG_NEW_POOL(address indexed caller, address indexed pool);
+    event NewPool(address indexed caller, address indexed pool);
 
     mapping(address => bool) private _isPool;
 
@@ -19,7 +19,7 @@ contract ElfFactory {
         _pool.setGovernance(msg.sender);
         _allocator.setGovernance(msg.sender);
         _isPool[address(_pool)] = true;
-        emit LOG_NEW_POOL(msg.sender, address(_pool));
+        emit NewPool(msg.sender, address(_pool));
         return _pool;
     }
 }

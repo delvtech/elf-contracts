@@ -1,10 +1,10 @@
-pragma solidity ^0.6.7;
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity >=0.5.8 <0.8.0;
 
 import "ds-test/test.sol";
 
 import "../interfaces/IERC20.sol";
 import "../interfaces/ERC20.sol";
-import "../interfaces/WETH.sol";
 
 import "../libraries/SafeMath.sol";
 import "../libraries/Address.sol";
@@ -15,12 +15,12 @@ import "./ALender.sol";
 import "./AToken.sol";
 import "./APriceOracle.sol";
 import "./ElfDeploy.sol";
+import "./WETH.sol";
 
-import "../converter/ElementConverter.sol";
-import "../assets/YdaiAsset.sol";
-import "../assets/YtusdAsset.sol";
-import "../assets/YusdcAsset.sol";
-import "../assets/YusdtAsset.sol";
+import "../assets/YdaiAssetProxy.sol";
+import "../assets/YtusdAssetProxy.sol";
+import "../assets/YusdcAssetProxy.sol";
+import "../assets/YusdtAssetProxy.sol";
 import "../pools/low/Elf.sol";
 
 interface Hevm {
@@ -63,66 +63,88 @@ contract User {
     }
 
     // to be able to receive funds
-    receive() external payable {}
+    receive() external payable {} // solhint-disable-line no-empty-blocks
 }
 
 contract ElfContractsTest is DSTest {
-    Hevm hevm;
-    WETH weth;
+    Hevm public hevm;
+    WETH public weth;
 
-    Elf elf;
-    ElfStrategy strategy;
-    ElementConverter converter;
+    Elf public elf;
+    ElfAllocator public allocator;
 
-    ALender lender1;
-    APriceOracle priceOracle;
+    APriceOracle public priceOracle1;
+    APriceOracle public priceOracle2;
+    APriceOracle public priceOracle3;
+    APriceOracle public priceOracle4;
 
-    User user1;
-    User user2;
-    User user3;
+    User public user1;
+    User public user2;
+    User public user3;
 
-    AToken dai;
-    AToken tusd;
-    AToken usdc;
-    AToken usdt;
+    AToken public dai;
+    AToken public tusd;
+    AToken public usdc;
+    AToken public usdt;
 
-    AYVault ydai;
-    AYVault ytusd;
-    AYVault yusdc;
-    AYVault yusdt;
+    ALender public lender1;
+    ALender public lender2;
+    ALender public lender3;
+    ALender public lender4;
 
-    YdaiAsset ydaiAsset;
-    YtusdAsset ytusdAsset;
-    YusdcAsset yusdcAsset;
-    YusdtAsset yusdtAsset;
+    AYVault public ydai;
+    AYVault public ytusd;
+    AYVault public yusdc;
+    AYVault public yusdt;
+
+    YdaiAssetProxy public ydaiAsset;
+    YtusdAssetProxy public ytusdAsset;
+    YusdcAssetProxy public yusdcAsset;
+    YusdtAssetProxy public yusdtAsset;
 
     // for testing a basic 4x25% asset percent split
-    address[] fromTokens = new address[](4);
-    address[] toTokens = new address[](4);
-    uint256[] percents = new uint256[](4);
-    address[] assets = new address[](4);
-    uint256[] conversionType = new uint256[](4);
+    address[] public fromTokens = new address[](4);
+    address[] public toTokens = new address[](4);
+    uint256[] public percents = new uint256[](4);
+    address[] public assets = new address[](4);
+    uint256[] public conversionType = new uint256[](4);
 
     function setUp() public {
         // hevm "cheatcode", see: https://github.com/dapphub/dapptools/tree/master/src/hevm#cheat-codes
         hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
         ElfDeploy _elfDeploy = new ElfDeploy();
         _elfDeploy.init();
+
         weth = _elfDeploy.weth();
         elf = _elfDeploy.elf();
-        strategy = _elfDeploy.strategy();
-        converter = _elfDeploy.converter();
-        lender1 = _elfDeploy.lender();
-        priceOracle = _elfDeploy.priceOracle();
+        allocator = _elfDeploy.allocator();
+
         _elfDeploy.config();
+
+        priceOracle1 = _elfDeploy.priceOracle1();
+        priceOracle2 = _elfDeploy.priceOracle2();
+        priceOracle3 = _elfDeploy.priceOracle3();
+        priceOracle4 = _elfDeploy.priceOracle4();
+
+        // stablecoins
         dai = _elfDeploy.dai();
         tusd = _elfDeploy.tusd();
         usdc = _elfDeploy.usdc();
         usdt = _elfDeploy.usdt();
+
+        // lending contracts
+        lender1 = _elfDeploy.lender1();
+        lender2 = _elfDeploy.lender2();
+        lender3 = _elfDeploy.lender3();
+        lender4 = _elfDeploy.lender4();
+
+        // yvaults
         ydai = _elfDeploy.ydai();
         ytusd = _elfDeploy.ytusd();
         yusdc = _elfDeploy.yusdc();
         yusdt = _elfDeploy.yusdt();
+
+        // element asset proxies
         ydaiAsset = _elfDeploy.ydaiAsset();
         ytusdAsset = _elfDeploy.ytusdAsset();
         yusdcAsset = _elfDeploy.yusdcAsset();
@@ -152,6 +174,16 @@ contract ElfContractsTest is DSTest {
         );
     }
 
+    // verify that this can only be changed by governance contract
+    function testFail_setGovernance() public {
+        elf.setGovernance(address(this));
+    }
+
+    // verify that this can only be changed by governance contract
+    function testFail_setAllocator() public {
+        elf.setAllocator(address(allocator));
+    }
+
     function test_correctUserBalances() public {
         assertEq(weth.balanceOf(address(user1)), 1000 ether);
         assertEq(weth.balanceOf(address(user2)), 1000 ether);
@@ -159,192 +191,246 @@ contract ElfContractsTest is DSTest {
     }
 
     function test_depositingETH() public {
+        // initial balance
+        assertEq(address(user1).balance, 1000 ether);
+
         // deposit eth
         user1.call_depositETH(address(elf), 1 ether);
+        assertEq(address(user1).balance, 999 ether);
 
         // verify that weth made it all the way to the lender
         assertEq(weth.balanceOf(address(this)), 0 ether);
-        assertEq(weth.balanceOf(address(strategy)), 0 ether);
-        assertEq(weth.balanceOf(address(lender1)), 1 ether);
+        assertEq(weth.balanceOf(address(allocator)), 0 ether);
 
-        // verify that the dai asset and dai vault contain the expected balances
-        uint256 expectedTokenBalance = lender1.getLendingPrice(
-            address(weth),
-            address(dai)
-        ) * 250 finney;
-        assertEq(ydaiAsset.balance(), expectedTokenBalance); // NOTE: dai to ydai is 1:1
-        assertEq(IERC20(dai).balanceOf(address(ydai)), expectedTokenBalance);
+        assertEq(weth.balanceOf(address(lender1)), 0.25 ether);
+        assertEq(weth.balanceOf(address(lender2)), 0.25 ether);
+        assertEq(weth.balanceOf(address(lender3)), 0.25 ether);
+        assertEq(weth.balanceOf(address(lender4)), 0.25 ether);
 
-        // verify that the tusd asset and tusd vault contain the expected balances
-        expectedTokenBalance =
-            lender1.getLendingPrice(address(weth), address(tusd)) *
-            250 finney;
-        assertEq(ytusdAsset.balance(), expectedTokenBalance); // NOTE: tusd to ytusd is 1:1
-        assertEq(IERC20(tusd).balanceOf(address(ytusd)), expectedTokenBalance);
+        assertEq(weth.balanceOf(address(lender1)), 0.25 ether);
+        assertEq(ydaiAsset.vault().balanceOf(address(allocator)), 0.25 ether);
 
-        // verify that the usdc asset and usdc vault contain the expected balances
-        expectedTokenBalance =
-            lender1.getLendingPrice(address(weth), address(usdc)) *
-            250 finney;
-        assertEq(yusdcAsset.balance(), expectedTokenBalance); // NOTE: usdc to yusdc is 1:1
-        assertEq(IERC20(usdc).balanceOf(address(yusdc)), expectedTokenBalance);
+        assertEq(weth.balanceOf(address(lender2)), 0.25 ether);
+        assertEq(ytusdAsset.vault().balanceOf(address(allocator)), 0.25 ether);
 
-        // verify that the usdt asset and usdt vault contain the expected balances
-        expectedTokenBalance =
-            lender1.getLendingPrice(address(weth), address(usdt)) *
-            250 finney;
-        assertEq(yusdtAsset.balance(), expectedTokenBalance); // NOTE: usdt to yusdt is 1:1
-        assertEq(IERC20(usdt).balanceOf(address(yusdt)), expectedTokenBalance);
+        assertEq(weth.balanceOf(address(lender3)), 0.25 ether);
+        assertEq(yusdcAsset.vault().balanceOf(address(allocator)), 0.25 ether);
+
+        assertEq(weth.balanceOf(address(lender4)), 0.25 ether);
+        assertEq(yusdtAsset.vault().balanceOf(address(allocator)), 0.25 ether);
 
         // verify that the proper amount of elf was minted
         assertEq(elf.totalSupply(), 1 ether);
+
         // verify that the balance calculation matches the deposited eth
+        // under current conditions, the below line will always calculate 0
         assertEq(elf.balance(), 1 ether);
+        assertEq(weth.balanceOf(elf.allocator()), 0 ether);
+
+        // assert 0.25 ether at each lender
+        assertEq(weth.balanceOf(address(lender1)), 0.25 ether);
+        assertEq(weth.balanceOf(address(lender2)), 0.25 ether);
+        assertEq(weth.balanceOf(address(lender3)), 0.25 ether);
+        assertEq(weth.balanceOf(address(lender4)), 0.25 ether);
     }
 
     function test_depositingWETH() public {
+        // initial balance
+        assertEq(weth.balanceOf(address(user1)), 1000 ether);
+
         // deposit eth
         user1.approve(address(weth), address(elf));
         user1.call_deposit(address(elf), 1 ether);
+        assertEq(weth.balanceOf(address(user1)), 999 ether);
 
         // verify that weth made it all the way to the lender
         assertEq(weth.balanceOf(address(this)), 0 ether);
-        assertEq(weth.balanceOf(address(strategy)), 0 ether);
-        assertEq(weth.balanceOf(address(lender1)), 1 ether);
+        assertEq(weth.balanceOf(address(allocator)), 0 ether);
 
-        // verify that the dai asset and dai vault contain the expected balances
-        uint256 expectedTokenBalance = lender1.getLendingPrice(
-            address(weth),
-            address(dai)
-        ) * 250 finney;
-        assertEq(ydaiAsset.balance(), expectedTokenBalance);
+        assertEq(weth.balanceOf(address(lender1)), 0.25 ether);
+        assertEq(weth.balanceOf(address(lender2)), 0.25 ether);
+        assertEq(weth.balanceOf(address(lender3)), 0.25 ether);
+        assertEq(weth.balanceOf(address(lender4)), 0.25 ether);
 
-        // verify that the tusd asset and tusd vault contain the expected balances
-        expectedTokenBalance =
-            lender1.getLendingPrice(address(weth), address(tusd)) *
-            250 finney;
-        assertEq(ytusdAsset.balance(), expectedTokenBalance);
+        assertEq(weth.balanceOf(address(lender1)), 0.25 ether);
+        assertEq(ydaiAsset.vault().balanceOf(address(allocator)), 0.25 ether);
 
-        // verify that the usdc asset and usdc vault contain the expected balances
-        expectedTokenBalance =
-            lender1.getLendingPrice(address(weth), address(usdc)) *
-            250 finney;
-        assertEq(yusdcAsset.balance(), expectedTokenBalance);
+        assertEq(weth.balanceOf(address(lender2)), 0.25 ether);
+        assertEq(ytusdAsset.vault().balanceOf(address(allocator)), 0.25 ether);
 
-        // verify that the usdt asset and usdt vault contain the expected balances
-        expectedTokenBalance =
-            lender1.getLendingPrice(address(weth), address(usdt)) *
-            250 finney;
-        assertEq(yusdtAsset.balance(), expectedTokenBalance);
+        assertEq(weth.balanceOf(address(lender3)), 0.25 ether);
+        assertEq(yusdcAsset.vault().balanceOf(address(allocator)), 0.25 ether);
+
+        assertEq(weth.balanceOf(address(lender4)), 0.25 ether);
+        assertEq(yusdtAsset.vault().balanceOf(address(allocator)), 0.25 ether);
 
         // verify that the proper amount of elf was minted
         assertEq(elf.totalSupply(), 1 ether);
+
         // verify that the balance calculation matches the deposited eth
+        // under current conditions, the below line will always calculate 0
         assertEq(elf.balance(), 1 ether);
+        assertEq(weth.balanceOf(elf.allocator()), 0 ether);
+
+        // assert 0.25 ether at each lender
+        assertEq(weth.balanceOf(address(lender1)), 0.25 ether);
+        assertEq(weth.balanceOf(address(lender2)), 0.25 ether);
+        assertEq(weth.balanceOf(address(lender3)), 0.25 ether);
+        assertEq(weth.balanceOf(address(lender4)), 0.25 ether);
     }
 
     function test_multipleETHDeposits() public {
+        // verify starting balance
+        assertEq(address(user1).balance, 1000 ether);
+        assertEq(address(user2).balance, 1000 ether);
+        assertEq(address(user3).balance, 1000 ether);
+
         // Deposit 1
         user1.call_depositETH(address(elf), 1 ether);
+        assertEq(address(user1).balance, 999 ether);
+
         assertEq(elf.totalSupply(), 1 ether);
         assertEq(weth.balanceOf(address(this)), 0 ether);
-        assertEq(weth.balanceOf(address(strategy)), 0 ether);
-        assertEq(weth.balanceOf(address(lender1)), 1 ether);
-        uint256 expectedDaiBalance = lender1.getLendingPrice(
-            address(weth),
-            address(dai)
-        ) * 250 finney;
-        assertEq(ydaiAsset.balance(), expectedDaiBalance);
-        uint256 expectedTusdBalance = lender1.getLendingPrice(
-            address(weth),
-            address(tusd)
-        ) * 250 finney;
-        assertEq(ytusdAsset.balance(), expectedTusdBalance);
-        uint256 expectedUsdcBalance = lender1.getLendingPrice(
-            address(weth),
-            address(usdc)
-        ) * 250 finney;
-        assertEq(yusdcAsset.balance(), expectedUsdcBalance);
-        uint256 expectedUsdtBalance = lender1.getLendingPrice(
-            address(weth),
-            address(usdt)
-        ) * 250 finney;
-        assertEq(yusdtAsset.balance(), expectedUsdtBalance);
+        assertEq(weth.balanceOf(address(allocator)), 0 ether);
+
+        // ensure WETH is pushed to Lenders
+        assertEq(weth.balanceOf(address(lender1)), 0.25 ether);
+        assertEq(weth.balanceOf(address(lender2)), 0.25 ether);
+        assertEq(weth.balanceOf(address(lender3)), 0.25 ether);
+        assertEq(weth.balanceOf(address(lender4)), 0.25 ether);
+
+        // ensure assets hold borrowed assets
+        assertEq(ydaiAsset.vault().balanceOf(address(allocator)), 0.25 ether);
+        assertEq(ytusdAsset.vault().balanceOf(address(allocator)), 0.25 ether);
+        assertEq(yusdcAsset.vault().balanceOf(address(allocator)), 0.25 ether);
+        assertEq(yusdtAsset.vault().balanceOf(address(allocator)), 0.25 ether);
+
+        // this will never be anyone other than 0
         assertEq(elf.balance(), 1 ether);
         assertEq(elf.balanceOf(address(user1)), 1 ether);
 
         // Deposit 2
         user2.call_depositETH(address(elf), 1 ether);
+        assertEq(address(user1).balance, 999 ether);
+
         assertEq(elf.totalSupply(), 2 ether);
         assertEq(weth.balanceOf(address(this)), 0 ether);
-        assertEq(weth.balanceOf(address(strategy)), 0 ether);
-        assertEq(weth.balanceOf(address(lender1)), 2 ether);
-        expectedDaiBalance +=
-            lender1.getLendingPrice(address(weth), address(dai)) *
-            250 finney;
-        assertEq(ydaiAsset.balance(), expectedDaiBalance);
-        expectedTusdBalance +=
-            lender1.getLendingPrice(address(weth), address(tusd)) *
-            250 finney;
-        assertEq(ytusdAsset.balance(), expectedTusdBalance);
-        expectedUsdcBalance +=
-            lender1.getLendingPrice(address(weth), address(usdc)) *
-            250 finney;
-        assertEq(yusdcAsset.balance(), expectedUsdcBalance);
-        expectedUsdtBalance +=
-            lender1.getLendingPrice(address(weth), address(usdt)) *
-            250 finney;
-        assertEq(yusdtAsset.balance(), expectedUsdtBalance);
+        assertEq(weth.balanceOf(address(allocator)), 0 ether);
+
+        // ensure WETH is pushed to Lenders
+        assertEq(weth.balanceOf(address(lender1)), 0.5 ether);
+        assertEq(weth.balanceOf(address(lender2)), 0.5 ether);
+        assertEq(weth.balanceOf(address(lender3)), 0.5 ether);
+        assertEq(weth.balanceOf(address(lender4)), 0.5 ether);
+
+        // ensure assets hold borrowed assets
+        assertEq(ydaiAsset.vault().balanceOf(address(allocator)), 0.5 ether);
+        assertEq(ytusdAsset.vault().balanceOf(address(allocator)), 0.5 ether);
+        assertEq(yusdcAsset.vault().balanceOf(address(allocator)), 0.5 ether);
+        assertEq(yusdtAsset.vault().balanceOf(address(allocator)), 0.5 ether);
+
+        // this will never be anyone other than 0
         assertEq(elf.balance(), 2 ether);
-        assertEq(elf.balanceOf(address(user2)), 1 ether);
 
         // Deposit 3
-        user3.call_depositETH(address(elf), 1 ether);
+        user2.call_depositETH(address(elf), 1 ether);
+        assertEq(address(user1).balance, 999 ether);
+
         assertEq(elf.totalSupply(), 3 ether);
         assertEq(weth.balanceOf(address(this)), 0 ether);
-        assertEq(weth.balanceOf(address(strategy)), 0 ether);
-        assertEq(weth.balanceOf(address(lender1)), 3 ether);
-        expectedDaiBalance +=
-            lender1.getLendingPrice(address(weth), address(dai)) *
-            250 finney;
-        assertEq(ydaiAsset.balance(), expectedDaiBalance);
-        expectedTusdBalance +=
-            lender1.getLendingPrice(address(weth), address(tusd)) *
-            250 finney;
-        assertEq(ytusdAsset.balance(), expectedTusdBalance);
-        expectedUsdcBalance +=
-            lender1.getLendingPrice(address(weth), address(usdc)) *
-            250 finney;
-        assertEq(yusdcAsset.balance(), expectedUsdcBalance);
-        expectedUsdtBalance +=
-            lender1.getLendingPrice(address(weth), address(usdt)) *
-            250 finney;
-        assertEq(yusdtAsset.balance(), expectedUsdtBalance);
+        assertEq(weth.balanceOf(address(allocator)), 0 ether);
+
+        // ensure WETH is pushed to Lenders
+        assertEq(weth.balanceOf(address(lender1)), 0.75 ether);
+        assertEq(weth.balanceOf(address(lender2)), 0.75 ether);
+        assertEq(weth.balanceOf(address(lender3)), 0.75 ether);
+        assertEq(weth.balanceOf(address(lender4)), 0.75 ether);
+
+        // ensure assets hold borrowed assets
+        assertEq(ydaiAsset.vault().balanceOf(address(allocator)), 0.75 ether);
+        assertEq(ytusdAsset.vault().balanceOf(address(allocator)), 0.75 ether);
+        assertEq(yusdcAsset.vault().balanceOf(address(allocator)), 0.75 ether);
+        assertEq(yusdtAsset.vault().balanceOf(address(allocator)), 0.75 ether);
+
         assertEq(elf.balance(), 3 ether);
-        assertEq(elf.balanceOf(address(user3)), 1 ether);
     }
 
     function test_multipleWETHDeposits() public {
+        assertEq(weth.balanceOf(address(user1)), 1000 ether);
+        assertEq(weth.balanceOf(address(user2)), 1000 ether);
+        assertEq(weth.balanceOf(address(user3)), 1000 ether);
+
         // Deposit 1
         user1.approve(address(weth), address(elf));
         user1.call_deposit(address(elf), 1 ether);
+        assertEq(weth.balanceOf(address(user1)), 999 ether);
+
         assertEq(elf.totalSupply(), 1 ether);
+        assertEq(weth.balanceOf(address(this)), 0 ether);
+        assertEq(weth.balanceOf(address(allocator)), 0 ether);
+
+        // ensure WETH is pushed to Lenders
+        assertEq(weth.balanceOf(address(lender1)), 0.25 ether);
+        assertEq(weth.balanceOf(address(lender2)), 0.25 ether);
+        assertEq(weth.balanceOf(address(lender3)), 0.25 ether);
+        assertEq(weth.balanceOf(address(lender4)), 0.25 ether);
+
+        // ensure assets hold borrowed assets
+        assertEq(ydaiAsset.vault().balanceOf(address(allocator)), 0.25 ether);
+        assertEq(ytusdAsset.vault().balanceOf(address(allocator)), 0.25 ether);
+        assertEq(yusdcAsset.vault().balanceOf(address(allocator)), 0.25 ether);
+        assertEq(yusdtAsset.vault().balanceOf(address(allocator)), 0.25 ether);
+
         assertEq(elf.balance(), 1 ether);
         assertEq(elf.balanceOf(address(user1)), 1 ether);
 
         // Deposit 2
         user2.approve(address(weth), address(elf));
         user2.call_deposit(address(elf), 1 ether);
+        assertEq(weth.balanceOf(address(user2)), 999 ether);
+
         assertEq(elf.totalSupply(), 2 ether);
+        assertEq(weth.balanceOf(address(this)), 0 ether);
+        assertEq(weth.balanceOf(address(allocator)), 0 ether);
+
+        // ensure WETH is pushed to Lenders
+        assertEq(weth.balanceOf(address(lender1)), 0.5 ether);
+        assertEq(weth.balanceOf(address(lender2)), 0.5 ether);
+        assertEq(weth.balanceOf(address(lender3)), 0.5 ether);
+        assertEq(weth.balanceOf(address(lender4)), 0.5 ether);
+
+        // ensure assets hold borrowed assets
+        assertEq(ydaiAsset.vault().balanceOf(address(allocator)), 0.5 ether);
+        assertEq(ytusdAsset.vault().balanceOf(address(allocator)), 0.5 ether);
+        assertEq(yusdcAsset.vault().balanceOf(address(allocator)), 0.5 ether);
+        assertEq(yusdtAsset.vault().balanceOf(address(allocator)), 0.5 ether);
+
+        // this will never be anyone other than 0
         assertEq(elf.balance(), 2 ether);
-        assertEq(elf.balanceOf(address(user2)), 1 ether);
 
         // Deposit 3
         user3.approve(address(weth), address(elf));
         user3.call_deposit(address(elf), 1 ether);
+        assertEq(weth.balanceOf(address(user3)), 999 ether);
+
         assertEq(elf.totalSupply(), 3 ether);
+        assertEq(weth.balanceOf(address(this)), 0 ether);
+        assertEq(weth.balanceOf(address(allocator)), 0 ether);
+
+        // ensure WETH is pushed to Lenders
+        assertEq(weth.balanceOf(address(lender1)), 0.75 ether);
+        assertEq(weth.balanceOf(address(lender2)), 0.75 ether);
+        assertEq(weth.balanceOf(address(lender3)), 0.75 ether);
+        assertEq(weth.balanceOf(address(lender4)), 0.75 ether);
+
+        // ensure assets hold borrowed assets
+        assertEq(ydaiAsset.vault().balanceOf(address(allocator)), 0.75 ether);
+        assertEq(ytusdAsset.vault().balanceOf(address(allocator)), 0.75 ether);
+        assertEq(yusdcAsset.vault().balanceOf(address(allocator)), 0.75 ether);
+        assertEq(yusdtAsset.vault().balanceOf(address(allocator)), 0.75 ether);
+
+        // this will never be anyone other than 0
         assertEq(elf.balance(), 3 ether);
-        assertEq(elf.balanceOf(address(user3)), 1 ether);
     }
 
     function test_multipleWETHDepositsAndWithdraws() public {
@@ -352,53 +438,66 @@ contract ElfContractsTest is DSTest {
         assertEq(weth.balanceOf(address(user1)), 1000 ether);
         assertEq(weth.balanceOf(address(user2)), 1000 ether);
         assertEq(weth.balanceOf(address(user3)), 1000 ether);
-        uint256 startingLenderTokenBalance = 1000000000000000000000 ether;
-        assertEq(dai.balanceOf(address(lender1)), startingLenderTokenBalance);
-        assertEq(tusd.balanceOf(address(lender1)), startingLenderTokenBalance);
-        assertEq(usdc.balanceOf(address(lender1)), startingLenderTokenBalance);
-        assertEq(usdt.balanceOf(address(lender1)), startingLenderTokenBalance);
 
-        // 3 deposits
+        uint256 startingLenderTokenBalance = 10000000 ether;
+        assertEq(dai.balanceOf(address(lender1)), startingLenderTokenBalance);
+        assertEq(tusd.balanceOf(address(lender2)), startingLenderTokenBalance);
+        assertEq(usdc.balanceOf(address(lender3)), startingLenderTokenBalance);
+        assertEq(usdt.balanceOf(address(lender4)), startingLenderTokenBalance);
+
+        // 3 approvals
         user1.approve(address(weth), address(elf));
         user2.approve(address(weth), address(elf));
         user3.approve(address(weth), address(elf));
+
+        // 3 deposits
         user1.call_deposit(address(elf), 1 ether);
         user2.call_deposit(address(elf), 1 ether);
         user3.call_deposit(address(elf), 1 ether);
+
         assertEq(weth.balanceOf(address(user1)), 999 ether);
         assertEq(weth.balanceOf(address(user2)), 999 ether);
         assertEq(weth.balanceOf(address(user3)), 999 ether);
-        assertEq(elf.totalSupply(), 3 ether);
-        assertEq(weth.balanceOf(address(lender1)), 3 ether);
 
-        assertEq(
-            startingLenderTokenBalance - dai.balanceOf(address(lender1)),
-            ydaiAsset.balance()
-        );
-        assertEq(
-            startingLenderTokenBalance - tusd.balanceOf(address(lender1)),
-            ytusdAsset.balance()
-        );
-        assertEq(
-            startingLenderTokenBalance - usdc.balanceOf(address(lender1)),
-            yusdcAsset.balance()
-        );
-        assertEq(
-            startingLenderTokenBalance - usdt.balanceOf(address(lender1)),
-            yusdtAsset.balance()
-        );
+        assertEq(elf.totalSupply(), 3 ether);
+
+        assertEq(weth.balanceOf(address(lender1)), 0.75 ether);
+        assertEq(weth.balanceOf(address(lender2)), 0.75 ether);
+        assertEq(weth.balanceOf(address(lender3)), 0.75 ether);
+        assertEq(weth.balanceOf(address(lender4)), 0.75 ether);
+
+        assertEq(ydaiAsset.vault().balanceOf(address(allocator)), 0.75 ether);
+        assertEq(ytusdAsset.vault().balanceOf(address(allocator)), 0.75 ether);
+        assertEq(yusdcAsset.vault().balanceOf(address(allocator)), 0.75 ether);
+        assertEq(yusdtAsset.vault().balanceOf(address(allocator)), 0.75 ether);
+
+        assertEq(ydaiAsset.balance(), 0.75 ether);
+        assertEq(ytusdAsset.balance(), 0.75 ether);
+        assertEq(yusdcAsset.balance(), 0.75 ether);
+        assertEq(yusdtAsset.balance(), 0.75 ether);
+
+        assertEq(dai.balanceOf(address(ydaiAsset)), 0);
+        assertEq(dai.balanceOf(address(ytusdAsset)), 0);
+        assertEq(dai.balanceOf(address(yusdcAsset)), 0);
+        assertEq(dai.balanceOf(address(yusdtAsset)), 0);
 
         // 3 withdraws
         user1.call_withdraw(address(elf), 1 ether);
         user2.call_withdraw(address(elf), 1 ether);
         user3.call_withdraw(address(elf), 1 ether);
+
         assertEq(elf.totalSupply(), 0 ether);
-        assertEq(weth.balanceOf(address(strategy)), 0 ether);
+        assertEq(weth.balanceOf(address(allocator)), 0 ether);
+
         assertEq(weth.balanceOf(address(lender1)), 0 ether);
+        assertEq(weth.balanceOf(address(lender2)), 0 ether);
+        assertEq(weth.balanceOf(address(lender3)), 0 ether);
+        assertEq(weth.balanceOf(address(lender4)), 0 ether);
+
         assertEq(dai.balanceOf(address(lender1)), startingLenderTokenBalance);
-        assertEq(tusd.balanceOf(address(lender1)), startingLenderTokenBalance);
-        assertEq(usdc.balanceOf(address(lender1)), startingLenderTokenBalance);
-        assertEq(usdt.balanceOf(address(lender1)), startingLenderTokenBalance);
+        assertEq(tusd.balanceOf(address(lender2)), startingLenderTokenBalance);
+        assertEq(usdc.balanceOf(address(lender3)), startingLenderTokenBalance);
+        assertEq(usdt.balanceOf(address(lender4)), startingLenderTokenBalance);
 
         // validate ending balance
         assertEq(weth.balanceOf(address(user1)), 1000 ether);
@@ -411,49 +510,61 @@ contract ElfContractsTest is DSTest {
         assertEq(address(user1).balance, 1000 ether);
         assertEq(address(user2).balance, 1000 ether);
         assertEq(address(user3).balance, 1000 ether);
-        uint256 startingLenderTokenBalance = 1000000000000000000000 ether;
+
+        uint256 startingLenderTokenBalance = 10000000 ether;
         assertEq(dai.balanceOf(address(lender1)), startingLenderTokenBalance);
-        assertEq(tusd.balanceOf(address(lender1)), startingLenderTokenBalance);
-        assertEq(usdc.balanceOf(address(lender1)), startingLenderTokenBalance);
-        assertEq(usdt.balanceOf(address(lender1)), startingLenderTokenBalance);
+        assertEq(tusd.balanceOf(address(lender2)), startingLenderTokenBalance);
+        assertEq(usdc.balanceOf(address(lender3)), startingLenderTokenBalance);
+        assertEq(usdt.balanceOf(address(lender4)), startingLenderTokenBalance);
 
         // 3 deposits
         user1.call_depositETH(address(elf), 1 ether);
         user2.call_depositETH(address(elf), 1 ether);
         user3.call_depositETH(address(elf), 1 ether);
+
         assertEq(address(user1).balance, 999 ether);
         assertEq(address(user2).balance, 999 ether);
         assertEq(address(user3).balance, 999 ether);
+
         assertEq(elf.totalSupply(), 3 ether);
-        assertEq(weth.balanceOf(address(lender1)), 3 ether);
-        assertEq(
-            startingLenderTokenBalance - dai.balanceOf(address(lender1)),
-            ydaiAsset.balance()
-        );
-        assertEq(
-            startingLenderTokenBalance - tusd.balanceOf(address(lender1)),
-            ytusdAsset.balance()
-        );
-        assertEq(
-            startingLenderTokenBalance - usdc.balanceOf(address(lender1)),
-            yusdcAsset.balance()
-        );
-        assertEq(
-            startingLenderTokenBalance - usdt.balanceOf(address(lender1)),
-            yusdtAsset.balance()
-        );
+
+        assertEq(weth.balanceOf(address(lender1)), 0.75 ether);
+        assertEq(weth.balanceOf(address(lender2)), 0.75 ether);
+        assertEq(weth.balanceOf(address(lender3)), 0.75 ether);
+        assertEq(weth.balanceOf(address(lender4)), 0.75 ether);
+
+        assertEq(ydaiAsset.vault().balanceOf(address(allocator)), 0.75 ether);
+        assertEq(ytusdAsset.vault().balanceOf(address(allocator)), 0.75 ether);
+        assertEq(yusdcAsset.vault().balanceOf(address(allocator)), 0.75 ether);
+        assertEq(yusdtAsset.vault().balanceOf(address(allocator)), 0.75 ether);
+
+        assertEq(ydaiAsset.balance(), 0.75 ether);
+        assertEq(ytusdAsset.balance(), 0.75 ether);
+        assertEq(yusdcAsset.balance(), 0.75 ether);
+        assertEq(yusdtAsset.balance(), 0.75 ether);
+
+        assertEq(dai.balanceOf(address(ydaiAsset)), 0);
+        assertEq(dai.balanceOf(address(ytusdAsset)), 0);
+        assertEq(dai.balanceOf(address(yusdcAsset)), 0);
+        assertEq(dai.balanceOf(address(yusdtAsset)), 0);
 
         // 3 withdraws
         user1.call_withdrawETH(address(elf), 1 ether);
         user2.call_withdrawETH(address(elf), 1 ether);
         user3.call_withdrawETH(address(elf), 1 ether);
+
         assertEq(elf.totalSupply(), 0 ether);
-        assertEq(weth.balanceOf(address(strategy)), 0 ether);
+        assertEq(weth.balanceOf(address(allocator)), 0 ether);
+
         assertEq(weth.balanceOf(address(lender1)), 0 ether);
+        assertEq(weth.balanceOf(address(lender2)), 0 ether);
+        assertEq(weth.balanceOf(address(lender3)), 0 ether);
+        assertEq(weth.balanceOf(address(lender4)), 0 ether);
+
         assertEq(dai.balanceOf(address(lender1)), startingLenderTokenBalance);
-        assertEq(tusd.balanceOf(address(lender1)), startingLenderTokenBalance);
-        assertEq(usdc.balanceOf(address(lender1)), startingLenderTokenBalance);
-        assertEq(usdt.balanceOf(address(lender1)), startingLenderTokenBalance);
+        assertEq(tusd.balanceOf(address(lender2)), startingLenderTokenBalance);
+        assertEq(usdc.balanceOf(address(lender3)), startingLenderTokenBalance);
+        assertEq(usdt.balanceOf(address(lender4)), startingLenderTokenBalance);
 
         // validate ending balance
         assertEq(address(user1).balance, 1000 ether);
@@ -470,5 +581,5 @@ contract ElfContractsTest is DSTest {
     }
 
     // require for withdraw tests to work
-    receive() external payable {}
+    receive() external payable {} // solhint-disable-line no-empty-blocks
 }

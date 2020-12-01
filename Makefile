@@ -1,5 +1,5 @@
 all    :; clean build test
-build  :; dapp build
+build  :; dapp build --extract
 init   :; dapp update; npm install
 fmt    :; npm run prettier
 fmt-ci :; npm run style-check

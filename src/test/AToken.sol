@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.5.8 <0.8.0;
 
 import "../interfaces/IERC20.sol";
@@ -16,7 +17,7 @@ contract AToken is ERC20 {
         mint(sender, 1000000000000000000000000000000000000000);
     }
 
-    function mint(address account, uint256 amount) internal {
+    function mint(address account, uint256 amount) public {
         _mint(account, amount);
     }
 }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.5.16;
 
 library Address {
@@ -26,8 +27,8 @@ library Address {
             "Address: insufficient balance"
         );
 
-        // solhint-disable-next-line avoid-call-value
-        (bool success, ) = recipient.call.value(amount)("");
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, ) = recipient.call{value: amount}("");
         require(
             success,
             "Address: unable to send value, recipient may have reverted"

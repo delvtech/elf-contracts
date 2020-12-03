@@ -4,8 +4,8 @@ pragma solidity >=0.5.8 <0.8.0;
 import "ds-test/test.sol";
 
 import "../interfaces/IERC20.sol";
-import "../interfaces/ERC20.sol";
 
+import "../libraries/ERC20.sol";
 import "../libraries/SafeMath.sol";
 import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
@@ -17,11 +17,8 @@ import "./APriceOracle.sol";
 import "./ElfDeploy.sol";
 import "./WETH.sol";
 
-import "../assets/YdaiAssetProxy.sol";
-import "../assets/YtusdAssetProxy.sol";
-import "../assets/YusdcAssetProxy.sol";
-import "../assets/YusdtAssetProxy.sol";
-import "../pools/low/Elf.sol";
+import "../assets/YVaultAssetProxy.sol";
+import "../Elf.sol";
 
 interface Hevm {
     function warp(uint256) external;
@@ -73,11 +70,6 @@ contract ElfContractsTest is DSTest {
     Elf public elf;
     ElfAllocator public allocator;
 
-    APriceOracle public priceOracle1;
-    APriceOracle public priceOracle2;
-    APriceOracle public priceOracle3;
-    APriceOracle public priceOracle4;
-
     User public user1;
     User public user2;
     User public user3;
@@ -97,10 +89,10 @@ contract ElfContractsTest is DSTest {
     AYVault public yusdc;
     AYVault public yusdt;
 
-    YdaiAssetProxy public ydaiAsset;
-    YtusdAssetProxy public ytusdAsset;
-    YusdcAssetProxy public yusdcAsset;
-    YusdtAssetProxy public yusdtAsset;
+    YVaultAssetProxy public ydaiAsset;
+    YVaultAssetProxy public ytusdAsset;
+    YVaultAssetProxy public yusdcAsset;
+    YVaultAssetProxy public yusdtAsset;
 
     // for testing a basic 4x25% asset percent split
     address[] public fromTokens = new address[](4);
@@ -120,11 +112,6 @@ contract ElfContractsTest is DSTest {
         allocator = _elfDeploy.allocator();
 
         _elfDeploy.config();
-
-        priceOracle1 = _elfDeploy.priceOracle1();
-        priceOracle2 = _elfDeploy.priceOracle2();
-        priceOracle3 = _elfDeploy.priceOracle3();
-        priceOracle4 = _elfDeploy.priceOracle4();
 
         // stablecoins
         dai = _elfDeploy.dai();

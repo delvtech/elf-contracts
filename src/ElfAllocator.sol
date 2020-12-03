@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.5.8 <0.8.0;
 
-import "../../interfaces/IERC20.sol";
-import "../../interfaces/IBPool.sol";
+import "./interfaces/IERC20.sol";
+import "./interfaces/IBPool.sol";
 
-import "../../libraries/SafeMath.sol";
-import "../../libraries/Address.sol";
-import "../../libraries/SafeERC20.sol";
+import "./libraries/SafeMath.sol";
+import "./libraries/Address.sol";
+import "./libraries/SafeERC20.sol";
 
-import "../../lenders/interface/IElfLender.sol";
-import "../../assets/interface/IElfAssetProxy.sol";
-import "../../oracles/interface/IElfPriceOracle.sol";
+import "./lenders/interface/IElfLender.sol";
+import "./assets/interface/IElfAssetProxy.sol";
+import "./oracles/interface/IElfPriceOracle.sol";
 
 contract ElfAllocator {
     using SafeERC20 for IERC20;
@@ -28,11 +28,9 @@ contract ElfAllocator {
     }
 
     Allocation[] public allocations;
-    uint256 private _numAllocations;
 
     address public governance;
     address public pool;
-    address public priceOracle;
 
     /**
      * @dev modifier to only allow the governance contract to call the function.
@@ -64,10 +62,6 @@ contract ElfAllocator {
         pool = _pool;
     }
 
-    function setPriceOracle(address _priceOracle) public onlyGovernance {
-        priceOracle = _priceOracle;
-    }
-
     function setAllocations(
         address[] memory _fromToken,
         address[] memory _toToken,
@@ -94,12 +88,10 @@ contract ElfAllocator {
         }
 
         require(_totalAllocations == 100, "!100");
-
-        _numAllocations = numAllocations;
     }
 
     function getNumAllocations() external view returns (uint256) {
-        return _numAllocations;
+        return allocations.length;
     }
 
     function getAllocations()
@@ -114,12 +106,12 @@ contract ElfAllocator {
             uint256
         )
     {
-        address[] memory fromTokens = new address[](_numAllocations);
-        address[] memory toTokens = new address[](_numAllocations);
-        address[] memory lenders = new address[](_numAllocations);
-        uint256[] memory percents = new uint256[](_numAllocations);
-        address[] memory assets = new address[](_numAllocations);
-        for (uint256 i = 0; i < _numAllocations; i++) {
+        address[] memory fromTokens = new address[](allocations.length);
+        address[] memory toTokens = new address[](allocations.length);
+        address[] memory lenders = new address[](allocations.length);
+        uint256[] memory percents = new uint256[](allocations.length);
+        address[] memory assets = new address[](allocations.length);
+        for (uint256 i = 0; i < allocations.length; i++) {
             fromTokens[i] = allocations[i].fromToken;
             toTokens[i] = allocations[i].toToken;
             lenders[i] = allocations[i].lender;
@@ -132,12 +124,12 @@ contract ElfAllocator {
             lenders,
             percents,
             assets,
-            _numAllocations
+            allocations.length
         );
     }
 
     function allocate(uint256 _amount) public onlyPool {
-        for (uint256 i = 0; i < _numAllocations; i++) {
+        for (uint256 i = 0; i < allocations.length; i++) {
             uint256 _fromTokenAmount = _amount.mul(allocations[i].percent).div(
                 100
             );
@@ -164,7 +156,7 @@ contract ElfAllocator {
     }
 
     function deallocate(uint256 _amount) public onlyPool {
-        for (uint256 i = 0; i < _numAllocations; i++) {
+        for (uint256 i = 0; i < allocations.length; i++) {
             address vault = IElfAssetProxy(allocations[i].asset).vault();
             uint256 totalAssetAmount = IERC20(vault).balanceOf(address(this));
 
@@ -202,7 +194,7 @@ contract ElfAllocator {
 
     function balance() public view returns (uint256) {
         uint256 balances;
-        for (uint256 i = 0; i < _numAllocations; i++) {
+        for (uint256 i = 0; i < allocations.length; i++) {
             balances = balances.add(
                 IElfLender(allocations[i].lender).balances()
             );

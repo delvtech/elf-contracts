@@ -3,9 +3,9 @@ pragma solidity >=0.5.8 <0.8.0;
 import "ds-test/test.sol";
 
 import "../interfaces/IERC20.sol";
-import "../interfaces/ERC20.sol";
 import "../interfaces/IWETH.sol";
 
+import "../libraries/ERC20.sol";
 import "../libraries/SafeMath.sol";
 import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
@@ -13,11 +13,8 @@ import "../libraries/SafeERC20.sol";
 import "./AToken.sol";
 import "./ElfDeploy.sol";
 
-import "../assets/YdaiAssetProxy.sol";
-import "../assets/YtusdAssetProxy.sol";
-import "../assets/YusdcAssetProxy.sol";
-import "../assets/YusdtAssetProxy.sol";
-import "../pools/low/Elf.sol";
+import "../assets/YVaultAssetProxy.sol";
+import "../Elf.sol";
 
 interface Hevm {
     function warp(uint256) external;
@@ -41,7 +38,7 @@ contract YVaultAssetProxyTest is DSTest {
 
     ALender lender1;
 
-    YdaiAssetProxy ydaiAsset;
+    YVaultAssetProxy ydaiAsset;
 
     function setUp() public {
         // hevm "cheatcode", see: https://github.com/dapphub/dapptools/tree/master/src/hevm#cheat-codes

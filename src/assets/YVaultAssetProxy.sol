@@ -9,7 +9,7 @@ import "../libraries/SafeMath.sol";
 import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
 
-abstract contract YVaultAssetProxy {
+contract YVaultAssetProxy {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -24,12 +24,11 @@ abstract contract YVaultAssetProxy {
     address public secondary;
 
     constructor(
-        address _governance,
         address _allocator,
         address _vault,
         address _token
-    ) internal {
-        governance = _governance;
+    ) public {
+        governance = msg.sender;
         allocator = _allocator;
         vault = YearnVault(_vault);
         token = _token;

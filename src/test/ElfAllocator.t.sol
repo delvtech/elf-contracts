@@ -4,8 +4,8 @@ pragma solidity >=0.5.8 <0.8.0;
 import "ds-test/test.sol";
 
 import "../interfaces/IERC20.sol";
-import "../interfaces/ERC20.sol";
 
+import "../libraries/ERC20.sol";
 import "../libraries/SafeMath.sol";
 import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
@@ -14,11 +14,8 @@ import "./AToken.sol";
 import "./ElfDeploy.sol";
 import "./WETH.sol";
 
-import "../assets/YdaiAssetProxy.sol";
-import "../assets/YtusdAssetProxy.sol";
-import "../assets/YusdcAssetProxy.sol";
-import "../assets/YusdtAssetProxy.sol";
-import "../pools/low/Elf.sol";
+import "../assets/YVaultAssetProxy.sol";
+import "../Elf.sol";
 
 interface Hevm {
     function warp(uint256) external;
@@ -46,9 +43,9 @@ contract ElfAllocatorTest is DSTest {
     ALender public lender2;
     ALender public lender3;
 
-    YdaiAssetProxy public ydaiAsset;
-    YtusdAssetProxy public ytusdAsset;
-    YusdcAssetProxy public yusdcAsset;
+    YVaultAssetProxy public ydaiAsset;
+    YVaultAssetProxy public ytusdAsset;
+    YVaultAssetProxy public yusdcAsset;
 
     function setUp() public {
         // hevm "cheatcode", see: https://github.com/dapphub/dapptools/tree/master/src/hevm#cheat-codes
@@ -93,11 +90,6 @@ contract ElfAllocatorTest is DSTest {
     // verify that this can only be changed by governance contract
     function testFail_setPool() public {
         allocator.setPool(address(elf));
-    }
-
-    // verify that this can only be changed by governance contract
-    function testFail_setPriceOracle() public {
-        allocator.setPriceOracle(address(elfDeploy.priceOracle1()));
     }
 
     // Verify that allocations that don't sum to 100% fail when calling setAllocations

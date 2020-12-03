@@ -9,10 +9,11 @@ echo "ELF_DEPLOY=$ELF_DEPLOY_ADDRESS"
 echo ""
 
 echo "Deploying contracts..."
-seth --rpc-accounts send --gas 9000000 $ELF_DEPLOY_ADDRESS "init()"
+seth --rpc-accounts send --gas 100000000 $ELF_DEPLOY_ADDRESS "init()"
 
 echo ""
 
+echo "Get proxy address..."
 PROXY_ADDRESS=$(seth call $ELF_DEPLOY_ADDRESS "proxy()(address)")
 echo "PROXY=$PROXY_ADDRESS"
 

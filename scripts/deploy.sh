@@ -19,8 +19,11 @@ echo "PROXY=$PROXY_ADDRESS"
 ELF_ADDRESS=$(seth call $ELF_DEPLOY_ADDRESS "elf()(address)")
 echo "ELF=$ELF_ADDRESS"
 
-CONTRACT_ADDRESSES='{"ELF_DEPLOY":"%s","ELF_PROXY":"%s","ELF":"%s"}\n'
-printf "$CONTRACT_ADDRESSES" "$ELF_DEPLOY_ADDRESS" "$PROXY_ADDRESS" "$ELF_ADDRESS" > ./out/contracts.json
+WETH_ADDRESS=$(seth call $ELF_DEPLOY_ADDRESS "weth()(address)")
+echo "WETH=$WETH_ADDRESS"
+
+CONTRACT_ADDRESSES='{"ELF_DEPLOY":"%s","ELF_PROXY":"%s","ELF":"%s","WETH":"%s"}\n'
+printf "$CONTRACT_ADDRESSES" "$ELF_DEPLOY_ADDRESS" "$PROXY_ADDRESS" "$ELF_ADDRESS" "$WETH_ADDRESS"> ./out/contracts.json
 
 echo ""
 

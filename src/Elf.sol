@@ -44,6 +44,7 @@ contract Elf is ERC20 {
         return allocator;
     }
 
+    // Get the amount of ETH you will recieve if you were to return X shares to the pool
     function getBalanceUnderlyingPerShare(uint256 shares)
         public
         view
@@ -53,6 +54,7 @@ contract Elf is ERC20 {
         return shares.mul(balance).div(totalSupply());
     }
 
+    // Get the amount of shares you will recieve if you were to deposit X ETH to the pool
     function getExpectedSharesPerUnderlying(uint256 amount)
         public
         view

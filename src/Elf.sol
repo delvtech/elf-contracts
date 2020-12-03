@@ -44,6 +44,24 @@ contract Elf is ERC20 {
         return allocator;
     }
 
+    function getBalanceUnderlyingPerShare(uint256 shares)
+        public
+        view
+        returns (uint256)
+    {
+        uint256 balance = ElfAllocator(allocator).balance();
+        return shares.mul(balance).div(totalSupply());
+    }
+
+    function getExpectedSharesPerUnderlying(uint256 amount)
+        public
+        view
+        returns (uint256)
+    {
+        uint256 balance = ElfAllocator(allocator).balance();
+        return amount.mul(totalSupply()).div(balance);
+    }
+
     function _invest() internal {
         weth.safeTransfer(address(allocator), weth.balanceOf(address(this)));
         ElfAllocator(allocator).allocate(weth.balanceOf(allocator));
@@ -58,7 +76,7 @@ contract Elf is ERC20 {
         if (totalSupply() == 0) {
             _shares = _amount;
         } else {
-            _shares = (_amount.mul(totalSupply())).div(_pool);
+            _shares = getExpectedSharesPerUnderlying(_amount);
         }
         _mint(msg.sender, _shares);
         _invest();
@@ -73,7 +91,7 @@ contract Elf is ERC20 {
         if (totalSupply() == 0) {
             _shares = _amount;
         } else {
-            _shares = (_amount.mul(totalSupply())).div(_pool);
+            _shares = getExpectedSharesPerUnderlying(_amount);
         }
         _mint(sender, _shares);
         _invest();
@@ -87,7 +105,7 @@ contract Elf is ERC20 {
         if (totalSupply() == 0) {
             _shares = _amount;
         } else {
-            _shares = (_amount.mul(totalSupply())).div(_pool);
+            _shares = getExpectedSharesPerUnderlying(_amount);
         }
         _mint(msg.sender, _shares);
         _invest();
@@ -101,16 +119,15 @@ contract Elf is ERC20 {
         if (totalSupply() == 0) {
             _shares = _amount;
         } else {
-            _shares = (_amount.mul(totalSupply())).div(_pool);
+            _shares = getExpectedSharesPerUnderlying(_amount);
         }
         _mint(sender, _shares);
         _invest();
     }
 
     function withdraw(uint256 _shares) external {
-        uint256 r = (ElfAllocator(allocator).balance().mul(_shares)).div(
-            totalSupply()
-        );
+        uint256 r = getBalanceUnderlyingPerShare(_shares);
+
         _burn(msg.sender, _shares);
 
         ElfAllocator(allocator).deallocate(r);
@@ -120,9 +137,8 @@ contract Elf is ERC20 {
     }
 
     function withdrawFrom(address sender, uint256 _shares) external {
-        uint256 r = (ElfAllocator(allocator).balance().mul(_shares)).div(
-            totalSupply()
-        );
+        uint256 r = getBalanceUnderlyingPerShare(_shares);
+
         _burn(sender, _shares);
 
         ElfAllocator(allocator).deallocate(r);
@@ -132,9 +148,8 @@ contract Elf is ERC20 {
     }
 
     function withdrawETH(uint256 _shares) external {
-        uint256 r = (ElfAllocator(allocator).balance().mul(_shares)).div(
-            totalSupply()
-        );
+        uint256 r = getBalanceUnderlyingPerShare(_shares);
+
         _burn(msg.sender, _shares);
 
         ElfAllocator(allocator).deallocate(r);
@@ -145,9 +160,8 @@ contract Elf is ERC20 {
     }
 
     function withdrawETHFrom(address sender, uint256 _shares) external {
-        uint256 r = (ElfAllocator(allocator).balance().mul(_shares)).div(
-            totalSupply()
-        );
+        uint256 r = getBalanceUnderlyingPerShare(_shares);
+
         _burn(sender, _shares);
 
         ElfAllocator(allocator).deallocate(r);

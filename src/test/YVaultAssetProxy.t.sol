@@ -33,9 +33,9 @@ contract YVaultAssetProxyTest is DSTest {
     ElfDeploy elfDeploy;
     Elf elf;
 
-    AToken dai;
+    AToken usdc;
 
-    YVaultAssetProxy ydaiAsset;
+    YVaultAssetProxy yusdcAsset;
 
     function setUp() public {
         // hevm "cheatcode", see: https://github.com/dapphub/dapptools/tree/master/src/hevm#cheat-codes
@@ -43,17 +43,47 @@ contract YVaultAssetProxyTest is DSTest {
         elfDeploy = new ElfDeploy();
         elfDeploy.init();
 
-        weth = elfDeploy.weth();
         elf = elfDeploy.elf();
 
         elfDeploy.config();
 
         // stablecoins
-        dai = elfDeploy.dai();
+        usdc = elfDeploy.usdc();
+        usdc.mint(address(this), 10e6);
 
         // element asset proxies
-        ydaiAsset = elfDeploy.ydaiAsset();
-
-
+        yusdcAsset = elfDeploy.yusdcAsset();
     }
+
+    function test_setGovernance() public {
+        elfDeploy.changeGovernance(address(this));
+        assertTrue(yusdcAsset.governance() == address(this));
+    }
+
+    function test_setPool() public {
+        elfDeploy.changeGovernance(address(this));
+        yusdcAsset.setPool(address(elf));
+        assertTrue(address(elf) == yusdcAsset.pool());
+    }
+
+    function test_deposit() public {
+        elfDeploy.changeGovernance(address(this));
+        // Normally this will be the elf address but we do not care when just testing deposit here
+        yusdcAsset.setPool(address(this));
+        usdc.transfer(address(yusdcAsset), 1e6);
+        yusdcAsset.deposit();
+        assertEq(yusdcAsset.vault().balanceOf(address(this)), 1e6);
+    }
+
+    function test_withdraw() public {
+        elfDeploy.changeGovernance(address(this));
+        // Normally this will be the elf address but we do not care when just testing deposit here
+        yusdcAsset.setPool(address(this));
+        usdc.transfer(address(yusdcAsset), 1e6);
+        yusdcAsset.deposit();
+        yusdcAsset.vault().transfer(address(yusdcAsset), yusdcAsset.vault().balanceOf(address(this)));
+        yusdcAsset.withdraw();
+        assertEq(usdc.balanceOf(address(this)), 10e6);
+    }
+
 }

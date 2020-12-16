@@ -24,14 +24,14 @@ contract YVaultAssetProxy {
     address public secondary;
 
     constructor(
-        address _pool,
         address _vault,
         address _token
     ) public {
         governance = msg.sender;
-        pool = _pool;
+        pool = msg.sender;
         vault = YearnVault(_vault);
         token = IERC20(_token);
+        token.approve(_vault, uint256(-1));
     }
 
     function setGovernance(address _governance) external {
@@ -39,15 +39,9 @@ contract YVaultAssetProxy {
         governance = _governance;
     }
 
-    // Do we even want these to be configurable? I kinda think no
-    function setVault(address _vault) external {
+    function setPool(address _pool) external {
         require(msg.sender == governance, "!governance");
-        vault = YearnVault(_vault);
-    }
-
-    function setToken(address _token) external {
-        require(msg.sender == governance, "!governance");
-        token = IERC20(_token);
+        pool = _pool;
     }
 
     function deposit() external {

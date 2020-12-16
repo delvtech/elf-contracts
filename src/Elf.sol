@@ -21,7 +21,11 @@ contract Elf is ERC20 {
     IAssetProxy public proxy;
     address public governance;
 
-    constructor(address _token, address _vault, address _proxy) public ERC20("ELement Finance", "ELF") {
+    constructor(
+        address _token,
+        address _vault,
+        address _proxy
+    ) public ERC20("ELement Finance", "ELF") {
         governance = msg.sender;
         token = IERC20(_token);
         vault = IERC20(_vault);
@@ -42,7 +46,11 @@ contract Elf is ERC20 {
     }
 
     // Get the amount of the underlying asset a certain amount of shares is worth
-    function getSharesToUnderlying(uint256 shares) external view returns (uint256) {
+    function getSharesToUnderlying(uint256 shares)
+        external
+        view
+        returns (uint256)
+    {
         return proxy.underlying(shares);
     }
 
@@ -69,5 +77,4 @@ contract Elf is ERC20 {
 
         token.safeTransfer(sender, token.balanceOf(address(this)));
     }
-
 }

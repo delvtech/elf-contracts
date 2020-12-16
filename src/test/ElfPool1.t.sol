@@ -44,7 +44,11 @@ contract User {
         Elf(_obj).withdraw(address(this), _amount);
     }
 
-    function call_transfer(address _obj, address _guy, uint256 _amount) public {
+    function call_transfer(
+        address _obj,
+        address _guy,
+        uint256 _amount
+    ) public {
         IERC20(_obj).transfer(_guy, _amount);
     }
 
@@ -74,7 +78,6 @@ contract ElfContractsTest is DSTest {
         _elfDeploy = new ElfDeploy();
         _elfDeploy.init();
 
-        
         _elfDeploy.config();
 
         elf = _elfDeploy.elf();

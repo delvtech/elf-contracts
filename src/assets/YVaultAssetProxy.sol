@@ -23,10 +23,7 @@ contract YVaultAssetProxy {
     // address to redeposit vault shares
     address public secondary;
 
-    constructor(
-        address _vault,
-        address _token
-    ) public {
+    constructor(address _vault, address _token) public {
         governance = msg.sender;
         pool = msg.sender;
         vault = YearnVault(_vault);
@@ -53,7 +50,7 @@ contract YVaultAssetProxy {
 
     function withdraw() external {
         require(msg.sender == pool, "!pool");
-        
+
         vault.withdraw(vault.balanceOf(address(this)));
         token.safeTransfer(pool, token.balanceOf(address(this)));
     }

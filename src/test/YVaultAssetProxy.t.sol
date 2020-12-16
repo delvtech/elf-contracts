@@ -81,9 +81,11 @@ contract YVaultAssetProxyTest is DSTest {
         yusdcAsset.setPool(address(this));
         usdc.transfer(address(yusdcAsset), 1e6);
         yusdcAsset.deposit();
-        yusdcAsset.vault().transfer(address(yusdcAsset), yusdcAsset.vault().balanceOf(address(this)));
+        yusdcAsset.vault().transfer(
+            address(yusdcAsset),
+            yusdcAsset.vault().balanceOf(address(this))
+        );
         yusdcAsset.withdraw();
         assertEq(usdc.balanceOf(address(this)), 10e6);
     }
-
 }

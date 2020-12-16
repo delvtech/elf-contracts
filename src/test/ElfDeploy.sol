@@ -35,10 +35,7 @@ contract ElfDeploy {
         usdc = new AToken(address(this));
         yusdc = new AYVault(address(usdc));
         // each asset represents a wrapper around an associated vault
-        yusdcAsset = new YVaultAssetProxy(
-            address(yusdc),
-            address(usdc)
-        );
+        yusdcAsset = new YVaultAssetProxy(address(yusdc), address(usdc));
 
         elf = factory.newPool(address(usdc), address(yusdcAsset));
     }

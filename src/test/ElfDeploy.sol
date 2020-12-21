@@ -14,7 +14,6 @@ import "./WETH.sol";
 
 import "../assets/YVaultAssetProxy.sol";
 import "../Elf.sol";
-import "../ElfProxy.sol";
 import "../ElfFactory.sol";
 
 contract ElfDeploy {
@@ -28,6 +27,7 @@ contract ElfDeploy {
     YVaultAssetProxy public yusdcAsset;
 
     function init() public {
+        weth = new WETH();
         factory = new ElfFactory();
     }
 

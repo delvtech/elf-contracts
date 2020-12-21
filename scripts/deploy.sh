@@ -13,10 +13,10 @@ seth --rpc-accounts send --gas 100000000 $ELF_DEPLOY_ADDRESS "init()"
 
 echo ""
 
-echo "Get proxy address..."
-PROXY_ADDRESS=$(seth call $ELF_DEPLOY_ADDRESS "proxy()(address)")
-echo "PROXY=$PROXY_ADDRESS"
+echo "Configuring contracts..."
+seth --rpc-accounts send --gas 30000000 $ELF_DEPLOY_ADDRESS "config()"
 
+echo ""
 ELF_ADDRESS=$(seth call $ELF_DEPLOY_ADDRESS "elf()(address)")
 echo "ELF=$ELF_ADDRESS"
 
@@ -25,8 +25,3 @@ echo "WETH=$WETH_ADDRESS"
 
 CONTRACT_ADDRESSES='{"ELF_DEPLOY":"%s","ELF_PROXY":"%s","ELF":"%s","WETH":"%s"}\n'
 printf "$CONTRACT_ADDRESSES" "$ELF_DEPLOY_ADDRESS" "$PROXY_ADDRESS" "$ELF_ADDRESS" "$WETH_ADDRESS"> ./out/contracts.json
-
-echo ""
-
-echo "Configuring contracts..."
-seth --rpc-accounts send --gas 30000000 $ELF_DEPLOY_ADDRESS "config()"

@@ -32,10 +32,12 @@ contract Elf is ERC20 {
         proxy = IAssetProxy(_proxy);
     }
 
+    // This tells us how many vault tokens the pool owns
     function balance() external view returns (uint256) {
         return vault.balanceOf(address(this));
     }
 
+    // This tells us how many of the underlying tokens the pool owns which are in the vault
     function balanceUnderlying() external view returns (uint256) {
         return proxy.underlying(vault.balanceOf(address(this)));
     }

@@ -2,6 +2,7 @@
 pragma solidity >=0.5.8 <0.8.0;
 
 import "./Elf.sol";
+import "./assets/interface/IAssetProxy.sol";
 
 contract ElfFactory {
     event NewPool(address indexed caller, address indexed pool);
@@ -12,12 +13,10 @@ contract ElfFactory {
         return _isPool[p];
     }
 
-    function newPool(address payable _weth) external returns (Elf) {
-        Elf _pool = new Elf(_weth);
-        ElfAllocator _allocator = new ElfAllocator(address(_pool), _weth);
-        _pool.setAllocator(payable(_allocator));
+    function newPool(address token, address proxy) external returns (Elf) {
+        IAssetProxy _proxy = IAssetProxy(proxy);
+        Elf _pool = new Elf(token, _proxy.vault(), address(_proxy));
         _pool.setGovernance(msg.sender);
-        _allocator.setGovernance(msg.sender);
         _isPool[address(_pool)] = true;
         emit NewPool(msg.sender, address(_pool));
         return _pool;

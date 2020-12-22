@@ -32,13 +32,10 @@ contract YVaultAssetProxyTest is DSTest {
 
     ElfDeploy elfDeploy;
     Elf elf;
-    ElfAllocator allocator;
 
-    AToken dai;
+    AToken usdc;
 
-    ALender lender1;
-
-    YVaultAssetProxy ydaiAsset;
+    YVaultAssetProxy yusdcAsset;
 
     function setUp() public {
         // hevm "cheatcode", see: https://github.com/dapphub/dapptools/tree/master/src/hevm#cheat-codes
@@ -46,101 +43,49 @@ contract YVaultAssetProxyTest is DSTest {
         elfDeploy = new ElfDeploy();
         elfDeploy.init();
 
-        weth = elfDeploy.weth();
         elf = elfDeploy.elf();
-        allocator = elfDeploy.allocator();
 
         elfDeploy.config();
 
         // stablecoins
-        dai = elfDeploy.dai();
-
-        // lending contracts
-        lender1 = elfDeploy.lender1();
+        usdc = elfDeploy.usdc();
+        usdc.mint(address(this), 10e6);
 
         // element asset proxies
-        ydaiAsset = elfDeploy.ydaiAsset();
-
-        payable(this).transfer(1000 ether);
-        hevm.store(
-            address(weth),
-            keccak256(abi.encode(address(this), uint256(3))), // Mint user 1 1000 WETH
-            bytes32(uint256(1000 ether))
-        );
+        yusdcAsset = elfDeploy.yusdcAsset();
     }
 
-    // verify that this can only be changed by governance contract
-    function testFail_setGovernance() public {
-        ydaiAsset.setGovernance(address(this));
-    }
-
-    // verify that this can only be changed by governance contract
-    function testFail_setAllocator() public {
-        ydaiAsset.setAllocator(address(allocator));
-    }
-
-    // verify that this can only be changed by governance contract
-    function testFail_setVault() public {
-        ydaiAsset.setVault(address(elfDeploy.ydai()));
-    }
-
-    // verify that this can only be changed by governance contract
-    function testFail_setToken() public {
-        ydaiAsset.setToken(address(elfDeploy.dai()));
-    }
-
-    function testFail_notAllowedToCallDeposit() public {
-        // set vault so the test should pass ONLY if the correct address calls deposit
+    function test_setGovernance() public {
         elfDeploy.changeGovernance(address(this));
-        ydaiAsset.setVault(address(elfDeploy.ydai()));
-        //ensure the asset proxy has enough of the base asset to transfer to vault
-        dai.mint(address(ydaiAsset), 10000000 ether);
-        //this should FAIL bc the calling address is not the allocator
-        ydaiAsset.deposit(100);
+        assertTrue(yusdcAsset.governance() == address(this));
+    }
+
+    function test_setPool() public {
+        elfDeploy.changeGovernance(address(this));
+        yusdcAsset.setPool(address(elf));
+        assertTrue(address(elf) == yusdcAsset.pool());
     }
 
     function test_deposit() public {
         elfDeploy.changeGovernance(address(this));
-        ydaiAsset.setVault(address(elfDeploy.ydai()));
-        ydaiAsset.setAllocator(address(this));
-        //ensure the asset proxy has enough of the base asset to transfer to vault
-        dai.mint(address(ydaiAsset), 10000000 ether);
-        //this should PASS bc the calling address is the allocator
-        ydaiAsset.deposit(100);
-    }
-
-    function testFail_notAllowedToCallWithdraw() public {
-        // configure test to not throw exception for deposit
-        elfDeploy.changeGovernance(address(this));
-        ydaiAsset.setVault(address(elfDeploy.ydai()));
-        ydaiAsset.setAllocator(address(this));
-        //ensure the asset proxy has enough of the base asset to transfer to vault
-        dai.mint(address(ydaiAsset), 10000000 ether);
-        //this should PASS bc the calling address is not the allocator
-        ydaiAsset.deposit(100);
-        // this should cause withdraw() to fail since the calling contract is not the allocator
-        ydaiAsset.setAllocator(address(allocator));
-        // transfer vault shares to asset proxy
-        elfDeploy.ydai().transfer(address(ydaiAsset), 100);
-        // withdraw base asset
-        ydaiAsset.withdraw(100, address(this));
+        // Normally this will be the elf address but we do not care when just testing deposit here
+        yusdcAsset.setPool(address(this));
+        usdc.transfer(address(yusdcAsset), 1e6);
+        yusdcAsset.deposit();
+        assertEq(yusdcAsset.vault().balanceOf(address(this)), 1e6);
     }
 
     function test_withdraw() public {
-        // configure test to not throw exception for deposit or withdraw
         elfDeploy.changeGovernance(address(this));
-        ydaiAsset.setVault(address(elfDeploy.ydai()));
-        ydaiAsset.setAllocator(address(this));
-        //ensure the asset proxy has enough of the base asset to transfer to vault
-        dai.mint(address(ydaiAsset), 10000000 ether);
-        //this should PASS bc the calling address is not the allocator
-        ydaiAsset.deposit(100);
-
-        // transfer vault shares to asset proxy
-        elfDeploy.ydai().transfer(address(ydaiAsset), 100);
-        // withdraw base asset
-        ydaiAsset.withdraw(100, address(this));
+        // Normally this will be the elf address but we do not care when just testing deposit here
+        yusdcAsset.setPool(address(this));
+        usdc.transfer(address(yusdcAsset), 1e6);
+        yusdcAsset.deposit();
+        yusdcAsset.vault().transfer(
+            address(yusdcAsset),
+            yusdcAsset.vault().balanceOf(address(this))
+        );
+        yusdcAsset.withdraw();
+        assertEq(usdc.balanceOf(address(this)), 10e6);
     }
-
-    receive() external payable {}
 }

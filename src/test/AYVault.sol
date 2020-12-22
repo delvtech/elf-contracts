@@ -2,7 +2,7 @@
 pragma solidity >=0.5.8 <0.8.0;
 
 import "../interfaces/IERC20.sol";
-import "../interfaces/YearnVault.sol";
+import "../interfaces/YearnVaultV1.sol";
 
 import "../libraries/ERC20.sol";
 import "../libraries/SafeMath.sol";
@@ -15,6 +15,7 @@ contract AYVault is ERC20 {
     using SafeMath for uint256;
 
     address public token;
+    uint256 internal shares = 1e18;
 
     constructor(address _token) public ERC20("a ytoken", "yToken") {
         token = _token;
@@ -47,7 +48,7 @@ contract AYVault is ERC20 {
         IERC20(token).safeTransfer(msg.sender, _amount);
     }
 
-    function getPricePerFullShare() external pure returns (uint256) {
-        return 1;
+    function getPricePerFullShare() external view returns (uint256) {
+        return shares;
     }
 }

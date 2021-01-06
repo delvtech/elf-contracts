@@ -4,8 +4,6 @@ pragma solidity >=0.5.8 <0.8.0;
 interface IElf {
     function balance() external view returns (uint256);
 
-    function setGovernance(address _governance) external;
-
     function setAllocator(address payable _allocator) external;
 
     function getAllocator() external view returns (address payable);

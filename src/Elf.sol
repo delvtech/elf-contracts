@@ -19,14 +19,12 @@ contract Elf is ERC20 {
     IERC20 public token;
     IERC20 public vault;
     IAssetProxy public proxy;
-    address public governance;
 
     constructor(
         address _token,
         address _vault,
         address _proxy
     ) public ERC20("ELement Finance", "ELF") {
-        governance = msg.sender;
         token = IERC20(_token);
         vault = IERC20(_vault);
         proxy = IAssetProxy(_proxy);
@@ -40,11 +38,6 @@ contract Elf is ERC20 {
     // This tells us how many of the underlying tokens the pool owns which are in the vault
     function balanceUnderlying() external view returns (uint256) {
         return proxy.underlying(vault.balanceOf(address(this)));
-    }
-
-    function setGovernance(address _governance) external {
-        require(msg.sender == governance, "!governance");
-        governance = _governance;
     }
 
     // Get the amount of the underlying asset a certain amount of shares is worth

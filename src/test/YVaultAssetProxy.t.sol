@@ -55,30 +55,17 @@ contract YVaultAssetProxyTest is DSTest {
         yusdcAsset = elfDeploy.yusdcAsset();
     }
 
-    function test_setGovernance() public {
-        elfDeploy.changeGovernance(address(this));
-        assertTrue(yusdcAsset.governance() == address(this));
-    }
-
-    function test_setPool() public {
-        elfDeploy.changeGovernance(address(this));
-        yusdcAsset.setPool(address(elf));
-        assertTrue(address(elf) == yusdcAsset.pool());
-    }
-
     function test_deposit() public {
-        elfDeploy.changeGovernance(address(this));
-        // Normally this will be the elf address but we do not care when just testing deposit here
-        yusdcAsset.setPool(address(this));
+        // Normally this will be the elf address but we update temporarily to run the test
+        hevm.store(address(yusdcAsset), bytes32(uint256(2)), bytes32(uint256(address(this))));
         usdc.transfer(address(yusdcAsset), 1e6);
         yusdcAsset.deposit();
         assertEq(yusdcAsset.vault().balanceOf(address(this)), 1e6);
     }
 
     function test_withdraw() public {
-        elfDeploy.changeGovernance(address(this));
-        // Normally this will be the elf address but we do not care when just testing deposit here
-        yusdcAsset.setPool(address(this));
+        // Normally this will be the elf address but we update temporarily to run the test
+        hevm.store(address(yusdcAsset), bytes32(uint256(2)), bytes32(uint256(address(this))));
         usdc.transfer(address(yusdcAsset), 1e6);
         yusdcAsset.deposit();
         yusdcAsset.vault().transfer(

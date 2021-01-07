@@ -59,7 +59,7 @@ contract YVaultAssetProxyTest is DSTest {
         // Normally this will be the elf address but we update temporarily to run the test
         hevm.store(
             address(yusdcAsset),
-            bytes32(uint256(2)),
+            bytes32(uint256(3)),
             bytes32(uint256(address(this)))
         );
         usdc.transfer(address(yusdcAsset), 1e6);
@@ -71,7 +71,7 @@ contract YVaultAssetProxyTest is DSTest {
         // Normally this will be the elf address but we update temporarily to run the test
         hevm.store(
             address(yusdcAsset),
-            bytes32(uint256(2)),
+            bytes32(uint256(3)),
             bytes32(uint256(address(this)))
         );
         usdc.transfer(address(yusdcAsset), 1e6);

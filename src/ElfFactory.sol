@@ -10,10 +10,7 @@ contract ElfFactory is CloneFactory {
     address public masterAssetProxy;
     address public masterElf;
 
-    event PoolCloneCreated(
-        address indexed caller,
-        address indexed pool
-    );
+    event PoolCloneCreated(address indexed caller, address indexed pool);
 
     mapping(address => bool) private _isPool;
 

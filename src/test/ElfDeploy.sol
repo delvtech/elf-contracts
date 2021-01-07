@@ -34,14 +34,8 @@ contract ElfDeploy {
     function config() public {
         usdc = new AToken(address(this));
         yusdc = new AYVault(address(usdc));
-        // each asset represents a wrapper around an associated vault
-        yusdcAsset = new YVaultAssetProxy(address(yusdc), address(usdc));
 
-        elf = factory.newPool(address(usdc), address(yusdcAsset));
-    }
-
-    function changeGovernance(address _governance) public {
-        yusdcAsset.setGovernance(_governance);
-        elf.setGovernance(_governance);
+        elf = factory.newPool(address(usdc), address(yusdc));
+        yusdcAsset = YVaultAssetProxy(address(elf.proxy()));
     }
 }

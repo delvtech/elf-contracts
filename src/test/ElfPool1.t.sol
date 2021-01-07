@@ -98,21 +98,8 @@ contract ElfContractsTest is DSTest {
         user3.approve(address(usdc), address(elf));
     }
 
-    // verify that this can only be changed by governance contract
-    function testFail_setGovernance() public {
-        elf.setGovernance(address(this));
-    }
-
-    function test_setGovernance() public {
-        _elfDeploy.changeGovernance(address(this));
-        assertTrue(elf.governance() == address(this));
-    }
 
     function test_depositAndWithdraw() public {
-        _elfDeploy.changeGovernance(address(this));
-        assertTrue(elf.governance() == address(this));
-        yusdcAsset.setPool(address(elf));
-
         // Test deposits
         user1.call_deposit(address(elf), 1e6);
         assertEq(elf.balanceOf(address(user1)), 1e6);
@@ -152,10 +139,6 @@ contract ElfContractsTest is DSTest {
     }
 
     function test_balance() public {
-        _elfDeploy.changeGovernance(address(this));
-        assertTrue(elf.governance() == address(this));
-        yusdcAsset.setPool(address(elf));
-
         user1.call_deposit(address(elf), 1e6);
         assertEq(elf.balanceOf(address(user1)), 1e6);
 
@@ -163,10 +146,6 @@ contract ElfContractsTest is DSTest {
     }
 
     function test_balanceUnderlying() public {
-        _elfDeploy.changeGovernance(address(this));
-        assertTrue(elf.governance() == address(this));
-        yusdcAsset.setPool(address(elf));
-
         user1.call_deposit(address(elf), 1e6);
         assertEq(elf.balanceOf(address(user1)), 1e6);
 

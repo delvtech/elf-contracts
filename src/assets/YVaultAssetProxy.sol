@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.5.8 <0.8.0;
 
+import "../ElfFactoryAuthority.sol";
+
 import "../interfaces/IERC20.sol";
 import "../interfaces/YearnVaultV1.sol";
 import "../interfaces/IBPool.sol";
@@ -9,7 +11,7 @@ import "../libraries/SafeMath.sol";
 import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
 
-contract YVaultAssetProxy {
+contract YVaultAssetProxy is ElfFactoryAuthority {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -23,17 +25,16 @@ contract YVaultAssetProxy {
     // address to redeposit vault shares
     address public secondary;
 
-    constructor(address _vault, address _token) public {
+    function initializeProxy(
+        address _vault,
+        address _token,
+        address _pool
+    ) external onlyFactory {
         acl = msg.sender;
-        pool = msg.sender;
+        pool = _pool;
         vault = YearnVault(_vault);
         token = IERC20(_token);
         token.approve(_vault, uint256(-1));
-    }
-
-    function setPool(address _pool) external {
-        require(msg.sender == acl, "!acl");
-        pool = _pool;
     }
 
     function deposit() external {

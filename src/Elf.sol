@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.5.8 <0.8.0;
 
+import "./ElfFactoryAuthority.sol"; 
+
 import "./interfaces/IERC20.sol";
 import "./interfaces/IWETH.sol";
 
-import "./libraries/ERC20.sol";
+import "./libraries/ERC20Mod.sol";
 import "./libraries/SafeMath.sol";
 import "./libraries/Address.sol";
 import "./libraries/SafeERC20.sol";
 
 import "./assets/interface/IAssetProxy.sol";
 
-contract Elf is ERC20 {
+contract Elf is ERC20Mod, ElfFactoryAuthority {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -20,14 +22,20 @@ contract Elf is ERC20 {
     IERC20 public vault;
     IAssetProxy public proxy;
 
-    constructor(
+    constructor() public{
+        initialize(address(0xcafebabe));
+    }
+
+    function initializeElf(      
         address _token,
         address _vault,
         address _proxy
-    ) public ERC20("ELement Finance", "ELF") {
+    ) external onlyFactory {
+        this.initializeToken("ELement Finance", "ELF");
         token = IERC20(_token);
         vault = IERC20(_vault);
         proxy = IAssetProxy(_proxy);
+
     }
 
     // This tells us how many vault tokens the pool owns

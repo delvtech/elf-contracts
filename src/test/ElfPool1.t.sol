@@ -98,7 +98,6 @@ contract ElfContractsTest is DSTest {
         user3.approve(address(usdc), address(elf));
     }
 
-
     function test_depositAndWithdraw() public {
         // Test deposits
         user1.call_deposit(address(elf), 1e6);

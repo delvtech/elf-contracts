@@ -6,7 +6,6 @@ import "./assets/interface/IAssetProxy.sol";
 import "./assets/YVaultAssetProxy.sol";
 
 contract ElfFactory {
-
     event NewPool(address indexed caller, address indexed pool);
 
     mapping(address => bool) private _isPool;

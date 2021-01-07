@@ -18,20 +18,20 @@ contract YVaultAssetProxy {
     YearnVault public vault;
 
     address public pool;
-    address public acl;
+    address public accessControl;
 
     // address to redeposit vault shares
     address public secondary;
 
     constructor(address _vault, address _token) public {
-        acl = msg.sender;
+        accessControl = msg.sender;
         vault = YearnVault(_vault);
         token = IERC20(_token);
         token.approve(_vault, uint256(-1));
     }
 
     function setPool(address _pool) external {
-        require(msg.sender == acl, "!acl");
+        require(msg.sender == accessControl, "!accessControl");
         pool = _pool;
     }
 

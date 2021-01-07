@@ -25,7 +25,6 @@ contract YVaultAssetProxy {
 
     constructor(address _vault, address _token) public {
         acl = msg.sender;
-        pool = msg.sender;
         vault = YearnVault(_vault);
         token = IERC20(_token);
         token.approve(_vault, uint256(-1));

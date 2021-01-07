@@ -16,6 +16,7 @@ import "../assets/YVaultAssetProxy.sol";
 import "../Elf.sol";
 import "../ElfFactory.sol";
 
+
 contract ElfDeploy {
     WETH public weth;
 
@@ -28,7 +29,12 @@ contract ElfDeploy {
 
     function init() public {
         weth = new WETH();
-        factory = new ElfFactory();
+        Elf masterElf = new Elf();
+        YVaultAssetProxy masterProxy = new YVaultAssetProxy();
+        factory = new ElfFactory(
+            address(masterProxy), 
+            address(masterElf)
+        );
     }
 
     function config() public {

@@ -144,7 +144,10 @@ contract ElfContractsTest is DSTest {
         uint256 user1Bal = elf.balanceOf(address(user1));
         uint256 user3Bal = elf.balanceOf(address(user3));
         user3.call_transfer(address(elf), address(user1), user3Bal / 2);
-        assertEq(elf.balanceOf(address(user1)).add(elf.balanceOf(address(user3))), user1Bal.add(user3Bal));
+        assertEq(
+            elf.balanceOf(address(user1)).add(elf.balanceOf(address(user3))),
+            user1Bal.add(user3Bal)
+        );
 
         // Test withdraws
         uint256 toWithdraw = 1000000;
@@ -166,7 +169,10 @@ contract ElfContractsTest is DSTest {
         user3.call_withdraw(address(elf), elf.balanceOf(address(user3)));
         assertEq(elf.balanceOf(address(user3)), 0);
 
-        uint256 totalUSDC = usdc.balanceOf(address(user1)).add(usdc.balanceOf(address(user2))).add(usdc.balanceOf(address(user3)));
+        uint256 totalUSDC = usdc
+            .balanceOf(address(user1))
+            .add(usdc.balanceOf(address(user2)))
+            .add(usdc.balanceOf(address(user3)));
         assertTrue(totalUSDC.add(5) >= 1e12); //adding a bit for dusty trx
     }
 

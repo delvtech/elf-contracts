@@ -2,6 +2,8 @@
 pragma solidity >=0.5.8 <0.8.0;
 
 interface YearnVault {
+    function earn() external;
+
     function deposit(uint256) external;
 
     function withdraw(uint256) external;

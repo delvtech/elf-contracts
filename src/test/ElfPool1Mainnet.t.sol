@@ -136,10 +136,6 @@ contract ElfContractsTest is DSTest {
          * User 3: 60,000 USDC deposited
          */
 
-        // wait 2 days
-        hevm.warp(now + 2 days);
-        hevm.roll(block.number + 13333);
-
         // Test a transfer
         uint256 user1Bal = elf.balanceOf(address(user1));
         uint256 user3Bal = elf.balanceOf(address(user3));

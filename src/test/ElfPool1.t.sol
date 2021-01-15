@@ -129,6 +129,8 @@ contract ElfContractsTest is DSTest {
          * User 3: 6 USDC deposited
          */
 
+        yusdc.updateShares();
+
         // Test a transfer
         user3.call_transfer(address(elf), address(user1), 5e6);
         assertEq(elf.balanceOf(address(user1)), 7e6);
@@ -136,19 +138,21 @@ contract ElfContractsTest is DSTest {
         // Test withdraws
         user1.call_withdraw(address(elf), 1e6);
         assertEq(elf.balanceOf(address(user1)), 6e6);
-        assertEq(usdc.balanceOf(address(user1)), 5e6);
 
         user1.call_withdraw(address(elf), elf.balanceOf(address(user1)));
         assertEq(elf.balanceOf(address(user1)), 0);
-        assertEq(usdc.balanceOf(address(user1)), 11e6);
 
         user2.call_withdraw(address(elf), elf.balanceOf(address(user2)));
         assertEq(elf.balanceOf(address(user2)), 0);
-        assertEq(usdc.balanceOf(address(user2)), 6e6);
 
         user3.call_withdraw(address(elf), elf.balanceOf(address(user3)));
         assertEq(elf.balanceOf(address(user3)), 0);
-        assertEq(usdc.balanceOf(address(user3)), 1e6);
+
+        // make sure we got all our USDC back and then the extra from an increased pricePerFullShare
+        uint256 totalBal = usdc.balanceOf(address(user3)) +
+            usdc.balanceOf(address(user2)) +
+            usdc.balanceOf(address(user1));
+        assertEq(totalBal, 19000000);
     }
 
     function test_balance() public {

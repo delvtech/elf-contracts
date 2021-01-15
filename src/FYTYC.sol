@@ -38,7 +38,7 @@ contract FYTYC {
     YC public yc;
     Elf public elf;
 
-    // Total value underlying value locked in the contract. This
+    // Total underlying value locked in the contract. This
     // does not include interest.
     uint256 internal _valueSupplied;
 
@@ -48,7 +48,6 @@ contract FYTYC {
     /**
     @param _elfContract The Elf contract to use.
     @param _lockDuration The lock duration (seconds).
-    @dev stores the number in the state variable `storedData`
      */
     constructor(address _elfContract, uint256 _lockDuration) public {
         fyt = new FYT(address(this));
@@ -59,7 +58,7 @@ contract FYTYC {
 
     /**
     @notice Deposit ELF tokens and receive FYT and YC ERC20 tokens.
-            If interest has already been accrued by the assets
+            If interest has already been accrued by the
             ELF tokens held in this contract, the number
             of FYT tokens minted is reduced in order to pay for the accrued interest.
     @param _shares The number of ELF tokens to deposit.

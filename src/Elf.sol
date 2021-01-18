@@ -4,14 +4,14 @@ pragma solidity >=0.5.8 <0.8.0;
 import "./interfaces/IERC20.sol";
 import "./interfaces/IWETH.sol";
 
-import "./libraries/ERC20.sol";
+import "./libraries/ERC20Permit.sol";
 import "./libraries/SafeMath.sol";
 import "./libraries/Address.sol";
 import "./libraries/SafeERC20.sol";
 
 import "./assets/interface/IAssetProxy.sol";
 
-contract Elf is ERC20 {
+contract Elf is ERC20Permit {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -25,7 +25,7 @@ contract Elf is ERC20 {
         address _token,
         address _vault,
         address _proxy
-    ) public ERC20("ELement Finance", "ELF") {
+    ) public ERC20("ELement Finance", "ELF") ERC20Permit("ELement Finance") {
         governance = msg.sender;
         token = IERC20(_token);
         vault = IERC20(_vault);

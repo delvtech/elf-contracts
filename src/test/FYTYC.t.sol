@@ -66,7 +66,6 @@ contract FYTYCTest is DSTest {
     ElfStub public elfStub;
     FYTYC public fytyc;
     IERC20 public yc;
-    IERC20 public fyt;
 
     User public user1;
     User public user2;
@@ -86,7 +85,6 @@ contract FYTYCTest is DSTest {
         elfStub = new ElfStub();
         fytyc = new FYTYC(address(elfStub), lockDuration);
         yc = fytyc.yc();
-        fyt = fytyc.fyt();
 
         // 2 mock users
         user1 = new User();
@@ -117,12 +115,12 @@ contract FYTYCTest is DSTest {
 
         assertEq(yc.balanceOf(address(user1)), initialBalance);
         assertEq(
-            fyt.balanceOf(address(user1)),
+            fytyc.balanceOf(address(user1)),
             initialBalance.mul(initialUnderlying)
         );
         assertEq(yc.balanceOf(address(user2)), initialBalance);
         assertEq(
-            fyt.balanceOf(address(user2)),
+            fytyc.balanceOf(address(user2)),
             initialBalance.mul(initialUnderlying)
         );
         assertEq(elfStub.balanceOf(address(user1)), 0);
@@ -143,12 +141,12 @@ contract FYTYCTest is DSTest {
         // given the same ELF token input, the user should always gain the same FYT output.
         assertEq(yc.balanceOf(address(user1)), initialBalance);
         assertEq(
-            fyt.balanceOf(address(user1)),
+            fytyc.balanceOf(address(user1)),
             initialBalance.mul(initialUnderlying)
         );
         assertEq(yc.balanceOf(address(user2)), initialBalance);
         assertEq(
-            fyt.balanceOf(address(user2)),
+            fytyc.balanceOf(address(user2)),
             initialBalance.mul(initialUnderlying)
         );
     }
@@ -159,8 +157,8 @@ contract FYTYCTest is DSTest {
 
         hevm.warp(timestamp + lockDuration);
 
-        user1.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user1)));
-        user2.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user2)));
+        user1.call_withdraw_fyt(fytyc, fytyc.balanceOf(address(user1)));
+        user2.call_withdraw_fyt(fytyc, fytyc.balanceOf(address(user2)));
 
         assertEq(elfStub.balanceOf(address(user1)), initialBalance);
         assertEq(elfStub.balanceOf(address(user2)), initialBalance);
@@ -182,8 +180,8 @@ contract FYTYCTest is DSTest {
             initialUnderlying.add(initialUnderlying.mul(20).div(100))
         );
 
-        user1.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user1)));
-        user2.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user2)));
+        user1.call_withdraw_fyt(fytyc, fytyc.balanceOf(address(user1)));
+        user2.call_withdraw_fyt(fytyc, fytyc.balanceOf(address(user2)));
 
         // given the same ELF token input, the user should always gain the same FYT output.
         assertEq(
@@ -238,14 +236,14 @@ contract FYTYCTest is DSTest {
         hevm.warp(timestamp + lockDuration);
         user1.call_withdraw_yc(fytyc, yc.balanceOf(address(user1)));
         user2.call_withdraw_yc(fytyc, yc.balanceOf(address(user2)));
-        user1.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user1)));
-        user2.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user2)));
+        user1.call_withdraw_fyt(fytyc, fytyc.balanceOf(address(user1)));
+        user2.call_withdraw_fyt(fytyc, fytyc.balanceOf(address(user2)));
 
         assertEq(
             elfStub.balanceOf(address(user1)),
             elfStub.balanceOf(address(user2))
         );
-        assertEq(fyt.totalSupply(), 0);
+        assertEq(fytyc.totalSupply(), 0);
         assertEq(yc.totalSupply(), 0);
         assertEq(elfStub.balanceOf(address(fytyc)), 0);
     }
@@ -256,8 +254,8 @@ contract FYTYCTest is DSTest {
 
         hevm.warp(timestamp + lockDuration);
 
-        user1.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user1)));
-        user2.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user2)));
+        user1.call_withdraw_fyt(fytyc, fytyc.balanceOf(address(user1)));
+        user2.call_withdraw_fyt(fytyc, fytyc.balanceOf(address(user2)));
         user1.call_withdraw_yc(fytyc, yc.balanceOf(address(user1)));
         user2.call_withdraw_yc(fytyc, yc.balanceOf(address(user2)));
 
@@ -265,7 +263,7 @@ contract FYTYCTest is DSTest {
             elfStub.balanceOf(address(user1)),
             elfStub.balanceOf(address(user2))
         );
-        assertEq(fyt.totalSupply(), 0);
+        assertEq(fytyc.totalSupply(), 0);
         assertEq(yc.totalSupply(), 0);
         assertEq(elfStub.balanceOf(address(fytyc)), 0);
     }
@@ -283,15 +281,15 @@ contract FYTYCTest is DSTest {
 
         user1.call_withdraw_yc(fytyc, yc.balanceOf(address(user1)));
         user2.call_withdraw_yc(fytyc, yc.balanceOf(address(user2)));
-        user1.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user1)));
-        user2.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user2)));
+        user1.call_withdraw_fyt(fytyc, fytyc.balanceOf(address(user1)));
+        user2.call_withdraw_fyt(fytyc, fytyc.balanceOf(address(user2)));
 
         // given the same ELF token input, the user should always gain the same FYT output.
         assertEq(
             elfStub.balanceOf(address(user1)),
             elfStub.balanceOf(address(user2))
         );
-        assertEq(fyt.totalSupply(), 0);
+        assertEq(fytyc.totalSupply(), 0);
         assertEq(yc.totalSupply(), 0);
         assertEq(elfStub.balanceOf(address(fytyc)), 0);
     }
@@ -307,8 +305,8 @@ contract FYTYCTest is DSTest {
 
         hevm.warp(timestamp + lockDuration);
 
-        user1.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user1)));
-        user2.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user2)));
+        user1.call_withdraw_fyt(fytyc, fytyc.balanceOf(address(user1)));
+        user2.call_withdraw_fyt(fytyc, fytyc.balanceOf(address(user2)));
         user1.call_withdraw_yc(fytyc, yc.balanceOf(address(user1)));
         user2.call_withdraw_yc(fytyc, yc.balanceOf(address(user2)));
 
@@ -317,7 +315,7 @@ contract FYTYCTest is DSTest {
             elfStub.balanceOf(address(user1)),
             elfStub.balanceOf(address(user2))
         );
-        assertEq(fyt.totalSupply(), 0);
+        assertEq(fytyc.totalSupply(), 0);
         assertEq(yc.totalSupply(), 0);
         assertEq(elfStub.balanceOf(address(fytyc)), 0);
     }
@@ -335,12 +333,12 @@ contract FYTYCTest is DSTest {
             elfStub.balanceOf(address(user1)),
             elfStub.balanceOf(address(user2))
         );
-        user1.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user1)));
-        user2.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user2)));
+        user1.call_withdraw_fyt(fytyc, fytyc.balanceOf(address(user1)));
+        user2.call_withdraw_fyt(fytyc, fytyc.balanceOf(address(user2)));
         user1.call_withdraw_yc(fytyc, yc.balanceOf(address(user1)));
         user2.call_withdraw_yc(fytyc, yc.balanceOf(address(user2)));
         assertEq(yc.totalSupply(), 0);
-        assertEq(fyt.totalSupply(), 0);
+        assertEq(fytyc.totalSupply(), 0);
     }
 
     function test_withdraw_all_negative_interest_2() public {
@@ -358,10 +356,10 @@ contract FYTYCTest is DSTest {
         );
         user1.call_withdraw_yc(fytyc, yc.balanceOf(address(user1)));
         user2.call_withdraw_yc(fytyc, yc.balanceOf(address(user2)));
-        user1.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user1)));
-        user2.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user2)));
+        user1.call_withdraw_fyt(fytyc, fytyc.balanceOf(address(user1)));
+        user2.call_withdraw_fyt(fytyc, fytyc.balanceOf(address(user2)));
 
         assertEq(yc.totalSupply(), 0);
-        assertEq(fyt.totalSupply(), 0);
+        assertEq(fytyc.totalSupply(), 0);
     }
 }

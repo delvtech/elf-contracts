@@ -7,7 +7,6 @@ import "./libraries/SafeMath.sol";
 import "./libraries/Address.sol";
 import "./libraries/SafeERC20.sol";
 
-import "./assets/FYT.sol";
 import "./assets/YC.sol";
 
 interface Elf {
@@ -29,12 +28,11 @@ interface Elf {
     ) external returns (bool);
 }
 
-contract FYTYC {
+contract FYTYC is ERC20 {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
 
-    FYT public fyt;
     YC public yc;
     Elf public elf;
 
@@ -49,8 +47,10 @@ contract FYTYC {
     @param _elfContract The Elf contract to use.
     @param _lockDuration The lock duration (seconds).
      */
-    constructor(address _elfContract, uint256 _lockDuration) public {
-        fyt = new FYT(address(this));
+    constructor(address _elfContract, uint256 _lockDuration)
+        public
+        ERC20("Fixed Yield Token", "FYT")
+    {
         yc = new YC(address(this));
         elf = Elf(_elfContract);
         unlockTimestamp = block.timestamp.add(_lockDuration);
@@ -73,7 +73,7 @@ contract FYTYC {
 
         elf.transferFrom(msg.sender, address(this), _shares);
         yc.mint(msg.sender, _shares);
-        fyt.mint(msg.sender, depositValue);
+        _mint(msg.sender, depositValue);
     }
 
     /**
@@ -84,11 +84,11 @@ contract FYTYC {
         require(block.timestamp >= unlockTimestamp, "not expired yet");
 
         uint256 withdrawable = _underlyingValueLocked().sub(_currentInterest());
-        uint256 owed = withdrawable.mul(_amount).div(fyt.totalSupply());
+        uint256 owed = withdrawable.mul(_amount).div(totalSupply());
 
         _valueSupplied = _valueSupplied.sub(owed);
 
-        fyt.burn(msg.sender, _amount);
+        _burn(msg.sender, _amount);
         elf.transfer(msg.sender, _underlyingToElf(owed));
     }
 
@@ -133,8 +133,7 @@ contract FYTYC {
         if (_underlyingValueLocked() == 0) {
             return 0;
         }
-        return
-            _amount.div(elf.getSharesToUnderlying(1));
+        return _amount.div(elf.getSharesToUnderlying(1));
     }
 
     /**

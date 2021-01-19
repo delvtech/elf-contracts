@@ -134,9 +134,7 @@ contract FYTYC {
             return 0;
         }
         return
-            elf.balanceOf(address(this)).mul(_amount).div(
-                _underlyingValueLocked()
-            );
+            _amount.div(elf.getSharesToUnderlying(1));
     }
 
     /**

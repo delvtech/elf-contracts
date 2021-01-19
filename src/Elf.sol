@@ -11,6 +11,8 @@ import "./libraries/SafeERC20.sol";
 
 import "./assets/interface/IAssetProxy.sol";
 
+/// @author Element Finance
+/// @title Elf Core
 contract Elf is ERC20Permit {
     using SafeERC20 for IERC20;
     using Address for address;
@@ -32,51 +34,64 @@ contract Elf is ERC20Permit {
         proxy = IAssetProxy(_proxy);
     }
 
-    // This tells us how many vault tokens the pool owns
+    /// @notice Returns how many vault tokens the pool owns
+    /// @return balance of vault in vault share tokens
     function balance() external view returns (uint256) {
         return vault.balanceOf(address(this));
     }
 
-    // This tells us how many of the underlying tokens the pool owns which are in the vault
+    /// @notice Returns how many of the underlying tokens the pool owns which are in the vault
+    /// @return balance of vault in underlying asset
     function balanceUnderlying() external view returns (uint256) {
         return proxy.underlying(vault.balanceOf(address(this)));
     }
 
+    /// @notice Update the governance address
+    /// @param _governance new governance address
     function setGovernance(address _governance) external {
         require(msg.sender == governance, "!governance");
         governance = _governance;
     }
 
-    // Get the amount of the underlying asset a certain amount of shares is worth
-    function getSharesToUnderlying(uint256 shares)
+    /// @notice Returns the amount of the underlying asset a certain amount of shares is worth
+    /// @param _shares to calculate underlying value for 
+    /// @return the value of underlying assets for the given shares 
+    function getSharesToUnderlying(uint256 _shares)
         external
         view
         returns (uint256)
     {
-        return proxy.underlying(shares);
+        return proxy.underlying(_shares);
     }
 
-    function deposit(address sender, uint256 amount) external {
+    /// @notice Entry point to deposit tokens into the Elf contract
+    /// @param _sender the address of the user who is depositing
+    /// @param _amount the amount of underlying tokens to deposit
+    /// @dev we take the sender here to allow for msg.sender to be a relayer or proxy
+    function deposit(address _sender, uint256 _amount) external {
         // Send tokens to the proxy
-        token.safeTransferFrom(sender, address(proxy), amount);
+        token.safeTransferFrom(_sender, address(proxy), _amount);
 
         // Trigger deposit and calc how many shares we got from the deposit
-        uint256 _before = vault.balanceOf(address(this));
+        uint256 before = vault.balanceOf(address(this));
         proxy.deposit();
-        uint256 _shares = vault.balanceOf(address(this)).sub(_before);
+        uint256 shares = vault.balanceOf(address(this)).sub(before);
 
         // We now have vault tokens equal to the users share
-        _mint(sender, _shares);
+        _mint(sender, shares);
     }
 
-    function withdraw(address sender, uint256 shares) external {
+    /// @notice Exit point to withdraw tokens from the Elf contract
+    /// @param _sender the address of the user who is withdrawing
+    /// @param _shares the amount of shares the user is burning to withdraw underlying
+    function withdraw(address _sender, uint256 _shares) external {
         // Burn users ELF shares
-        _burn(sender, shares);
+        _burn(_sender, _shares);
 
         // Withdraw that many shares from the vault
-        vault.safeTransfer(address(proxy), shares);
+        vault.safeTransfer(address(proxy), _shares);
         proxy.withdraw();
 
-        token.safeTransfer(sender, token.balanceOf(address(this)));
+        token.safeTransfer(_sender, token.balanceOf(address(this)));
     }
 }

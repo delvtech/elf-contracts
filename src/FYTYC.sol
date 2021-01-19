@@ -43,7 +43,7 @@ contract FYTYC {
     uint256 internal _valueSupplied;
 
     // The timestamp when FYTs and YCs can be withdrawn.
-    uint256 internal _unlockTimestamp;
+    uint256 public unlockTimestamp;
 
     /**
     @param _elfContract The Elf contract to use.
@@ -53,7 +53,7 @@ contract FYTYC {
         fyt = new FYT(address(this));
         yc = new YC(address(this));
         elf = Elf(_elfContract);
-        _unlockTimestamp = block.timestamp.add(_lockDuration);
+        unlockTimestamp = block.timestamp.add(_lockDuration);
     }
 
     /**
@@ -64,7 +64,7 @@ contract FYTYC {
     @param _shares The number of ELF tokens to deposit.
      */
     function deposit(uint256 _shares) external {
-        require(block.timestamp < _unlockTimestamp, "expired");
+        require(block.timestamp < unlockTimestamp, "expired");
 
         uint256 depositValue = elf.getSharesToUnderlying(_shares).sub(
             _interestOwed(_shares)
@@ -81,7 +81,7 @@ contract FYTYC {
     @param _amount The number of FYT tokens to burn.
      */
     function withdrawFyt(uint256 _amount) external {
-        require(block.timestamp >= _unlockTimestamp, "not expired yet");
+        require(block.timestamp >= unlockTimestamp, "not expired yet");
 
         uint256 withdrawable = _underlyingValueLocked().sub(_currentInterest());
         uint256 owed = withdrawable.mul(_amount).div(fyt.totalSupply());
@@ -97,7 +97,7 @@ contract FYTYC {
     @param _amount The number of YC tokens to burn.
      */
     function withdrawYc(uint256 _amount) external {
-        require(block.timestamp >= _unlockTimestamp, "not expired yet");
+        require(block.timestamp >= unlockTimestamp, "not expired yet");
         uint256 underlyingOwed = _currentInterest().mul(_amount).div(
             yc.totalSupply()
         );

@@ -11,8 +11,6 @@ import "../libraries/SafeMath.sol";
 import "../FYTYC.sol";
 
 interface Hevm {
-    function roll(uint256) external;
-
     function warp(uint256) external;
 
     function store(
@@ -142,9 +140,7 @@ contract FYTYCTest is DSTest {
 
         user2.call_deposit(fytyc, initialBalance);
 
-        // user1 and user2 should have the exact same number of FYT and YC tokens.
-        // This behavior is desired and means that as long as a user holds
-        // their ELF token, ther
+        // given the same ELF token input, the user should always gain the same FYT output.
         assertEq(yc.balanceOf(address(user1)), initialBalance);
         assertEq(
             fyt.balanceOf(address(user1)),
@@ -189,7 +185,6 @@ contract FYTYCTest is DSTest {
         user1.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user1)));
         user2.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user2)));
 
-        // If the math is correct, there should be a property that
         // given the same ELF token input, the user should always gain the same FYT output.
         assertEq(
             elfStub.balanceOf(address(user1)),
@@ -229,9 +224,7 @@ contract FYTYCTest is DSTest {
         user1.call_withdraw_yc(fytyc, yc.balanceOf(address(user1)));
         user2.call_withdraw_yc(fytyc, yc.balanceOf(address(user2)));
 
-        // If the math is correct, there should be a property that
-        // given the same ELF token input, the user should always
-        // have the same YC token amount.
+        // given the same ELF token input, the user should always gain the same FYT output.
         assertEq(
             elfStub.balanceOf(address(user1)),
             elfStub.balanceOf(address(user2))
@@ -293,7 +286,6 @@ contract FYTYCTest is DSTest {
         user1.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user1)));
         user2.call_withdraw_fyt(fytyc, fyt.balanceOf(address(user2)));
 
-        // If the math is correct, there should be a property that
         // given the same ELF token input, the user should always gain the same FYT output.
         assertEq(
             elfStub.balanceOf(address(user1)),
@@ -320,7 +312,6 @@ contract FYTYCTest is DSTest {
         user1.call_withdraw_yc(fytyc, yc.balanceOf(address(user1)));
         user2.call_withdraw_yc(fytyc, yc.balanceOf(address(user2)));
 
-        // If the math is correct, there should be a property that
         // given the same ELF token input, the user should always gain the same FYT output.
         assertEq(
             elfStub.balanceOf(address(user1)),

@@ -10,7 +10,7 @@ import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
 
 /// @author Element Finance
-/// @Title Yearn Vault v1 Asset Proxy
+/// @title Yearn Vault v1 Asset Proxy
 contract YVaultAssetProxy {
     using SafeERC20 for IERC20;
     using Address for address;
@@ -64,7 +64,7 @@ contract YVaultAssetProxy {
     /// @param _amount the amount of shares you want to know the value of
     /// @return value of shares in underlying token
     function underlying(uint256 _amount) external view returns (uint256) {
-        return vault.getPricePerFullShare().mul(amount).div(1e18);
+        return vault.getPricePerFullShare().mul(_amount).div(1e18);
     }
 
     /// @notice Function to reset approvals for the proxy

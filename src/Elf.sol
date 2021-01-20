@@ -78,7 +78,7 @@ contract Elf is ERC20Permit {
         uint256 shares = vault.balanceOf(address(this)).sub(before);
 
         // We now have vault tokens equal to the users share
-        _mint(sender, shares);
+        _mint(_sender, shares);
     }
 
     /// @notice Exit point to withdraw tokens from the Elf contract

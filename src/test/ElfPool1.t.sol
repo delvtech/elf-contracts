@@ -56,6 +56,8 @@ contract User {
     receive() external payable {} // solhint-disable-line no-empty-blocks
 }
 
+/// @author Element Finance
+/// @title Elf Contract Test
 contract ElfContractsTest is DSTest {
     Hevm public hevm;
     WETH public weth;
@@ -70,21 +72,21 @@ contract ElfContractsTest is DSTest {
     AYVault public yusdc;
     YVaultAssetProxy public yusdcAsset;
 
-    ElfDeploy public _elfDeploy;
+    ElfDeploy public elfDeploy;
 
     function setUp() public {
         // hevm "cheatcode", see: https://github.com/dapphub/dapptools/tree/master/src/hevm#cheat-codes
         hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
-        _elfDeploy = new ElfDeploy();
-        _elfDeploy.init();
+        elfDeploy = new ElfDeploy();
+        elfDeploy.init();
 
-        _elfDeploy.config();
+        elfDeploy.config();
 
-        elf = _elfDeploy.elf();
+        elf = elfDeploy.elf();
 
-        usdc = _elfDeploy.usdc();
-        yusdc = _elfDeploy.yusdc();
-        yusdcAsset = _elfDeploy.yusdcAsset();
+        usdc = elfDeploy.usdc();
+        yusdc = elfDeploy.yusdc();
+        yusdcAsset = elfDeploy.yusdcAsset();
 
         // create 3 users and provide funds
         user1 = new User();
@@ -98,18 +100,21 @@ contract ElfContractsTest is DSTest {
         user3.approve(address(usdc), address(elf));
     }
 
-    // verify that this can only be changed by governance contract
+    /// @notice verify that this can only be changed by governance contract
     function testFail_setGovernance() public {
         elf.setGovernance(address(this));
     }
 
+    /// @notice verify governance can be updated correctly
     function test_setGovernance() public {
-        _elfDeploy.changeGovernance(address(this));
+        elfDeploy.changeGovernance(address(this));
         assertTrue(elf.governance() == address(this));
     }
 
+    /// @notice test deposit and withdraw integration test
     function test_depositAndWithdraw() public {
-        _elfDeploy.changeGovernance(address(this));
+        // Set up contracts for the test
+        elfDeploy.changeGovernance(address(this));
         assertTrue(elf.governance() == address(this));
         yusdcAsset.setPool(address(elf));
 
@@ -129,11 +134,19 @@ contract ElfContractsTest is DSTest {
          * User 3: 6 USDC deposited
          */
 
+        // Update vault to 1 share = 1.1 USDC
         yusdc.updateShares();
 
         // Test a transfer
         user3.call_transfer(address(elf), address(user1), 5e6);
         assertEq(elf.balanceOf(address(user1)), 7e6);
+
+        /* At this point:
+         * User 1: 7 shares
+         * user 2: 2 shares
+         * User 3: 1 shares
+         * These shares are worth 11 USDC
+         */
 
         // Test withdraws
         user1.call_withdraw(address(elf), 1e6);
@@ -155,8 +168,9 @@ contract ElfContractsTest is DSTest {
         assertEq(totalBal, 19000000);
     }
 
+    /// @notice test that we get the correct balance from elf pool
     function test_balance() public {
-        _elfDeploy.changeGovernance(address(this));
+        elfDeploy.changeGovernance(address(this));
         assertTrue(elf.governance() == address(this));
         yusdcAsset.setPool(address(elf));
 
@@ -166,8 +180,9 @@ contract ElfContractsTest is DSTest {
         assertEq(elf.balance(), 1e6);
     }
 
+    /// @notice test that we get the correct underlying balance from elf pool
     function test_balanceUnderlying() public {
-        _elfDeploy.changeGovernance(address(this));
+        elfDeploy.changeGovernance(address(this));
         assertTrue(elf.governance() == address(this));
         yusdcAsset.setPool(address(elf));
 

@@ -6,6 +6,7 @@ import "./interfaces/IERC20.sol";
 import "./libraries/SafeMath.sol";
 import "./libraries/Address.sol";
 import "./libraries/SafeERC20.sol";
+import "./libraries/ERC20Permit.sol";
 
 import "./assets/YC.sol";
 
@@ -28,7 +29,7 @@ interface Elf {
     ) external returns (bool);
 }
 
-contract FYTYC is ERC20 {
+contract FYTYC is ERC20Permit {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -49,7 +50,7 @@ contract FYTYC is ERC20 {
      */
     constructor(address _elfContract, uint256 _lockDuration)
         public
-        ERC20("Fixed Yield Token", "FYT")
+        ERC20("Fixed Yield Token", "FYT") ERC20Permit("Fixed Yield Token")
     {
         yc = new YC(address(this));
         elf = Elf(_elfContract);

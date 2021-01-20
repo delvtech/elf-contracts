@@ -50,7 +50,8 @@ contract FYTYC is ERC20Permit {
      */
     constructor(address _elfContract, uint256 _lockDuration)
         public
-        ERC20("Fixed Yield Token", "FYT") ERC20Permit("Fixed Yield Token")
+        ERC20("Fixed Yield Token", "FYT")
+        ERC20Permit("Fixed Yield Token")
     {
         yc = new YC(address(this));
         elf = Elf(_elfContract);

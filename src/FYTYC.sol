@@ -40,7 +40,7 @@ contract FYTYC is ERC20 {
     // does not include interest.
     uint256 internal _valueSupplied;
 
-    // The timestamp when FYTs and YCs can be withdrawn.
+    // The timestamp when FYTs and YCs can be redeemed.
     uint256 public unlockTimestamp;
 
     /**

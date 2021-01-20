@@ -60,6 +60,8 @@ contract User {
     receive() external payable {} // solhint-disable-line no-empty-blocks
 }
 
+/// @author Element Finance
+/// @title Elf Contract Mainnet Test
 contract ElfContractsTest is DSTest {
     using SafeMath for uint256;
 
@@ -90,7 +92,7 @@ contract ElfContractsTest is DSTest {
 
         elf = factory.newPool(address(usdc), address(yusdcAsset));
 
-        // create 3 users and provide funds
+        // create 3 users and provide funds through HEVM store
         user1 = new User();
         hevm.store(
             address(usdc),
@@ -116,6 +118,7 @@ contract ElfContractsTest is DSTest {
         user3.approve(address(usdc), address(elf));
     }
 
+    /// @notice test deposit and withdraw integration test
     function test_depositAndWithdraw() public {
         assertTrue(elf.governance() == address(this));
         yusdcAsset.setPool(address(elf));
@@ -131,9 +134,10 @@ contract ElfContractsTest is DSTest {
         assertTrue(balance.add(5) >= 1e12); // add 5 cause of dusty trx
 
         /* At this point:
-         * User 1: 20,000 USDC deposited
-         * user 2: 20,000 USDC deposited
-         * User 3: 60,000 USDC deposited
+         *         deposited     held
+         * User 1: 20,000 USDC | 0 USDC
+         * user 2: 20,000 USDC | 0 USDC
+         * User 3: 60,000 USDC | 0 USDC
          */
 
         // Test a transfer
@@ -144,6 +148,13 @@ contract ElfContractsTest is DSTest {
             elf.balanceOf(address(user1)).add(elf.balanceOf(address(user3))),
             user1Bal.add(user3Bal)
         );
+
+        /* At this point:
+         *         deposited     held
+         * User 1: 50,000 USDC | 0 USDC
+         * user 2: 20,000 USDC | 0 USDC
+         * User 3: 30,000 USDC | 0 USDC
+         */
 
         // Test withdraws
         uint256 toWithdraw = 1000000;
@@ -156,6 +167,13 @@ contract ElfContractsTest is DSTest {
         assertEq(elf.balanceOf(address(user1)), user1Bal.sub(toWithdraw));
         assertEq(usdc.balanceOf(address(user1)), withdrawUSDC);
 
+        /* At this point:
+         *         deposited     held
+         * User 1: 49,999 USDC | 1 USDC
+         * user 2: 20,000 USDC | 0 USDC
+         * User 3: 30,000 USDC | 0 USDC
+         */
+
         user1.call_withdraw(address(elf), elf.balanceOf(address(user1)));
         assertEq(elf.balanceOf(address(user1)), 0);
 
@@ -165,6 +183,13 @@ contract ElfContractsTest is DSTest {
         user3.call_withdraw(address(elf), elf.balanceOf(address(user3)));
         assertEq(elf.balanceOf(address(user3)), 0);
 
+        /* At this point:
+         *         deposited     held
+         * User 1: 0 USDC      | 50,000 USDC
+         * user 2: 0 USDC      | 20,000 USDC
+         * User 3: 0 USDC      | 30,000 USDC
+         */
+
         uint256 totalUSDC = usdc
             .balanceOf(address(user1))
             .add(usdc.balanceOf(address(user2)))
@@ -172,6 +197,7 @@ contract ElfContractsTest is DSTest {
         assertTrue(totalUSDC.add(5) >= 1e12); //adding a bit for dusty trx
     }
 
+    /// @notice test that we get the correct balance from elf pool
     function test_balance() public {
         assertTrue(elf.governance() == address(this));
         yusdcAsset.setPool(address(elf));
@@ -184,6 +210,7 @@ contract ElfContractsTest is DSTest {
         assertTrue(balance >= 99999999999);
     }
 
+    /// @notice test that we get the correct underlying balance from elf pool
     function test_balanceUnderlying() public {
         assertTrue(elf.governance() == address(this));
         yusdcAsset.setPool(address(elf));

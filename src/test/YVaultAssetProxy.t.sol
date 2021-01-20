@@ -55,17 +55,20 @@ contract YVaultAssetProxyTest is DSTest {
         yusdcAsset = elfDeploy.yusdcAsset();
     }
 
+    /// @notice test changing governance
     function test_setGovernance() public {
         elfDeploy.changeGovernance(address(this));
         assertTrue(yusdcAsset.governance() == address(this));
     }
 
+    /// @notice test setting pools
     function test_setPool() public {
         elfDeploy.changeGovernance(address(this));
         yusdcAsset.setPool(address(elf));
         assertTrue(address(elf) == yusdcAsset.pool());
     }
 
+    /// @notice test depositing to pools
     function test_deposit() public {
         elfDeploy.changeGovernance(address(this));
         // Normally this will be the elf address but we do not care when just testing deposit here
@@ -75,6 +78,7 @@ contract YVaultAssetProxyTest is DSTest {
         assertEq(yusdcAsset.vault().balanceOf(address(this)), 1e6);
     }
 
+    /// @notice test withdrawing from pools
     function test_withdraw() public {
         elfDeploy.changeGovernance(address(this));
         // Normally this will be the elf address but we do not care when just testing deposit here

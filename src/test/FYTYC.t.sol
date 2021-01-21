@@ -56,6 +56,10 @@ contract ElfStub is ERC20 {
         return _shares * underlyingUnitValue;
     }
 
+    function balanceOfUnderlying(address who) external view returns(uint256) {
+        return balanceOf(who)*underlyingUnitValue;
+    }
+
     function mint(address _account, uint256 _amount) external {
         _mint(_account, _amount);
     }

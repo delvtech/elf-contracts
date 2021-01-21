@@ -42,6 +42,10 @@ contract Elf is ERC20Permit {
         return proxy.underlying(vault.balanceOf(address(this)));
     }
 
+    function balanceOfUnderlying(address who) external view returns (uint256) {
+        return proxy.underlying(balanceOf(who));
+    }
+
     function setGovernance(address _governance) external {
         require(msg.sender == governance, "!governance");
         governance = _governance;

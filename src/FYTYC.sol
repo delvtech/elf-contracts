@@ -119,7 +119,7 @@ contract FYTYC is ERC20Permit {
         }
         // Each unit of the ELF token has 18 decimals so 1 of them
         // is 1 * 10**18
-        return (_amount*1e18).div(elf.getSharesToUnderlying(1e18));
+        return (_amount * 1e18).div(elf.getSharesToUnderlying(1e18));
     }
 
     /**

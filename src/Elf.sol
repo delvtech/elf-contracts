@@ -60,8 +60,8 @@ contract Elf is ERC20Permit {
     }
 
     /// @notice Returns the amount of the underlying asset a certain amount of shares is worth
-    /// @param _shares to calculate underlying value for 
-    /// @return the value of underlying assets for the given shares 
+    /// @param _shares to calculate underlying value for
+    /// @return the value of underlying assets for the given shares
     function getSharesToUnderlying(uint256 _shares)
         external
         view

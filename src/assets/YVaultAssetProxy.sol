@@ -51,7 +51,7 @@ contract YVaultAssetProxy {
         vault.deposit(token.balanceOf(address(this)));
         vault.transfer(pool, vault.balanceOf(address(this)));
     }
-    
+
     /// @notice withdraw the balance of vault shares held by the proxy
     function withdraw() external {
         require(msg.sender == pool, "!pool");
@@ -59,7 +59,7 @@ contract YVaultAssetProxy {
         vault.withdraw(vault.balanceOf(address(this)));
         token.safeTransfer(pool, token.balanceOf(address(this)));
     }
-    
+
     /// @notice get the underlying amount of tokens per shares given
     /// @param _amount the amount of shares you want to know the value of
     /// @return value of shares in underlying token

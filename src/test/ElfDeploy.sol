@@ -27,7 +27,7 @@ contract ElfDeploy {
     AToken public usdc;
     AYVault public yusdc;
     YVaultAssetProxy public yusdcAsset;
-    
+
     /// @notice deploy weth and factory contracts
     function init() public {
         weth = new WETH();

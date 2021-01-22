@@ -2,6 +2,7 @@
 pragma solidity >=0.5.8 <0.8.0;
 
 import "./interfaces/IERC20.sol";
+import "./interfaces/IElf.sol";
 
 import "./libraries/SafeMath.sol";
 import "./libraries/Address.sol";
@@ -10,32 +11,13 @@ import "./libraries/ERC20Permit.sol";
 
 import "./assets/YC.sol";
 
-interface Elf {
-    function getSharesToUnderlying(uint256 shares)
-        external
-        view
-        returns (uint256);
-
-    function balanceOf(address account) external view returns (uint256);
-
-    function transfer(address recipient, uint256 amount)
-        external
-        returns (bool);
-
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
-}
-
 contract FYTYC is ERC20Permit {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
 
     YC public yc;
-    Elf public elf;
+    IElf public elf;
 
     // Total underlying value locked in the contract. This
     // does not include interest.
@@ -54,7 +36,7 @@ contract FYTYC is ERC20Permit {
         ERC20Permit("Fixed Yield Token")
     {
         yc = new YC(address(this));
-        elf = Elf(_elfContract);
+        elf = IElf(_elfContract);
         unlockTimestamp = block.timestamp.add(_lockDuration);
     }
 
@@ -125,7 +107,7 @@ contract FYTYC is ERC20Permit {
     @notice Helper. Get the total underlying value of all locked ELF tokens.
      */
     function _underlyingValueLocked() internal view returns (uint256) {
-        return elf.getSharesToUnderlying(elf.balanceOf(address(this)));
+        return elf.balanceOfUnderlying(address(this));
     }
 
     /**
@@ -135,7 +117,9 @@ contract FYTYC is ERC20Permit {
         if (_underlyingValueLocked() == 0) {
             return 0;
         }
-        return _amount.div(elf.getSharesToUnderlying(1));
+        // Each unit of the ELF token has 18 decimals so 1 of them
+        // is 1 * 10**18
+        return (_amount.mul(1e18)).div(elf.getSharesToUnderlying(1e18));
     }
 
     /**

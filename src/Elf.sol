@@ -46,8 +46,9 @@ contract Elf is ERC20Permit {
         return proxy.underlying(vault.balanceOf(address(this)));
     }
 
-    /// @notice Get the underlying balance of a user.
-    /// @param _who The address to query.
+    /// @notice Get the underlying balance of an address
+    /// @param _who The address to query
+    /// @return The underlying token balance of the address
     function balanceOfUnderlying(address _who) external view returns (uint256) {
         return proxy.underlying(balanceOf(_who));
     }

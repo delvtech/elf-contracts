@@ -16,6 +16,8 @@ import "../assets/YVaultAssetProxy.sol";
 import "../Elf.sol";
 import "../ElfFactory.sol";
 
+/// @author Element Finance
+/// @title Elf Deploy
 contract ElfDeploy {
     WETH public weth;
 
@@ -26,11 +28,13 @@ contract ElfDeploy {
     AYVault public yusdc;
     YVaultAssetProxy public yusdcAsset;
 
+    /// @notice deploy weth and factory contracts
     function init() public {
         weth = new WETH();
         factory = new ElfFactory();
     }
 
+    /// @notice deploy assets and elf pool
     function config() public {
         usdc = new AToken(address(this));
         yusdc = new AYVault(address(usdc));
@@ -40,6 +44,8 @@ contract ElfDeploy {
         elf = factory.newPool(address(usdc), address(yusdcAsset));
     }
 
+    /// @notice update governance from this contract to testing contract
+    /// @param _governance new governance address
     function changeGovernance(address _governance) public {
         yusdcAsset.setGovernance(_governance);
         elf.setGovernance(_governance);

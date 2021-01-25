@@ -4,7 +4,7 @@ pragma solidity >=0.5.8 <0.8.0;
 import "./IERC20Permit.sol";
 import "./IERC20.sol";
 
-interface IElf is IERC20Permit, IERC20 {
+interface IElf is IERC20Permit {
     function balance() external view returns (uint256);
 
     function balanceOfUnderlying(address who) external view returns (uint256);
@@ -20,17 +20,7 @@ interface IElf is IERC20Permit, IERC20 {
 
     function getAllocator() external view returns (address payable);
 
-    function deposit(uint256 amount) external;
+    function deposit(address sender, uint256 amount) external returns(uint256);
 
-    function depositFrom(address sender, uint256 amount) external;
-
-    function depositETHFrom(address sender) external payable;
-
-    function withdraw(uint256 _shares) external;
-
-    function withdrawFrom(address sender, uint256 _shares) external;
-
-    function withdrawETH(uint256 _shares) external;
-
-    function withdrawETHFrom(address sender, uint256 _shares) external;
+    function withdraw(address sender, uint256 _shares) external returns(uint256);
 }

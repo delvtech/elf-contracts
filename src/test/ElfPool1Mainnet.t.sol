@@ -34,7 +34,7 @@ interface Hevm {
 contract User {
     // max uint approve for spending
     function approve(address _token, address _guy) public {
-        IERC20(_token).approve(_guy, uint256(-1));
+        IERC20(_token).approve(_guy, type(uint256).max);
     }
 
     // depositing WETH and minting

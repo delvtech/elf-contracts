@@ -21,7 +21,7 @@ interface Hevm {
 
 contract User {
     function approve(address _token, address _spender) public {
-        IERC20(_token).approve(_spender, uint256(-1));
+        IERC20(_token).approve(_spender, type(uint256).max);
     }
 
     function call_deposit(FYTYC _obj, uint256 _amount) public {

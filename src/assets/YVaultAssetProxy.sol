@@ -25,7 +25,7 @@ contract YVaultAssetProxy {
         pool = msg.sender;
         vault = YearnVault(_vault);
         token = IERC20(_token);
-        token.approve(_vault, uint256(-1));
+        token.approve(_vault, type(uint256).max);
     }
 
     /// @notice let governance update itself
@@ -68,6 +68,6 @@ contract YVaultAssetProxy {
     /// @notice Function to reset approvals for the proxy
     function approve() external {
         token.approve(address(vault), 0);
-        token.approve(address(vault), uint256(-1));
+        token.approve(address(vault), type(uint256).max);
     }
 }

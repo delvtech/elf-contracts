@@ -48,7 +48,7 @@ contract Tranche is ERC20Permit {
     @param _shares The number of ELF tokens to deposit.
     @return The amount of FYT tokens minted after earned intrest discount
      */
-    function deposit(uint256 _shares) external returns(uint256) {
+    function deposit(uint256 _shares) external returns (uint256) {
         require(block.timestamp < unlockTimestamp, "expired");
 
         uint256 depositValue = elf.getSharesToUnderlying(_shares).sub(
@@ -67,7 +67,7 @@ contract Tranche is ERC20Permit {
     @param _amount The number of FYT tokens to burn.
     @return The number of elf tokens returned
      */
-    function withdrawFyt(uint256 _amount) external returns(uint256) {
+    function withdrawFyt(uint256 _amount) external returns (uint256) {
         require(block.timestamp >= unlockTimestamp, "not expired yet");
 
         uint256 withdrawable = _underlyingValueLocked().sub(_currentInterest());
@@ -76,7 +76,7 @@ contract Tranche is ERC20Permit {
         _valueSupplied = _valueSupplied.sub(owed);
 
         _burn(msg.sender, _amount);
-        uint256 elfAmount = _underlyingToElf(owed); 
+        uint256 elfAmount = _underlyingToElf(owed);
         elf.transfer(msg.sender, _underlyingToElf(owed));
         return elfAmount;
     }
@@ -86,7 +86,7 @@ contract Tranche is ERC20Permit {
     @param _amount The number of YC tokens to burn.
     @return The number of elf token transfered
      */
-    function withdrawYc(uint256 _amount) external returns(uint256) {
+    function withdrawYc(uint256 _amount) external returns (uint256) {
         require(block.timestamp >= unlockTimestamp, "not expired yet");
         uint256 underlyingOwed = _currentInterest().mul(_amount).div(
             yc.totalSupply()

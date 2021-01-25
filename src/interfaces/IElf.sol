@@ -20,7 +20,9 @@ interface IElf is IERC20Permit {
 
     function getAllocator() external view returns (address payable);
 
-    function deposit(address sender, uint256 amount) external returns(uint256);
+    function deposit(address sender, uint256 amount) external returns (uint256);
 
-    function withdraw(address sender, uint256 _shares) external returns(uint256);
+    function withdraw(address sender, uint256 _shares)
+        external
+        returns (uint256);
 }

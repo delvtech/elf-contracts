@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.5.16;
 
-
 contract Authorizable {
     // This contract allows a flexible authorization scheme
 
     // The owner who can change authorization status
     address public owner;
     // A mapping from an address to its authorization status
-    mapping (address => bool) authorized;
+    mapping(address => bool) authorized;
 
     /// @dev We set the deployer to the owner
-    constructor() {
+    constructor() public {
         owner = msg.sender;
     }
 
@@ -23,13 +22,14 @@ contract Authorizable {
 
     /// @dev This modifier checks if an address is authorized
     modifier onlyAuthorized() {
-        require(msg.sender == isAuthorized(who), "Sender not Authorized");
+        require(isAuthorized(msg.sender), "Sender not Authorized");
+        _;
     }
 
     /// @dev Returns true if an address is authorized
     /// @param who the address to check
     /// @return true if authorized false if not
-    function isAuthorized(address who) public returns(bool) {
+    function isAuthorized(address who) public returns (bool) {
         return authorized[who];
     }
 

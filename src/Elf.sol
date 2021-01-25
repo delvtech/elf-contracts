@@ -76,7 +76,10 @@ contract Elf is ERC20Permit {
     /// @param _amount the amount of underlying tokens to deposit
     /// @dev we take the sender here to allow for msg.sender to be a relayer or proxy
     /// @return Returns the number of ELF tokens minted
-    function deposit(address _sender, uint256 _amount) external returns(uint256){
+    function deposit(address _sender, uint256 _amount)
+        external
+        returns (uint256)
+    {
         // Send tokens to the proxy
         token.safeTransferFrom(_sender, address(proxy), _amount);
 
@@ -94,7 +97,10 @@ contract Elf is ERC20Permit {
     /// @param _sender the address of the user who is withdrawing
     /// @param _shares the amount of shares the user is burning to withdraw underlying
     /// @return The amount of underlying transfered to the caller
-    function withdraw(address _sender, uint256 _shares) external returns(uint256) {
+    function withdraw(address _sender, uint256 _shares)
+        external
+        returns (uint256)
+    {
         // Burn users ELF shares
         _burn(_sender, _shares);
 

@@ -27,7 +27,7 @@ contract UserProxy is Authorizable {
     /// @dev Marks the msg.sender as authorized and sets them
     ///      as the owner in authorization library 
     constructor(IWETH _weth) public Authorizable() {
-        _authorize(msg.sender)
+        _authorize(msg.sender);
         weth = _weth;
     }
 

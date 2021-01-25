@@ -4,7 +4,7 @@
 // and to replace it with normal counting.
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.5.8 <0.8.0;
+pragma solidity ^0.8.0;
 
 import "./ERC20.sol";
 import "../interfaces/IERC20Permit.sol";

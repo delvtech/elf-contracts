@@ -1,4 +1,4 @@
-pragma solidity >=0.5.8 <0.8.0;
+pragma solidity ^0.8.0;
 
 import "../libraries/ERC20.sol";
 import "../libraries/ERC20Permit.sol";

@@ -5,7 +5,6 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IWETH.sol";
 
 import "./libraries/ERC20Permit.sol";
-import "./libraries/SafeMath.sol";
 import "./libraries/Address.sol";
 import "./libraries/SafeERC20.sol";
 
@@ -16,7 +15,6 @@ import "./assets/interface/IAssetProxy.sol";
 contract Elf is ERC20Permit {
     using SafeERC20 for IERC20;
     using Address for address;
-    using SafeMath for uint256;
 
     IERC20 public token;
     IERC20 public vault;
@@ -82,7 +80,7 @@ contract Elf is ERC20Permit {
         // Trigger deposit and calc how many shares we got from the deposit
         uint256 before = vault.balanceOf(address(this));
         proxy.deposit();
-        uint256 shares = vault.balanceOf(address(this)).sub(before);
+        uint256 shares = vault.balanceOf(address(this)) - before;
 
         // We now have vault tokens equal to the users share
         _mint(_sender, shares);

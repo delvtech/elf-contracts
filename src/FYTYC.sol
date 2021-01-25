@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import "./interfaces/IERC20.sol";
 import "./interfaces/IElf.sol";
 
-import "./libraries/SafeMath.sol";
 import "./libraries/Address.sol";
 import "./libraries/SafeERC20.sol";
 import "./libraries/ERC20Permit.sol";
@@ -14,7 +13,6 @@ import "./assets/YC.sol";
 contract FYTYC is ERC20Permit {
     using SafeERC20 for IERC20;
     using Address for address;
-    using SafeMath for uint256;
 
     YC public yc;
     IElf public elf;
@@ -37,7 +35,7 @@ contract FYTYC is ERC20Permit {
     {
         yc = new YC(address(this));
         elf = IElf(_elfContract);
-        unlockTimestamp = block.timestamp.add(_lockDuration);
+        unlockTimestamp = block.timestamp + _lockDuration;
     }
 
     /**
@@ -50,10 +48,8 @@ contract FYTYC is ERC20Permit {
     function deposit(uint256 _shares) external {
         require(block.timestamp < unlockTimestamp, "expired");
 
-        uint256 depositValue = elf.getSharesToUnderlying(_shares).sub(
-            _interestOwed(_shares)
-        );
-        _valueSupplied = _valueSupplied.add(depositValue);
+        uint256 depositValue = elf.getSharesToUnderlying(_shares) - _interestOwed(_shares);
+        _valueSupplied = _valueSupplied + depositValue;
 
         elf.transferFrom(msg.sender, address(this), _shares);
         yc.mint(msg.sender, _shares);
@@ -67,10 +63,10 @@ contract FYTYC is ERC20Permit {
     function withdrawFyt(uint256 _amount) external {
         require(block.timestamp >= unlockTimestamp, "not expired yet");
 
-        uint256 withdrawable = _underlyingValueLocked().sub(_currentInterest());
-        uint256 owed = withdrawable.mul(_amount).div(totalSupply());
+        uint256 withdrawable = _underlyingValueLocked() - _currentInterest();
+        uint256 owed = withdrawable * _amount / totalSupply();
 
-        _valueSupplied = _valueSupplied.sub(owed);
+        _valueSupplied = _valueSupplied - owed;
 
         _burn(msg.sender, _amount);
         elf.transfer(msg.sender, _underlyingToElf(owed));
@@ -82,9 +78,7 @@ contract FYTYC is ERC20Permit {
      */
     function withdrawYc(uint256 _amount) external {
         require(block.timestamp >= unlockTimestamp, "not expired yet");
-        uint256 underlyingOwed = _currentInterest().mul(_amount).div(
-            yc.totalSupply()
-        );
+        uint256 underlyingOwed = _currentInterest() * _amount / yc.totalSupply();
         yc.burn(msg.sender, _amount);
         elf.transfer(msg.sender, _underlyingToElf(underlyingOwed));
     }
@@ -100,7 +94,7 @@ contract FYTYC is ERC20Permit {
         ) {
             return 0;
         }
-        return underlyingValueLocked.sub(_valueSupplied);
+        return underlyingValueLocked - _valueSupplied;
     }
 
     /**
@@ -119,7 +113,7 @@ contract FYTYC is ERC20Permit {
         }
         // Each unit of the ELF token has 18 decimals so 1 of them
         // is 1 * 10**18
-        return (_amount.mul(1e18)).div(elf.getSharesToUnderlying(1e18));
+        return _amount * 1e18 / elf.getSharesToUnderlying(1e18);
     }
 
     /**
@@ -129,6 +123,6 @@ contract FYTYC is ERC20Permit {
         if (_underlyingValueLocked() == 0) {
             return 0;
         }
-        return _currentInterest().mul(_shares).div(yc.totalSupply());
+        return _currentInterest() * _shares / yc.totalSupply();
     }
 }

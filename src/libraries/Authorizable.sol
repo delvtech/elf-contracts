@@ -7,7 +7,7 @@ contract Authorizable {
     // The owner who can change authorization status
     address public owner;
     // A mapping from an address to its authorization status
-    mapping(address => bool) authorized;
+    mapping(address => bool) public authorized;
 
     /// @dev We set the deployer to the owner
     constructor() public {

@@ -268,6 +268,7 @@ contract UserProxy is Authorizable {
     /// @dev This internal function produces the determinstic create2
     ///      address of the ELF contract indicated by an asset proxy
     /// @param assetProxy The asset proxy which is hashed into the create2 seed
+    /// @return The derived ELF contract
     // TODO - Cordinate with Nicholas on exactly what needs to be hashed here
     function deriveElf(address assetProxy) internal pure returns (IElf) {
         return IElf(0);
@@ -277,6 +278,7 @@ contract UserProxy is Authorizable {
     ///      address of the Tranche contract from an elf contract and expiration
     /// @param elf The ELF contract address
     /// @param expiration The expiration time of the tranche
+    /// @return The derived Tranche contract
     function deriveTranche(address elf, uint256 expiration)
         internal
         pure

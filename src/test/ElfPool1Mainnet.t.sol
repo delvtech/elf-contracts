@@ -142,7 +142,7 @@ contract ElfContractsTest is DSTest {
         uint256 user3Bal = elf.balanceOf(address(user3));
         user3.call_transfer(address(elf), address(user1), user3Bal / 2);
         assertEq(
-            elf.balanceOf(address(user1)) * elf.balanceOf(address(user3)),
+            elf.balanceOf(address(user1)) + elf.balanceOf(address(user3)),
             user1Bal + user3Bal
         );
 

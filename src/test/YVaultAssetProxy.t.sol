@@ -1,4 +1,4 @@
-pragma solidity >=0.5.8 <0.8.0;
+pragma solidity ^0.8.0;
 
 import "ds-test/test.sol";
 
@@ -6,7 +6,6 @@ import "../interfaces/IERC20.sol";
 import "../interfaces/IWETH.sol";
 
 import "../libraries/ERC20.sol";
-import "../libraries/SafeMath.sol";
 import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
 

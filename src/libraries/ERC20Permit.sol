@@ -4,7 +4,7 @@
 // and to replace it with normal counting.
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.5.8 <0.8.0;
+pragma solidity ^0.8.0;
 
 import "./ERC20.sol";
 import "../interfaces/IERC20Permit.sol";
@@ -32,7 +32,7 @@ abstract contract ERC20Permit is ERC20, IERC20Permit, EIP712 {
      *
      * It's a good idea to use the same `name` that is defined as the ERC20 token name.
      */
-    constructor(string memory name) internal EIP712(name, "1") {}
+    constructor(string memory name) EIP712(name, "1") {}
 
     /**
      * @dev See {IERC20Permit-permit}.

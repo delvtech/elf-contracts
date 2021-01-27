@@ -10,7 +10,7 @@ contract Authorizable {
     mapping(address => bool) public authorized;
 
     /// @dev We set the deployer to the owner
-    constructor() public {
+    constructor() {
         owner = msg.sender;
     }
 

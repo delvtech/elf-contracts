@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.8 <0.8.0;
+pragma solidity ^0.8.0;
 
 import "./interfaces/IERC20.sol";
 import "./interfaces/IERC20Permit.sol";
@@ -26,7 +26,7 @@ contract UserProxy is Authorizable {
     /// @param _weth The constant weth contract address
     /// @dev Marks the msg.sender as authorized and sets them
     ///      as the owner in authorization library
-    constructor(IWETH _weth) public Authorizable() {
+    constructor(IWETH _weth) Authorizable() {
         _authorize(msg.sender);
         weth = _weth;
     }
@@ -53,7 +53,7 @@ contract UserProxy is Authorizable {
         onlyAuthorized()
     {
         IElf elf = deriveElf(assetProxy);
-        underlying.approve(address(elf), uint256(-1));
+        underlying.approve(address(elf), type(uint256).max);
     }
 
     /// @dev Sets an allowance on an instance of an Trance contract
@@ -67,7 +67,7 @@ contract UserProxy is Authorizable {
     {
         IElf elf = deriveElf(assetProxy);
         ITranche tranche = deriveTranche(address(elf), expiration);
-        elf.approve(address(tranche), uint256(-1));
+        elf.approve(address(tranche), type(uint256).max);
     }
 
     /// @dev Mints a FYT/YC token pair from either underlying token or Eth
@@ -126,8 +126,8 @@ contract UserProxy is Authorizable {
         underlying.permit(
             msg.sender,
             address(this),
-            uint256(-1),
-            uint256(-1),
+            type(uint256).max,
+            type(uint256).max,
             v,
             r,
             s
@@ -167,8 +167,8 @@ contract UserProxy is Authorizable {
         tranche.permit(
             msg.sender,
             address(this),
-            uint256(-1),
-            uint256(-1),
+            type(uint256).max,
+            type(uint256).max,
             v,
             r,
             s
@@ -210,7 +210,15 @@ contract UserProxy is Authorizable {
         // Load the YC contract
         IERC20Permit YC = IERC20Permit(tranche.getYC());
         // Permit this address to get the user's YC
-        YC.permit(msg.sender, address(this), uint256(-1), uint256(-1), v, r, s);
+        YC.permit(
+            msg.sender,
+            address(this),
+            type(uint256).max,
+            type(uint256).max,
+            v,
+            r,
+            s
+        );
         // Move tokens to this contract
         YC.transferFrom(msg.sender, address(this), amount);
 
@@ -233,7 +241,7 @@ contract UserProxy is Authorizable {
             // Redeem the received weth for eth
             weth.withdraw(amount);
             // Send this contract's balance to the caller
-            msg.sender.transfer(amount);
+            payable(msg.sender).transfer(amount);
         } else {
             // Send the underlying token to the caller
             underlying.transfer(msg.sender, amount);
@@ -271,7 +279,7 @@ contract UserProxy is Authorizable {
     /// @return The derived ELF contract
     // TODO - Cordinate with Nicholas on exactly what needs to be hashed here
     function deriveElf(address assetProxy) internal pure returns (IElf) {
-        return IElf(0);
+        return IElf(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
     }
 
     /// @dev This internal function produces the determinstic create2
@@ -284,6 +292,6 @@ contract UserProxy is Authorizable {
         pure
         returns (ITranche)
     {
-        return ITranche(0);
+        return ITranche(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
     }
 }

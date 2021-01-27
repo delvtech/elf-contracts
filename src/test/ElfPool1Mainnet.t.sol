@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.8 <0.8.0;
+pragma solidity ^0.8.0;
 
 import "ds-test/test.sol";
 
 import "../interfaces/IERC20.sol";
 
 import "../libraries/ERC20.sol";
-import "../libraries/SafeMath.sol";
 import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
 
@@ -35,7 +34,7 @@ interface Hevm {
 contract User {
     // max uint approve for spending
     function approve(address _token, address _guy) public {
-        IERC20(_token).approve(_guy, uint256(-1));
+        IERC20(_token).approve(_guy, type(uint256).max);
     }
 
     // depositing WETH and minting
@@ -63,8 +62,6 @@ contract User {
 /// @author Element Finance
 /// @title Elf Contract Mainnet Test
 contract ElfContractsTest is DSTest {
-    using SafeMath for uint256;
-
     Hevm public hevm;
     WETH public weth;
 
@@ -130,8 +127,8 @@ contract ElfContractsTest is DSTest {
         user3.call_deposit(address(elf), 6e11);
 
         uint256 pricePerFullShare = yusdc.getPricePerFullShare();
-        uint256 balance = elf.balance().mul(pricePerFullShare).div(1e18);
-        assertTrue(balance.add(5) >= 1e12); // add 5 cause of dusty trx
+        uint256 balance = (elf.balance() * pricePerFullShare) / 1e18;
+        assertTrue(balance + 5 >= 1e12); // add 5 cause of dusty trx
 
         /* At this point:
          *         deposited     held
@@ -145,8 +142,8 @@ contract ElfContractsTest is DSTest {
         uint256 user3Bal = elf.balanceOf(address(user3));
         user3.call_transfer(address(elf), address(user1), user3Bal / 2);
         assertEq(
-            elf.balanceOf(address(user1)).add(elf.balanceOf(address(user3))),
-            user1Bal.add(user3Bal)
+            elf.balanceOf(address(user1)) + elf.balanceOf(address(user3)),
+            user1Bal + user3Bal
         );
 
         /* At this point:
@@ -160,11 +157,11 @@ contract ElfContractsTest is DSTest {
         uint256 toWithdraw = 1000000;
         user1Bal = elf.balanceOf(address(user1));
         pricePerFullShare = yusdc.getPricePerFullShare();
-        uint256 balanceUSDC = user1Bal.mul(pricePerFullShare).div(1e18);
-        uint256 withdrawUSDC = toWithdraw.mul(pricePerFullShare).div(1e18);
+        uint256 balanceUSDC = (user1Bal * pricePerFullShare) / 1e18;
+        uint256 withdrawUSDC = (toWithdraw * pricePerFullShare) / 1e18;
 
         user1.call_withdraw(address(elf), toWithdraw);
-        assertEq(elf.balanceOf(address(user1)), user1Bal.sub(toWithdraw));
+        assertEq(elf.balanceOf(address(user1)), user1Bal - toWithdraw);
         assertEq(usdc.balanceOf(address(user1)), withdrawUSDC);
 
         /* At this point:
@@ -190,11 +187,10 @@ contract ElfContractsTest is DSTest {
          * User 3: 0 USDC      | 30,000 USDC
          */
 
-        uint256 totalUSDC = usdc
-            .balanceOf(address(user1))
-            .add(usdc.balanceOf(address(user2)))
-            .add(usdc.balanceOf(address(user3)));
-        assertTrue(totalUSDC.add(5) >= 1e12); //adding a bit for dusty trx
+        uint256 totalUSDC = usdc.balanceOf(address(user1)) +
+            usdc.balanceOf(address(user2)) +
+            usdc.balanceOf(address(user3));
+        assertTrue(totalUSDC + 5 >= 1e12); //adding a bit for dusty trx
     }
 
     /// @notice test that we get the correct balance from elf pool
@@ -205,7 +201,7 @@ contract ElfContractsTest is DSTest {
         user1.call_deposit(address(elf), 100000000000);
 
         uint256 pricePerFullShare = yusdc.getPricePerFullShare();
-        uint256 balance = elf.balance().mul(pricePerFullShare).div(1e18);
+        uint256 balance = (elf.balance() * pricePerFullShare) / 1e18;
 
         assertTrue(balance >= 99999999999);
     }

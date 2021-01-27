@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.8 <0.8.0;
+pragma solidity ^0.8.0;
 
 import "ds-test/test.sol";
 
 import "../interfaces/IERC20.sol";
 
 import "../libraries/ERC20.sol";
-import "../libraries/SafeMath.sol";
 
 import "../Tranche.sol";
 
@@ -22,7 +21,7 @@ interface Hevm {
 
 contract User {
     function approve(address _token, address _spender) public {
-        IERC20(_token).approve(_spender, uint256(-1));
+        IERC20(_token).approve(_spender, type(uint256).max);
     }
 
     function call_deposit(Tranche _obj, uint256 _amount) public {
@@ -42,7 +41,7 @@ contract ElfStub is ERC20 {
     uint256 public underlyingUnitValue = 100;
 
     // solhint-disable-next-line no-empty-blocks
-    constructor() public ERC20("ELement Finance", "TestELF") {}
+    constructor() ERC20("ELement Finance", "TestELF") {}
 
     function setSharesToUnderlying(uint256 _value) external {
         underlyingUnitValue = _value;
@@ -78,8 +77,6 @@ contract TrancheTest is DSTest {
     uint256 public timestamp;
     uint256 public lockDuration;
     uint256 public initialBalance = 2e9;
-
-    using SafeMath for uint256;
 
     function setUp() public {
         // hevm "cheatcode", see: https://github.com/dapphub/dapptools/tree/master/src/hevm#cheat-codes
@@ -120,12 +117,12 @@ contract TrancheTest is DSTest {
         assertEq(yc.balanceOf(address(user1)), initialBalance);
         assertEq(
             tranche.balanceOf(address(user1)),
-            initialBalance.mul(initialUnderlying)
+            initialBalance * initialUnderlying
         );
         assertEq(yc.balanceOf(address(user2)), initialBalance);
         assertEq(
             tranche.balanceOf(address(user2)),
-            initialBalance.mul(initialUnderlying)
+            initialBalance * initialUnderlying
         );
         assertEq(elfStub.balanceOf(address(user1)), 0);
         assertEq(elfStub.balanceOf(address(user2)), 0);
@@ -137,7 +134,7 @@ contract TrancheTest is DSTest {
 
         // pool has accumulated 20% interest
         elfStub.setSharesToUnderlying(
-            initialUnderlying.add(initialUnderlying.mul(20).div(100))
+            initialUnderlying + ((initialUnderlying * 20) / 100)
         );
 
         user2.call_deposit(tranche, initialBalance);
@@ -146,12 +143,12 @@ contract TrancheTest is DSTest {
         assertEq(yc.balanceOf(address(user1)), initialBalance);
         assertEq(
             tranche.balanceOf(address(user1)),
-            initialBalance.mul(initialUnderlying)
+            initialBalance * initialUnderlying
         );
         assertEq(yc.balanceOf(address(user2)), initialBalance);
         assertEq(
             tranche.balanceOf(address(user2)),
-            initialBalance.mul(initialUnderlying)
+            initialBalance * initialUnderlying
         );
     }
 
@@ -174,14 +171,14 @@ contract TrancheTest is DSTest {
         user1.call_deposit(tranche, initialBalance);
 
         elfStub.setSharesToUnderlying(
-            initialUnderlying.add(initialUnderlying.mul(20).div(100))
+            initialUnderlying + ((initialUnderlying * 20) / 100)
         );
 
         user2.call_deposit(tranche, initialBalance);
 
         hevm.warp(timestamp + lockDuration);
         elfStub.setSharesToUnderlying(
-            initialUnderlying.add(initialUnderlying.mul(20).div(100))
+            initialUnderlying + ((initialUnderlying * 20) / 100)
         );
 
         user1.call_withdraw_fyt(tranche, tranche.balanceOf(address(user1)));
@@ -213,14 +210,14 @@ contract TrancheTest is DSTest {
         user1.call_deposit(tranche, initialBalance);
 
         elfStub.setSharesToUnderlying(
-            initialUnderlying.add(initialUnderlying.mul(20).div(100))
+            initialUnderlying + ((initialUnderlying * 20) / 100)
         );
 
         user2.call_deposit(tranche, initialBalance);
 
         hevm.warp(timestamp + lockDuration);
         elfStub.setSharesToUnderlying(
-            initialUnderlying.add(initialUnderlying.mul(20).div(100))
+            initialUnderlying + ((initialUnderlying * 20) / 100)
         );
 
         user1.call_withdraw_yc(tranche, yc.balanceOf(address(user1)));
@@ -277,7 +274,7 @@ contract TrancheTest is DSTest {
 
         user1.call_deposit(tranche, initialBalance);
 
-        elfStub.setSharesToUnderlying(initialUnderlying.mul(2));
+        elfStub.setSharesToUnderlying(initialUnderlying * 2);
 
         user2.call_deposit(tranche, initialBalance);
 
@@ -303,7 +300,7 @@ contract TrancheTest is DSTest {
 
         user1.call_deposit(tranche, initialBalance);
 
-        elfStub.setSharesToUnderlying(initialUnderlying.mul(2));
+        elfStub.setSharesToUnderlying(initialUnderlying * 2);
 
         user2.call_deposit(tranche, initialBalance);
 
@@ -330,7 +327,7 @@ contract TrancheTest is DSTest {
         user1.call_deposit(tranche, initialBalance);
         user2.call_deposit(tranche, initialBalance);
 
-        elfStub.setSharesToUnderlying(initialUnderlying.mul(90).div(100));
+        elfStub.setSharesToUnderlying((initialUnderlying * 90) / 100);
 
         hevm.warp(timestamp + lockDuration);
         assertEq(
@@ -351,7 +348,7 @@ contract TrancheTest is DSTest {
         user1.call_deposit(tranche, initialBalance);
         user2.call_deposit(tranche, initialBalance);
 
-        elfStub.setSharesToUnderlying(initialUnderlying.mul(90).div(100));
+        elfStub.setSharesToUnderlying((initialUnderlying * 90) / 100);
 
         hevm.warp(timestamp + lockDuration);
         assertEq(

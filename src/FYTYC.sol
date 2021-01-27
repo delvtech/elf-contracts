@@ -48,7 +48,8 @@ contract FYTYC is ERC20Permit {
     function deposit(uint256 _shares) external {
         require(block.timestamp < unlockTimestamp, "expired");
 
-        uint256 depositValue = elf.getSharesToUnderlying(_shares) - _interestOwed(_shares);
+        uint256 depositValue = elf.getSharesToUnderlying(_shares) -
+            _interestOwed(_shares);
         _valueSupplied = _valueSupplied + depositValue;
 
         elf.transferFrom(msg.sender, address(this), _shares);
@@ -64,7 +65,7 @@ contract FYTYC is ERC20Permit {
         require(block.timestamp >= unlockTimestamp, "not expired yet");
 
         uint256 withdrawable = _underlyingValueLocked() - _currentInterest();
-        uint256 owed = withdrawable * _amount / totalSupply();
+        uint256 owed = (withdrawable * _amount) / totalSupply();
 
         _valueSupplied = _valueSupplied - owed;
 
@@ -78,7 +79,8 @@ contract FYTYC is ERC20Permit {
      */
     function withdrawYc(uint256 _amount) external {
         require(block.timestamp >= unlockTimestamp, "not expired yet");
-        uint256 underlyingOwed = _currentInterest() * _amount / yc.totalSupply();
+        uint256 underlyingOwed = (_currentInterest() * _amount) /
+            yc.totalSupply();
         yc.burn(msg.sender, _amount);
         elf.transfer(msg.sender, _underlyingToElf(underlyingOwed));
     }
@@ -113,7 +115,7 @@ contract FYTYC is ERC20Permit {
         }
         // Each unit of the ELF token has 18 decimals so 1 of them
         // is 1 * 10**18
-        return _amount * 1e18 / elf.getSharesToUnderlying(1e18);
+        return (_amount * 1e18) / elf.getSharesToUnderlying(1e18);
     }
 
     /**
@@ -123,6 +125,6 @@ contract FYTYC is ERC20Permit {
         if (_underlyingValueLocked() == 0) {
             return 0;
         }
-        return _currentInterest() * _shares / yc.totalSupply();
+        return (_currentInterest() * _shares) / yc.totalSupply();
     }
 }

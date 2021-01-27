@@ -133,7 +133,9 @@ contract FYTYCTest is DSTest {
         user1.call_deposit(fytyc, initialBalance);
 
         // pool has accumulated 20% interest
-        elfStub.setSharesToUnderlying(initialUnderlying + (initialUnderlying * 20 / 100));
+        elfStub.setSharesToUnderlying(
+            initialUnderlying + ((initialUnderlying * 20) / 100)
+        );
 
         user2.call_deposit(fytyc, initialBalance);
 
@@ -168,12 +170,16 @@ contract FYTYCTest is DSTest {
 
         user1.call_deposit(fytyc, initialBalance);
 
-        elfStub.setSharesToUnderlying(initialUnderlying + (initialUnderlying * 20 / 100));
+        elfStub.setSharesToUnderlying(
+            initialUnderlying + ((initialUnderlying * 20) / 100)
+        );
 
         user2.call_deposit(fytyc, initialBalance);
 
         hevm.warp(timestamp + lockDuration);
-        elfStub.setSharesToUnderlying(initialUnderlying + (initialUnderlying * 20 / 100));
+        elfStub.setSharesToUnderlying(
+            initialUnderlying + ((initialUnderlying * 20) / 100)
+        );
 
         user1.call_withdraw_fyt(fytyc, fytyc.balanceOf(address(user1)));
         user2.call_withdraw_fyt(fytyc, fytyc.balanceOf(address(user2)));
@@ -203,12 +209,16 @@ contract FYTYCTest is DSTest {
 
         user1.call_deposit(fytyc, initialBalance);
 
-        elfStub.setSharesToUnderlying(initialUnderlying + (initialUnderlying * 20 / 100));
+        elfStub.setSharesToUnderlying(
+            initialUnderlying + ((initialUnderlying * 20) / 100)
+        );
 
         user2.call_deposit(fytyc, initialBalance);
 
         hevm.warp(timestamp + lockDuration);
-        elfStub.setSharesToUnderlying(initialUnderlying + (initialUnderlying * 20 / 100));
+        elfStub.setSharesToUnderlying(
+            initialUnderlying + ((initialUnderlying * 20) / 100)
+        );
 
         user1.call_withdraw_yc(fytyc, yc.balanceOf(address(user1)));
         user2.call_withdraw_yc(fytyc, yc.balanceOf(address(user2)));
@@ -317,7 +327,7 @@ contract FYTYCTest is DSTest {
         user1.call_deposit(fytyc, initialBalance);
         user2.call_deposit(fytyc, initialBalance);
 
-        elfStub.setSharesToUnderlying(initialUnderlying * 90/ 100);
+        elfStub.setSharesToUnderlying((initialUnderlying * 90) / 100);
 
         hevm.warp(timestamp + lockDuration);
         assertEq(
@@ -338,7 +348,7 @@ contract FYTYCTest is DSTest {
         user1.call_deposit(fytyc, initialBalance);
         user2.call_deposit(fytyc, initialBalance);
 
-        elfStub.setSharesToUnderlying(initialUnderlying * 90/ 100);
+        elfStub.setSharesToUnderlying((initialUnderlying * 90) / 100);
 
         hevm.warp(timestamp + lockDuration);
         assertEq(

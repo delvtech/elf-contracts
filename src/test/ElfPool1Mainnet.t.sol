@@ -127,7 +127,7 @@ contract ElfContractsTest is DSTest {
         user3.call_deposit(address(elf), 6e11);
 
         uint256 pricePerFullShare = yusdc.getPricePerFullShare();
-        uint256 balance = elf.balance() * pricePerFullShare / 1e18;
+        uint256 balance = (elf.balance() * pricePerFullShare) / 1e18;
         assertTrue(balance + 5 >= 1e12); // add 5 cause of dusty trx
 
         /* At this point:
@@ -157,8 +157,8 @@ contract ElfContractsTest is DSTest {
         uint256 toWithdraw = 1000000;
         user1Bal = elf.balanceOf(address(user1));
         pricePerFullShare = yusdc.getPricePerFullShare();
-        uint256 balanceUSDC = user1Bal * pricePerFullShare / 1e18;
-        uint256 withdrawUSDC = toWithdraw * pricePerFullShare / 1e18;
+        uint256 balanceUSDC = (user1Bal * pricePerFullShare) / 1e18;
+        uint256 withdrawUSDC = (toWithdraw * pricePerFullShare) / 1e18;
 
         user1.call_withdraw(address(elf), toWithdraw);
         assertEq(elf.balanceOf(address(user1)), user1Bal - toWithdraw);
@@ -187,7 +187,9 @@ contract ElfContractsTest is DSTest {
          * User 3: 0 USDC      | 30,000 USDC
          */
 
-        uint256 totalUSDC = usdc.balanceOf(address(user1)) + usdc.balanceOf(address(user2)) + usdc.balanceOf(address(user3));
+        uint256 totalUSDC = usdc.balanceOf(address(user1)) +
+            usdc.balanceOf(address(user2)) +
+            usdc.balanceOf(address(user3));
         assertTrue(totalUSDC + 5 >= 1e12); //adding a bit for dusty trx
     }
 
@@ -199,7 +201,7 @@ contract ElfContractsTest is DSTest {
         user1.call_deposit(address(elf), 100000000000);
 
         uint256 pricePerFullShare = yusdc.getPricePerFullShare();
-        uint256 balance = elf.balance() * pricePerFullShare / 1e18;
+        uint256 balance = (elf.balance() * pricePerFullShare) / 1e18;
 
         assertTrue(balance >= 99999999999);
     }

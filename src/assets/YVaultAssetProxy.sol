@@ -62,7 +62,7 @@ contract YVaultAssetProxy {
     /// @param _amount the amount of shares you want to know the value of
     /// @return value of shares in underlying token
     function underlying(uint256 _amount) external view returns (uint256) {
-        return vault.getPricePerFullShare() * _amount / 1e18;
+        return (vault.getPricePerFullShare() * _amount) / 1e18;
     }
 
     /// @notice Function to reset approvals for the proxy

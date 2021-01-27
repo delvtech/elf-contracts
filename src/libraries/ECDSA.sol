@@ -1,7 +1,6 @@
 // Fork of the Openzepplin ECDSA verification library.
 // SPDX-License-Identifier: MIT
-
-pragma solidity >=0.5.8 <0.8.0;
+pragma solidity ^0.8.0;
 
 /**
  * @dev Elliptic Curve Digital Signature Algorithm (ECDSA) operations.

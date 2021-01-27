@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.8 <0.8.0;
+pragma solidity ^0.8.0;
 
 import "ds-test/test.sol";
 
 import "../interfaces/IERC20.sol";
 
 import "../libraries/ERC20.sol";
-import "../libraries/SafeMath.sol";
 import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
 
@@ -31,7 +30,7 @@ interface Hevm {
 contract User {
     // max uint approve for spending
     function approve(address _token, address _guy) public {
-        IERC20(_token).approve(_guy, uint256(-1));
+        IERC20(_token).approve(_guy, type(uint256).max);
     }
 
     // depositing WETH and minting

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.5.16;
+pragma solidity ^0.8.0;
 
 contract WETH {
     string public name = "Wrapped Ether";

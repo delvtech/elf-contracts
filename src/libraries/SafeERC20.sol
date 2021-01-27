@@ -1,6 +1,4 @@
-// Forked ERC20 permit libary from openzepplin
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.0;
 
 import "../interfaces/IERC20.sol";

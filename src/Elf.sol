@@ -94,7 +94,7 @@ contract Elf is ERC20Permit {
     /// @notice Exit point to withdraw tokens from the Elf contract
     /// @param _sender the address of the user who is withdrawing
     /// @param _shares the amount of shares the user is burning to withdraw underlying
-    /// @return The amount of underlying transfered to the caller
+    /// @return The amount of underlying transferred to the caller
     function withdraw(address _sender, uint256 _shares)
         external
         returns (uint256)

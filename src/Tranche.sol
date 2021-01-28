@@ -80,7 +80,7 @@ contract Tranche is ERC20Permit {
     /**
     @notice Burn YC tokens to withdraw ELF tokens.
     @param _amount The number of YC tokens to burn.
-    @return The number of elf token transfered
+    @return The number of elf token transferred
      */
     function withdrawYc(uint256 _amount) external returns (uint256) {
         require(block.timestamp >= unlockTimestamp, "not expired yet");

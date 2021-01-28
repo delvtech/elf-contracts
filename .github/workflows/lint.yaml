@@ -27,3 +27,6 @@ jobs:
 
       - name: lint
         run: make lint
+
+      - name: Spell Check
+        run: npx cspell "./src/**/**.sol"

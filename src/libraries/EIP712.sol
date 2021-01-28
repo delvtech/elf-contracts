@@ -1,5 +1,5 @@
 // Forked openzepplin eip 712 library
-// forked from draft so may not match current minior versions
+// forked from draft so may not match current minor versions
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;

@@ -27,3 +27,10 @@ jobs:
 
       - name: lint
         run: make lint
+    cspell:
+      runs-on: ubuntu-latest
+      steps:
+        - name: init
+          run: npm install -SD cspell
+        - name: Spell Check
+          run: exec npx cspell "src/**/**.sol"

@@ -33,4 +33,4 @@ jobs:
         - name: init
           run: npm install -SD cspell
         - name: Spell Check
-          run: exec npx cspell "./src/**/**.sol"
+          run: npx cspell "./src/**/**.sol"

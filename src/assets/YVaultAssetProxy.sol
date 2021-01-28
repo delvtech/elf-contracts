@@ -20,7 +20,7 @@ contract YVaultAssetProxy {
     address public pool;
     address public governance;
 
-    constructor(address _vault, address _token) public {
+    constructor(address _vault, address _token) {
         governance = msg.sender;
         pool = msg.sender;
         vault = YearnVault(_vault);

@@ -7,7 +7,6 @@ contract YC is ERC20Permit {
     address internal _mintAuthority;
 
     constructor(address _authority)
-        public
         ERC20("Yield Coupon", "YC")
         ERC20Permit("Yield Coupon")
     {

@@ -10,7 +10,7 @@ import "./libraries/ERC20Permit.sol";
 
 import "./assets/YC.sol";
 
-contract FYTYC is ERC20Permit {
+contract Tranche is ERC20Permit {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -29,7 +29,6 @@ contract FYTYC is ERC20Permit {
     @param _lockDuration The lock duration (seconds).
      */
     constructor(address _elfContract, uint256 _lockDuration)
-        public
         ERC20("Fixed Yield Token", "FYT")
         ERC20Permit("Fixed Yield Token")
     {
@@ -44,8 +43,9 @@ contract FYTYC is ERC20Permit {
             ELF tokens held in this contract, the number
             of FYT tokens minted is reduced in order to pay for the accrued interest.
     @param _shares The number of ELF tokens to deposit.
+    @return The amount of FYT tokens minted after earned intrest discount
      */
-    function deposit(uint256 _shares) external {
+    function deposit(uint256 _shares) external returns (uint256) {
         require(block.timestamp < unlockTimestamp, "expired");
 
         uint256 depositValue = elf.getSharesToUnderlying(_shares) -
@@ -55,13 +55,15 @@ contract FYTYC is ERC20Permit {
         elf.transferFrom(msg.sender, address(this), _shares);
         yc.mint(msg.sender, _shares);
         _mint(msg.sender, depositValue);
+        return depositValue;
     }
 
     /**
     @notice Burn FYT tokens to withdraw ELF tokens.
     @param _amount The number of FYT tokens to burn.
+    @return The number of elf tokens returned
      */
-    function withdrawFyt(uint256 _amount) external {
+    function withdrawFyt(uint256 _amount) external returns (uint256) {
         require(block.timestamp >= unlockTimestamp, "not expired yet");
 
         uint256 withdrawable = _underlyingValueLocked() - _currentInterest();
@@ -70,19 +72,24 @@ contract FYTYC is ERC20Permit {
         _valueSupplied = _valueSupplied - owed;
 
         _burn(msg.sender, _amount);
+        uint256 elfAmount = _underlyingToElf(owed);
         elf.transfer(msg.sender, _underlyingToElf(owed));
+        return elfAmount;
     }
 
     /**
     @notice Burn YC tokens to withdraw ELF tokens.
     @param _amount The number of YC tokens to burn.
+    @return The number of elf token transfered
      */
-    function withdrawYc(uint256 _amount) external {
+    function withdrawYc(uint256 _amount) external returns (uint256) {
         require(block.timestamp >= unlockTimestamp, "not expired yet");
         uint256 underlyingOwed = (_currentInterest() * _amount) /
             yc.totalSupply();
         yc.burn(msg.sender, _amount);
+        uint256 elfAmount = _underlyingToElf(underlyingOwed);
         elf.transfer(msg.sender, _underlyingToElf(underlyingOwed));
+        return elfAmount;
     }
 
     /**

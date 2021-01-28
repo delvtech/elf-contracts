@@ -9,14 +9,14 @@ import "./interfaces/IWETH.sol";
 import "./libraries/Authorizable.sol";
 
 contract UserProxy is Authorizable {
-    // This contract is a convenience libary to consolidate
+    // This contract is a convenience library to consolidate
     // the actions needed to create FYT/YC to one call.
     // It will hold user allowances, and can be disabled
     // by an owner for security.
     // If frozen users still control their own tokens
     // so can manually redeem them.
 
-    // Store the accessiblity state of the contract
+    // Store the accessibility state of the contract
     bool public isFrozen = true;
     // Constant wrapped ether address
     IWETH public immutable weth;
@@ -56,10 +56,10 @@ contract UserProxy is Authorizable {
         underlying.approve(address(elf), type(uint256).max);
     }
 
-    /// @dev Sets an allowance on an instance of an Trance contract
-    ///      so that the Trance contract can move ELF from the proxy
+    /// @dev Sets an allowance on an instance of an Tranche contract
+    ///      so that the Tranche contract can move ELF from the proxy
     /// @param assetProxy The asset proxy which is attached to the ELF contract
-    /// @param expiration The expieration time of the Tranche
+    /// @param expiration The expiration time of the Tranche
     // TODO - Does this need to be only authorized?
     function allowTranche(address assetProxy, uint256 expiration)
         external
@@ -111,7 +111,7 @@ contract UserProxy is Authorizable {
     /// @param assetProxy The asset proxy which manages the position.
     /// @param v The bit indicator which allows address recover from signature
     /// @param r The r component of the signature.
-    /// @param s The s componet of the signature.
+    /// @param s The s component of the signature.
     function mintPermit(
         uint256 amount,
         IERC20Permit underlying,
@@ -148,7 +148,7 @@ contract UserProxy is Authorizable {
     ///                   or (2) the ETH_CONSTANT if the user wants eth
     /// @param v The bit indicator which allows address recover from signature
     /// @param r The r component of the signature.
-    /// @param s The s componet of the signature.
+    /// @param s The s component of the signature.
     function redeeemFYT(
         uint256 amount,
         uint256 expiration,
@@ -160,9 +160,8 @@ contract UserProxy is Authorizable {
     ) external notFrozen() {
         // Create2 Derive the elf and tranche contracts
         IElf elf = deriveElf(assetProxy);
-        // Create2 Derive the Traunche contract
+        // Create2 Derive the Tranche contract
         ITranche tranche = deriveTranche(address(elf), expiration);
-        // TODO - Add signed withdraw method to Traunch to condense this
         // Give ourselves the approval to move tokens
         tranche.permit(
             msg.sender,
@@ -193,8 +192,8 @@ contract UserProxy is Authorizable {
     ///                   or (2) the ETH_CONSTANT if the user wants eth
     /// @param v The bit indicator which allows address recover from signature
     /// @param r The r component of the signature.
-    /// @param s The s componet of the signature.
-    function redeeemYC(
+    /// @param s The s component of the signature.
+    function redeemYC(
         uint256 amount,
         uint256 expiration,
         address assetProxy,
@@ -205,7 +204,7 @@ contract UserProxy is Authorizable {
     ) external notFrozen() {
         // Create2 Derive the elf and tranche contracts
         IElf elf = deriveElf(assetProxy);
-        // Create2 Derive the Traunche contract
+        // Create2 Derive the Tranche contract
         ITranche tranche = deriveTranche(address(elf), expiration);
         // Load the YC contract
         IERC20Permit YC = IERC20Permit(tranche.getYC());
@@ -231,7 +230,7 @@ contract UserProxy is Authorizable {
     }
 
     /// @dev This helper function sends the msg.sender the amount owed
-    ///      by either unwrapping weth and sending eth or ERC20 transfering
+    ///      by either unwrapping weth and sending eth or ERC20 transferring
     /// @param underlying Either (1) The underlying ERC20 token contract
     ///                   or (2) the ETH_CONSTANT
     /// @param amount The amount to send
@@ -262,7 +261,7 @@ contract UserProxy is Authorizable {
         IElf elf = deriveElf(assetProxy);
         // Create ELF token
         uint256 elfShares = elf.deposit(address(this), amount);
-        // Use create2 to derive the traunche contract
+        // Use create2 to derive the tranche contract
         ITranche tranche = deriveTranche(address(elf), expiration);
         // Move funds into the Tranche contract
         uint256 fytShares = tranche.deposit(elfShares);
@@ -273,7 +272,7 @@ contract UserProxy is Authorizable {
         yc.transfer(msg.sender, elfShares);
     }
 
-    /// @dev This internal function produces the determinstic create2
+    /// @dev This internal function produces the deterministic create2
     ///      address of the ELF contract indicated by an asset proxy
     /// @param assetProxy The asset proxy which is hashed into the create2 seed
     /// @return The derived ELF contract
@@ -282,7 +281,7 @@ contract UserProxy is Authorizable {
         return IElf(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
     }
 
-    /// @dev This internal function produces the determinstic create2
+    /// @dev This internal function produces the deterministic create2
     ///      address of the Tranche contract from an elf contract and expiration
     /// @param elf The ELF contract address
     /// @param expiration The expiration time of the tranche

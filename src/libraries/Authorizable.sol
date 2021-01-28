@@ -33,13 +33,13 @@ contract Authorizable {
         return authorized[who];
     }
 
-    /// @dev Privilaged function authorize an address
+    /// @dev Privileged function authorize an address
     /// @param who the address to authorize
     function authorize(address who) external onlyOwner() {
         _authorize(who);
     }
 
-    /// @dev Privilaged function to de authorize an address
+    /// @dev Privileged function to de authorize an address
     /// @param who The address to remove authorization from
     function deauthorize(address who) external onlyOwner() {
         authorized[who] = false;

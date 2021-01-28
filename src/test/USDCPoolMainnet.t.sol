@@ -61,7 +61,7 @@ contract User {
 
 /// @author Element Finance
 /// @title Elf Contract Mainnet Test
-contract ElfContractsTest is DSTest {
+contract ElfContractsTestyUSDC is DSTest {
     Hevm public hevm;
     WETH public weth;
 

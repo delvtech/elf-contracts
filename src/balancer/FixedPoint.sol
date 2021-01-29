@@ -57,7 +57,11 @@ library FixedPoint {
         return c;
     }
 
-    function subSign(uint256 a, uint256 b) internal pure returns (uint256, bool) {
+    function subSign(uint256 a, uint256 b)
+        internal
+        pure
+        returns (uint256, bool)
+    {
         if (a >= b) {
             return (a - b, false);
         } else {
@@ -71,7 +75,11 @@ library FixedPoint {
         return c;
     }
 
-    function subSign128(uint128 a, uint128 b) internal pure returns (uint128, bool) {
+    function subSign128(uint128 a, uint128 b)
+        internal
+        pure
+        returns (uint128, bool)
+    {
         if (a >= b) {
             return (a - b, false);
         } else {

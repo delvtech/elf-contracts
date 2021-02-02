@@ -60,18 +60,17 @@ contract User {
 }
 
 /// @author Element Finance
-/// @title Elf Contract Mainnet Test
-contract ElfContractsTest is DSTest {
+/// @title Elf Contract Mainnet Test for yETH
+contract ElfContractsTestyWETH is DSTest {
     Hevm public hevm;
-    WETH public weth;
+    IWETH public weth;
 
     User public user1;
     User public user2;
     User public user3;
 
-    IERC20 public usdc;
-    YearnVault public yusdc;
-    YVaultAssetProxy public yusdcAsset;
+    YearnVault public yweth;
+    YVaultAssetProxy public ywethAsset;
 
     ElfFactory public factory;
     Elf public elf;
@@ -82,59 +81,59 @@ contract ElfContractsTest is DSTest {
 
         factory = new ElfFactory();
 
-        usdc = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-        yusdc = YearnVault(0x597aD1e0c13Bfe8025993D9e79C69E1c0233522e);
+        weth = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+        yweth = YearnVault(0xe1237aA7f535b0CC33Fd973D66cBf830354D16c7);
 
-        yusdcAsset = new YVaultAssetProxy(address(yusdc), address(usdc));
+        ywethAsset = new YVaultAssetProxy(address(yweth), address(weth));
 
-        elf = factory.newPool(address(usdc), address(yusdcAsset));
+        elf = factory.newPool(address(weth), address(ywethAsset));
 
         // create 3 users and provide funds through HEVM store
         user1 = new User();
         hevm.store(
-            address(usdc),
-            keccak256(abi.encode(address(user1), uint256(9))),
-            bytes32(uint256(200000000000))
+            address(weth),
+            keccak256(abi.encode(address(user1), uint256(3))),
+            bytes32(uint256(20000 ether))
         );
-        user1.approve(address(usdc), address(elf));
+        user1.approve(address(weth), address(elf));
 
         user2 = new User();
         hevm.store(
-            address(usdc),
-            keccak256(abi.encode(address(user2), uint256(9))),
-            bytes32(uint256(200000000000))
+            address(weth),
+            keccak256(abi.encode(address(user2), uint256(3))),
+            bytes32(uint256(20000 ether))
         );
-        user2.approve(address(usdc), address(elf));
+        user2.approve(address(weth), address(elf));
 
         user3 = new User();
         hevm.store(
-            address(usdc),
-            keccak256(abi.encode(address(user3), uint256(9))),
-            bytes32(uint256(600000000000))
+            address(weth),
+            keccak256(abi.encode(address(user3), uint256(3))),
+            bytes32(uint256(60000 ether))
         );
-        user3.approve(address(usdc), address(elf));
+        user3.approve(address(weth), address(elf));
     }
 
     /// @notice test deposit and withdraw integration test
     function test_depositAndWithdraw() public {
         assertTrue(elf.governance() == address(this));
-        yusdcAsset.setPool(address(elf));
+        ywethAsset.setPool(address(elf));
 
         // Test deposits
-        user1.call_deposit(address(elf), 1e11);
-        user2.call_deposit(address(elf), 2e11);
-        user1.call_deposit(address(elf), 1e11);
-        user3.call_deposit(address(elf), 6e11);
+        user1.call_deposit(address(elf), 10000 ether);
+        user2.call_deposit(address(elf), 20000 ether);
+        user1.call_deposit(address(elf), 10000 ether);
+        user3.call_deposit(address(elf), 60000 ether);
 
-        uint256 pricePerFullShare = yusdc.getPricePerFullShare();
+        uint256 pricePerFullShare = yweth.getPricePerFullShare();
         uint256 balance = (elf.balance() * pricePerFullShare) / 1e18;
         assertTrue(balance + 5 >= 1e12); // add 5 cause of dusty trx
 
         /* At this point:
          *         deposited     held
-         * User 1: 20,000 USDC | 0 USDC
-         * user 2: 20,000 USDC | 0 USDC
-         * User 3: 60,000 USDC | 0 USDC
+         * User 1: 20,000 weth | 0 weth
+         * user 2: 20,000 weth | 0 weth
+         * User 3: 60,000 weth | 0 weth
          */
 
         // Test a transfer
@@ -148,27 +147,27 @@ contract ElfContractsTest is DSTest {
 
         /* At this point:
          *         deposited     held
-         * User 1: 50,000 USDC | 0 USDC
-         * user 2: 20,000 USDC | 0 USDC
-         * User 3: 30,000 USDC | 0 USDC
+         * User 1: 50,000 weth | 0 weth
+         * user 2: 20,000 weth | 0 weth
+         * User 3: 30,000 weth | 0 weth
          */
 
         // Test withdraws
-        uint256 toWithdraw = 1000000;
+        uint256 toWithdraw = 1 ether;
         user1Bal = elf.balanceOf(address(user1));
-        pricePerFullShare = yusdc.getPricePerFullShare();
-        uint256 balanceUSDC = (user1Bal * pricePerFullShare) / 1e18;
-        uint256 withdrawUSDC = (toWithdraw * pricePerFullShare) / 1e18;
+        pricePerFullShare = yweth.getPricePerFullShare();
+        uint256 balanceweth = (user1Bal * pricePerFullShare) / 1e18;
+        uint256 withdrawweth = (toWithdraw * pricePerFullShare) / 1e18;
 
         user1.call_withdraw(address(elf), toWithdraw);
         assertEq(elf.balanceOf(address(user1)), user1Bal - toWithdraw);
-        assertEq(usdc.balanceOf(address(user1)), withdrawUSDC);
+        assertEq(weth.balanceOf(address(user1)), withdrawweth);
 
         /* At this point:
          *         deposited     held
-         * User 1: 49,999 USDC | 1 USDC
-         * user 2: 20,000 USDC | 0 USDC
-         * User 3: 30,000 USDC | 0 USDC
+         * User 1: 49,999 weth | 1 weth
+         * user 2: 20,000 weth | 0 weth
+         * User 3: 30,000 weth | 0 weth
          */
 
         user1.call_withdraw(address(elf), elf.balanceOf(address(user1)));
@@ -182,37 +181,39 @@ contract ElfContractsTest is DSTest {
 
         /* At this point:
          *         deposited     held
-         * User 1: 0 USDC      | 50,000 USDC
-         * user 2: 0 USDC      | 20,000 USDC
-         * User 3: 0 USDC      | 30,000 USDC
+         * User 1: 0 weth      | 50,000 weth
+         * user 2: 0 weth      | 20,000 weth
+         * User 3: 0 weth      | 30,000 weth
          */
 
-        uint256 totalUSDC = usdc.balanceOf(address(user1)) +
-            usdc.balanceOf(address(user2)) +
-            usdc.balanceOf(address(user3));
-        assertTrue(totalUSDC + 5 >= 1e12); //adding a bit for dusty trx
+        uint256 totalweth = weth.balanceOf(address(user1)) +
+            weth.balanceOf(address(user2)) +
+            weth.balanceOf(address(user3));
+        assertTrue(totalweth + 5 >= 100000 ether); //adding a bit for dusty trx
     }
 
     /// @notice test that we get the correct balance from elf pool
     function test_balance() public {
         assertTrue(elf.governance() == address(this));
-        yusdcAsset.setPool(address(elf));
+        ywethAsset.setPool(address(elf));
 
-        user1.call_deposit(address(elf), 100000000000);
+        user1.call_deposit(address(elf), 10000 ether);
 
-        uint256 pricePerFullShare = yusdc.getPricePerFullShare();
+        uint256 pricePerFullShare = yweth.getPricePerFullShare();
         uint256 balance = (elf.balance() * pricePerFullShare) / 1e18;
 
-        assertTrue(balance >= 99999999999);
+        // Sub 1 ETH for 0.01% loss due to high volume deposit
+        assertTrue(balance >= 10000 ether - 1 ether);
     }
 
     /// @notice test that we get the correct underlying balance from elf pool
     function test_balanceUnderlying() public {
         assertTrue(elf.governance() == address(this));
-        yusdcAsset.setPool(address(elf));
+        ywethAsset.setPool(address(elf));
 
-        user1.call_deposit(address(elf), 100000000000);
+        user1.call_deposit(address(elf), 10000 ether);
 
-        assertTrue(elf.balanceUnderlying() >= 99999999999);
+        // Sub 1 ETH for 0.01% loss due to high volume deposit
+        assertTrue(elf.balanceUnderlying() >= 10000 ether - 1 ether);
     }
 }

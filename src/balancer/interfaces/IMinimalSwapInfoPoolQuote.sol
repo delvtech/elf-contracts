@@ -1,3 +1,4 @@
+/* cSpell:disable */
 pragma solidity >=0.7.1;
 pragma experimental ABIEncoderV2;
 

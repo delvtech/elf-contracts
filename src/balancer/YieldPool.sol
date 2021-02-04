@@ -69,7 +69,7 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         tokens[1] = _bond;
         vault.registerTokens(poolId, tokens, new address[](0));
 
-        // Set immutable state variables 
+        // Set immutable state variables
         _vault = vault;
         _poolId = poolId;
         percentFee = _percentFee;
@@ -534,7 +534,7 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
             return (reserveTokenIn + totalSupply(), reserveTokenOut);
         }
         // This should never be hit
-        revert("Token request dosen't match stored");
+        revert("Token request doesn't match stored");
     }
 
     /// @dev Turns a token which is either 'bond' or 'underlying' into 18 point decimal
@@ -578,7 +578,7 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
     }
 
     /// @dev Takes an 'amount' encoded with 'decimalsBefore' decimals and
-    ///      rencodes it with 'decimalsAfter' decimals
+    ///      re encodes it with 'decimalsAfter' decimals
     /// @param amount the amount to normalize
     /// @param decimalsBefore the decimal encoding before
     /// @param decimalsAfter the decimal encoding after

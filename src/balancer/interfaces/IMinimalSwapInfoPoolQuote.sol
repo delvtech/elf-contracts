@@ -1,7 +1,7 @@
 pragma solidity >=0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/IERC20.sol";
+import "../../interfaces/IERC20.sol";
 
 interface IPoolQuoteStructs {
     // This is not really an interface - it just defines common structs used by other interfaces: IPoolQuote and
@@ -54,7 +54,7 @@ interface IPoolQuoteStructs {
     }
 }
 
-interface IPoolQuoteSimplified {
+interface IMinimalSwapInfoPoolQuote {
     function quoteOutGivenIn(
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint256 currentBalanceTokenIn,

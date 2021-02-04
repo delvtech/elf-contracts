@@ -1,5 +1,5 @@
-// Forked ERC20 permit libary from openzepplin
-// Forked from draft so may not match current minior versions
+// Forked ERC20 permit library from openzepplin
+// Forked from draft so may not match current minor versions
 // An edit was made to remove the usage of a storage counter
 // and to replace it with normal counting.
 // SPDX-License-Identifier: MIT

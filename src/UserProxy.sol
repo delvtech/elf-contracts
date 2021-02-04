@@ -134,7 +134,7 @@ contract UserProxy is Authorizable {
         );
         // Move the user's funds to this contract
         underlying.transferFrom(msg.sender, address(this), amount);
-        // Pass call to interal function which works once approved
+        // Pass call to internal function which works once approved
         _mint(amount, expiration, assetProxy);
     }
 
@@ -149,7 +149,7 @@ contract UserProxy is Authorizable {
     /// @param v The bit indicator which allows address recover from signature
     /// @param r The r component of the signature.
     /// @param s The s component of the signature.
-    function redeeemFYT(
+    function redeemFYT(
         uint256 amount,
         uint256 expiration,
         address assetProxy,

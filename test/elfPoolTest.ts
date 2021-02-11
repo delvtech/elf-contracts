@@ -1,4 +1,4 @@
-import hre, {ethers} from "hardhat";
+import {ethers} from "hardhat";
 import {loadFixture, fixtureInterface} from "./helpers/deployer";
 import {createSnapshot, restoreSnapshot} from "./helpers/snapshots";
 
@@ -17,7 +17,7 @@ describe("ElfPoolTest", () => {
     fixture = await loadFixture();
 
     // begin to populate the user array by assigning each index a signer
-    users = ((await hre.ethers.getSigners()) as Signer[]).map(function (user) {
+    users = ((await ethers.getSigners()) as Signer[]).map(function (user) {
       return {user, address: ""};
     });
 

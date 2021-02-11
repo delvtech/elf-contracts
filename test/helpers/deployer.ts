@@ -1,5 +1,3 @@
-import hre from "hardhat";
-
 import {Elf} from "../../typechain/Elf";
 import {ElfFactory} from "../../typechain/ElfFactory";
 import {AToken} from "../../typechain/AToken";
@@ -8,6 +6,7 @@ import {YVaultAssetProxy} from "../../typechain/YVaultAssetProxy";
 import ElfArtifact from "../../artifacts/contracts/Elf.sol/Elf.json";
 
 import {Signer} from "ethers";
+import { ethers } from "hardhat";
 
 export interface fixtureInterface {
   signer: Signer;
@@ -19,17 +18,17 @@ export interface fixtureInterface {
 }
 
 const deployElfFactory = async (signer: Signer) => {
-  const deployer = await hre.ethers.getContractFactory("ElfFactory", signer);
+  const deployer = await ethers.getContractFactory("ElfFactory", signer);
   return (await deployer.deploy()) as ElfFactory;
 };
 
 const deployUsdc = async (signer: Signer, owner: string) => {
-  const deployer = await hre.ethers.getContractFactory("AToken", signer);
+  const deployer = await ethers.getContractFactory("AToken", signer);
   return (await deployer.deploy(owner)) as AToken;
 };
 
 const deployYusdc = async (signer: Signer, usdcAddress: string) => {
-  const deployer = await hre.ethers.getContractFactory("AYVault", signer);
+  const deployer = await ethers.getContractFactory("AYVault", signer);
   return (await deployer.deploy(usdcAddress)) as AYVault;
 };
 
@@ -38,7 +37,7 @@ const deployYusdcAsset = async (
   yusdcAddress: string,
   usdcAddress: string
 ) => {
-  const deployer = await hre.ethers.getContractFactory(
+  const deployer = await ethers.getContractFactory(
     "YVaultAssetProxy",
     signer
   );
@@ -46,7 +45,7 @@ const deployYusdcAsset = async (
 };
 
 export async function loadFixture() {
-  const [signer] = await hre.ethers.getSigners();
+  const [signer] = await ethers.getSigners();
   const signerAddress = (await signer.getAddress()) as string;
   const elfFactory = (await deployElfFactory(signer)) as ElfFactory;
   const usdc = (await deployUsdc(signer, signerAddress)) as AToken;
@@ -61,10 +60,10 @@ export async function loadFixture() {
 
   const filter = await elfFactory.filters.NewPool(null, null);
   const event = await elfFactory.queryFilter(filter);
-  const elf = new hre.ethers.Contract(
+  const elf = new ethers.Contract(
     event[0].args?.pool,
     ElfArtifact.abi,
-    hre.ethers.provider
+    ethers.provider
   ) as Elf;
 
   return {signer, elfFactory, usdc, yusdc, yusdcAsset, elf};

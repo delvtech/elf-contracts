@@ -16,12 +16,12 @@ describe("ElfPoolTest", () => {
     // load all related contracts
     fixture = await loadFixture();
 
-    //begin to populate the user arrau by assigning each index a signer
+    // begin to populate the user array by assigning each index a signer
     users = ((await hre.ethers.getSigners()) as Signer[]).map(function (user) {
       return {user, address: ""};
     });
 
-    //finish populating the user array by assigning each index a signer address,
+    // finish populating the user array by assigning each index a signer address
     // and approve 6e6 usdc to the elf contract for each address
     await Promise.all(
       users.map(async (userInfo) => {

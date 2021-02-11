@@ -6,7 +6,7 @@ import {YVaultAssetProxy} from "../../typechain/YVaultAssetProxy";
 import ElfArtifact from "../../artifacts/contracts/Elf.sol/Elf.json";
 
 import {Signer} from "ethers";
-import { ethers } from "hardhat";
+import {ethers} from "hardhat";
 
 export interface fixtureInterface {
   signer: Signer;
@@ -37,10 +37,7 @@ const deployYusdcAsset = async (
   yusdcAddress: string,
   usdcAddress: string
 ) => {
-  const deployer = await ethers.getContractFactory(
-    "YVaultAssetProxy",
-    signer
-  );
+  const deployer = await ethers.getContractFactory("YVaultAssetProxy", signer);
   return (await deployer.deploy(yusdcAddress, usdcAddress)) as YVaultAssetProxy;
 };
 

@@ -65,7 +65,7 @@ contract BalancerPoolToken is IERC20 {
     }
 
     function balanceOf(address account)
-        external
+        public
         override
         view
         returns (uint256)

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import "./Context.sol";
+import "../libraries/Context.sol";
 import "../interfaces/IERC20.sol";
 
 /**
@@ -29,7 +29,7 @@ import "../interfaces/IERC20.sol";
  * functions have been added to mitigate the well-known issues around setting
  * allowances. See {IERC20-approve}.
  */
-contract ERC20 is Context, IERC20 {
+contract TestERC20 is Context, IERC20 {
     mapping(address => uint256) private _balances;
 
     mapping(address => mapping(address => uint256)) private _allowances;
@@ -49,10 +49,10 @@ contract ERC20 is Context, IERC20 {
      * All three of these values are immutable: they can only be set once during
      * construction.
      */
-    constructor(string memory name_, string memory symbol_) {
+    constructor(string memory name_, string memory symbol_, uint8 decimals_) {
         _name = name_;
         _symbol = symbol_;
-        _decimals = 18;
+        _decimals = decimals_;
     }
 
     /**

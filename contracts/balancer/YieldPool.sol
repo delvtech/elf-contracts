@@ -9,6 +9,8 @@ import "./interfaces/IVault.sol";
 import "./interfaces/IPool.sol";
 import "./BalancerPoolToken.sol";
 
+import "hardhat/console.sol";
+
 contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
     using LogExpMath for uint256;
     using FixedPoint for uint256;
@@ -19,14 +21,10 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
     // The token we expect to appreciate to match underlying
     IERC20 public immutable bond;
     uint8 public immutable bondDecimals;
-    // The time factor in fixed 18 decimal point
-    int256 public immutable timeFactor;
-    // The fee factor in fixed 18 decimal point
-    uint256 public immutable feeFactor;
     // The expiration time
     uint256 public immutable expiration;
-    // The number of seconds in a year
-    uint256 public constant SECONDS_IN_YEAR = 31536000;
+    // The number of seconds in our timescale
+    uint256 public immutable unit_seconds;
     // The Balancer pool data
     // Note we change style to match Balancer's custom getter
     IVault private immutable _vault;
@@ -44,22 +42,26 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
     ///      Note - We expect both 'bond' and 'underlying' to have 'decimals()'
     /// @param _underlying The asset which the second asset should appreciate to match
     /// @param _bond The asset which should be appreciating
-    /// @param _timeFactor A multiplier on the time differential used for setting curvature.
-    /// @param _feeFactor A multiplier for setting fee rates, g in the yield paper
     /// @param _expiration The time in unix seconds when the bond asset should equal the underlying asset
+    /// @param _unit_seconds The number of seconds in a unit of time, for example 1 year in seconds
+    /// @param vault The balancer vault
+    /// @param _percentFee The percent of assigned fees which go to governance 
+    /// @param _governance The address which gets minted reward lp
+    /// @param name The balancer pool token name
+    /// @param symbol the balancer pool token symbol
     constructor(
         IERC20 _underlying,
         IERC20 _bond,
-        int256 _timeFactor,
-        uint256 _feeFactor,
         uint256 _expiration,
+        uint256 _unit_seconds,
         IVault vault,
         uint256 _percentFee,
+        address _governance,
         string memory name,
         string memory symbol
     ) BalancerPoolToken(name, symbol) {
         // Initialization on the vault
-        bytes32 poolId = vault.registerPool(IVault.PoolSpecialization.GENERAL);
+        bytes32 poolId = vault.registerPool(IVault.PoolSpecialization.MINIMAL_SWAP_INFO);
 
         // Pass in zero addresses for Asset Managers
         // Solidity really needs inline declaration of dynamic arrays
@@ -77,9 +79,9 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         underlyingDecimals = _underlying.decimals();
         bond = _bond;
         bondDecimals = _bond.decimals();
-        timeFactor = _timeFactor;
-        feeFactor = _feeFactor;
         expiration = _expiration;
+        unit_seconds = _unit_seconds;
+        governance = _governance;
     }
 
     // Balancer Interface required Getters
@@ -107,7 +109,7 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) external override returns (uint256) {
+    ) public override returns (uint256) {
         // Tokens amounts are passed to us in decimal form of the tokens
         // However we
         uint256 amountTokenIn = _tokenToFixed(
@@ -140,10 +142,8 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         );
 
         // Assign trade fees
-        quote = _assignTradeFee(quote, request.amountIn, request.tokenOut);
-
-        // TODO - Do we need to enforce that the pool doesn't provide prices such that
-        // bond/underlying > 1?
+        console.log("Original quote", quote);
+        quote = _assignTradeFee(amountTokenIn, quote, request.tokenOut, false);
         // Return the quote to token form
         return _fixedToToken(quote, request.tokenOut);
     }
@@ -163,7 +163,7 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         // However we want them to be in 18 decimal fixed point form
         uint256 amountTokenOut = _tokenToFixed(
             request.amountOut,
-            request.tokenIn
+            request.tokenOut
         );
         currentBalanceTokenIn = _tokenToFixed(
             currentBalanceTokenIn,
@@ -185,15 +185,13 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         // Solve the invariant
         uint256 quote = solveTradeInvariant(
             amountTokenOut,
-            tokenInReserve,
             tokenOutReserve,
+            tokenInReserve,
             false
         );
         // Assign trade fees
-        quote = _assignTradeFee(quote, request.amountOut, request.tokenIn);
+        quote = _assignTradeFee(quote, amountTokenOut, request.tokenOut, true);
         // Return the quote in input token decimals
-        // TODO - Do we need to enforce that the pool doesn't provide prices such that
-        // bond/underlying > 1?
         return _fixedToToken(quote, request.tokenIn);
     }
 
@@ -304,7 +302,7 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
             dueProtocolFeeAmounts[0] = localFeeUnderlying.mul(protocolSwapFee);
             dueProtocolFeeAmounts[1] = localFeeBond.mul(protocolSwapFee);
         }
-        // Mint for the user
+        // Burn for the user
         {
             (uint256 releasedUnderlying, uint256 releasedBond) = _burnLP(
                 minAmountsOut[0],
@@ -349,7 +347,6 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
             : (reserveX.sub(amountX)).pow(a);
         // Calculate y_after = ( x_before ^a + y_ before ^a -  x_after^a)^(1/a)
         // Will revert with underflow here if the liquidity isn't enough for the trade
-        // TODO - Consider a specified error message.
         uint256 yAfter = (xBeforePowA + yBeforePowA).sub(xAfterPowA);
         // Note that this call is to FixedPoint Div so works as intended
         yAfter = yAfter.pow(uint256(FixedPoint.ONE).div(a));
@@ -359,50 +356,66 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
     }
 
     /// @dev Adds a fee equal to to 'feePercent' of remaining interest to each trade
-    ///      This function is overloaded between output quotes and input quotes.
-    ///      If the trade is quoting an amount out for a fixed amount in, token should
-    ///      be the out token. If the trade is quoting an amount input for a fixed output
-    ///      the token should be the input token.
-    /// @param quote The amount quoted by the invariant.
-    /// @param amount The 18 point encoded fixed amount
-    /// @param quoteToken The token of the quote
+    ///      This function accepts both input and output trades, amd expects that all
+    ///      inputs are in fixed 18 point
+    /// @param amountIn The trade's amountIn in fixed 18 point
+    /// @param amountOut The trade's amountOut in fixed 18 point
+    /// @param outputToken The output token
+    /// @param isInputTrade True if the trader is requesting a quote for the amount of input
+    ///                     they need to provide to get 'amountOut' false otherwise
     /// @return The updated output quote
     //  Note - The safe math in this function implicitly prevents the price of 'bond' in underlying
     //         from being higher than 1.
     function _assignTradeFee(
-        uint256 quote,
-        uint256 amount,
-        IERC20 quoteToken
+        uint256 amountIn,
+        uint256 amountOut,
+        IERC20 outputToken,
+        bool isInputTrade
     ) internal returns (uint256) {
-        // The math splits on if this is a buy or a sell
-        if (quoteToken == bond) {
-            // The amount of underlying is per bond is (underlying in)/(bonds out)
-            uint256 pricePerBond = amount.div(quote);
-            // This price implies a yield of 1 - price, and we assign a per bond fee of 'percentFee'
-            uint256 impliedYieldFee = (
-                uint256(FixedPoint.ONE).sub(pricePerBond)
-            )
-                .mul(percentFee);
-            // We generate a new quote by diving the amount in by an increased price
-            uint256 newQuote = amount.div(pricePerBond.add(impliedYieldFee));
-            // We record the amount of fees collected in bond
-            feesBond += uint128(quote.sub(newQuote));
-            // And return the new quote
-            quote = newQuote;
+        console.log("amount in", amountIn);
+        console.log("amount out", amountOut);
+        console.log("output token", address(outputToken));
+        console.log(isInputTrade);
+        // The math splits on if this is input or output
+        if (isInputTrade) {
+            // Then it splits again on which token is the bond
+            if (outputToken == bond) {
+                console.log("Path 1");
+                // If the output is bond the implied yield is out - in
+                uint256 impliedYieldFee = percentFee.mul(amountOut.sub(amountIn));
+                // we record that fee collected from the underlying
+                feesUnderlying += uint128(_fixedToToken(impliedYieldFee, underlying));
+                // and return the adjusted input quote
+                return amountIn.add(impliedYieldFee);
+            } else {
+                console.log("Path 2");
+                // If the input token is bond the implied yield is in - out
+                uint256 impliedYieldFee = percentFee.mul(amountIn.sub(amountOut));
+                // we record that collected fee from the input bond
+                feesBond += uint128(_fixedToToken(impliedYieldFee, bond));
+                // and return the updated input quote
+                return amountIn.add(impliedYieldFee);
+            }
         } else {
-            // The underlying per bond is the output underlying divided by the amount out
-            uint256 pricePerBond = quote.div(amount);
-            // The price implied a yield which we take a precent of and hold on a unit basis
-            uint256 impliedYieldFee = (
-                uint256(FixedPoint.ONE).sub(pricePerBond)
-            )
-                .mul(percentFee);
-            // We update the quote by reducing the amount of underlying this trade generates
-            quote = amount.mul(pricePerBond.sub(impliedYieldFee));
-            // We then add the amount of underlying the fee prevented from sending out to the fees.
-            feesUnderlying += uint128(amount.mul(impliedYieldFee));
+            if (outputToken == bond) {
+                console.log("path 3");
+                // If the output is bond the implied yield is out - in
+                uint256 impliedYieldFee = percentFee.mul(amountOut.sub(amountIn));
+                // we record that fee collected from the bond output
+                feesBond += uint128(_fixedToToken(impliedYieldFee, bond));
+                // and then return the updated output
+                return amountOut.sub(impliedYieldFee);
+            } else {
+                console.log("path 4");
+                // If the output is underlying the implied yield is in - out
+                uint256 impliedYieldFee = percentFee.mul(amountIn.sub(amountOut));
+                // we record the collected underlying fee
+                feesUnderlying += uint128(_fixedToToken(impliedYieldFee, underlying));
+                // and then return the updated output quote
+                return amountOut.sub(impliedYieldFee);
+            }
         }
-        return quote;
+        revert("Called with non pool token");
     }
 
     /// @dev Mints the maximum possible LP given a set of max inputs
@@ -420,25 +433,40 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         // Passing in in memory array helps stack but we use locals for better names
         uint256 reserveUnderlying = currentBalances[0];
         uint256 reserveBond = currentBalances[1];
-        // Get the ratio of the max input of underlying to the reserves
-        uint256 ratio = inputUnderlying.div(reserveUnderlying);
-        // Get the amount of bond implied by that ratio
-        uint256 neededBond = ratio.mul(reserveBond);
+        uint256 localTotalSupply = totalSupply();
+        // Check if the pool is initialized 
+        if (localTotalSupply == 0) {
+            // When uninitialized we mint exactly the underlying input
+            // in LP tokens
+            _mintPoolTokens(recipient, inputUnderlying);
+            return (inputUnderlying, 0);
+        }
 
-        if (neededBond > inputBond) {
-            // If we would need more bond in  we reduce the ratio
-            // by getting the ratio of bondIn to bondReserve
-            ratio = inputBond.div(reserveBond);
-            // We mint that ratio
-            _mintPoolTokens(recipient, ratio.mul(totalSupply()));
-            // We take as deposit that ratio times the underlying reserve
-            return (reserveUnderlying.mul(ratio), inputBond);
+        // Get the reserve ratio, the say how many underlying per bond in the reserve
+        // (input underlying / reserve underlying) is the percent increase caused by deposit
+        uint256 underlyingPerBond = reserveUnderlying.div(reserveBond);
+        // Use the underlying per bond to get the needed number of input underlying
+        uint256 neededUnderlying = underlyingPerBond.mul(inputBond);
+        
+        // If the user can't provide enough underlying
+        if (neededUnderlying > inputUnderlying) {
+            // The increase in total supply is the input underlying
+            // as a ratio to reserve
+            uint256 mintAmount = (inputUnderlying.mul(localTotalSupply)).div(reserveUnderlying);
+            // We mint a new amount of as the the percent increase given
+            // by the ratio of the input underlying to the reserve underlying
+            _mintPoolTokens(recipient, mintAmount);
+            // In this case we use the whole input of underlying
+            // and consume (inputUnderlying/underlyingPerBond) bonds
+            return (inputUnderlying, inputUnderlying.div(underlyingPerBond));
         } else {
-            // In this case we have enough input bond to cover needed bond
-            // So we  mint the increased ratio of total supply
-            _mintPoolTokens(recipient, ratio.mul(totalSupply()));
-            // The indicate we consumed the input underlying and neededBond
-            return (inputUnderlying, neededBond);
+            // We calculate the percent increase in the reserves from contributing
+            // all of the bond
+            uint256 mintAmount = (neededUnderlying.mul(localTotalSupply)).div(reserveUnderlying);
+            // We then mint an amount of pool token which corresponds to that increase
+            _mintPoolTokens(recipient, mintAmount);
+            // The indicate we consumed the input bond and (inputBond*underlyingPerBond)
+            return (neededUnderlying, inputBond);
         }
     }
 
@@ -458,19 +486,28 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         // Passing in in memory array helps stack but we use locals for better names
         uint256 reserveUnderlying = currentBalances[0];
         uint256 reserveBond = currentBalances[1];
+        uint256 localTotalSupply = totalSupply();
         // Calculate the ratio of the minOutputUnderlying to reserve
-        uint256 ratio = minOutputUnderlying.div(reserveUnderlying);
+        uint256 underlyingPerBond = reserveUnderlying.div(reserveBond);
         // If the ratio won't produce enough bond
-        if (reserveBond.mul(ratio) > minOutputBond) {
-            // Then we need to reset it to the bond output
-            ratio = minOutputBond.div(reserveBond);
-            // As a math note reserveBond*(minOutputUnderlying/reserveUnderlying) > minOutputBond
-            // implies that reserveUnderlying*(minOutputBond/reserveBond) > minOutputUnderlying
+        if (minOutputUnderlying > minOutputBond.mul(underlyingPerBond)) {
+            // In this case we burn enough tokens to output 'minOutputUnderlying'
+            // which will be the total supply times the percent of the underlying
+            // reserve which this amount of underlying is.
+            uint256 burned = (minOutputUnderlying.mul(localTotalSupply)).div(reserveUnderlying);
+            _burnPoolTokens(source, burned);
+            // We return that we released 'minOutputUnderlying' and the number of bonds that
+            // preserves the reserve ratio
+            return(minOutputUnderlying, minOutputUnderlying.div(underlyingPerBond));
+        } else {
+            // Then the amount burned is the ratio of the minOutputBond
+            // to the reserve of bond times the total supply
+            uint256 burned = (minOutputBond.mul(localTotalSupply)).div(reserveBond);
+            _burnPoolTokens(source, burned);
+            // We return that we released all of the minOutputBond
+            // and the number of underlying which preserves the reserve ratio
+            return(minOutputBond.mul(underlyingPerBond), minOutputBond);
         }
-        // We now burn the ratio of the total supply freed by the caller
-        _burnPoolTokens(source, ratio.mul(totalSupply()));
-        // We return outputs
-        return (ratio.mul(reserveUnderlying), ratio.mul(reserveBond));
     }
 
     /// @dev Mints LP tokens from a percentage of the stored fees and then updates them
@@ -490,26 +527,30 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
             currentBalances,
             governance
         );
+        // Safe math sanity checks
+        require(localFeeUnderlying >= (feesUsedUnderlying).div(percentFee), "Underflow");
+        require(localFeeBond >= (feesUsedBond).div(percentFee), "Underflow");
         // Store the remaining fees should only be one sstore
         // TODO - Check on gas limit handling to see if storing 1 will reduce the
         // the estimates for this function and the trade.
         (feesUnderlying, feesBond) = (
-            uint128(localFeeUnderlying - feesUsedUnderlying),
-            uint128(localFeeBond - feesUsedBond)
+            uint128(localFeeUnderlying - (feesUsedUnderlying).div(percentFee)),
+            uint128(localFeeBond - (feesUsedBond).div(percentFee))
         );
+        // We return the sload-ed values so that they do not need to be loaded again.
         return (localFeeUnderlying, localFeeBond);
     }
 
     /// @dev Calculates 1 - t
     /// @return Returns 1 - t, encoded as a fraction in 18 decimal fixed point
-    function _getYieldExponent() internal view returns (uint256) {
+    function _getYieldExponent() internal virtual view returns (uint256) {
         // The fractional time
         uint256 timeTillExpiry = block.timestamp < expiration
             ? expiration - block.timestamp
             : 0;
         timeTillExpiry *= 1e18;
         // timeTillExpiry now contains the a fixed point of the years remaining
-        timeTillExpiry /= SECONDS_IN_YEAR;
+        timeTillExpiry = timeTillExpiry.div(unit_seconds*1e18);
         return uint256(FixedPoint.ONE).sub(timeTillExpiry);
     }
 
@@ -586,15 +627,15 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         uint256 amount,
         uint8 decimalsBefore,
         uint8 decimalsAfter
-    ) internal pure returns (uint256) {
+    ) internal view returns (uint256) {
         // If we need to increase the decimals
         if (decimalsBefore > decimalsAfter) {
             // Then we shift right the amount by the number of decimals
-            amount = amount >> (decimalsBefore - decimalsAfter);
+            amount = amount / 10**(decimalsBefore - decimalsAfter);
             // If we need to decrease the number
         } else if (decimalsBefore < decimalsAfter) {
             // then we shift left by the difference
-            amount = amount << (decimalsAfter - decimalsBefore);
+            amount = amount * 10**(decimalsAfter - decimalsBefore);
         }
         // If nothing changed this is a no-op
         return amount;

@@ -9,7 +9,7 @@ import {AddressZero} from "@ethersproject/constants";
 const {waffle} = require("hardhat");
 const provider = waffle.provider;
 
-describe("ElfPoolTest", () => {
+describe("Elf", () => {
   let users: {user: Signer; address: string}[];
   let fixture: fixtureInterface;
   before(async () => {
@@ -34,10 +34,10 @@ describe("ElfPoolTest", () => {
     await fixture.yusdcAsset.setPool(fixture.elf.address);
   });
   describe("balance", () => {
-    before(async () => {
+    beforeEach(async () => {
       await createSnapshot(provider);
     });
-    after(async () => {
+    afterEach(async () => {
       await restoreSnapshot(provider);
     });
     it("should return the correct balance", async () => {
@@ -48,10 +48,10 @@ describe("ElfPoolTest", () => {
     });
   });
   describe("balanceUnderlying", () => {
-    before(async () => {
+    beforeEach(async () => {
       await createSnapshot(provider);
     });
-    after(async () => {
+    afterEach(async () => {
       await restoreSnapshot(provider);
     });
     it("should return the correct balance", async () => {

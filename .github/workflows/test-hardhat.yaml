@@ -1,0 +1,28 @@
+name: Test-hardhat
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+
+jobs:
+    solidity:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v2
+
+        - name: "Install node"
+          uses: actions/setup-node@v1
+
+        - name: Install dependencies
+          run: npm install 
+
+        - name: hardhat-test
+          run: npm run test
+        
+
+
+

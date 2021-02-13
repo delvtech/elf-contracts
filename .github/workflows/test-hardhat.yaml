@@ -20,8 +20,11 @@ jobs:
         - name: Install dependencies
           run: npm install 
 
+        - name: hardhat-compile
+          run: npx hardhat compile
+      
         - name: hardhat-test
-          run: npm run test
+          run: npm run test:quick
         
 
 

@@ -21,6 +21,7 @@
         "IEIP",
         "IERC",
         "in",
+        "iszero",
         "IWETH",
         "joinswap",
         "keccak",

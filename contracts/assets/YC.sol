@@ -14,10 +14,7 @@ contract YC is ERC20Permit {
     }
 
     modifier onlyMintAuthority() {
-        require(
-            msg.sender == _tranche,
-            "caller is not an authorized minter"
-        );
+        require(msg.sender == _tranche, "caller is not an authorized minter");
         _;
     }
 

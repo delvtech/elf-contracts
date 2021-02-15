@@ -26,7 +26,6 @@ contract ElfFactory {
     function newPool(address _token, address _proxy) external returns (Elf) {
         IAssetProxy proxy = IAssetProxy(_proxy);
         Elf pool = new Elf(_token, proxy.vault(), address(proxy));
-        pool.setGovernance(msg.sender);
         _isPool[address(pool)] = true;
         emit NewPool(msg.sender, address(pool));
         return pool;

@@ -61,23 +61,6 @@ describe("ElfPoolTest", () => {
       expect(await fixture.elf.balance()).to.equal(2e6);
     });
   });
-  describe("setGovernance", () => {
-    beforeEach(async () => {
-      await createSnapshot(provider);
-    });
-    afterEach(async () => {
-      await restoreSnapshot(provider);
-    });
-    it("should not be callable by non-approved caller", async () => {
-      await expect(
-        fixture.elf.connect(users[2].user).setGovernance(AddressZero)
-      ).to.be.revertedWith("!governance");
-    });
-    it("should be callable by approved caller", async () => {
-      await fixture.elf.connect(fixture.signer).setGovernance(AddressZero);
-      expect(await fixture.elf.governance()).to.equal(AddressZero);
-    });
-  });
   // WARNING: Tests from now on do not use snapshots. They are interdependant!
   describe("deposit", () => {
     it("should correctly track deposits", async () => {

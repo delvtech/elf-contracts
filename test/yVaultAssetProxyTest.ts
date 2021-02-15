@@ -16,11 +16,18 @@ describe("YVaultAssetProxy", () => {
   let deployerAddress: string;
   let userAddress: string;
   before(async () => {
+    // snapshot initial state
+    await createSnapshot(provider);
+
     // load all related contracts
     fixture = await loadFixture();
     [deployer, user] = await ethers.getSigners();
     deployerAddress = await deployer.getAddress();
     userAddress = await user.getAddress();
+  });
+  after(async () => {
+    // revert back to initial state after all tests pass
+    await restoreSnapshot(provider);
   });
   beforeEach(async () => {
     await createSnapshot(provider);

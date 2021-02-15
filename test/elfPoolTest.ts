@@ -13,6 +13,9 @@ describe("Elf", () => {
   let users: {user: Signer; address: string}[];
   let fixture: fixtureInterface;
   before(async () => {
+    // snapshot initial state
+    await createSnapshot(provider);
+
     // load all related contracts
     fixture = await loadFixture();
 
@@ -32,6 +35,10 @@ describe("Elf", () => {
       })
     );
     await fixture.yusdcAsset.setPool(fixture.elf.address);
+  });
+  after(async () => {
+    // revert back to initial state after all tests pass
+    await restoreSnapshot(provider);
   });
   describe("balance", () => {
     beforeEach(async () => {

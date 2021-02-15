@@ -19,6 +19,9 @@ describe("ETHPool-Mainnet", () => {
   let users: {user: Signer; address: string}[];
   let fixture: ethPoolMainnetInterface;
   before(async () => {
+    // snapshot initial state
+    await createSnapshot(provider);
+
     // load all related contracts
     fixture = await loadEthPoolMainnetFixture();
 
@@ -53,6 +56,10 @@ describe("ETHPool-Mainnet", () => {
       .connect(users[3].user)
       .approve(fixture.elf.address, ethers.utils.parseEther("60000"));
     await fixture.ywethAsset.setPool(fixture.elf.address);
+  });
+  after(async () => {
+    // revert back to initial state after all tests pass
+    await restoreSnapshot(provider);
   });
   beforeEach(async () => {
     await createSnapshot(provider);

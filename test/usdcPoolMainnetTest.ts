@@ -19,6 +19,9 @@ describe("USDCPool-Mainnet", () => {
   let users: {user: Signer; address: string}[];
   let fixture: usdcPoolMainnetInterface;
   before(async () => {
+    // snapshot initial state
+    await createSnapshot(provider);
+
     // address of a large usdc holder to impersonate. 69 million usdc as of block 11860000
     const usdcWhaleAddress = "0xAe2D4617c862309A3d75A0fFB358c7a5009c673F";
 
@@ -57,6 +60,10 @@ describe("USDCPool-Mainnet", () => {
     await fixture.usdc
       .connect(users[3].user)
       .approve(fixture.elf.address, 6e11); // 600k usdc
+  });
+  after(async () => {
+    // revert back to initial state after all tests pass
+    await restoreSnapshot(provider);
   });
   beforeEach(async () => {
     await createSnapshot(provider);

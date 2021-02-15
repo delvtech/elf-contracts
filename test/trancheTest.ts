@@ -21,6 +21,9 @@ describe("Tranche", () => {
   let initialBalance = ethers.BigNumber.from("2000000000"); // 2e9
 
   before(async () => {
+    // snapshot initial state
+    await createSnapshot(provider);
+
     // load all related contracts
     fixture = await loadFixture();
 
@@ -33,6 +36,10 @@ describe("Tranche", () => {
 
     await fixture.elfStub.connect(user2).mint(user2Address, initialBalance);
     await fixture.elfStub.connect(user2).approve(fixture.tranche.address, 2e9);
+  });
+  after(async () => {
+    // revert back to initial state after all tests pass
+    await restoreSnapshot(provider);
   });
   describe("deposit", () => {
     beforeEach(async () => {

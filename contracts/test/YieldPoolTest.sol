@@ -3,10 +3,8 @@ pragma experimental ABIEncoderV2;
 
 import "../balancer/YieldPool.sol";
 import "../balancer/FixedPoint.sol";
-import "hardhat/console.sol";
 
 contract YieldPoolTest is YieldCurvePool {
-
     using FixedPoint for uint256;
 
     constructor(
@@ -18,30 +16,54 @@ contract YieldPoolTest is YieldCurvePool {
         uint256 _percentFee,
         address _governance,
         string memory name,
-        string memory symbol) 
-        YieldCurvePool(_underlying, _bond, _expiration, _unit_seconds, vault, _percentFee, _governance, name, symbol) {}
-   
+        string memory symbol
+    )
+        YieldCurvePool(
+            _underlying,
+            _bond,
+            _expiration,
+            _unit_seconds,
+            vault,
+            _percentFee,
+            _governance,
+            name,
+            symbol
+        )
+    {}
+
     event uintReturn(uint256 data);
 
     // Allows tests to burn LP tokens directly
-    function burnLP(uint256 outputUnderlying, uint256 outputBond, uint256[] memory currentBalances, address source) public {
-        (uint256 releasedUnderlying,  uint256 releasedBond) = _burnLP(
-         outputUnderlying,
-         outputBond,
-         currentBalances,
-         source);
+    function burnLP(
+        uint256 outputUnderlying,
+        uint256 outputBond,
+        uint256[] memory currentBalances,
+        address source
+    ) public {
+        (uint256 releasedUnderlying, uint256 releasedBond) = _burnLP(
+            outputUnderlying,
+            outputBond,
+            currentBalances,
+            source
+        );
         // We use this to return because returndata from state changing tx isn't easily accessible.
         emit uintReturn(releasedUnderlying);
         emit uintReturn(releasedBond);
     }
 
     // Allows tests to mint LP tokens directly
-    function mintLP(uint256 inputUnderlying, uint256 inputBond, uint256[] memory currentBalances, address recipient) public {
-        (uint256 usedUnderlying,  uint256 usedBond) = _mintLP(
-         inputUnderlying,
-         inputBond,
-         currentBalances,
-         recipient);
+    function mintLP(
+        uint256 inputUnderlying,
+        uint256 inputBond,
+        uint256[] memory currentBalances,
+        address recipient
+    ) public {
+        (uint256 usedUnderlying, uint256 usedBond) = _mintLP(
+            inputUnderlying,
+            inputBond,
+            currentBalances,
+            recipient
+        );
         // We use this to return because returndata from state changing tx isn't easily accessible.
         emit uintReturn(usedUnderlying);
         emit uintReturn(usedBond);
@@ -59,7 +81,12 @@ contract YieldPoolTest is YieldCurvePool {
         IERC20 outputToken,
         bool isInputTrade
     ) public {
-        uint256 newQuote = _assignTradeFee(amountIn, amountOut, outputToken, isInputTrade);
+        uint256 newQuote = _assignTradeFee(
+            amountIn,
+            amountOut,
+            outputToken,
+            isInputTrade
+        );
         emit uintReturn(newQuote);
     }
 
@@ -72,7 +99,7 @@ contract YieldPoolTest is YieldCurvePool {
     function setLPBalance(address who, uint256 what) public {
         uint256 current = balanceOf(who);
         if (what > current) {
-            _mintPoolTokens(who, what-current);
+            _mintPoolTokens(who, what - current);
         } else if (what < current) {
             _burnPoolTokens(who, current - what);
         }
@@ -92,7 +119,6 @@ contract YieldPoolTest is YieldCurvePool {
         return _tokenToFixed(amount, token);
     }
 
-
     // Public interface to test '_fixedToToken'
     function fixedToToken(uint256 amount, IERC20 token)
         public
@@ -111,7 +137,7 @@ contract YieldPoolTest is YieldCurvePool {
         return _normalize(amount, decimalsBefore, decimalsAfter);
     }
 
-    // Trade estimator which also takes and stores a time override variable 
+    // Trade estimator which also takes and stores a time override variable
     // if expectedPrice is nonzero it returns the delta in price instead of
     // the quote
     function quoteOutGivenInSimulation(
@@ -120,15 +146,19 @@ contract YieldPoolTest is YieldCurvePool {
         uint256 currentBalanceTokenOut,
         uint256 _time,
         uint256 expectedPrice
-    ) external returns(uint256) {
+    ) external returns (uint256) {
         time = _time;
-        uint256 quote = quoteOutGivenIn(request, currentBalanceTokenIn, currentBalanceTokenOut);
-        console.log(quote);
-        console.log("expected price", expectedPrice);
+        uint256 quote = quoteOutGivenIn(
+            request,
+            currentBalanceTokenIn,
+            currentBalanceTokenOut
+        );
         time = 0;
         if (expectedPrice != 0) {
-            console.log((quote > expectedPrice)? quote - expectedPrice: expectedPrice - quote);
-            return (quote > expectedPrice)? quote - expectedPrice: expectedPrice - quote;
+            return
+                (quote > expectedPrice)
+                    ? quote - expectedPrice
+                    : expectedPrice - quote;
         } else {
             return quote;
         }
@@ -140,7 +170,6 @@ contract YieldPoolTest is YieldCurvePool {
     function _getYieldExponent() internal override view returns (uint256) {
         // Load the stored time if it's set use that instead
         if (time > 0) {
-            console.log("fake time", time);
             return uint256(FixedPoint.ONE).sub(time);
         } else {
             return super._getYieldExponent();

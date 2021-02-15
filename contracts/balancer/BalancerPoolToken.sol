@@ -64,12 +64,7 @@ contract BalancerPoolToken is IERC20 {
         return _allowance[owner][spender];
     }
 
-    function balanceOf(address account)
-        public
-        override
-        view
-        returns (uint256)
-    {
+    function balanceOf(address account) public override view returns (uint256) {
         return _balance[account];
     }
 

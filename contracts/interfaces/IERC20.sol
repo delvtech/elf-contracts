@@ -7,7 +7,7 @@ interface IERC20 {
     function balanceOf(address account) external view returns (uint256);
 
     // Note this is non standard but nearly all ERC20 have exposed decimal functions
-    function decimals() external view returns(uint8);
+    function decimals() external view returns (uint8);
 
     function transfer(address recipient, uint256 amount)
         external

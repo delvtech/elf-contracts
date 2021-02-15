@@ -5,7 +5,9 @@
   "scripts": {
     "solhint": "npx solhint -f table src/**/*.sol src/**/**/*.sol",
     "style-check": "npx prettier --check .",
-    "prettier": "npx prettier --write ."
+    "prettier": "npx prettier --write .",
+    "build": "npx hardhat compile",
+    "test": "npx hardhat test"
   },
   "husky": {
     "hooks": {

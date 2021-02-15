@@ -4,20 +4,17 @@ import "../libraries/ERC20.sol";
 import "../libraries/ERC20Permit.sol";
 
 contract YC is ERC20Permit {
-    address internal _mintAuthority;
+    address public tranche;
 
     constructor(address _authority)
         ERC20("Yield Coupon", "YC")
         ERC20Permit("Yield Coupon")
     {
-        _mintAuthority = _authority;
+        tranche = _authority;
     }
 
     modifier onlyMintAuthority() {
-        require(
-            msg.sender == _mintAuthority,
-            "caller is not an authorized minter"
-        );
+        require(msg.sender == tranche, "caller is not an authorized minter");
         _;
     }
 

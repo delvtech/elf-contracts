@@ -1,6 +1,4 @@
 import {ethers} from "hardhat";
-import hre from "hardhat";
-
 import {
   loadUsdcPoolMainnetFixture,
   usdcPoolMainnetInterface,
@@ -10,7 +8,6 @@ import {impersonate, stopImpersonating} from "./helpers/impersonate";
 
 import {expect} from "chai";
 import {Signer} from "ethers";
-import {AddressZero} from "@ethersproject/constants";
 
 const {waffle} = require("hardhat");
 const provider = waffle.provider;

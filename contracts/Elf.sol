@@ -24,8 +24,10 @@ contract Elf is ERC20Permit {
     constructor(
         address _token,
         address _vault,
-        address _proxy
-    ) ERC20("ELement Finance", "ELF") ERC20Permit("ELement Finance") {
+        address _proxy,
+        string memory _name,
+        string memory _symbol
+    ) ERC20(_name, _symbol) ERC20Permit(_name) {
         governance = msg.sender;
         token = IERC20(_token);
         vault = IERC20(_vault);

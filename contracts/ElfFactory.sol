@@ -23,9 +23,20 @@ contract ElfFactory {
     /// @param _token the underlying token for an Elf Core contract
     /// @param _proxy the proxy address for the vault
     /// @return the address of the new Elf pool contract
-    function newPool(address _token, address _proxy) external returns (Elf) {
+    function newPool(
+        address _token,
+        address _proxy,
+        string memory _name,
+        string memory _symbol
+    ) external returns (Elf) {
         IAssetProxy proxy = IAssetProxy(_proxy);
-        Elf pool = new Elf(_token, proxy.vault(), address(proxy));
+        Elf pool = new Elf(
+            _token,
+            proxy.vault(),
+            address(proxy),
+            _name,
+            _symbol
+        );
         pool.setGovernance(msg.sender);
         _isPool[address(pool)] = true;
         emit NewPool(msg.sender, address(pool));

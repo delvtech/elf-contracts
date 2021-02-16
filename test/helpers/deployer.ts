@@ -53,7 +53,12 @@ export async function loadFixture() {
     usdc.address
   )) as YVaultAssetProxy;
 
-  await elfFactory.newPool(usdc.address, yusdcAsset.address);
+  await elfFactory.newPool(
+    usdc.address,
+    yusdcAsset.address,
+    "Element yUSDC",
+    "eyUSDC"
+  );
 
   const filter = await elfFactory.filters.NewPool(null, null);
   const event = await elfFactory.queryFilter(filter);

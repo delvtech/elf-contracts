@@ -264,7 +264,7 @@ describe("Tranche", () => {
         backingBalanceU2
       );
     });
-    it("should correctly handle full withdrawals with no accrued interest - 1", async () => {
+    it("should correctly handle full withdrawals with no accrued interest - withdraw YC, then FYT", async () => {
       await fixture.tranche.connect(user1).deposit(initialBalance);
       await fixture.tranche.connect(user2).deposit(initialBalance);
 
@@ -288,13 +288,15 @@ describe("Tranche", () => {
       expect(await fixture.elfStub.balanceOf(user2Address)).to.equal(
         initialBalance
       );
+
+      // ensure that all FYTs and YCs were burned and the tranche balance is 0
       expect(await fixture.yc.totalSupply()).to.equal(0);
       expect(await fixture.tranche.totalSupply()).to.equal(0);
       expect(await fixture.elfStub.balanceOf(fixture.tranche.address)).to.equal(
         0
       );
     });
-    it("should correctly handle full withdrawals with no accrued interest - 2", async () => {
+    it("should correctly handle full withdrawals with no accrued interest - withdraw FYT, then YC", async () => {
       await fixture.tranche.connect(user1).deposit(initialBalance);
       await fixture.tranche.connect(user2).deposit(initialBalance);
 
@@ -318,13 +320,15 @@ describe("Tranche", () => {
       expect(await fixture.elfStub.balanceOf(user2Address)).to.equal(
         initialBalance
       );
+
+      // ensure that all FYTs and YCs were burned and the tranche balance is 0
       expect(await fixture.yc.totalSupply()).to.equal(0);
       expect(await fixture.tranche.totalSupply()).to.equal(0);
       expect(await fixture.elfStub.balanceOf(fixture.tranche.address)).to.equal(
         0
       );
     });
-    it("should correctly handle full withdrawals with accrued interest - 1", async () => {
+    it("should correctly handle full withdrawals with accrued interest -  withdraw YC, then FYT", async () => {
       const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
 
       await fixture.tranche.connect(user1).deposit(initialBalance);
@@ -348,19 +352,21 @@ describe("Tranche", () => {
       await fixture.tranche.connect(user1).withdrawFyt(fytBalanceU1);
       await fixture.tranche.connect(user2).withdrawFyt(fytBalanceU2);
 
-      expect(await fixture.yc.totalSupply()).to.equal(0);
-      expect(await fixture.tranche.totalSupply()).to.equal(0);
-      expect(await fixture.elfStub.balanceOf(fixture.tranche.address)).to.equal(
-        0
-      );
       expect(await fixture.elfStub.balanceOf(user1Address)).to.equal(
         await fixture.elfStub.balanceOf(user2Address)
       );
       expect(await fixture.yc.balanceOf(user1Address)).to.equal(
         await fixture.yc.balanceOf(user2Address)
       );
+
+      // ensure that all FYTs and YCs were burned and the tranche balance is 0
+      expect(await fixture.yc.totalSupply()).to.equal(0);
+      expect(await fixture.tranche.totalSupply()).to.equal(0);
+      expect(await fixture.elfStub.balanceOf(fixture.tranche.address)).to.equal(
+        0
+      );
     });
-    it("should correctly handle full withdrawals with accrued interest - 2", async () => {
+    it("should correctly handle full withdrawals with accrued interest -  withdraw FYT, then YC", async () => {
       const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
 
       await fixture.tranche.connect(user1).deposit(initialBalance);
@@ -384,59 +390,21 @@ describe("Tranche", () => {
       await fixture.tranche.connect(user1).withdrawYc(ycBalanceU1);
       await fixture.tranche.connect(user2).withdrawYc(ycBalanceU2);
 
-      expect(await fixture.yc.totalSupply()).to.equal(0);
-      expect(await fixture.tranche.totalSupply()).to.equal(0);
-      expect(await fixture.elfStub.balanceOf(fixture.tranche.address)).to.equal(
-        0
-      );
       expect(await fixture.elfStub.balanceOf(user1Address)).to.equal(
         await fixture.elfStub.balanceOf(user2Address)
       );
       expect(await fixture.yc.balanceOf(user1Address)).to.equal(
         await fixture.yc.balanceOf(user2Address)
       );
-    });
-    it("should correctly handle full withdrawals with negative interest - 1", async () => {
-      const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
 
-      await fixture.tranche.connect(user1).deposit(initialBalance);
-      await fixture.tranche.connect(user2).deposit(initialBalance);
-
-      // set interest to -10%
-      await fixture.elfStub.setSharesToUnderlying(
-        bnFloatMultiplier(initialUnderlying, 0.9)
-      );
-
-      advanceTime(provider, lockDuration);
-
-      expect(await fixture.elfStub.balanceOf(user1Address)).to.equal(0);
-      expect(await fixture.elfStub.balanceOf(user2Address)).to.equal(0);
-
-      const ycBalanceU1 = await fixture.yc.balanceOf(user1Address);
-      const ycBalanceU2 = await fixture.yc.balanceOf(user2Address);
-      const fytBalanceU1 = await fixture.tranche.balanceOf(user1Address);
-      const fytBalanceU2 = await fixture.tranche.balanceOf(user2Address);
-
-      await fixture.tranche.connect(user1).withdrawFyt(fytBalanceU1);
-      await fixture.tranche.connect(user2).withdrawFyt(fytBalanceU2);
-      await fixture.tranche.connect(user1).withdrawYc(ycBalanceU1);
-      await fixture.tranche.connect(user2).withdrawYc(ycBalanceU2);
-
-      expect(await fixture.yc.balanceOf(user1Address)).to.equal(0);
-      expect(await fixture.yc.balanceOf(user2Address)).to.equal(0);
+      // ensure that all FYTs and YCs were burned and the tranche balance is 0
       expect(await fixture.yc.totalSupply()).to.equal(0);
       expect(await fixture.tranche.totalSupply()).to.equal(0);
       expect(await fixture.elfStub.balanceOf(fixture.tranche.address)).to.equal(
         0
       );
-      expect(await fixture.elfStub.balanceOf(user1Address)).to.equal(
-        initialBalance
-      );
-      expect(await fixture.elfStub.balanceOf(user2Address)).to.equal(
-        initialBalance
-      );
     });
-    it("should correctly handle full withdrawals with negative interest - 2", async () => {
+    it("should correctly handle full withdrawals with negative interest - withdraw YC, then FYT", async () => {
       const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
 
       await fixture.tranche.connect(user1).deposit(initialBalance);
@@ -464,16 +432,61 @@ describe("Tranche", () => {
 
       expect(await fixture.yc.balanceOf(user1Address)).to.equal(0);
       expect(await fixture.yc.balanceOf(user2Address)).to.equal(0);
-      expect(await fixture.yc.totalSupply()).to.equal(0);
-      expect(await fixture.tranche.totalSupply()).to.equal(0);
-      expect(await fixture.elfStub.balanceOf(fixture.tranche.address)).to.equal(
-        0
-      );
+
       expect(await fixture.elfStub.balanceOf(user1Address)).to.equal(
         initialBalance
       );
       expect(await fixture.elfStub.balanceOf(user2Address)).to.equal(
         initialBalance
+      );
+
+      // ensure that all FYTs and YCs were burned and the tranche balance is 0
+      expect(await fixture.yc.totalSupply()).to.equal(0);
+      expect(await fixture.tranche.totalSupply()).to.equal(0);
+      expect(await fixture.elfStub.balanceOf(fixture.tranche.address)).to.equal(
+        0
+      );
+    });
+    it("should correctly handle full withdrawals with negative interest - withdraw FYT, then YC", async () => {
+      const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
+
+      await fixture.tranche.connect(user1).deposit(initialBalance);
+      await fixture.tranche.connect(user2).deposit(initialBalance);
+
+      // set interest to -10%
+      await fixture.elfStub.setSharesToUnderlying(
+        bnFloatMultiplier(initialUnderlying, 0.9)
+      );
+
+      advanceTime(provider, lockDuration);
+
+      expect(await fixture.elfStub.balanceOf(user1Address)).to.equal(0);
+      expect(await fixture.elfStub.balanceOf(user2Address)).to.equal(0);
+
+      const ycBalanceU1 = await fixture.yc.balanceOf(user1Address);
+      const ycBalanceU2 = await fixture.yc.balanceOf(user2Address);
+      const fytBalanceU1 = await fixture.tranche.balanceOf(user1Address);
+      const fytBalanceU2 = await fixture.tranche.balanceOf(user2Address);
+
+      await fixture.tranche.connect(user1).withdrawFyt(fytBalanceU1);
+      await fixture.tranche.connect(user2).withdrawFyt(fytBalanceU2);
+      await fixture.tranche.connect(user1).withdrawYc(ycBalanceU1);
+      await fixture.tranche.connect(user2).withdrawYc(ycBalanceU2);
+
+      expect(await fixture.elfStub.balanceOf(user1Address)).to.equal(
+        initialBalance
+      );
+      expect(await fixture.elfStub.balanceOf(user2Address)).to.equal(
+        initialBalance
+      );
+
+      // ensure that all FYTs and YCs were burned and the tranche balance is 0
+      expect(await fixture.yc.balanceOf(user1Address)).to.equal(0);
+      expect(await fixture.yc.balanceOf(user2Address)).to.equal(0);
+      expect(await fixture.yc.totalSupply()).to.equal(0);
+      expect(await fixture.tranche.totalSupply()).to.equal(0);
+      expect(await fixture.elfStub.balanceOf(fixture.tranche.address)).to.equal(
+        0
       );
     });
     it("should prevent withdrawal of FYTs and YCs before the tranche expires ", async () => {

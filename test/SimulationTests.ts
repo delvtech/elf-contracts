@@ -61,26 +61,18 @@ describe("YieldPoolErrSim", function () {
       "BPT"
     );
     // We now set the total supply
-    await (
-      await pool.setLPBalance(
+    const setLPTxn = await pool.setLPBalance(
         fakeAddress,
-        ethers.utils.parseEther(testTrades.init.total_supply.toString())
-      )
-    ).wait();
+        ethers.utils.parseEther(testTrades.init.total_supply.toString()));
+    await setLPTxn.wait();
   });
 
   // This dynamically generated test uses each case in the vector
-  testTrades.trades.forEach(async function (trade: TradeData) {
-    let description =
-      "correctly trades " +
-      trade.input.amount_in.toString() +
-      " " +
-      trade.input.token_in +
-      " for " +
-      trade.input.token_out;
+  testTrades.trades.forEach(function (trade: TradeData) {
+    const description = `correctly trades ${trade.input.amount_in.toString()} ${trade.input.token_in} for ${trade.input.token_out}`;
 
     it(description, async function () {
-      const isBaseIn = trade.input.token_in == "base";
+      const isBaseIn = trade.input.token_in === "base";
       const tokenAddressIn = isBaseIn ? erc20_base.address : erc20_bond.address;
       const tokenAddressOut = isBaseIn
         ? erc20_bond.address

@@ -77,13 +77,16 @@ const deployYusdc = async (signer: Signer, usdcAddress: string) => {
   return (await deployer.deploy(usdcAddress)) as AYVault;
 };
 
-const deployYusdcAsset = async (
+const deployYasset = async (
   signer: Signer,
-  yusdcAddress: string,
-  usdcAddress: string
+  yvaultAddress: string,
+  tokenAddress: string
 ) => {
   const deployer = await ethers.getContractFactory("YVaultAssetProxy", signer);
-  return (await deployer.deploy(yusdcAddress, usdcAddress)) as YVaultAssetProxy;
+  return (await deployer.deploy(
+    yvaultAddress,
+    tokenAddress
+  )) as YVaultAssetProxy;
 };
 
 export async function loadFixture() {
@@ -98,7 +101,7 @@ export async function loadFixture() {
   const elfFactory = (await deployElfFactory(signer)) as ElfFactory;
   const usdc = (await deployUsdc(signer, signerAddress)) as AToken;
   const yusdc = (await deployYusdc(signer, usdc.address)) as AYVault;
-  const yusdcAsset = (await deployYusdcAsset(
+  const yusdcAsset = (await deployYasset(
     signer,
     yusdc.address,
     usdc.address
@@ -138,7 +141,7 @@ export async function loadEthPoolMainnetFixture() {
 
   const weth = IWETH__factory.connect(wethAddress, signer);
   const yweth = YearnVault__factory.connect(ywethAddress, signer);
-  const ywethAsset = (await deployYusdcAsset(
+  const ywethAsset = (await deployYasset(
     signer,
     yweth.address,
     weth.address
@@ -167,7 +170,7 @@ export async function loadUsdcPoolMainnetFixture() {
 
   const usdc = IERC20__factory.connect(usdcAddress, signer);
   const yusdc = YearnVault__factory.connect(yusdcAddress, signer);
-  const yusdcAsset = (await deployYusdcAsset(
+  const yusdcAsset = (await deployYasset(
     signer,
     yusdc.address,
     usdc.address

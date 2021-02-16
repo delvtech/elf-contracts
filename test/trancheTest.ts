@@ -94,6 +94,28 @@ describe("Tranche", () => {
         initialBalance.mul(initialUnderlying)
       );
     });
+    it("should correctly handle deposits with negative interest", async () => {
+      const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
+
+      await fixture.tranche.connect(user1).deposit(initialBalance);
+
+      // set pool interest accululated to -20%
+      await fixture.elfStub.setSharesToUnderlying(
+        bnFloatMultiplier(initialUnderlying, 0.1)
+      );
+
+      await fixture.tranche.connect(user2).deposit(initialBalance);
+
+      advanceTime(provider, lockDuration);
+
+      const fytBalanceU1 = await fixture.tranche.balanceOf(user1Address);
+      const fytBalanceU2 = await fixture.tranche.balanceOf(user2Address);
+
+      expect(bnFloatMultiplier(fytBalanceU1, 0.1)).to.equal(fytBalanceU2);
+
+      expect(await fixture.yc.balanceOf(user1Address)).to.equal(initialBalance);
+      expect(await fixture.yc.balanceOf(user2Address)).to.equal(initialBalance);
+    });
   });
   describe("withdraw", () => {
     beforeEach(async () => {
@@ -184,6 +206,62 @@ describe("Tranche", () => {
       // given the same backing token input, the users should gain the same YC output
       expect(await fixture.yc.balanceOf(user1Address)).to.equal(
         await fixture.yc.balanceOf(user2Address)
+      );
+    });
+    it("should correctly handle YC withdrawals with negative interest", async () => {
+      const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
+
+      await fixture.tranche.connect(user1).deposit(initialBalance);
+
+      // set pool interest accululated to -20%
+      await fixture.elfStub.setSharesToUnderlying(
+        bnFloatMultiplier(initialUnderlying, 0.2)
+      );
+
+      await fixture.tranche.connect(user2).deposit(initialBalance);
+
+      advanceTime(provider, lockDuration);
+
+      const ycBalanceU1 = await fixture.yc.balanceOf(user1Address);
+      const ycBalanceU2 = await fixture.yc.balanceOf(user2Address);
+
+      await fixture.tranche.connect(user1).withdrawYc(ycBalanceU1);
+      await fixture.tranche.connect(user2).withdrawYc(ycBalanceU2);
+
+      expect(await fixture.yc.balanceOf(user1Address)).to.equal(0);
+      expect(await fixture.yc.balanceOf(user2Address)).to.equal(0);
+
+      // YCs should not be worth any backing tokens if interest is negative
+      expect(await fixture.elfStub.balanceOf(user1Address)).to.equal(0);
+      expect(await fixture.elfStub.balanceOf(user2Address)).to.equal(0);
+    });
+    it("should correctly handle FYT withdrawals with negative interest", async () => {
+      const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
+
+      await fixture.tranche.connect(user1).deposit(initialBalance);
+
+      // set pool interest accululated to -50%
+      await fixture.elfStub.setSharesToUnderlying(
+        bnFloatMultiplier(initialUnderlying, 0.5)
+      );
+
+      await fixture.tranche.connect(user2).deposit(initialBalance);
+
+      advanceTime(provider, lockDuration);
+
+      const fytBalanceU1 = await fixture.tranche.balanceOf(user1Address);
+      const fytBalanceU2 = await fixture.tranche.balanceOf(user2Address);
+
+      expect(bnFloatMultiplier(fytBalanceU1, 0.5)).to.equal(fytBalanceU2);
+
+      await fixture.tranche.connect(user1).withdrawFyt(fytBalanceU1);
+      await fixture.tranche.connect(user2).withdrawFyt(fytBalanceU2);
+
+      const backingBalanceU1 = await fixture.elfStub.balanceOf(user1Address);
+      const backingBalanceU2 = await fixture.elfStub.balanceOf(user2Address);
+
+      expect(bnFloatMultiplier(backingBalanceU1, 0.5).add(1)).to.equal(
+        backingBalanceU2
       );
     });
     it("should correctly handle full withdrawals with no accrued interest - 1", async () => {
@@ -397,6 +475,30 @@ describe("Tranche", () => {
       expect(await fixture.elfStub.balanceOf(user2Address)).to.equal(
         initialBalance
       );
+    });
+    it("should prevent withdrawal of FYTs and YCs before the tranche expires ", async () => {
+      await fixture.tranche.connect(user1).deposit(initialBalance);
+      await fixture.tranche.connect(user2).deposit(initialBalance);
+
+      await expect(
+        fixture.tranche.connect(user1).withdrawYc(1)
+      ).to.be.revertedWith("not expired yet");
+      await expect(
+        fixture.tranche.connect(user1).withdrawFyt(1)
+      ).to.be.revertedWith("not expired yet");
+    });
+    it("should prevent withdrawal of more FYTs and YCs than the user has", async () => {
+      await fixture.tranche.connect(user1).deposit(initialBalance);
+
+      advanceTime(provider, lockDuration);
+
+      const user1FytBalance = await fixture.tranche.balanceOf(user1Address);
+      await expect(
+        fixture.tranche.connect(user1).withdrawYc(initialBalance.add(1))
+      ).to.be.reverted;
+      await expect(
+        fixture.tranche.connect(user1).withdrawFyt(user1FytBalance.add(1))
+      ).to.be.reverted;
     });
   });
 });

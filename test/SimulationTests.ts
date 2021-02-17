@@ -74,7 +74,7 @@ describe("YieldPoolErrSim", function () {
       trade.input.token_in
     } for ${trade.input.token_out}`;
 
-    it(description, async function () {
+    it(description, function (done) {
       const isBaseIn = trade.input.token_in === "base";
       const tokenAddressIn = isBaseIn ? erc20_base.address : erc20_bond.address;
       const tokenAddressOut = isBaseIn
@@ -91,7 +91,7 @@ describe("YieldPoolErrSim", function () {
         ? trade.input.y_reserves
         : trade.input.x_reserves;
 
-      const value = await pool.callStatic.quoteOutGivenInSimulation(
+      const value = pool.callStatic.quoteOutGivenInSimulation(
         {
           tokenIn: tokenAddressIn,
           tokenOut: tokenAddressOut,
@@ -110,9 +110,20 @@ describe("YieldPoolErrSim", function () {
         ethers.utils.parseUnits(reserveOut.toString(), decimalsOut),
         ethers.utils.parseUnits(trade.input.time.toString(), 18),
         ethers.utils.parseUnits(trade.output.amount_out.toString(), 18)
-      );
-
-      expect(value.lt(epsilon)).to.be.eq(true);
+      ).then(check);
+      // We use a closure after the promise to retain access to the mocha done
+      // call
+      function check(value: any) {
+        try {
+          // We try the expectation
+          expect(value.lt(epsilon)).to.be.eq(true);
+          // If it passes we are done
+          done();
+        } catch( e ) {
+          // If it fails we return an error to mocha
+          done( e ); 
+        }
+      }
     });
   });
 });

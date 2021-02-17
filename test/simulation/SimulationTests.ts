@@ -2,7 +2,7 @@ import {expect} from "chai";
 import {ethers} from "hardhat";
 import {Contract} from "ethers";
 
-const testTrades = require("./testTrades.json");
+const testTrades = require("./testTrades_in.json");
 
 // This simulation loads the data from ./testTrades.json and makes sure that
 // our quotes are with-in 10^9 of the quotes from the python script

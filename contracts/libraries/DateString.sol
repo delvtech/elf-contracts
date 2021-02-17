@@ -59,6 +59,8 @@ library DateString {
     /// @param prefix The string to write before the timestamp
     /// @param timestamp the timestamp to encode and store
     /// @param output the storage location of the output string
+    /// NOTE - Current cost ~90k if gas is problem revisit and use assembly to remove the extra
+    ///        sstores.
     function encodeAndWriteTimestamp(
         string memory prefix,
         uint256 timestamp,

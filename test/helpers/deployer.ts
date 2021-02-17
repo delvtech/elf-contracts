@@ -108,7 +108,12 @@ export async function loadFixture() {
   const ycAddress = await tranche.yc();
   const yc = YC__factory.connect(ycAddress, signer);
 
-  await elfFactory.newPool(usdc.address, yusdcAsset.address);
+  await elfFactory.newPool(
+    usdc.address,
+    yusdcAsset.address,
+    "Element yUSDC",
+    "eyUSDC"
+  );
 
   const filter = await elfFactory.filters.NewPool(null, null);
   const event = await elfFactory.queryFilter(filter);
@@ -138,7 +143,12 @@ export async function loadEthPoolMainnetFixture() {
   const yweth = YearnVault__factory.connect(ywethAddress, signer);
   const ywethAsset = await deployYasset(signer, yweth.address, weth.address);
 
-  await elfFactory.newPool(weth.address, ywethAsset.address);
+  await elfFactory.newPool(
+    weth.address,
+    ywethAsset.address,
+    "Element yETH",
+    "eyETH"
+  );
 
   const filter = await elfFactory.filters.NewPool(null, null);
   const event = await elfFactory.queryFilter(filter);

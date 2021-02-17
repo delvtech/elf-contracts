@@ -37,7 +37,6 @@ contract ElfFactory {
             _name,
             _symbol
         );
-        pool.setGovernance(msg.sender);
         _isPool[address(pool)] = true;
         emit NewPool(msg.sender, address(pool));
         return pool;

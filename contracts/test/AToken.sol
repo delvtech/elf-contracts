@@ -12,7 +12,7 @@ contract AToken is ERC20 {
     using Address for address;
 
     constructor(address sender) ERC20("a token", "TOKEN") {
-        mint(sender, 1000000000000000000000000000000000000000);
+        mint(sender, 1e39);
     }
 
     function mint(address account, uint256 amount) public {

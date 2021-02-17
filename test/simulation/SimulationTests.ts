@@ -2,7 +2,7 @@ import {expect} from "chai";
 import {ethers} from "hardhat";
 import {Contract} from "ethers";
 
-const testTrades = require("./testTrades_in.json");
+const testTrades = require("./testTrades.json");
 
 // This simulation loads the data from ./testTrades.json and makes sure that
 // our quotes are with-in 10^9 of the quotes from the python script
@@ -32,6 +32,7 @@ describe("YieldPoolErrSim", function () {
       time: number;
       token_in: string;
       token_out: string;
+      direction: string;
     };
     output: {
       amount_out: number;
@@ -72,7 +73,7 @@ describe("YieldPoolErrSim", function () {
   testTrades.trades.forEach(function (trade: TradeData) {
     const description = `correctly trades ${trade.input.amount_in.toString()} ${
       trade.input.token_in
-    } for ${trade.input.token_out}`;
+    } for ${trade.input.token_out}. direction: ${trade.input.direction}`;
 
     it(description, function (done) {
       const isBaseIn = trade.input.token_in === "base";
@@ -91,8 +92,29 @@ describe("YieldPoolErrSim", function () {
         ? trade.input.y_reserves
         : trade.input.x_reserves;
 
-      const value = pool.callStatic
-        .quoteOutGivenInSimulation(
+      if (trade.input.direction === "in") {
+        const value = await pool.callStatic.quoteInGivenOutSimulation(
+          {
+            tokenIn: tokenAddressIn,
+            tokenOut: tokenAddressOut,
+            amountOut: ethers.utils.parseUnits(
+              trade.input.amount_in.toString(),
+              decimalsIn
+            ),
+            // Misc data
+            poolId:
+              "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
+            from: fakeAddress,
+            to: fakeAddress,
+            userData: "0x",
+          },
+          ethers.utils.parseUnits(reserveIn.toString(), decimalsIn),
+          ethers.utils.parseUnits(reserveOut.toString(), decimalsOut),
+          ethers.utils.parseUnits(trade.input.time.toString(), 18),
+          ethers.utils.parseUnits(trade.output.amount_out.toString(), 18)
+        ).then(check);
+      } else if (trade.input.direction === "out") {
+        const value = pool.callStatic.quoteOutGivenInSimulation(
           {
             tokenIn: tokenAddressIn,
             tokenOut: tokenAddressOut,
@@ -111,8 +133,8 @@ describe("YieldPoolErrSim", function () {
           ethers.utils.parseUnits(reserveOut.toString(), decimalsOut),
           ethers.utils.parseUnits(trade.input.time.toString(), 18),
           ethers.utils.parseUnits(trade.output.amount_out.toString(), 18)
-        )
-        .then(check);
+        ).then(check);
+      }
       // We use a closure after the promise to retain access to the mocha done
       // call
       function check(value: any) {

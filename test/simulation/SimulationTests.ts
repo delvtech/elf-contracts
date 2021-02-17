@@ -93,7 +93,7 @@ describe("YieldPoolErrSim", function () {
         : trade.input.x_reserves;
 
       if (trade.input.direction === "in") {
-        const value = await pool.callStatic.quoteInGivenOutSimulation(
+        const value = pool.callStatic.quoteInGivenOutSimulation(
           {
             tokenIn: tokenAddressIn,
             tokenOut: tokenAddressOut,

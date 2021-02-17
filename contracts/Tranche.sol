@@ -7,6 +7,7 @@ import "./interfaces/IElf.sol";
 import "./libraries/Address.sol";
 import "./libraries/SafeERC20.sol";
 import "./libraries/ERC20Permit.sol";
+import "./libraries/DateString.sol";
 
 import "./assets/YC.sol";
 
@@ -29,12 +30,17 @@ contract Tranche is ERC20Permit {
     @param _lockDuration The lock duration (seconds).
      */
     constructor(address _elfContract, uint256 _lockDuration)
-        ERC20("Fixed Yield Token", "FYT")
-        ERC20Permit("Fixed Yield Token")
+        ERC20("Fixed Yield Token ", "FYT:")
+        ERC20Permit("Fixed Yield Token ")
     {
-        yc = new YC(address(this));
         elf = IElf(_elfContract);
+        string memory elfSymbol = elf.symbol();
         unlockTimestamp = block.timestamp + _lockDuration;
+        yc = new YC(address(this), elfSymbol, unlockTimestamp);
+
+        // Write the elfSymbol and expiration time to name and symbol
+        DateString.encodeAndWriteTimestamp(elfSymbol, unlockTimestamp, _name);
+        DateString.encodeAndWriteTimestamp(elfSymbol, unlockTimestamp, _symbol);
     }
 
     /**

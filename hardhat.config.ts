@@ -5,6 +5,7 @@ import {HardhatUserConfig} from "hardhat/config";
 
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
+  mocha: {timeout: 0, parallel: true},
   networks: {
     hardhat: {
       forking: {

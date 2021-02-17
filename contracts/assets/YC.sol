@@ -2,15 +2,20 @@ pragma solidity ^0.8.0;
 
 import "../libraries/ERC20.sol";
 import "../libraries/ERC20Permit.sol";
+import "../libraries/DateString.sol";
 
 contract YC is ERC20Permit {
     address public tranche;
 
-    constructor(address _authority)
-        ERC20("Yield Coupon", "YC")
-        ERC20Permit("Yield Coupon")
-    {
+    constructor(
+        address _authority,
+        string memory strategySymbol,
+        uint256 timestamp
+    ) ERC20("Yield Coupon ", "YC:") ERC20Permit("Yield Coupon") {
         tranche = _authority;
+        // Write the elfSymbol and expiration time to name and symbol
+        DateString.encodeAndWriteTimestamp(strategySymbol, timestamp, _name);
+        DateString.encodeAndWriteTimestamp(strategySymbol, timestamp, _symbol);
     }
 
     modifier onlyMintAuthority() {

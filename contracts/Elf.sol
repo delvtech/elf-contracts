@@ -19,14 +19,14 @@ contract Elf is ERC20Permit {
     IERC20 public token;
     IERC20 public vault;
     IAssetProxy public proxy;
-    address public governance;
 
     constructor(
         address _token,
         address _vault,
-        address _proxy
-    ) ERC20("ELement Finance", "ELF") ERC20Permit("ELement Finance") {
-        governance = msg.sender;
+        address _proxy,
+        string memory _name,
+        string memory _symbol
+    ) ERC20(_name, _symbol) ERC20Permit(_name) {
         token = IERC20(_token);
         vault = IERC20(_vault);
         proxy = IAssetProxy(_proxy);
@@ -49,13 +49,6 @@ contract Elf is ERC20Permit {
     /// @return The underlying token balance of the address
     function balanceOfUnderlying(address _who) external view returns (uint256) {
         return proxy.underlying(balanceOf(_who));
-    }
-
-    /// @notice Update the governance address
-    /// @param _governance new governance address
-    function setGovernance(address _governance) external {
-        require(msg.sender == governance, "!governance");
-        governance = _governance;
     }
 
     /// @notice Returns the amount of the underlying asset a certain amount of shares is worth

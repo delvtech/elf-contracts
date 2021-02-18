@@ -1,0 +1,97 @@
+{
+ "init": {
+  "percent_fee": 0.05,
+  "initial_x_reserves": 50000.0,
+  "initial_y_reserves": 5000.0,
+  "total_supply": 60000.0,
+  "max_apy": 200.0,
+  "max_x_reserves": 1000000.0
+ },
+ "trades": [
+  {
+   "input": {
+    "time": 0.1,
+    "x_reserves": 999040.5153241447,
+    "y_reserves": 6406.222396467837,
+    "token_in": "base",
+    "amount_in": 15.12438491708928,
+    "token_out": "fyt",
+    "direction": "in"
+   },
+   "output": {
+    "x_reserves": 999055.6397090618,
+    "y_reserves": 6391.116287969851,
+    "amount_out": 15.10610849798557,
+    "fee": 0.000961916794932094
+   }
+  },
+  {
+   "input": {
+    "time": 0.05,
+    "x_reserves": 935539.0708060318,
+    "y_reserves": 33487.301840174,
+    "token_in": "base",
+    "amount_in": 283.40669117699,
+    "token_out": "fyt",
+    "direction": "out"
+   },
+   "output": {
+    "x_reserves": 935822.4774972087,
+    "y_reserves": 33202.96671121868,
+    "amount_out": 284.33512895531885,
+    "fee": 0.04886514622783409
+   }
+  },
+  {
+   "input": {
+    "time": 0.2,
+    "x_reserves": 229577.21372982554,
+    "y_reserves": 22172.64468897783,
+    "token_in": "fyt",
+    "amount_in": 118.49369719929959,
+    "token_out": "base",
+    "direction": "in"
+   },
+   "output": {
+    "x_reserves": 229454.23446744969,
+    "y_reserves": 22291.138386177132,
+    "amount_out": 122.97926237585642,
+    "fee": 0.21359834174080136
+   }
+  },
+  {
+   "input": {
+    "time": 0.0,
+    "x_reserves": 939127.7894236257,
+    "y_reserves": 21534.928359235422,
+    "token_in": "fyt",
+    "amount_in": 167.62556440107218,
+    "token_out": "base",
+    "direction": "out"
+   },
+   "output": {
+    "x_reserves": 938960.1638592246,
+    "y_reserves": 21702.553923636493,
+    "amount_out": 167.62556440103629,
+    "fee": 1.709566e-12
+   }
+  },
+  {
+   "input": {
+    "time": 0.15000000000000002,
+    "x_reserves": 518152.548941889,
+    "y_reserves": 4640.040432036896,
+    "token_in": "fyt",
+    "amount_in": 40.13728943713227,
+    "token_out": "base",
+    "direction": "out"
+   },
+   "output": {
+    "x_reserves": 518112.5242045688,
+    "y_reserves": 4680.177721474029,
+    "amount_out": 40.024737320213816,
+    "fee": 0.005359624615164194
+   }
+  }
+ ]
+}

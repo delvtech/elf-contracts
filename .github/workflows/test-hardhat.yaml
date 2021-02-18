@@ -26,6 +26,9 @@ jobs:
         - name: hardhat-test
           run: npm run test:quick
         
+        - name: trade-simulation
+          run: npm run sim
+        
 
 
 

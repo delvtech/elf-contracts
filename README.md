@@ -21,11 +21,11 @@ npm install
 ### Build
 
 ```
-npm run-script build
+npm run build
 ```
 
 ### Test
 
 ```
-npm run-script test
+npm run test
 ```

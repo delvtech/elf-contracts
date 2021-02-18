@@ -7,7 +7,7 @@
     "avoid-sha3": "warn",
     "reason-string": "off",
     "private-vars-leading-underscore": "error",
-    "compiler-version": ["error","^0.8.0"]
+    "compiler-version": ["warn","^0.8.0"]
   },
   "plugins": ["prettier"]
 }

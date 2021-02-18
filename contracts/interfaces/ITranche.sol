@@ -10,5 +10,5 @@ interface ITranche is IERC20Permit {
 
     function withdrawYc(uint256 _amount) external returns (uint256);
 
-    function getYC() external view returns (address);
+    function yc() external view returns (address);
 }

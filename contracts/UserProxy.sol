@@ -17,7 +17,7 @@ contract UserProxy is Authorizable {
     // so can manually redeem them.
 
     // Store the accessibility state of the contract
-    bool public isFrozen = true;
+    bool public isFrozen = false;
     // Constant wrapped ether address
     IWETH public immutable weth;
     // A constant which represents ether
@@ -207,7 +207,7 @@ contract UserProxy is Authorizable {
         // Create2 Derive the Tranche contract
         ITranche tranche = deriveTranche(address(elf), expiration);
         // Load the YC contract
-        IERC20Permit YC = IERC20Permit(tranche.getYC());
+        IERC20Permit YC = IERC20Permit(tranche.yc());
         // Permit this address to get the user's YC
         YC.permit(
             msg.sender,
@@ -268,7 +268,7 @@ contract UserProxy is Authorizable {
         // Transfer to the sender the FYT and YC
         tranche.transfer(msg.sender, fytShares);
         // TODO - Replace YC creation with create2 to cut this gas cost.
-        IERC20 yc = IERC20(tranche.getYC());
+        IERC20 yc = IERC20(tranche.yc());
         yc.transfer(msg.sender, elfShares);
     }
 
@@ -277,7 +277,12 @@ contract UserProxy is Authorizable {
     /// @param assetProxy The asset proxy which is hashed into the create2 seed
     /// @return The derived ELF contract
     // TODO - Cordinate with Nicholas on exactly what needs to be hashed here
-    function deriveElf(address assetProxy) internal pure returns (IElf) {
+    function deriveElf(address assetProxy)
+        internal
+        virtual
+        view
+        returns (IElf)
+    {
         return IElf(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
     }
 
@@ -288,7 +293,8 @@ contract UserProxy is Authorizable {
     /// @return The derived Tranche contract
     function deriveTranche(address elf, uint256 expiration)
         internal
-        pure
+        virtual
+        view
         returns (ITranche)
     {
         return ITranche(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);

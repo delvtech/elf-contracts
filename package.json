@@ -9,7 +9,7 @@
     "build": "npx hardhat compile",
     "test": "npx hardhat test ./test/*.ts",
     "sim": "npx hardhat test ./test/simulation/*.ts",
-    "test:quick": "npx hardhat test --no-compile"
+    "test:quick": "npx hardhat test ./test/*.ts --no-compile"
   },
   "husky": {
     "hooks": {

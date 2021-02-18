@@ -264,12 +264,8 @@ contract UserProxy is Authorizable {
         // Use create2 to derive the tranche contract
         ITranche tranche = deriveTranche(address(elf), expiration);
         // Move funds into the Tranche contract
-        uint256 fytShares = tranche.deposit(elfShares);
-        // Transfer to the sender the FYT and YC
-        tranche.transfer(msg.sender, fytShares);
-        // TODO - Replace YC creation with create2 to cut this gas cost.
-        IERC20 yc = IERC20(tranche.yc());
-        yc.transfer(msg.sender, elfShares);
+        // it will credit the msg.sender with the new tokens
+        tranche.deposit(elfShares, msg.sender);
     }
 
     /// @dev This internal function produces the deterministic create2

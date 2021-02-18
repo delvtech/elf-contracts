@@ -4,7 +4,9 @@ import "../libraries/ERC20.sol";
 import "../libraries/ERC20Permit.sol";
 import "../libraries/DateString.sol";
 
-contract YC is ERC20Permit {
+import "../interfaces/IYC.sol";
+
+contract YC is ERC20Permit, IYC {
     address public tranche;
 
     constructor(
@@ -24,14 +26,14 @@ contract YC is ERC20Permit {
     }
 
     function mint(address _account, uint256 _amount)
-        external
+        external override
         onlyMintAuthority
     {
         _mint(_account, _amount);
     }
 
     function burn(address _account, uint256 _amount)
-        external
+        external override
         onlyMintAuthority
     {
         _burn(_account, _amount);

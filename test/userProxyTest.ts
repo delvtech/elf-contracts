@@ -55,6 +55,7 @@ describe("UserProxyTests", function () {
       5000,
       fakeAddress
     );
+    // Mint for the first time
     receipt = await receipt.wait();
     console.log("First Mint", receipt.gasUsed.toNumber());
     receipt = await proxy.mint(

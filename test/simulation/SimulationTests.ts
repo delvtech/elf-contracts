@@ -91,26 +91,28 @@ describe("YieldPoolErrSim", function () {
         ? trade.input.y_reserves
         : trade.input.x_reserves;
 
-      const value = pool.callStatic.quoteOutGivenInSimulation(
-        {
-          tokenIn: tokenAddressIn,
-          tokenOut: tokenAddressOut,
-          amountIn: ethers.utils.parseUnits(
-            trade.input.amount_in.toString(),
-            decimalsIn
-          ),
-          // Misc data
-          poolId:
-            "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
-          from: fakeAddress,
-          to: fakeAddress,
-          userData: "0x",
-        },
-        ethers.utils.parseUnits(reserveIn.toString(), decimalsIn),
-        ethers.utils.parseUnits(reserveOut.toString(), decimalsOut),
-        ethers.utils.parseUnits(trade.input.time.toString(), 18),
-        ethers.utils.parseUnits(trade.output.amount_out.toString(), 18)
-      ).then(check);
+      const value = pool.callStatic
+        .quoteOutGivenInSimulation(
+          {
+            tokenIn: tokenAddressIn,
+            tokenOut: tokenAddressOut,
+            amountIn: ethers.utils.parseUnits(
+              trade.input.amount_in.toString(),
+              decimalsIn
+            ),
+            // Misc data
+            poolId:
+              "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
+            from: fakeAddress,
+            to: fakeAddress,
+            userData: "0x",
+          },
+          ethers.utils.parseUnits(reserveIn.toString(), decimalsIn),
+          ethers.utils.parseUnits(reserveOut.toString(), decimalsOut),
+          ethers.utils.parseUnits(trade.input.time.toString(), 18),
+          ethers.utils.parseUnits(trade.output.amount_out.toString(), 18)
+        )
+        .then(check);
       // We use a closure after the promise to retain access to the mocha done
       // call
       function check(value: any) {
@@ -119,9 +121,9 @@ describe("YieldPoolErrSim", function () {
           expect(value.lt(epsilon)).to.be.eq(true);
           // If it passes we are done
           done();
-        } catch( e ) {
+        } catch (e) {
           // If it fails we return an error to mocha
-          done( e ); 
+          done(e);
         }
       }
     });

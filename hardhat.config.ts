@@ -27,7 +27,7 @@ const config: HardhatUserConfig = {
       },
     ],
   },
-  mocha: {timeout: 0, parallel: true},
+  mocha: {timeout: 0},
   networks: {
     hardhat: {
       forking: {

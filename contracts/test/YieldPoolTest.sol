@@ -163,6 +163,7 @@ contract YieldPoolTest is YieldCurvePool {
             return quote;
         }
     }
+
     // Trade estimator which also takes and stores a time override variable
     // if expectedPrice is nonzero it returns the delta in price instead of
     // the quote

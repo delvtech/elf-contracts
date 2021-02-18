@@ -5,7 +5,9 @@ import "./IERC20Permit.sol";
 import "./IYC.sol";
 
 interface ITranche is IERC20Permit {
-    function deposit(uint256 _shares, address destination) external returns (uint256);
+    function deposit(uint256 _shares, address destination)
+        external
+        returns (uint256);
 
     function withdrawFyt(uint256 _amount) external returns (uint256);
 

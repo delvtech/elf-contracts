@@ -53,7 +53,11 @@ contract Tranche is ERC20Permit, ITranche {
     @param destination The address to mint to
     @return The amount of FYT tokens minted after earned intrest discount
      */
-    function deposit(uint256 _shares, address destination) external override returns (uint256) {
+    function deposit(uint256 _shares, address destination)
+        external
+        override
+        returns (uint256)
+    {
         require(block.timestamp < unlockTimestamp, "expired");
 
         uint256 depositValue = elf.getSharesToUnderlying(_shares) -

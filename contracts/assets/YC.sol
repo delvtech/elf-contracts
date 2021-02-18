@@ -26,14 +26,16 @@ contract YC is ERC20Permit, IYC {
     }
 
     function mint(address _account, uint256 _amount)
-        external override
+        external
+        override
         onlyMintAuthority
     {
         _mint(_account, _amount);
     }
 
     function burn(address _account, uint256 _amount)
-        external override
+        external
+        override
         onlyMintAuthority
     {
         _burn(_account, _amount);

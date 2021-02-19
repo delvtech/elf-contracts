@@ -71,7 +71,7 @@ describe("YieldPoolErrSim", function () {
     } for ${trade.input.token_out}. direction: ${trade.input.direction}`;
 
     it(description, function (done) {
-          // We now set the total supply
+      // We now set the total supply
       const setLPTxn = pool.setLPBalance(
         fakeAddress,
         ethers.utils.parseEther(trade.input.total_supply.toString())

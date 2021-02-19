@@ -155,10 +155,20 @@ contract YieldPoolTest is YieldCurvePool {
             currentBalanceTokenOut
         );
         time = 0;
-        if(quote > expectedPrice){
-            console.log("quote: %s, expectedPrice: %s, delta: %s", quote,expectedPrice,quote - expectedPrice);
+        if (quote > expectedPrice) {
+            console.log(
+                "quote: %s, expectedPrice: %s, delta: %s",
+                quote,
+                expectedPrice,
+                quote - expectedPrice
+            );
         } else {
-             console.log("quote: %s expectedPrice: %s, delta: %s", quote,expectedPrice,expectedPrice-quote);
+            console.log(
+                "quote: %s expectedPrice: %s, delta: %s",
+                quote,
+                expectedPrice,
+                expectedPrice - quote
+            );
         }
         if (expectedPrice != 0) {
             return
@@ -187,10 +197,20 @@ contract YieldPoolTest is YieldCurvePool {
             currentBalanceTokenOut
         );
         time = 0;
-        if(quote > expectedPrice){
-            console.log("quote: %s, expectedPrice: %s, delta: %s", quote,expectedPrice,quote - expectedPrice);
+        if (quote > expectedPrice) {
+            console.log(
+                "quote: %s, expectedPrice: %s, delta: %s",
+                quote,
+                expectedPrice,
+                quote - expectedPrice
+            );
         } else {
-             console.log("quote: %s, expectedPrice: %s, delta: %s", quote,expectedPrice,expectedPrice-quote);
+            console.log(
+                "quote: %s, expectedPrice: %s, delta: %s",
+                quote,
+                expectedPrice,
+                expectedPrice - quote
+            );
         }
         if (expectedPrice != 0) {
             return

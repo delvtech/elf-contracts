@@ -2,7 +2,7 @@ import {expect} from "chai";
 import {ethers} from "hardhat";
 import {Contract} from "ethers";
 
-const testTrades = require("./testTrades_random.json");
+const testTrades = require("./testTrades.json");
 
 // This simulation loads the data from ./testTrades.json and makes sure that
 // our quotes are with-in 10^9 of the quotes from the python script
@@ -17,7 +17,7 @@ describe("YieldPoolErrSim", function () {
   const SECONDS_IN_YEAR = 31536000;
   const fakeAddress = "0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c";
   // This is 10^-9 in 18 point fixed
-  const epsilon = ethers.utils.parseUnits("1", 9);
+  const epsilon = ethers.utils.parseUnits("1", 10);
   let pool: Contract;
   let startTimestamp;
   let erc20_base: Contract;
@@ -29,6 +29,7 @@ describe("YieldPoolErrSim", function () {
       amount_in: number;
       x_reserves: number;
       y_reserves: number;
+      total_supply: number;
       time: number;
       token_in: string;
       token_out: string;
@@ -61,12 +62,6 @@ describe("YieldPoolErrSim", function () {
       "YieldBPT",
       "BPT"
     );
-    // We now set the total supply
-    const setLPTxn = await pool.setLPBalance(
-      fakeAddress,
-      ethers.utils.parseEther(testTrades.init.total_supply.toString())
-    );
-    await setLPTxn.wait();
   });
 
   // This dynamically generated test uses each case in the vector
@@ -76,6 +71,11 @@ describe("YieldPoolErrSim", function () {
     } for ${trade.input.token_out}. direction: ${trade.input.direction}`;
 
     it(description, function (done) {
+          // We now set the total supply
+      const setLPTxn = pool.setLPBalance(
+        fakeAddress,
+        ethers.utils.parseEther(trade.input.total_supply.toString())
+      );
       const isBaseIn = trade.input.token_in === "base";
       const tokenAddressIn = isBaseIn ? erc20_base.address : erc20_bond.address;
       const tokenAddressOut = isBaseIn

@@ -151,10 +151,7 @@ contract YieldPoolTest is YieldCurvePool {
     ) external returns (uint256) {
         time = _time;
         // We now set the total supply
-        setLPBalance(
-            request.from,
-            totalSupply
-        );
+        setLPBalance(request.from, totalSupply);
         uint256 quote = quoteInGivenOut(
             request,
             currentBalanceTokenIn,
@@ -199,10 +196,7 @@ contract YieldPoolTest is YieldCurvePool {
     ) external returns (uint256) {
         time = _time;
         // We now set the total supply
-        setLPBalance(
-            request.from,
-            totalSupply
-        );
+        setLPBalance(request.from, totalSupply);
         uint256 quote = quoteOutGivenIn(
             request,
             currentBalanceTokenIn,

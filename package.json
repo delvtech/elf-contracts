@@ -29,6 +29,7 @@
     "ethereum-waffle": "^3.2.2",
     "ethers": "^5.0.29",
     "hardhat": "^2.0.8",
+    "hardhat-gas-reporter": "^1.0.4",
     "hardhat-typechain": "^0.3.4",
     "husky": "^4.3.0",
     "prettier": "^2.1.2",

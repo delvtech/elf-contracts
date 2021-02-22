@@ -15,6 +15,7 @@ contract AYVault is ERC20 {
     using Address for address;
 
     address public token;
+    uint256 internal _supply;
 
     constructor(address _token) ERC20("a ytoken", "yToken") {
         token = _token;
@@ -24,12 +25,14 @@ contract AYVault is ERC20 {
         uint256 _shares = (_amount * 1e18) / getPricePerFullShare(); // calculate shares
         IERC20(token).safeTransferFrom(msg.sender, address(this), _amount); // pull deposit from sender
         _mint(msg.sender, _shares); // mint shares for sender
+        _supply += _shares;
         return _shares;
     }
 
     function withdraw(uint256 _shares) external {
         uint256 _amount = (_shares * getPricePerFullShare()) / 1e18;
         _burn(msg.sender, _shares);
+        _supply -= _shares;
         IERC20(token).safeTransfer(msg.sender, _amount);
     }
 
@@ -42,5 +45,9 @@ contract AYVault is ERC20 {
     function updateShares() external {
         uint256 balance = ERC20(token).balanceOf(address(this));
         AToken(token).mint(address(this), balance / 10);
+    }
+
+    function totalSupply() internal view returns(uint256) {
+        return _supply;
     }
 }

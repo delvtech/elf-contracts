@@ -153,7 +153,7 @@ contract BalancerPoolToken is IERC20 {
         return _DECIMALS;
     }
 
-    function totalSupply() public override view returns (uint256) {
+    function totalSupply() public view returns (uint256) {
         return _totalSupply;
     }
 

@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 
 interface YearnVault {
-    function deposit(uint256) external;
+    function deposit(uint256) external returns (uint256);
 
-    function withdraw(uint256) external;
+    function withdraw(uint256) external returns (uint256);
 
     function getPricePerFullShare() external view returns (uint256);
 

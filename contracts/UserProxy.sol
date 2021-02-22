@@ -8,6 +8,8 @@ import "./interfaces/ITranche.sol";
 import "./interfaces/IWETH.sol";
 import "./libraries/Authorizable.sol";
 
+import "hardhat/console.sol";
+
 contract UserProxy is Authorizable {
     // This contract is a convenience library to consolidate
     // the actions needed to create FYT/YC to one call.
@@ -43,33 +45,6 @@ contract UserProxy is Authorizable {
         isFrozen = newState;
     }
 
-    /// @dev Sets an allowance on an instance of an ELF contract
-    ///      so that the ELF contract can move underlying from the proxy
-    /// @param underlying The ERC20 which is the token in the Elf contract
-    /// @param assetProxy The asset proxy which is attached to the ELF contract
-    // TODO - Does this need to be only authorized?
-    function allowElf(IERC20 underlying, address assetProxy)
-        external
-        onlyAuthorized()
-    {
-        IElf elf = deriveElf(assetProxy);
-        underlying.approve(address(elf), type(uint256).max);
-    }
-
-    /// @dev Sets an allowance on an instance of an Tranche contract
-    ///      so that the Tranche contract can move ELF from the proxy
-    /// @param assetProxy The asset proxy which is attached to the ELF contract
-    /// @param expiration The expiration time of the Tranche
-    // TODO - Does this need to be only authorized?
-    function allowTranche(address assetProxy, uint256 expiration)
-        external
-        onlyAuthorized()
-    {
-        IElf elf = deriveElf(assetProxy);
-        ITranche tranche = deriveTranche(address(elf), expiration);
-        elf.approve(address(tranche), type(uint256).max);
-    }
-
     /// @dev Mints a FYT/YC token pair from either underlying token or Eth
     ///      then returns the FYT YC to the caller. This function assumes
     ///      that it already has an allowance for the token in question.
@@ -77,12 +52,12 @@ contract UserProxy is Authorizable {
     /// @param underlying Either (1) The underlying ERC20 token contract
     ///                   or (2) the ETH_CONSTANT to indicate the user has sent eth.
     /// @param expiration The expiration time of the Tranche contract
-    /// @param assetProxy The asset proxy which manages the position.
+    /// @param elf The contract which manages pooled deposits
     function mint(
         uint256 amount,
         IERC20 underlying,
         uint256 expiration,
-        address assetProxy
+        address elf
     ) external payable notFrozen() {
         // If the underlying token matches this predefined 'ETH token'
         // then we create weth for the user and go from there
@@ -90,14 +65,17 @@ contract UserProxy is Authorizable {
             // Check that the amount matches the amount provided
             require(msg.value == amount, "Incorrect amount provided");
             // Create weth from the provided eth
+            // NOTE - This can be made slightly cheaper by depositing 1 wei into this
+            //        contract address on weth.
             weth.deposit{value: msg.value}();
+            weth.transfer(address(elf), amount);
             // Proceed to internal minting steps
-            _mint(amount, expiration, assetProxy);
+            _mint(expiration, elf);
         } else {
-            // Move the user's funds to this contract
-            underlying.transferFrom(msg.sender, address(this), amount);
+            // Move the user's funds to the elf contract
+            underlying.transferFrom(msg.sender, address(elf), amount);
             // Proceed to internal minting steps
-            _mint(amount, expiration, assetProxy);
+            _mint(expiration, elf);
         }
     }
 
@@ -108,7 +86,7 @@ contract UserProxy is Authorizable {
     /// @param amount The amount of underlying to turn into FYT/YC
     /// @param underlying The underlying ERC20 token contract
     /// @param expiration The expiration time of the Tranche contract
-    /// @param assetProxy The asset proxy which manages the position.
+    /// @param elf The contract which manages pooled positions
     /// @param v The bit indicator which allows address recover from signature
     /// @param r The r component of the signature.
     /// @param s The s component of the signature.
@@ -116,7 +94,7 @@ contract UserProxy is Authorizable {
         uint256 amount,
         IERC20Permit underlying,
         uint256 expiration,
-        address assetProxy,
+        address elf,
         uint8 v,
         bytes32 r,
         bytes32 s
@@ -133,153 +111,24 @@ contract UserProxy is Authorizable {
             s
         );
         // Move the user's funds to this contract
-        underlying.transferFrom(msg.sender, address(this), amount);
+        underlying.transferFrom(msg.sender, address(elf), amount);
         // Pass call to internal function which works once approved
-        _mint(amount, expiration, assetProxy);
-    }
-
-    /// @dev This method allows a user to redeem a FYT and receive underlying.
-    ///      It uses permit to give itself an unlimited allowance on the FYT.
-    ///      Please note the permit signature expects a max expiration time
-    /// @param amount The amount of FYT to redeem
-    /// @param expiration The expiration time of the Tranche contract
-    /// @param assetProxy The asset proxy which manages the position.
-    /// @param underlying Either (1) The underlying ERC20 token contract
-    ///                   or (2) the ETH_CONSTANT if the user wants eth
-    /// @param v The bit indicator which allows address recover from signature
-    /// @param r The r component of the signature.
-    /// @param s The s component of the signature.
-    function redeemFYT(
-        uint256 amount,
-        uint256 expiration,
-        address assetProxy,
-        IERC20 underlying,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external notFrozen() {
-        // Create2 Derive the elf and tranche contracts
-        IElf elf = deriveElf(assetProxy);
-        // Create2 Derive the Tranche contract
-        ITranche tranche = deriveTranche(address(elf), expiration);
-        // Give ourselves the approval to move tokens
-        tranche.permit(
-            msg.sender,
-            address(this),
-            type(uint256).max,
-            type(uint256).max,
-            v,
-            r,
-            s
-        );
-        // Move tokens to this contract
-        tranche.transferFrom(msg.sender, address(this), amount);
-        // Get back ELF tokens
-        uint256 elfRedeemed = tranche.withdrawFyt(amount);
-        // Now turn the elf tokens to underlying
-        uint256 underlyingAmount = elf.withdraw(address(this), elfRedeemed);
-        // Sends the underlying amount to the caller
-        sendBalance(underlying, underlyingAmount);
-    }
-
-    /// @dev This method allows a user to redeem a YC and receive underlying
-    ///      it uses permit to give itself an unlimited allowance on the YC
-    ///      Please not the permit signature expects a max expiration time
-    /// @param amount The amount of YC to redeem
-    /// @param expiration The expiration time of the Tranche contract
-    /// @param assetProxy The asset proxy which manages the position.
-    /// @param underlying Either (1) The underlying ERC20 token contract
-    ///                   or (2) the ETH_CONSTANT if the user wants eth
-    /// @param v The bit indicator which allows address recover from signature
-    /// @param r The r component of the signature.
-    /// @param s The s component of the signature.
-    function redeemYC(
-        uint256 amount,
-        uint256 expiration,
-        address assetProxy,
-        IERC20 underlying,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external notFrozen() {
-        // Create2 Derive the elf and tranche contracts
-        IElf elf = deriveElf(assetProxy);
-        // Create2 Derive the Tranche contract
-        ITranche tranche = deriveTranche(address(elf), expiration);
-        // Load the YC contract
-        IERC20Permit YC = IERC20Permit(tranche.yc());
-        // Permit this address to get the user's YC
-        YC.permit(
-            msg.sender,
-            address(this),
-            type(uint256).max,
-            type(uint256).max,
-            v,
-            r,
-            s
-        );
-        // Move tokens to this contract
-        YC.transferFrom(msg.sender, address(this), amount);
-
-        // Get back ELF tokens
-        uint256 elfRedeemed = tranche.withdrawYc(amount);
-        // Now turn the elf tokens to underlying
-        uint256 underlyingAmount = elf.withdraw(address(this), elfRedeemed);
-        // Sends the underlying amount to the caller
-        sendBalance(underlying, underlyingAmount);
-    }
-
-    /// @dev This helper function sends the msg.sender the amount owed
-    ///      by either unwrapping weth and sending eth or ERC20 transferring
-    /// @param underlying Either (1) The underlying ERC20 token contract
-    ///                   or (2) the ETH_CONSTANT
-    /// @param amount The amount to send
-    function sendBalance(IERC20 underlying, uint256 amount) private {
-        // If the user wants eth back we redeem the weth for eth
-        if (address(underlying) == ETH_CONSTANT) {
-            // Redeem the received weth for eth
-            weth.withdraw(amount);
-            // Send this contract's balance to the caller
-            payable(msg.sender).transfer(amount);
-        } else {
-            // Send the underlying token to the caller
-            underlying.transfer(msg.sender, amount);
-        }
+        _mint(expiration, elf);
     }
 
     /// @dev This internal mint function preforms the core minting logic after
-    ///      the contract already has the token which it will deposit
-    /// @param amount The amount of underlying
+    ///      the contract has already transferred to ELF
     /// @param expiration The tranche expiration time
-    /// @param assetProxy The proxy which interacts with the yield bearing strategy
+    /// @param elf The contract which interacts with the yield bering strategy
     function _mint(
-        uint256 amount,
         uint256 expiration,
-        address assetProxy
+        address elf
     ) internal {
-        // Use create2 to derive the elf
-        IElf elf = deriveElf(assetProxy);
-        // Create ELF token
-        uint256 elfShares = elf.deposit(address(this), amount);
         // Use create2 to derive the tranche contract
         ITranche tranche = deriveTranche(address(elf), expiration);
         // Move funds into the Tranche contract
         // it will credit the msg.sender with the new tokens
-        tranche.deposit(elfShares, msg.sender);
-    }
-
-    /// @dev This internal function produces the deterministic create2
-    ///      address of the ELF contract indicated by an asset proxy
-    /// @param assetProxy The asset proxy which is hashed into the create2 seed
-    /// @return The derived ELF contract
-    // TODO - Cordinate with Nicholas on exactly what needs to be hashed here
-    function deriveElf(address assetProxy)
-        internal
-        virtual
-        view
-        returns (IElf)
-    {
-        return IElf(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
+        tranche.prefundedDeposit(msg.sender);
     }
 
     /// @dev This internal function produces the deterministic create2

@@ -26,7 +26,7 @@ contract Tranche is ERC20Permit {
     uint256 public unlockTimestamp;
 
     // The lock duration (seconds)
-    uint256 public lockDuration;
+    uint256 public immutable lockDuration;
 
     /**
     @param _elfContract The Elf contract to use.

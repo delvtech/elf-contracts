@@ -10,7 +10,7 @@ on:
 
 jobs:
 
-    solidity:
+    lint:
       runs-on: ubuntu-latest
 
       steps:

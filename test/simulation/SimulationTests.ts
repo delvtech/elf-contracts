@@ -71,11 +71,6 @@ describe("YieldPoolErrSim", function () {
     } for ${trade.input.token_out}. direction: ${trade.input.direction}`;
 
     it(description, function (done) {
-      // We now set the total supply
-      const setLPTxn = pool.setLPBalance(
-        fakeAddress,
-        ethers.utils.parseEther(trade.input.total_supply.toString())
-      );
       const isBaseIn = trade.input.token_in === "base";
       const tokenAddressIn = isBaseIn ? erc20_base.address : erc20_bond.address;
       const tokenAddressOut = isBaseIn
@@ -112,7 +107,8 @@ describe("YieldPoolErrSim", function () {
             ethers.utils.parseUnits(reserveIn.toString(), decimalsIn),
             ethers.utils.parseUnits(reserveOut.toString(), decimalsOut),
             ethers.utils.parseUnits(trade.input.time.toString(), 18),
-            ethers.utils.parseUnits(trade.output.amount_out.toString(), 18)
+            ethers.utils.parseUnits(trade.output.amount_out.toString(), 18),
+            ethers.utils.parseEther(trade.input.total_supply.toString())
           )
           .then(check);
       } else if (trade.input.direction === "out") {
@@ -135,7 +131,8 @@ describe("YieldPoolErrSim", function () {
             ethers.utils.parseUnits(reserveIn.toString(), decimalsIn),
             ethers.utils.parseUnits(reserveOut.toString(), decimalsOut),
             ethers.utils.parseUnits(trade.input.time.toString(), 18),
-            ethers.utils.parseUnits(trade.output.amount_out.toString(), 18)
+            ethers.utils.parseUnits(trade.output.amount_out.toString(), 18),
+            ethers.utils.parseEther(trade.input.total_supply.toString())
           )
           .then(check);
       }

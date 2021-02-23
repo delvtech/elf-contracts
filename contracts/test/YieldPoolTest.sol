@@ -3,7 +3,6 @@ pragma experimental ABIEncoderV2;
 
 import "../balancer/YieldPool.sol";
 import "../balancer/FixedPoint.sol";
-import "hardhat/console.sol";
 
 contract YieldPoolTest is YieldCurvePool {
     using FixedPoint for uint256;
@@ -146,30 +145,18 @@ contract YieldPoolTest is YieldCurvePool {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut,
         uint256 _time,
-        uint256 expectedPrice
+        uint256 expectedPrice,
+        uint256 totalSupply
     ) external returns (uint256) {
         time = _time;
+        // We now set the total supply
+        setLPBalance(request.from, totalSupply);
         uint256 quote = quoteInGivenOut(
             request,
             currentBalanceTokenIn,
             currentBalanceTokenOut
         );
         time = 0;
-        if (quote > expectedPrice) {
-            console.log(
-                "quote: %s, expectedPrice: %s, delta: %s",
-                quote,
-                expectedPrice,
-                quote - expectedPrice
-            );
-        } else {
-            console.log(
-                "quote: %s expectedPrice: %s, delta: %s",
-                quote,
-                expectedPrice,
-                expectedPrice - quote
-            );
-        }
         if (expectedPrice != 0) {
             return
                 (quote > expectedPrice)
@@ -188,30 +175,18 @@ contract YieldPoolTest is YieldCurvePool {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut,
         uint256 _time,
-        uint256 expectedPrice
+        uint256 expectedPrice,
+        uint256 totalSupply
     ) external returns (uint256) {
         time = _time;
+        // We now set the total supply
+        setLPBalance(request.from, totalSupply);
         uint256 quote = quoteOutGivenIn(
             request,
             currentBalanceTokenIn,
             currentBalanceTokenOut
         );
         time = 0;
-        if (quote > expectedPrice) {
-            console.log(
-                "quote: %s, expectedPrice: %s, delta: %s",
-                quote,
-                expectedPrice,
-                quote - expectedPrice
-            );
-        } else {
-            console.log(
-                "quote: %s, expectedPrice: %s, delta: %s",
-                quote,
-                expectedPrice,
-                expectedPrice - quote
-            );
-        }
         if (expectedPrice != 0) {
             return
                 (quote > expectedPrice)

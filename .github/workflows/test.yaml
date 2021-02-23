@@ -1,4 +1,4 @@
-name: Test-hardhat
+name: Tests
 
 on:
   push:
@@ -9,24 +9,23 @@ on:
     - main
 
 jobs:
-    solidity:
+    unit:
       runs-on: ubuntu-latest
       steps:
         - uses: actions/checkout@v2
-
-        - name: "Install node"
-          uses: actions/setup-node@v1
-
         - name: Install dependencies
           run: npm install 
-
-        - name: hardhat-compile
+        - name: compile
           run: npx hardhat compile
-      
-        - name: hardhat-test
+        - name: test
           run: npm run test:quick
-        
-        - name: trade-simulation
+    sim:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v2
+        - name: Install dependencies
+          run: npm install 
+        - name: simulation
           run: npm run sim
         
 

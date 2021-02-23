@@ -3,6 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "../balancer/YieldPool.sol";
 import "../balancer/FixedPoint.sol";
+import "hardhat/console.sol";
 
 contract YieldPoolTest is YieldCurvePool {
     using FixedPoint for uint256;
@@ -140,6 +141,48 @@ contract YieldPoolTest is YieldCurvePool {
     // Trade estimator which also takes and stores a time override variable
     // if expectedPrice is nonzero it returns the delta in price instead of
     // the quote
+    function quoteInGivenOutSimulation(
+        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut,
+        uint256 _time,
+        uint256 expectedPrice
+    ) external returns (uint256) {
+        time = _time;
+        uint256 quote = quoteInGivenOut(
+            request,
+            currentBalanceTokenIn,
+            currentBalanceTokenOut
+        );
+        time = 0;
+        if (quote > expectedPrice) {
+            console.log(
+                "quote: %s, expectedPrice: %s, delta: %s",
+                quote,
+                expectedPrice,
+                quote - expectedPrice
+            );
+        } else {
+            console.log(
+                "quote: %s expectedPrice: %s, delta: %s",
+                quote,
+                expectedPrice,
+                expectedPrice - quote
+            );
+        }
+        if (expectedPrice != 0) {
+            return
+                (quote > expectedPrice)
+                    ? quote - expectedPrice
+                    : expectedPrice - quote;
+        } else {
+            return quote;
+        }
+    }
+
+    // Trade estimator which also takes and stores a time override variable
+    // if expectedPrice is nonzero it returns the delta in price instead of
+    // the quote
     function quoteOutGivenInSimulation(
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint256 currentBalanceTokenIn,
@@ -154,6 +197,21 @@ contract YieldPoolTest is YieldCurvePool {
             currentBalanceTokenOut
         );
         time = 0;
+        if (quote > expectedPrice) {
+            console.log(
+                "quote: %s, expectedPrice: %s, delta: %s",
+                quote,
+                expectedPrice,
+                quote - expectedPrice
+            );
+        } else {
+            console.log(
+                "quote: %s, expectedPrice: %s, delta: %s",
+                quote,
+                expectedPrice,
+                expectedPrice - quote
+            );
+        }
         if (expectedPrice != 0) {
             return
                 (quote > expectedPrice)

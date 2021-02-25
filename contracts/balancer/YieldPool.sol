@@ -157,7 +157,7 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) external override returns (uint256) {
+    ) public override returns (uint256) {
         // Tokens amounts are passed to us in decimal form of the tokens
         // However we want them to be in 18 decimal fixed point form
         uint256 amountTokenOut = _tokenToFixed(

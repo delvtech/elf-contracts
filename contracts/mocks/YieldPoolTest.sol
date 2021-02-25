@@ -140,14 +140,47 @@ contract YieldPoolTest is YieldCurvePool {
     // Trade estimator which also takes and stores a time override variable
     // if expectedPrice is nonzero it returns the delta in price instead of
     // the quote
+    function quoteInGivenOutSimulation(
+        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut,
+        uint256 _time,
+        uint256 expectedPrice,
+        uint256 totalSupply
+    ) external returns (uint256) {
+        time = _time;
+        // We now set the total supply
+        setLPBalance(request.from, totalSupply);
+        uint256 quote = quoteInGivenOut(
+            request,
+            currentBalanceTokenIn,
+            currentBalanceTokenOut
+        );
+        time = 0;
+        if (expectedPrice != 0) {
+            return
+                (quote > expectedPrice)
+                    ? quote - expectedPrice
+                    : expectedPrice - quote;
+        } else {
+            return quote;
+        }
+    }
+
+    // Trade estimator which also takes and stores a time override variable
+    // if expectedPrice is nonzero it returns the delta in price instead of
+    // the quote
     function quoteOutGivenInSimulation(
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut,
         uint256 _time,
-        uint256 expectedPrice
+        uint256 expectedPrice,
+        uint256 totalSupply
     ) external returns (uint256) {
         time = _time;
+        // We now set the total supply
+        setLPBalance(request.from, totalSupply);
         uint256 quote = quoteOutGivenIn(
             request,
             currentBalanceTokenIn,

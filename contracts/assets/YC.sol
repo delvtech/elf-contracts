@@ -7,7 +7,6 @@ import "../libraries/DateString.sol";
 import "../interfaces/IYC.sol";
 
 contract YC is ERC20Permit, IYC {
-
     // The tranche address which controls the minting
     address public tranche;
 

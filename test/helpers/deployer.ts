@@ -19,6 +19,8 @@ import {IERC20} from "../../typechain/IERC20";
 import {IERC20__factory} from "../../typechain/factories/IERC20__factory";
 import {TestERC20} from "../../typechain/TestERC20";
 import {TestERC20__factory} from "../../typechain/factories/TestERC20__factory";
+import {UserProxyTest} from "../../typechain/UserProxyTest";
+import {UserProxyTest__factory} from "../../typechain/factories/UserProxyTest__factory";
 import {Signer} from "ethers";
 import {ethers} from "hardhat";
 import {ElfStub} from "../../typechain/ElfStub";
@@ -30,6 +32,7 @@ export interface fixtureInterface {
   elf: YVaultAssetProxy;
   tranche: Tranche;
   yc: YC;
+  proxy: UserProxyTest;
 }
 
 export interface ethPoolMainnetInterface {
@@ -90,6 +93,8 @@ const deployYasset = async (
 };
 
 export async function loadFixture() {
+  // The mainnet weth address won't work unless mainnet deployed
+  const wethAddress = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
   const [signer] = await ethers.getSigners();
   const signerAddress = (await signer.getAddress()) as string;
   const usdc = await deployUsdc(signer, signerAddress);
@@ -106,6 +111,10 @@ export async function loadFixture() {
   const ycAddress = await tranche.yc();
   const yc = YC__factory.connect(ycAddress, signer);
 
+  // Setup the proxy
+  const proxyFactory = new UserProxyTest__factory(signer);
+  const proxy = await proxyFactory.deploy(wethAddress, tranche.address);
+
   return {
     signer,
     usdc,
@@ -113,6 +122,7 @@ export async function loadFixture() {
     elf,
     tranche,
     yc,
+    proxy
   };
 }
 

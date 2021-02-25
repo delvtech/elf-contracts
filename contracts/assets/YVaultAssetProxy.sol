@@ -21,14 +21,14 @@ contract YVaultAssetProxy is Elf {
     uint8 public immutable vaultDecimals;
 
     constructor(
-        address _vault,
+        address vault_,
         address _token,
         string memory _name,
         string memory _symbol
     ) Elf(_token, _name, _symbol) {
-        vault = YearnVault(_vault);
-        token.approve(_vault, type(uint256).max);
-        vaultDecimals = IERC20(_vault).decimals();
+        vault = YearnVault(vault_);
+        token.approve(vault_, type(uint256).max);
+        vaultDecimals = IERC20(vault_).decimals();
     }
 
     /// @dev Makes the actual deposit into the yearn vault

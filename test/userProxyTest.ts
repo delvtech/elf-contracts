@@ -17,10 +17,8 @@ describe("UserProxyTests", function () {
     // Get the setup contracts
     fixture = await loadFixture();
     tranche = fixture.tranche;
-    // Setup the proxy
-    const proxyFactory = await ethers.getContractFactory("UserProxyTest");
-    // Without a real weth address this can't accept eth deposits
-    proxy = await proxyFactory.deploy(fakeAddress, tranche.address);
+    proxy = fixture.proxy;
+    
     underlying = await ethers.getContractAt(
       "AToken",
       await fixture.elf.token()

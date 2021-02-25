@@ -1,4 +1,5 @@
-pragma solidity >=0.7.1;
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "../YieldPool.sol";
@@ -8,8 +9,8 @@ contract YieldPoolTest is YieldCurvePool {
     using FixedPoint for uint256;
 
     constructor(
-        IERC20 _underlying,
-        IERC20 _bond,
+        ierc20 _underlying,
+        ierc20 _bond,
         uint256 _expiration,
         uint256 _unit_seconds,
         IVault vault,

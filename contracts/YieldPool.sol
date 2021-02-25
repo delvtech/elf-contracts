@@ -1,7 +1,8 @@
-pragma solidity >=0.7.0;
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "./interfaces/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./balancer-core-v2/lib/math/LogExpMath.sol";
 import "./balancer-core-v2/lib/math/FixedPoint.sol";
 import "./balancer-core-v2/vault/interfaces/IMinimalSwapInfoPool.sol";
@@ -9,11 +10,7 @@ import "./balancer-core-v2/vault/interfaces/IVault.sol";
 import "./balancer-core-v2/vault/interfaces/IBasePool.sol";
 import "./balancer-core-v2/pools/BalancerPoolToken.sol";
 
-contract YieldCurvePool is
-    IMinimalSwapInfoPool,
-    BalancerPoolToken,
-    IBasePool,
-{
+contract YieldCurvePool is IMinimalSwapInfoPool, BalancerPoolToken, IBasePool {
     using LogExpMath for uint256;
     using FixedPoint for uint256;
 

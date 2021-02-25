@@ -1,15 +1,19 @@
-pragma solidity >=0.7.1;
+pragma solidity >=0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/IERC20.sol";
-import "./LogExpMath.sol";
-import "./FixedPoint.sol";
-import "./interfaces/IMinimalSwapInfoPoolQuote.sol";
-import "./interfaces/IVault.sol";
-import "./interfaces/IPool.sol";
-import "./BalancerPoolToken.sol";
+import "./interfaces/IERC20.sol";
+import "./balancer-core-v2/lib/math/LogExpMath.sol";
+import "./balancer-core-v2/lib/math/FixedPoint.sol";
+import "./balancer-core-v2/vault/interfaces/IMinimalSwapInfoPool.sol";
+import "./balancer-core-v2/vault/interfaces/IVault.sol";
+import "./balancer-core-v2/vault/interfaces/IBasePool.sol";
+import "./balancer-core-v2/pools/BalancerPoolToken.sol";
 
-contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
+contract YieldCurvePool is
+    IMinimalSwapInfoPool,
+    BalancerPoolToken,
+    IBasePool,
+{
     using LogExpMath for uint256;
     using FixedPoint for uint256;
 
@@ -22,7 +26,7 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
     // The expiration time
     uint256 public immutable expiration;
     // The number of seconds in our timescale
-    uint256 public immutable unit_seconds;
+    uint256 public immutable unitSeconds;
     // The Balancer pool data
     // Note we change style to match Balancer's custom getter
     IVault private immutable _vault;
@@ -41,7 +45,7 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
     /// @param _underlying The asset which the second asset should appreciate to match
     /// @param _bond The asset which should be appreciating
     /// @param _expiration The time in unix seconds when the bond asset should equal the underlying asset
-    /// @param _unit_seconds The number of seconds in a unit of time, for example 1 year in seconds
+    /// @param _unitSeconds The number of seconds in a unit of time, for example 1 year in seconds
     /// @param vault The balancer vault
     /// @param _percentFee The percent of assigned fees which go to governance
     /// @param _governance The address which gets minted reward lp
@@ -51,7 +55,7 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         IERC20 _underlying,
         IERC20 _bond,
         uint256 _expiration,
-        uint256 _unit_seconds,
+        uint256 _unitSeconds,
         IVault vault,
         uint256 _percentFee,
         address _governance,
@@ -59,9 +63,8 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         string memory symbol
     ) BalancerPoolToken(name, symbol) {
         // Initialization on the vault
-        bytes32 poolId = vault.registerPool(
-            IVault.PoolSpecialization.MINIMAL_SWAP_INFO
-        );
+        bytes32 poolId =
+            vault.registerPool(IVault.PoolSpecialization.MINIMAL_SWAP_INFO);
 
         // Pass in zero addresses for Asset Managers
         // Solidity really needs inline declaration of dynamic arrays
@@ -80,7 +83,7 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         bond = _bond;
         bondDecimals = _bond.decimals();
         expiration = _expiration;
-        unit_seconds = _unit_seconds;
+        unitSeconds = _unitSeconds;
         governance = _governance;
     }
 
@@ -88,13 +91,13 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
 
     /// @dev Returns the vault for this pool
     /// @return the vault for this pool
-    function getVault() external override view returns (IVault) {
+    function getVault() external view override returns (IVault) {
         return _vault;
     }
 
     /// @dev Returns the poolId for this pool
     /// @return the poolId for this pool
-    function getPoolId() external override view returns (bytes32) {
+    function getPoolId() external view override returns (bytes32) {
         return _poolId;
     }
 
@@ -106,16 +109,14 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
     /// @param currentBalanceTokenOut the reserve of the output token
     /// @return The amount of output token to send for the input token
     function quoteOutGivenIn(
-        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
+        IPoolSwapStructs.SwapRequestGivenIn calldata request,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) public override returns (uint256) {
         // Tokens amounts are passed to us in decimal form of the tokens
         // However we
-        uint256 amountTokenIn = _tokenToFixed(
-            request.amountIn,
-            request.tokenIn
-        );
+        uint256 amountTokenIn =
+            _tokenToFixed(request.amountIn, request.tokenIn);
         currentBalanceTokenIn = _tokenToFixed(
             currentBalanceTokenIn,
             request.tokenIn
@@ -127,19 +128,21 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         // We apply the trick which is used in the paper and
         // double count the reserves because the curve provisions liquidity
         // for prices above one underlying per bond, which we don't want to be accessible
-        (uint256 tokenInReserve, uint256 tokenOutReserve) = _adjustedReserve(
-            currentBalanceTokenIn,
-            request.tokenIn,
-            currentBalanceTokenOut,
-            request.tokenOut
-        );
+        (uint256 tokenInReserve, uint256 tokenOutReserve) =
+            _adjustedReserve(
+                currentBalanceTokenIn,
+                request.tokenIn,
+                currentBalanceTokenOut,
+                request.tokenOut
+            );
         // Solve the invariant
-        uint256 quote = solveTradeInvariant(
-            amountTokenIn,
-            tokenInReserve,
-            tokenOutReserve,
-            true
-        );
+        uint256 quote =
+            solveTradeInvariant(
+                amountTokenIn,
+                tokenInReserve,
+                tokenOutReserve,
+                true
+            );
 
         // Assign trade fees
         quote = _assignTradeFee(amountTokenIn, quote, request.tokenOut, false);
@@ -154,16 +157,14 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
     /// @param currentBalanceTokenOut the reserve of the output token
     /// @return The amount of input token to receive the requested output
     function quoteInGivenOut(
-        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
+        IPoolSwapStructs.SwapRequestGivenOut calldata request,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) public override returns (uint256) {
         // Tokens amounts are passed to us in decimal form of the tokens
         // However we want them to be in 18 decimal fixed point form
-        uint256 amountTokenOut = _tokenToFixed(
-            request.amountOut,
-            request.tokenOut
-        );
+        uint256 amountTokenOut =
+            _tokenToFixed(request.amountOut, request.tokenOut);
         currentBalanceTokenIn = _tokenToFixed(
             currentBalanceTokenIn,
             request.tokenIn
@@ -175,19 +176,21 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         // We apply the trick which is used in the paper and
         // double count the reserves because the curve provisions liquidity
         // for prices above one underlying per bond, which we don't want to be accessible
-        (uint256 tokenInReserve, uint256 tokenOutReserve) = _adjustedReserve(
-            currentBalanceTokenIn,
-            request.tokenIn,
-            currentBalanceTokenOut,
-            request.tokenOut
-        );
+        (uint256 tokenInReserve, uint256 tokenOutReserve) =
+            _adjustedReserve(
+                currentBalanceTokenIn,
+                request.tokenIn,
+                currentBalanceTokenOut,
+                request.tokenOut
+            );
         // Solve the invariant
-        uint256 quote = solveTradeInvariant(
-            amountTokenOut,
-            tokenOutReserve,
-            tokenInReserve,
-            false
-        );
+        uint256 quote =
+            solveTradeInvariant(
+                amountTokenOut,
+                tokenOutReserve,
+                tokenInReserve,
+                false
+            );
         // Assign trade fees
         quote = _assignTradeFee(quote, amountTokenOut, request.tokenOut, true);
         // Return the quote in input token decimals
@@ -232,22 +235,21 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         // Mint LP to the governance address.
         // The {} zoning here helps solidity figure out the stack
         {
-            (
-                uint256 localFeeUnderlying,
-                uint256 localFeeBond
-            ) = _mintGovernanceLP(currentBalances);
+            (uint256 localFeeUnderlying, uint256 localFeeBond) =
+                _mintGovernanceLP(currentBalances);
             dueProtocolFeeAmounts = new uint256[](2);
             dueProtocolFeeAmounts[0] = localFeeUnderlying.mul(protocolSwapFee);
             dueProtocolFeeAmounts[1] = localFeeBond.mul(protocolSwapFee);
         }
         // Mint for the user
         {
-            (uint256 callerUsedUnderlying, uint256 callerUsedBond) = _mintLP(
-                maxAmountsIn[0],
-                maxAmountsIn[1],
-                currentBalances,
-                recipient
-            );
+            (uint256 callerUsedUnderlying, uint256 callerUsedBond) =
+                _mintLP(
+                    maxAmountsIn[0],
+                    maxAmountsIn[1],
+                    currentBalances,
+                    recipient
+                );
             // Assign to variable memory arrays in return
             amountsIn = new uint256[](2);
             amountsIn[0] = callerUsedUnderlying;
@@ -292,10 +294,8 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         // Mint LP to the governance address.
         // {} zones to help solidity figure out the stack
         {
-            (
-                uint256 localFeeUnderlying,
-                uint256 localFeeBond
-            ) = _mintGovernanceLP(currentBalances);
+            (uint256 localFeeUnderlying, uint256 localFeeBond) =
+                _mintGovernanceLP(currentBalances);
 
             dueProtocolFeeAmounts = new uint256[](2);
             dueProtocolFeeAmounts[0] = localFeeUnderlying.mul(protocolSwapFee);
@@ -303,12 +303,13 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         }
         // Burn for the user
         {
-            (uint256 releasedUnderlying, uint256 releasedBond) = _burnLP(
-                minAmountsOut[0],
-                minAmountsOut[1],
-                currentBalances,
-                recipient
-            );
+            (uint256 releasedUnderlying, uint256 releasedBond) =
+                _burnLP(
+                    minAmountsOut[0],
+                    minAmountsOut[1],
+                    currentBalances,
+                    recipient
+                );
             // Assign to variable memory arrays in return
             amountsOut = new uint256[](2);
             amountsOut[0] = releasedUnderlying;
@@ -341,9 +342,8 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         // calculate y before ^ a
         uint256 yBeforePowA = reserveY.pow(a);
         // calculate x after ^ a
-        uint256 xAfterPowA = out
-            ? (reserveX + amountX).pow(a)
-            : (reserveX.sub(amountX)).pow(a);
+        uint256 xAfterPowA =
+            out ? (reserveX + amountX).pow(a) : (reserveX.sub(amountX)).pow(a);
         // Calculate y_after = ( x_before ^a + y_ before ^a -  x_after^a)^(1/a)
         // Will revert with underflow here if the liquidity isn't enough for the trade
         uint256 yAfter = (xBeforePowA + yBeforePowA).sub(xAfterPowA);
@@ -376,9 +376,8 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
             // Then it splits again on which token is the bond
             if (outputToken == bond) {
                 // If the output is bond the implied yield is out - in
-                uint256 impliedYieldFee = percentFee.mul(
-                    amountOut.sub(amountIn)
-                );
+                uint256 impliedYieldFee =
+                    percentFee.mul(amountOut.sub(amountIn));
                 // we record that fee collected from the underlying
                 feesUnderlying += uint128(
                     _fixedToToken(impliedYieldFee, underlying)
@@ -387,9 +386,8 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
                 return amountIn.add(impliedYieldFee);
             } else {
                 // If the input token is bond the implied yield is in - out
-                uint256 impliedYieldFee = percentFee.mul(
-                    amountIn.sub(amountOut)
-                );
+                uint256 impliedYieldFee =
+                    percentFee.mul(amountIn.sub(amountOut));
                 // we record that collected fee from the input bond
                 feesBond += uint128(_fixedToToken(impliedYieldFee, bond));
                 // and return the updated input quote
@@ -398,18 +396,16 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         } else {
             if (outputToken == bond) {
                 // If the output is bond the implied yield is out - in
-                uint256 impliedYieldFee = percentFee.mul(
-                    amountOut.sub(amountIn)
-                );
+                uint256 impliedYieldFee =
+                    percentFee.mul(amountOut.sub(amountIn));
                 // we record that fee collected from the bond output
                 feesBond += uint128(_fixedToToken(impliedYieldFee, bond));
                 // and then return the updated output
                 return amountOut.sub(impliedYieldFee);
             } else {
                 // If the output is underlying the implied yield is in - out
-                uint256 impliedYieldFee = percentFee.mul(
-                    amountIn.sub(amountOut)
-                );
+                uint256 impliedYieldFee =
+                    percentFee.mul(amountIn.sub(amountOut));
                 // we record the collected underlying fee
                 feesUnderlying += uint128(
                     _fixedToToken(impliedYieldFee, underlying)
@@ -455,9 +451,8 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         if (neededUnderlying > inputUnderlying) {
             // The increase in total supply is the input underlying
             // as a ratio to reserve
-            uint256 mintAmount = (inputUnderlying.mul(localTotalSupply)).div(
-                reserveUnderlying
-            );
+            uint256 mintAmount =
+                (inputUnderlying.mul(localTotalSupply)).div(reserveUnderlying);
             // We mint a new amount of as the the percent increase given
             // by the ratio of the input underlying to the reserve underlying
             _mintPoolTokens(recipient, mintAmount);
@@ -467,9 +462,8 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         } else {
             // We calculate the percent increase in the reserves from contributing
             // all of the bond
-            uint256 mintAmount = (neededUnderlying.mul(localTotalSupply)).div(
-                reserveUnderlying
-            );
+            uint256 mintAmount =
+                (neededUnderlying.mul(localTotalSupply)).div(reserveUnderlying);
             // We then mint an amount of pool token which corresponds to that increase
             _mintPoolTokens(recipient, mintAmount);
             // The indicate we consumed the input bond and (inputBond*underlyingPerBond)
@@ -501,9 +495,10 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
             // In this case we burn enough tokens to output 'minOutputUnderlying'
             // which will be the total supply times the percent of the underlying
             // reserve which this amount of underlying is.
-            uint256 burned = (minOutputUnderlying.mul(localTotalSupply)).div(
-                reserveUnderlying
-            );
+            uint256 burned =
+                (minOutputUnderlying.mul(localTotalSupply)).div(
+                    reserveUnderlying
+                );
             _burnPoolTokens(source, burned);
             // We return that we released 'minOutputUnderlying' and the number of bonds that
             // preserves the reserve ratio
@@ -514,9 +509,8 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         } else {
             // Then the amount burned is the ratio of the minOutputBond
             // to the reserve of bond times the total supply
-            uint256 burned = (minOutputBond.mul(localTotalSupply)).div(
-                reserveBond
-            );
+            uint256 burned =
+                (minOutputBond.mul(localTotalSupply)).div(reserveBond);
             _burnPoolTokens(source, burned);
             // We return that we released all of the minOutputBond
             // and the number of underlying which preserves the reserve ratio
@@ -535,12 +529,13 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         // Note - Because of sizes should only be one sload
         uint256 localFeeUnderlying = uint256(feesUnderlying);
         uint256 localFeeBond = uint256(feesBond);
-        (uint256 feesUsedUnderlying, uint256 feesUsedBond) = _mintLP(
-            localFeeUnderlying.mul(percentFee),
-            localFeeBond.mul(percentFee),
-            currentBalances,
-            governance
-        );
+        (uint256 feesUsedUnderlying, uint256 feesUsedBond) =
+            _mintLP(
+                localFeeUnderlying.mul(percentFee),
+                localFeeBond.mul(percentFee),
+                currentBalances,
+                governance
+            );
         // Safe math sanity checks
         require(
             localFeeUnderlying >= (feesUsedUnderlying).div(percentFee),
@@ -560,14 +555,13 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
 
     /// @dev Calculates 1 - t
     /// @return Returns 1 - t, encoded as a fraction in 18 decimal fixed point
-    function _getYieldExponent() internal virtual view returns (uint256) {
+    function _getYieldExponent() internal view virtual returns (uint256) {
         // The fractional time
-        uint256 timeTillExpiry = block.timestamp < expiration
-            ? expiration - block.timestamp
-            : 0;
+        uint256 timeTillExpiry =
+            block.timestamp < expiration ? expiration - block.timestamp : 0;
         timeTillExpiry *= 1e18;
         // timeTillExpiry now contains the a fixed point of the years remaining
-        timeTillExpiry = timeTillExpiry.div(unit_seconds * 1e18);
+        timeTillExpiry = timeTillExpiry.div(unitSeconds * 1e18);
         return uint256(FixedPoint.ONE).sub(timeTillExpiry);
     }
 

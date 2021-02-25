@@ -122,7 +122,7 @@ export async function loadFixture() {
     elf,
     tranche,
     yc,
-    proxy
+    proxy,
   };
 }
 

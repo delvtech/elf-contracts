@@ -18,7 +18,7 @@ describe("UserProxyTests", function () {
     fixture = await loadFixture();
     tranche = fixture.tranche;
     proxy = fixture.proxy;
-    
+
     underlying = await ethers.getContractAt(
       "AToken",
       await fixture.elf.token()

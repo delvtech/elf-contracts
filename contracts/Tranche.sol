@@ -52,6 +52,7 @@ contract Tranche is ERC20Permit, ITranche {
         IERC20 localUnderlying = _elfContract.token();
         underlying = _elfContract.token();
         underlyingDecimals = localUnderlying.decimals();
+        lockDuration = _lockDuration;
 
         // Write the elfSymbol and expiration time to name and symbol
         DateString.encodeAndWriteTimestamp(elfSymbol, _unlockTimestamp, _name);

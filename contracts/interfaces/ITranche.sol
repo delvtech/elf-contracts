@@ -9,11 +9,15 @@ interface ITranche is IERC20Permit {
         external
         returns (uint256);
 
-    function prefundedDeposit(address _destination) external returns(uint256);
+    function prefundedDeposit(address _destination) external returns (uint256);
 
-    function withdrawFyt(uint256 _amount, address _destination) external returns (uint256);
+    function withdrawFyt(uint256 _amount, address _destination)
+        external
+        returns (uint256);
 
-    function withdrawYc(uint256 _amount, address _destination) external returns (uint256);
+    function withdrawYc(uint256 _amount, address _destination)
+        external
+        returns (uint256);
 
     function yc() external view returns (IYC);
 }

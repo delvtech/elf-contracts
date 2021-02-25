@@ -16,18 +16,14 @@ describe("UserProxyTests", function () {
   before(async function () {
     // Get the setup contracts
     fixture = await loadFixture();
-    console.log("loads fixture");
     tranche = fixture.tranche;
     // Setup the proxy
     const proxyFactory = await ethers.getContractFactory("UserProxyTest");
     // Without a real weth address this can't accept eth deposits
-    proxy = await proxyFactory.deploy(
-      fakeAddress,
-      tranche.address
-    );
+    proxy = await proxyFactory.deploy(fakeAddress, tranche.address);
     underlying = await ethers.getContractAt(
       "AToken",
-      await fixture.yusdcElf.token()
+      await fixture.elf.token()
     );
     // Get the signers
     signers = await ethers.getSigners();
@@ -44,7 +40,7 @@ describe("UserProxyTests", function () {
       ethers.utils.parseEther("1"),
       underlying.address,
       5000,
-      fixture.yusdcElf.address
+      fixture.elf.address
     );
     // Mint for the first time
     receipt = await receipt.wait();
@@ -53,7 +49,7 @@ describe("UserProxyTests", function () {
       ethers.utils.parseEther("1"),
       underlying.address,
       5000,
-      fixture.yusdcElf.address
+      fixture.elf.address
     );
     receipt = await receipt.wait();
     console.log("Repeat Mint", receipt.gasUsed.toNumber());
@@ -65,7 +61,7 @@ describe("UserProxyTests", function () {
         ethers.utils.parseEther("1"),
         underlying.address,
         5000,
-        fixture.yusdcElf.address
+        fixture.elf.address
       );
     receipt = await receipt.wait();
     console.log("New User First mint", receipt.gasUsed.toNumber());

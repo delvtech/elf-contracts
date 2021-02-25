@@ -24,7 +24,6 @@ describe("USDCPool-Mainnet", () => {
 
     // load all related contracts
     fixture = await loadUsdcPoolMainnetFixture();
-    await fixture.yusdcAsset.setPool(fixture.elf.address);
 
     // begin to populate the user array by assigning each index a signer
     users = ((await ethers.getSigners()) as Signer[]).map(function (user) {
@@ -76,11 +75,14 @@ describe("USDCPool-Mainnet", () => {
       await fixture.elf.connect(users[1].user).deposit(users[1].address, 1e11);
       await fixture.elf.connect(users[3].user).deposit(users[3].address, 6e11);
 
-      let pricePerFullShare = await fixture.yusdc.getPricePerFullShare();
+      let pricePerFullShare = await fixture.yusdc.pricePerShare();
       const balance = (
-        await (await fixture.elf.balance()).mul(pricePerFullShare)
-      ).div(ethers.utils.parseEther("1"));
-      expect(balance.add(ethers.BigNumber.from("5"))).to.be.at.least(1e12);
+        await (await fixture.yusdc.balanceOf(fixture.elf.address)).mul(
+          pricePerFullShare
+        )
+      ).div(ethers.utils.parseUnits("1", 6));
+      // Allows a 0.01% conversion error
+      expect(balance).to.be.at.least(ethers.BigNumber.from(1e12 * 0.9999));
 
       /* At this point:
        *         deposited     held
@@ -112,14 +114,14 @@ describe("USDCPool-Mainnet", () => {
 
       const toWithdraw = ethers.BigNumber.from("1000000"); // 1 usdc
       user1Balance = await fixture.elf.balanceOf(users[1].address);
-      pricePerFullShare = await fixture.yusdc.getPricePerFullShare();
+      pricePerFullShare = await fixture.yusdc.pricePerShare();
       const withdrawUsdc = toWithdraw
         .mul(pricePerFullShare)
-        .div(ethers.utils.parseEther("1"));
+        .div(ethers.utils.parseUnits("1", 6));
 
       await fixture.elf
         .connect(users[1].user)
-        .withdraw(users[1].address, toWithdraw);
+        .withdraw(users[1].address, toWithdraw, 0);
       expect(await fixture.elf.balanceOf(users[1].address)).to.equal(
         user1Balance.sub(toWithdraw)
       );
@@ -137,19 +139,19 @@ describe("USDCPool-Mainnet", () => {
       const elfBalanceU1 = await fixture.elf.balanceOf(users[1].address);
       await fixture.elf
         .connect(users[1].user)
-        .withdraw(users[1].address, elfBalanceU1);
+        .withdraw(users[1].address, elfBalanceU1, 0);
       expect(await fixture.elf.balanceOf(users[1].address)).to.equal(0);
 
       const elfBalanceU2 = await fixture.elf.balanceOf(users[2].address);
       await fixture.elf
         .connect(users[2].user)
-        .withdraw(users[2].address, elfBalanceU2);
+        .withdraw(users[2].address, elfBalanceU2, 0);
       expect(await fixture.elf.balanceOf(users[2].address)).to.equal(0);
 
       const elfBalanceU3 = await fixture.elf.balanceOf(users[3].address);
       await fixture.elf
         .connect(users[3].user)
-        .withdraw(users[3].address, elfBalanceU3);
+        .withdraw(users[3].address, elfBalanceU3, 0);
       expect(await fixture.elf.balanceOf(users[3].address)).to.equal(0);
 
       /* At this point:
@@ -171,23 +173,13 @@ describe("USDCPool-Mainnet", () => {
     });
   });
 
-  describe("balance", () => {
-    it("should return the correct balance", async () => {
-      await fixture.elf.connect(users[1].user).deposit(users[1].address, 1e11);
-
-      const pricePerFullShare = await fixture.yusdc.getPricePerFullShare();
-      const balance = (await fixture.elf.balance())
-        .mul(pricePerFullShare)
-        .div(ethers.utils.parseEther("1"));
-
-      expect(balance).to.be.at.least(99999999999);
-    });
-  });
-  describe("balanceUnderlying", () => {
+  describe("balanceOfUnderlying", () => {
     it("should return the correct underlying balance", async () => {
       await fixture.elf.connect(users[1].user).deposit(users[1].address, 1e11);
-
-      expect(await fixture.elf.balanceUnderlying()).to.be.at.least(99999999999);
+      // Allow for 0.01% of slippage
+      expect(
+        await fixture.elf.balanceOfUnderlying(users[1].address)
+      ).to.be.at.least(99999000000);
     });
   });
 });

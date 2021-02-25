@@ -29,7 +29,7 @@ import "../interfaces/IERC20.sol";
  * allowances. See {IERC20-approve}.
  */
 contract ERC20 is IERC20 {
-    mapping(address => uint256) private _balances;
+    mapping(address => uint256) internal _balances;
 
     mapping(address => mapping(address => uint256)) private _allowances;
 
@@ -158,11 +158,7 @@ contract ERC20 is IERC20 {
         uint256 amount
     ) public virtual override returns (bool) {
         _transfer(sender, recipient, amount);
-        _approve(
-            sender,
-            msg.sender,
-            _allowances[sender][msg.sender] - amount
-        );
+        _approve(sender, msg.sender, _allowances[sender][msg.sender] - amount);
         return true;
     }
 

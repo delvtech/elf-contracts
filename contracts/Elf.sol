@@ -30,20 +30,28 @@ abstract contract Elf is ERC20Permit, IElf {
     /// @dev Makes the actual deposit into the 'vault'
     /// @return (the shares minted, amount underlying used)
     function _deposit() internal virtual returns (uint256, uint256);
+
     /// @dev Makes the actual withdraw from the 'vault'
     /// @return returns the amount produced
-    function _withdraw(uint256) internal virtual returns (uint256);
+    function _withdraw(uint256, address) internal virtual returns (uint256);
+
     /// @dev Converts between an internal balance representation
-    ///      and underlying tokens.    
-    function _underlying(uint256) internal view virtual returns (uint256);
+    ///      and underlying tokens.
+    function _underlying(uint256) internal virtual view returns (uint256);
+
     /// @dev Returns the IERC20 coded vault address for the balance
     ///      looks, may be depreciated in future.
-    function _vault() internal view virtual returns(IERC20);
+    function _vault() internal virtual view returns (IERC20);
 
     /// @notice Get the underlying balance of an address
     /// @param _who The address to query
     /// @return The underlying token balance of the address
-    function balanceOfUnderlying(address _who) external view override returns (uint256) {
+    function balanceOfUnderlying(address _who)
+        external
+        override
+        view
+        returns (uint256)
+    {
         return _underlying(balanceOf(_who));
     }
 
@@ -52,8 +60,8 @@ abstract contract Elf is ERC20Permit, IElf {
     /// @return the value of underlying assets for the given shares
     function getSharesToUnderlying(uint256 _shares)
         external
-        view
         override
+        view
         returns (uint256)
     {
         return _underlying(_shares);
@@ -66,13 +74,14 @@ abstract contract Elf is ERC20Permit, IElf {
     /// @param _destination the address to mint too
     /// @return Returns the number of ELF tokens minted
     function deposit(address _destination, uint256 _amount)
-        external override
+        external
+        override
         returns (uint256)
     {
         // Send tokens to the proxy
         token.safeTransferFrom(msg.sender, address(this), _amount);
         // Calls our internal deposit function
-        (uint256 shares, uint256 _unused) = _deposit(); 
+        (uint256 shares, uint256 _unused) = _deposit();
         // Mint them internal ERC20 tokens coresponding to the deposit
         _mint(_destination, shares);
         return shares;
@@ -85,11 +94,16 @@ abstract contract Elf is ERC20Permit, IElf {
     /// @notice Entry point to deposit tokens into the Elf contract
     ///         Assumes the tokens were transferred before this was called
     /// @param _destination the destination of this deposit
-    /// @return Returns (elf tokens minted, used underlying, 
+    /// @return Returns (elf tokens minted, used underlying,
     ///                  senders ELF balance before mint,
     function prefundedDeposit(address _destination)
-        external override
-        returns (uint256, uint256, uint256)
+        external
+        override
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
     {
         // Calls our internal deposit function
         (uint256 shares, uint256 usedUnderlying) = _deposit();
@@ -106,35 +120,38 @@ abstract contract Elf is ERC20Permit, IElf {
     /// @param _shares the amount of shares the user is burning to withdraw underlying
     /// @param _minUnderlying a param which is the min output the caller expects
     /// @return The amount of underlying transferred to the destination
-    function withdraw(address _destination, uint256 _shares, uint256 _minUnderlying)
-        public override
-        returns (uint256)
-    {
+    function withdraw(
+        address _destination,
+        uint256 _shares,
+        uint256 _minUnderlying
+    ) public override returns (uint256) {
         // Burn users ELF shares
         _burn(msg.sender, _shares);
 
         // Withdraw that many shares from the vault
-        uint256 withdrawAmount = _withdraw(_shares);
-        // Burn the shares from the caller
+        uint256 withdrawAmount = _withdraw(_shares, _destination);
 
         // We revert if this call doesn't produce enough underlying
         // This security feature is useful in some edge cases
-        require(withdrawAmount > _minUnderlying, "Not enough underlying");
-        // Moves the token to the caller
-        token.safeTransfer(_destination, withdrawAmount);
+        require(withdrawAmount >= _minUnderlying, "Not enough underlying");
         return withdrawAmount;
     }
 
     /// @notice This function burns enough tokens from the sender to send _amount
     ///          of underlying to the _destination.
     /// @param _destination the address to send the output to
-    /// @param _amount the min amount of underlying to redeem out.
-    function withdrawUnderlying(address _destination, uint256 _amount) external override returns (uint256) {
+    /// @param _amount the amount of underlying to try to redeem for
+    /// @param _minUnderlying the minium underlying to receive
+    function withdrawUnderlying(
+        address _destination,
+        uint256 _amount,
+        uint256 _minUnderlying
+    ) external override returns (uint256) {
         // First we load the number of underlying per unit of ELF token
         uint256 underlyingPerElf = _underlying(1e18);
         // Then we calculate the number of shares we need
-        uint256 shares = (_amount*1e18)/underlyingPerElf;
+        uint256 shares = (_amount * 1e18) / underlyingPerElf;
         // Using this we call the normal withdraw function
-        withdraw(_destination, shares, _amount);
+        withdraw(_destination, shares, _minUnderlying);
     }
 }

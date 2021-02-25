@@ -8,8 +8,6 @@ import "./interfaces/ITranche.sol";
 import "./interfaces/IWETH.sol";
 import "./libraries/Authorizable.sol";
 
-import "hardhat/console.sol";
-
 contract UserProxy is Authorizable {
     // This contract is a convenience library to consolidate
     // the actions needed to create FYT/YC to one call.
@@ -120,10 +118,7 @@ contract UserProxy is Authorizable {
     ///      the contract has already transferred to ELF
     /// @param expiration The tranche expiration time
     /// @param elf The contract which interacts with the yield bering strategy
-    function _mint(
-        uint256 expiration,
-        address elf
-    ) internal {
+    function _mint(uint256 expiration, address elf) internal {
         // Use create2 to derive the tranche contract
         ITranche tranche = deriveTranche(address(elf), expiration);
         // Move funds into the Tranche contract

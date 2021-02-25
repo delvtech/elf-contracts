@@ -8,10 +8,7 @@ import "../interfaces/IWETH.sol";
 contract UserProxyTest is UserProxy {
     address immutable tranche;
 
-    constructor(
-        address _weth,
-        address _tranche
-    ) UserProxy(IWETH(_weth)) {
+    constructor(address _weth, address _tranche) UserProxy(IWETH(_weth)) {
         tranche = _tranche;
     }
 

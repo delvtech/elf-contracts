@@ -12,22 +12,25 @@ import "./libraries/DateString.sol";
 
 import "./assets/YC.sol";
 
-import "hardhat/console.sol";
-
 contract Tranche is ERC20Permit, ITranche {
     using SafeERC20 for IERC20;
     using Address for address;
 
-    IYC public override immutable yc;
+    IYC public immutable override yc;
     IElf public immutable elf;
     IERC20 public immutable underlying;
     uint8 immutable underlyingDecimals;
 
-    // Total underlying value locked in the contract. This
-    // does not include interest.
-    uint256 internal _valueSupplied;
+    // The outstanding amount of underlying which
+    // can be redeemed from the contract from FYTs
+    // NOTE - we use smaller sizes so that they can be one storage slot
+    uint128 public valueSupplied;
+    // The total supply of YCs
+    uint128 public ycSupply;
     // The timestamp when FYTs and YCs can be redeemed.
     uint256 public immutable unlockTimestamp;
+    // The amount of slippage allowed on the FYT redemption [0.1 basis points]
+    uint256 constant SLIPPAGE_BP = 1e13;
 
     /**
     @param _elfContract The Elf contract to use.
@@ -49,7 +52,11 @@ contract Tranche is ERC20Permit, ITranche {
 
         // Write the elfSymbol and expiration time to name and symbol
         DateString.encodeAndWriteTimestamp(elfSymbol, _unlockTimestamp, _name);
-        DateString.encodeAndWriteTimestamp(elfSymbol, _unlockTimestamp, _symbol);
+        DateString.encodeAndWriteTimestamp(
+            elfSymbol,
+            _unlockTimestamp,
+            _symbol
+        );
     }
 
     /**
@@ -69,34 +76,47 @@ contract Tranche is ERC20Permit, ITranche {
         require(block.timestamp < unlockTimestamp, "expired");
         // Tranfer the underlying into ELF
         underlying.transferFrom(msg.sender, address(elf), _amount);
-        // Now that we have funded the deposit we can call 
+        // Now that we have funded the deposit we can call
         // the prefunded deposit
         return prefundedDeposit(_destination);
     }
 
-    /// @notice This function calls the prefunded deposit method to 
+    /// @notice This function calls the prefunded deposit method to
     ///         create ELF token held by the contract. It should
     ///         only be called when a transfer has already been made to
     ///         the ELF of the underlying
     /// @param _destination The address to mint too
-    function prefundedDeposit(address _destination) public override returns(uint256) {
+    function prefundedDeposit(address _destination)
+        public
+        override
+        returns (uint256)
+    {
         // Since the ELF holds a balance we use the prefunded deposit method
-        (uint256 shares, uint256 usedUnderlying, uint256 balanceBefore) = elf.prefundedDeposit(address(this));
+        (uint256 shares, uint256 usedUnderlying, uint256 balanceBefore) = elf
+            .prefundedDeposit(address(this));
         // The implied current value of the holding of this contract in underlying
-        // is the balanceBefore*(usedUnderlying/shares) since (usedUnderlying/shares) 
+        // is the balanceBefore*(usedUnderlying/shares) since (usedUnderlying/shares)
         // is underlying per share and balanceBefore is the balance of this contract
         // in ELF token before this deposit.
-        uint256 currentHoldingsValue = (balanceBefore*usedUnderlying)/shares;
+        uint256 currentHoldingsValue = (balanceBefore * usedUnderlying) /
+            shares;
         // This formula is inputUnderlying - inputUnderlying*intrestPerUnderlying
         // Accumulated intrest has its value in the YC so we have to mint less FYT
         // to account for that.
         // NOTE - If a pool has more than 100% intrest in the period this will revert on underflow
         //        The user cannot discount the FYT enough to pay for the outstanding intrest accrued.
-        uint256 valueSupplied = _valueSupplied;
+        (uint256 _valueSupplied, uint256 _ycSupply) = (
+            uint256(valueSupplied),
+            uint256(ycSupply)
+        );
         uint256 adjustedAmount;
         // Have to split on the initialization case
-        if (valueSupplied > 0) {
-            adjustedAmount = 2*usedUnderlying - (usedUnderlying*currentHoldingsValue)/valueSupplied;
+        if (_valueSupplied > 0) {
+            adjustedAmount =
+                2 *
+                usedUnderlying -
+                (usedUnderlying * currentHoldingsValue) /
+                _valueSupplied;
         } else {
             adjustedAmount = usedUnderlying;
         }
@@ -105,8 +125,11 @@ contract Tranche is ERC20Permit, ITranche {
         if (adjustedAmount > usedUnderlying) {
             adjustedAmount = usedUnderlying;
         }
-        // We record the new input of underlying
-        _valueSupplied = valueSupplied + usedUnderlying;
+        // We record the new input of reclaimable underlying
+        (valueSupplied, ycSupply) = (
+            uint128(_valueSupplied + adjustedAmount),
+            uint128(_ycSupply + usedUnderlying)
+        );
         // We mint YC for each underlying provided
         yc.mint(_destination, usedUnderlying);
         // We mint FYT discounted by the accumulated intrest.
@@ -123,17 +146,29 @@ contract Tranche is ERC20Permit, ITranche {
     @dev This method will return 1 underlying for 1 FYT except when intrest
          is negative, in that case liquidity might run out and some FYT may
          not be redeemable. 
+         Also note: FYT redemption has the possibility of at most SLIPPAGE_BP
+         numerical error on each redemption so each FYT may occasionally redeem
+         for less than 1 unit of underlying. It defaults to 0.1 BP ie 0.001% loss
      */
-    function withdrawFyt(uint256 _amount, address _destination) external override returns (uint256) {
+    function withdrawFyt(uint256 _amount, address _destination)
+        external
+        override
+        returns (uint256)
+    {
         // No redemptions before unlock
         require(block.timestamp >= unlockTimestamp, "not expired yet");
         // Burn from the sender
         _burn(msg.sender, _amount);
         // We normalize the FYT to the same units as the underlying
-        uint256 amountUnderlying = (_amount * (10**(underlyingDecimals)))/1e18;
+        uint256 amountUnderlying = (_amount * (10**(underlyingDecimals))) /
+            1e18;
         // Remove these FYT from the intrest calculations for future YC redemptions
-        _valueSupplied -= amountUnderlying;
-        return elf.withdrawUnderlying(_destination, amountUnderlying);
+        valueSupplied -= uint128(amountUnderlying);
+        uint256 minOutput = amountUnderlying -
+            (amountUnderlying * SLIPPAGE_BP) /
+            1e18;
+        return
+            elf.withdrawUnderlying(_destination, amountUnderlying, minOutput);
     }
 
     /**
@@ -141,22 +176,41 @@ contract Tranche is ERC20Permit, ITranche {
     @param _amount The number of YC tokens to burn.
     @param _destination The address to send the result to
     @return The number of underlying token released
+    @dev Due to slippage the redemption may receive up to SLIPPAGE_BP less
+         in output compared to the floating rate.
      */
-    function withdrawYc(uint256 _amount, address _destination) external override returns (uint256) {
+    function withdrawYc(uint256 _amount, address _destination)
+        external
+        override
+        returns (uint256)
+    {
         require(block.timestamp >= unlockTimestamp, "not expired yet");
         // Burn tokens from the sender
         yc.burn(msg.sender, _amount);
         // Load the underlying value of this contract
         uint256 underlyingValueLocked = elf.balanceOfUnderlying(address(this));
         // Load a stack variable to avoid future sloads
-        // Note - We create a YC for each underlying supplied so this is also
-        // the total YC supply
-        uint256 localValueSupplied = _valueSupplied;
+        (uint256 _valueSupplied, uint256 _ycSupply) = (
+            uint256(valueSupplied),
+            uint256(ycSupply)
+        );
         // Intrest is value locked minus current value
-        uint256 intrest = underlyingValueLocked > localValueSupplied? underlyingValueLocked - localValueSupplied: 0;
+        uint256 intrest = underlyingValueLocked > _valueSupplied
+            ? underlyingValueLocked - _valueSupplied
+            : 0;
         // The redemption amount is the intrest per YC times the amount
-        uint256 redemptionAmount = (intrest*_amount)/localValueSupplied;
+        uint256 redemptionAmount = (intrest * _amount) / _ycSupply;
+        uint256 minRedemption = redemptionAmount -
+            (redemptionAmount * SLIPPAGE_BP) /
+            1e18;
+        // Store that we reduced the supply
+        ycSupply = uint128(_ycSupply - _amount);
         // Redeem elf tokens for underlying
-        return elf.withdrawUnderlying(_destination, redemptionAmount);
+        return
+            elf.withdrawUnderlying(
+                _destination,
+                redemptionAmount,
+                minRedemption
+            );
     }
 }

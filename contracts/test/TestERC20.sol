@@ -13,4 +13,14 @@ contract TestERC20 is ERC20 {
     ) ERC20(name_, symbol_) {
         _setupDecimals(decimals_);
     }
+
+    function setBalance(address destination, uint256 amount) external {
+        _balances[destination] = amount;
+        emit Transfer(address(0), destination, amount);
+    }
+
+    function uncheckedTransfer(address destination, uint256 amount) external {
+        _balances[destination] += amount;
+        emit Transfer(address(0), destination, amount);
+    }
 }

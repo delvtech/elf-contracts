@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/IERC20.sol";
-import "../interfaces/YearnVaultV1.sol";
+import "../interfaces/YearnVaultV2.sol";
 
 import "../libraries/ERC20.sol";
 import "../libraries/Address.sol";
@@ -21,22 +21,30 @@ contract AYVault is ERC20 {
         token = _token;
     }
 
-    function deposit(uint256 _amount) external returns(uint256) {
-        uint256 _shares = (_amount * 1e18) / getPricePerFullShare(); // calculate shares
+    function deposit(uint256 _amount, address destination)
+        external
+        returns (uint256)
+    {
+        uint256 _shares = (_amount * 1e18) / pricePerShare(); // calculate shares
         IERC20(token).safeTransferFrom(msg.sender, address(this), _amount); // pull deposit from sender
-        _mint(msg.sender, _shares); // mint shares for sender
+        _mint(destination, _shares); // mint shares for sender
         _supply += _shares;
         return _shares;
     }
 
-    function withdraw(uint256 _shares) external {
-        uint256 _amount = (_shares * getPricePerFullShare()) / 1e18;
+    function withdraw(
+        uint256 _shares,
+        address destination,
+        uint256 maxLoss
+    ) external returns (uint256) {
+        uint256 _amount = (_shares * pricePerShare()) / 1e18;
         _burn(msg.sender, _shares);
         _supply -= _shares;
-        IERC20(token).safeTransfer(msg.sender, _amount);
+        IERC20(token).safeTransfer(destination, _amount);
+        return _amount;
     }
 
-    function getPricePerFullShare() public view returns (uint256) {
+    function pricePerShare() public view returns (uint256) {
         uint256 balance = ERC20(token).balanceOf(address(this));
         if (balance == 0) return 1e18;
         return (balance * 1e18) / totalSupply();
@@ -47,7 +55,7 @@ contract AYVault is ERC20 {
         AToken(token).mint(address(this), balance / 10);
     }
 
-    function totalSupply() internal view returns(uint256) {
+    function totalSupply() internal view returns (uint256) {
         return _supply;
     }
 }

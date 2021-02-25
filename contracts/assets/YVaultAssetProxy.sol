@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/IERC20.sol";
-import "../interfaces/YearnVaultV1.sol";
+import "../interfaces/YearnVaultV2.sol";
 import "../interfaces/IBPool.sol";
 import "../Elf.sol";
 
@@ -17,21 +17,18 @@ contract YVaultAssetProxy is Elf {
     using SafeERC20 for IERC20;
     using Address for address;
 
-    YearnVault public vault;
-    address public governance;
+    YearnVault public immutable vault;
+    uint8 public immutable vaultDecimals;
 
-    constructor(address vault_, address _token, string memory _name, string memory _symbol)
-    Elf(_token, _name, _symbol) {
-        governance = msg.sender;
-        vault = YearnVault(vault_);
-        token.approve(vault_, type(uint256).max);
-    }
-
-    /// @notice let governance update itself
-    /// @param _governance new governance address
-    function setGovernance(address _governance) external {
-        require(msg.sender == governance, "!governance");
-        governance = _governance;
+    constructor(
+        address _vault,
+        address _token,
+        string memory _name,
+        string memory _symbol
+    ) Elf(_token, _name, _symbol) {
+        vault = YearnVault(_vault);
+        token.approve(_vault, type(uint256).max);
+        vaultDecimals = IERC20(_vault).decimals();
     }
 
     /// @dev Makes the actual deposit into the yearn vault
@@ -40,27 +37,44 @@ contract YVaultAssetProxy is Elf {
         // Load the balance of this contract
         uint256 amount = token.balanceOf(address(this));
         // Deposit into the vault
-        uint256 gasBefore = gasleft();
-        uint256 shares = vault.deposit(amount);
-        console.log("yearn gas used", gasBefore - gasleft());
+        // uint256 gasBefore = gasleft();
+        // Deposit and get the shares that were minted to this
+        uint256 shares = vault.deposit(amount, address(this));
+        // console.log("yearn gas used", gasBefore - gasleft());
+        // As of V2 yearn vault shares are the same decimals as the
+        // underlying. But we want our tokens to have a consistent
         return (shares, amount);
     }
 
     /// @notice withdraw the balance of vault shares held by the proxy
-    function _withdraw(uint256 shares) internal override returns(uint256) {
-        // Withdraws shares from the vault
-        uint256 amountReceived = vault.withdraw(shares);
+    /// @param shares the number of shares to withdraw
+    /// @param _destination the address to send the output funds
+    function _withdraw(uint256 shares, address _destination)
+        internal
+        override
+        returns (uint256)
+    {
+        // Withdraws shares from the vault with max loss 0.01%
+        uint256 amountReceived = vault.withdraw(shares, _destination, 1);
         return amountReceived;
     }
 
     /// @notice get the underlying amount of tokens per shares given
     /// @param _amount the amount of shares you want to know the value of
     /// @return value of shares in underlying token
-    function _underlying(uint256 _amount) internal view override returns (uint256) {
-        return (vault.getPricePerFullShare() * _amount) / 1e18;
+    function _underlying(uint256 _amount)
+        internal
+        override
+        view
+        returns (uint256)
+    {
+        // uint256 gasBefore = gasleft();
+        uint256 pricePerShare = vault.pricePerShare();
+        // console.log("Yearn pps call cost", gasBefore- gasleft());
+        return (pricePerShare * _amount) / (10**vaultDecimals);
     }
 
-    function _vault() internal view override returns(IERC20) {
+    function _vault() internal override view returns (IERC20) {
         return IERC20(address(vault));
     }
 

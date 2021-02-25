@@ -4,4 +4,5 @@ node_modules/
 artifacts/
 typechain/
 cache/
+gasReporterOutput.json
 .DS_Store

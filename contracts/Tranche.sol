@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/IERC20.sol";
 import "./interfaces/IElf.sol";
+import "./interfaces/ITranche.sol";
 
 import "./libraries/Address.sol";
 import "./libraries/SafeERC20.sol";
@@ -11,11 +12,11 @@ import "./libraries/DateString.sol";
 
 import "./assets/YC.sol";
 
-contract Tranche is ERC20Permit {
+contract Tranche is ERC20Permit, ITranche {
     using SafeERC20 for IERC20;
     using Address for address;
 
-    YC public yc;
+    IYC public override yc;
     IElf public elf;
 
     // Total underlying value locked in the contract. This
@@ -53,9 +54,14 @@ contract Tranche is ERC20Permit {
             ELF tokens held in this contract, the number
             of FYT tokens minted is reduced in order to pay for the accrued interest.
     @param _shares The number of ELF tokens to deposit.
+    @param destination The address to mint to
     @return The amount of FYT tokens minted after earned intrest discount
      */
-    function deposit(uint256 _shares) external returns (uint256) {
+    function deposit(uint256 _shares, address destination)
+        external
+        override
+        returns (uint256)
+    {
         require(block.timestamp < unlockTimestamp, "expired");
 
         uint256 depositValue = elf.getSharesToUnderlying(_shares) -
@@ -63,8 +69,8 @@ contract Tranche is ERC20Permit {
         _valueSupplied = _valueSupplied + depositValue;
 
         elf.transferFrom(msg.sender, address(this), _shares);
-        yc.mint(msg.sender, _shares);
-        _mint(msg.sender, depositValue);
+        yc.mint(destination, _shares);
+        _mint(destination, depositValue);
         return depositValue;
     }
 
@@ -73,7 +79,7 @@ contract Tranche is ERC20Permit {
     @param _amount The number of FYT tokens to burn.
     @return The number of elf tokens returned
      */
-    function withdrawFyt(uint256 _amount) external returns (uint256) {
+    function withdrawFyt(uint256 _amount) external override returns (uint256) {
         require(block.timestamp >= unlockTimestamp, "not expired yet");
 
         uint256 withdrawable = _underlyingValueLocked() - _currentInterest();
@@ -92,7 +98,7 @@ contract Tranche is ERC20Permit {
     @param _amount The number of YC tokens to burn.
     @return The number of elf token transferred
      */
-    function withdrawYc(uint256 _amount) external returns (uint256) {
+    function withdrawYc(uint256 _amount) external override returns (uint256) {
         require(block.timestamp >= unlockTimestamp, "not expired yet");
         uint256 underlyingOwed = (_currentInterest() * _amount) /
             yc.totalSupply();

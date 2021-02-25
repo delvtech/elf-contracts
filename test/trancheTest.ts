@@ -51,14 +51,20 @@ describe("Tranche", () => {
     it("should not allow new deposits after the timeout", async () => {
       advanceTime(provider, lockDuration);
       await expect(
-        fixture.tranche.connect(user1).deposit(initialBalance)
+        fixture.tranche
+          .connect(user1)
+          .deposit(initialBalance, await user1.getAddress())
       ).to.be.revertedWith("expired");
     });
     it("should correctly handle deposits with no accrued interest", async () => {
       const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
 
-      await fixture.tranche.connect(user1).deposit(initialBalance);
-      await fixture.tranche.connect(user2).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, await user1.getAddress());
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, await user2.getAddress());
 
       // check for correct YC balance
       expect(await fixture.yc.balanceOf(user1Address)).to.equal(initialBalance);
@@ -79,14 +85,18 @@ describe("Tranche", () => {
     it("should correctly handle deposits with accrued interest", async () => {
       const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
 
-      await fixture.tranche.connect(user1).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, await user1.getAddress());
 
       // set pool interest accululated to 20%
       await fixture.elfStub.setSharesToUnderlying(
         bnFloatMultiplier(initialUnderlying, 1.2)
       );
 
-      await fixture.tranche.connect(user2).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, await user2.getAddress());
 
       // check for correct YC balance
       expect(await fixture.yc.balanceOf(user1Address)).to.equal(initialBalance);
@@ -104,14 +114,18 @@ describe("Tranche", () => {
     it("should correctly handle deposits with negative interest", async () => {
       const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
 
-      await fixture.tranche.connect(user1).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, await user1.getAddress());
 
       // set pool interest accululated to -20%
       await fixture.elfStub.setSharesToUnderlying(
         bnFloatMultiplier(initialUnderlying, 0.1)
       );
 
-      await fixture.tranche.connect(user2).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, await user2.getAddress());
 
       advanceTime(provider, lockDuration);
 
@@ -132,8 +146,12 @@ describe("Tranche", () => {
       await restoreSnapshot(provider);
     });
     it("should correctly handle FYT withdrawals with no accrued interest", async () => {
-      await fixture.tranche.connect(user1).deposit(initialBalance);
-      await fixture.tranche.connect(user2).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, await user1.getAddress());
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, await user2.getAddress());
 
       advanceTime(provider, lockDuration);
 
@@ -153,14 +171,18 @@ describe("Tranche", () => {
     it("should correctly handle FYT withdrawals with accrued interest", async () => {
       const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
 
-      await fixture.tranche.connect(user1).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, await user1.getAddress());
 
       // set pool interest accululated to 20%
       await fixture.elfStub.setSharesToUnderlying(
         bnFloatMultiplier(initialUnderlying, 1.2)
       );
 
-      await fixture.tranche.connect(user2).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, await user2.getAddress());
 
       advanceTime(provider, lockDuration);
 
@@ -176,8 +198,12 @@ describe("Tranche", () => {
       );
     });
     it("should correctly handle YC withdrawals with no accrued interest", async () => {
-      await fixture.tranche.connect(user1).deposit(initialBalance);
-      await fixture.tranche.connect(user2).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, await user1.getAddress());
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, await user2.getAddress());
 
       advanceTime(provider, lockDuration);
 
@@ -193,14 +219,18 @@ describe("Tranche", () => {
     it("should correctly handle YC withdrawals with accrued interest", async () => {
       const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
 
-      await fixture.tranche.connect(user1).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, await user1.getAddress());
 
       // set pool interest accululated to 20%
       await fixture.elfStub.setSharesToUnderlying(
         bnFloatMultiplier(initialUnderlying, 1.2)
       );
 
-      await fixture.tranche.connect(user2).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, await user2.getAddress());
 
       advanceTime(provider, lockDuration);
 
@@ -218,14 +248,18 @@ describe("Tranche", () => {
     it("should correctly handle YC withdrawals with negative interest", async () => {
       const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
 
-      await fixture.tranche.connect(user1).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, await user1.getAddress());
 
       // set pool interest accululated to -20%
       await fixture.elfStub.setSharesToUnderlying(
         bnFloatMultiplier(initialUnderlying, 0.2)
       );
 
-      await fixture.tranche.connect(user2).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, await user2.getAddress());
 
       advanceTime(provider, lockDuration);
 
@@ -245,14 +279,18 @@ describe("Tranche", () => {
     it("should correctly handle FYT withdrawals with negative interest", async () => {
       const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
 
-      await fixture.tranche.connect(user1).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, await user1.getAddress());
 
       // set pool interest accululated to -50%
       await fixture.elfStub.setSharesToUnderlying(
         bnFloatMultiplier(initialUnderlying, 0.5)
       );
 
-      await fixture.tranche.connect(user2).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, await user2.getAddress());
 
       advanceTime(provider, lockDuration);
 
@@ -272,8 +310,12 @@ describe("Tranche", () => {
       );
     });
     it("should correctly handle full withdrawals with no accrued interest - withdraw YC, then FYT", async () => {
-      await fixture.tranche.connect(user1).deposit(initialBalance);
-      await fixture.tranche.connect(user2).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, await user1.getAddress());
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, await user2.getAddress());
 
       advanceTime(provider, lockDuration);
 
@@ -304,8 +346,12 @@ describe("Tranche", () => {
       );
     });
     it("should correctly handle full withdrawals with no accrued interest - withdraw FYT, then YC", async () => {
-      await fixture.tranche.connect(user1).deposit(initialBalance);
-      await fixture.tranche.connect(user2).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, await user1.getAddress());
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, await user2.getAddress());
 
       advanceTime(provider, lockDuration);
 
@@ -338,14 +384,18 @@ describe("Tranche", () => {
     it("should correctly handle full withdrawals with accrued interest -  withdraw YC, then FYT", async () => {
       const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
 
-      await fixture.tranche.connect(user1).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, await user1.getAddress());
 
       // set pool interest accululated to 100%
       await fixture.elfStub.setSharesToUnderlying(
         bnFloatMultiplier(initialUnderlying, 2)
       );
 
-      await fixture.tranche.connect(user2).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, await user2.getAddress());
 
       advanceTime(provider, lockDuration);
 
@@ -376,14 +426,18 @@ describe("Tranche", () => {
     it("should correctly handle full withdrawals with accrued interest -  withdraw FYT, then YC", async () => {
       const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
 
-      await fixture.tranche.connect(user1).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, await user1.getAddress());
 
       // set pool interest accululated to 100%
       await fixture.elfStub.setSharesToUnderlying(
         bnFloatMultiplier(initialUnderlying, 2)
       );
 
-      await fixture.tranche.connect(user2).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, await user2.getAddress());
 
       advanceTime(provider, lockDuration);
 
@@ -414,8 +468,12 @@ describe("Tranche", () => {
     it("should correctly handle full withdrawals with negative interest - withdraw YC, then FYT", async () => {
       const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
 
-      await fixture.tranche.connect(user1).deposit(initialBalance);
-      await fixture.tranche.connect(user2).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, await user1.getAddress());
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, await user2.getAddress());
 
       // set interest to -10%
       await fixture.elfStub.setSharesToUnderlying(
@@ -457,8 +515,12 @@ describe("Tranche", () => {
     it("should correctly handle full withdrawals with negative interest - withdraw FYT, then YC", async () => {
       const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
 
-      await fixture.tranche.connect(user1).deposit(initialBalance);
-      await fixture.tranche.connect(user2).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, await user1.getAddress());
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, await user2.getAddress());
 
       // set interest to -10%
       await fixture.elfStub.setSharesToUnderlying(
@@ -497,8 +559,12 @@ describe("Tranche", () => {
       );
     });
     it("should prevent withdrawal of FYTs and YCs before the tranche expires ", async () => {
-      await fixture.tranche.connect(user1).deposit(initialBalance);
-      await fixture.tranche.connect(user2).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, await user1.getAddress());
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, await user2.getAddress());
 
       await expect(
         fixture.tranche.connect(user1).withdrawYc(1)
@@ -508,7 +574,9 @@ describe("Tranche", () => {
       ).to.be.revertedWith("not expired yet");
     });
     it("should prevent withdrawal of more FYTs and YCs than the user has", async () => {
-      await fixture.tranche.connect(user1).deposit(initialBalance);
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, await user1.getAddress());
 
       advanceTime(provider, lockDuration);
 

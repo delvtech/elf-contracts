@@ -41,8 +41,12 @@ contract YieldPoolTest is YieldCurvePool {
         uint256[] memory currentBalances,
         address source
     ) public {
-        (uint256 releasedUnderlying, uint256 releasedBond) =
-            _burnLP(outputUnderlying, outputBond, currentBalances, source);
+        (uint256 releasedUnderlying, uint256 releasedBond) = _burnLP(
+            outputUnderlying,
+            outputBond,
+            currentBalances,
+            source
+        );
         // We use this to return because returndata from state changing tx isn't easily accessible.
         emit uintReturn(releasedUnderlying);
         emit uintReturn(releasedBond);
@@ -55,8 +59,12 @@ contract YieldPoolTest is YieldCurvePool {
         uint256[] memory currentBalances,
         address recipient
     ) public {
-        (uint256 usedUnderlying, uint256 usedBond) =
-            _mintLP(inputUnderlying, inputBond, currentBalances, recipient);
+        (uint256 usedUnderlying, uint256 usedBond) = _mintLP(
+            inputUnderlying,
+            inputBond,
+            currentBalances,
+            recipient
+        );
         // We use this to return because returndata from state changing tx isn't easily accessible.
         emit uintReturn(usedUnderlying);
         emit uintReturn(usedBond);
@@ -74,8 +82,12 @@ contract YieldPoolTest is YieldCurvePool {
         IERC20 outputToken,
         bool isInputTrade
     ) public {
-        uint256 newQuote =
-            _assignTradeFee(amountIn, amountOut, outputToken, isInputTrade);
+        uint256 newQuote = _assignTradeFee(
+            amountIn,
+            amountOut,
+            outputToken,
+            isInputTrade
+        );
         emit uintReturn(newQuote);
     }
 
@@ -140,12 +152,11 @@ contract YieldPoolTest is YieldCurvePool {
         time = _time;
         // We now set the total supply
         setLPBalance(request.from, totalSupply);
-        uint256 quote =
-            quoteInGivenOut(
-                request,
-                currentBalanceTokenIn,
-                currentBalanceTokenOut
-            );
+        uint256 quote = quoteInGivenOut(
+            request,
+            currentBalanceTokenIn,
+            currentBalanceTokenOut
+        );
         time = 0;
         if (expectedPrice != 0) {
             return
@@ -171,12 +182,11 @@ contract YieldPoolTest is YieldCurvePool {
         time = _time;
         // We now set the total supply
         setLPBalance(request.from, totalSupply);
-        uint256 quote =
-            quoteOutGivenIn(
-                request,
-                currentBalanceTokenIn,
-                currentBalanceTokenOut
-            );
+        uint256 quote = quoteOutGivenIn(
+            request,
+            currentBalanceTokenIn,
+            currentBalanceTokenOut
+        );
         time = 0;
         if (expectedPrice != 0) {
             return
@@ -191,7 +201,7 @@ contract YieldPoolTest is YieldCurvePool {
     uint256 time;
 
     // Allows the error measurement test to set the time
-    function _getYieldExponent() internal view override returns (uint256) {
+    function _getYieldExponent() internal override view returns (uint256) {
         // Load the stored time if it's set use that instead
         if (time > 0) {
             return uint256(FixedPoint.ONE).sub(time);

@@ -2,7 +2,7 @@ import "@nomiclabs/hardhat-waffle";
 import "hardhat-typechain";
 import "hardhat-gas-reporter";
 
-import { HardhatUserConfig } from "hardhat/config";
+import {HardhatUserConfig} from "hardhat/config";
 
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
@@ -28,7 +28,7 @@ const config: HardhatUserConfig = {
       },
     ],
   },
-  mocha: { timeout: 0 },
+  mocha: {timeout: 0},
   networks: {
     hardhat: {
       forking: {

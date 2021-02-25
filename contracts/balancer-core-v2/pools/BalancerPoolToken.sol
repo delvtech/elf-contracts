@@ -54,27 +54,51 @@ contract BalancerPoolToken is IERC20 {
 
     // External functions
 
-    function allowance(address owner, address spender) external view override returns (uint256) {
+    function allowance(address owner, address spender)
+        external
+        override
+        view
+        returns (uint256)
+    {
         return _allowance[owner][spender];
     }
 
-    function balanceOf(address account) external view override returns (uint256) {
+    function balanceOf(address account)
+        external
+        override
+        view
+        returns (uint256)
+    {
         return _balance[account];
     }
 
-    function approve(address spender, uint256 amount) external override returns (bool) {
+    function approve(address spender, uint256 amount)
+        external
+        override
+        returns (bool)
+    {
         _setAllowance(msg.sender, spender, amount);
 
         return true;
     }
 
-    function increaseApproval(address spender, uint256 amount) external returns (bool) {
-        _setAllowance(msg.sender, spender, _allowance[msg.sender][spender].add(amount));
+    function increaseApproval(address spender, uint256 amount)
+        external
+        returns (bool)
+    {
+        _setAllowance(
+            msg.sender,
+            spender,
+            _allowance[msg.sender][spender].add(amount)
+        );
 
         return true;
     }
 
-    function decreaseApproval(address spender, uint256 amount) external returns (bool) {
+    function decreaseApproval(address spender, uint256 amount)
+        external
+        returns (bool)
+    {
         uint256 currentAllowance = _allowance[msg.sender][spender];
 
         if (amount >= currentAllowance) {
@@ -86,7 +110,11 @@ contract BalancerPoolToken is IERC20 {
         return true;
     }
 
-    function transfer(address recipient, uint256 amount) external override returns (bool) {
+    function transfer(address recipient, uint256 amount)
+        external
+        override
+        returns (bool)
+    {
         _move(msg.sender, recipient, amount);
 
         return true;
@@ -98,7 +126,10 @@ contract BalancerPoolToken is IERC20 {
         uint256 amount
     ) external override returns (bool) {
         uint256 currentAllowance = _allowance[sender][msg.sender];
-        require(msg.sender == sender || currentAllowance >= amount, "BPT_BAD_CALLER");
+        require(
+            msg.sender == sender || currentAllowance >= amount,
+            "BPT_BAD_CALLER"
+        );
 
         _move(sender, recipient, amount);
 
@@ -124,7 +155,7 @@ contract BalancerPoolToken is IERC20 {
         return _DECIMALS;
     }
 
-    function totalSupply() public view override returns (uint256) {
+    function totalSupply() public override view returns (uint256) {
         return _totalSupply;
     }
 

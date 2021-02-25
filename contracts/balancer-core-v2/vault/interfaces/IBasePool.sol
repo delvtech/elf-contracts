@@ -48,7 +48,12 @@ interface IBasePool {
         uint256 latestBlockNumberUsed,
         uint256 protocolSwapFee,
         bytes calldata userData
-    ) external returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts);
+    )
+        external
+        returns (
+            uint256[] memory amountsIn,
+            uint256[] memory dueProtocolFeeAmounts
+        );
 
     /**
      * @dev Called by the Vault when a user calls `IVault.exitPool` to exit this Pool. Returns how many tokens the Vault
@@ -76,7 +81,12 @@ interface IBasePool {
         uint256 latestBlockNumberUsed,
         uint256 protocolSwapFee,
         bytes calldata userData
-    ) external returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts);
+    )
+        external
+        returns (
+            uint256[] memory amountsOut,
+            uint256[] memory dueProtocolFeeAmounts
+        );
 
     // Optional methods - these are not required by the Vault as they are not called, but Pool contracts are encouraged
     // to implement these or similar getters.

@@ -34,7 +34,11 @@ contract StableMath {
     // P = product of balances    (n+1) * D + ( A * n^n − 1)* (n^n * P / D^(n−1))                //
     // n = number of tokens                                                                      //
     **********************************************************************************************/
-    function _invariant(uint256 amp, uint256[] memory balances) internal pure returns (uint256) {
+    function _invariant(uint256 amp, uint256[] memory balances)
+        internal
+        pure
+        returns (uint256)
+    {
         uint256 sum = 0;
         uint256 totalCoins = balances.length;
         for (uint256 i = 0; i < totalCoins; i++) {
@@ -55,7 +59,11 @@ contract StableMath {
             }
             prevInv = inv;
             //inv is rounded up
-            inv = totalCoins.mul(inv).mul(inv).add(ampTimesTotal.mul(sum).mul(P_D)).divUp(
+            inv = totalCoins
+                .mul(inv)
+                .mul(inv)
+                .add(ampTimesTotal.mul(sum).mul(P_D))
+                .divUp(
                 totalCoins.add(1).mul(inv).add((ampTimesTotal.sub(1).mul(P_D)))
             );
             // Equality with the precision of 1
@@ -182,7 +190,9 @@ contract StableMath {
 
         uint256[] memory amountsOut = new uint256[](currentBalances.length);
         for (uint256 i = 0; i < currentBalances.length; i++) {
-            amountsOut[i] = currentBalances[i].mul(bptAmountOut).divUp(totalBPT);
+            amountsOut[i] = currentBalances[i].mul(bptAmountOut).divUp(
+                totalBPT
+            );
         }
 
         return amountsOut;
@@ -207,7 +217,9 @@ contract StableMath {
 
         uint256[] memory amountsOut = new uint256[](currentBalances.length);
         for (uint256 i = 0; i < currentBalances.length; i++) {
-            amountsOut[i] = currentBalances[i].mul(bptAmountIn).divDown(totalBPT);
+            amountsOut[i] = currentBalances[i].mul(bptAmountIn).divDown(
+                totalBPT
+            );
         }
 
         return amountsOut;
@@ -257,8 +269,13 @@ contract StableMath {
         uint256 y = _solveAnalyticalBalance(sum, inv, amp, nn, p);
 
         //Result is rounded down
-        uint256 accumulatedTokenSwapFees = balances[tokenIndex] > y ? balances[tokenIndex].sub(y) : 0;
-        return accumulatedTokenSwapFees.mul(protocolSwapFeePercentage).divUp(FixedPoint.ONE);
+        uint256 accumulatedTokenSwapFees = balances[tokenIndex] > y
+            ? balances[tokenIndex].sub(y)
+            : 0;
+        return
+            accumulatedTokenSwapFees.mul(protocolSwapFeePercentage).divUp(
+                FixedPoint.ONE
+            );
     }
 
     //Private functions
@@ -277,8 +294,12 @@ contract StableMath {
         uint256 b = sum.add(inv.divDown(amp.mul(nn)));
         //Round up c
         uint256 c = inv >= b
-            ? inv.sub(b).add(Math.sqrtUp(inv.sub(b).mul(inv.sub(b)).add(p.mul(4))))
-            : Math.sqrtUp(b.sub(inv).mul(b.sub(inv)).add(p.mul(4))).sub(b.sub(inv));
+            ? inv.sub(b).add(
+                Math.sqrtUp(inv.sub(b).mul(inv.sub(b)).add(p.mul(4)))
+            )
+            : Math.sqrtUp(b.sub(inv).mul(b.sub(inv)).add(p.mul(4))).sub(
+                b.sub(inv)
+            );
         //Round up y
         y = c == 0 ? 0 : c.divUp(2);
     }

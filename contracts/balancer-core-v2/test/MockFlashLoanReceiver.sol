@@ -64,13 +64,24 @@ contract MockFlashLoanReceiver is IFlashLoanReceiver {
             uint256 amount = amounts[i];
             uint256 feeAmount = feeAmounts[i];
 
-            require(token.balanceOf(address(this)) == amount, "INVALID_FLASHLOAN_BALANCE");
+            require(
+                token.balanceOf(address(this)) == amount,
+                "INVALID_FLASHLOAN_BALANCE"
+            );
 
             if (reenter) {
-                IVault(msg.sender).flashLoan(IFlashLoanReceiver(address(this)), tokens, amounts, receiverData);
+                IVault(msg.sender).flashLoan(
+                    IFlashLoanReceiver(address(this)),
+                    tokens,
+                    amounts,
+                    receiverData
+                );
             }
 
-            TestToken(address(token)).mint(address(this), repayInExcess ? feeAmount.add(1) : feeAmount);
+            TestToken(address(token)).mint(
+                address(this),
+                repayInExcess ? feeAmount.add(1) : feeAmount
+            );
 
             uint256 totalDebt = amount.add(feeAmount);
 

@@ -35,8 +35,15 @@ contract TokenFactory {
         return _tokens.length();
     }
 
-    function getTokens(uint256 start, uint256 end) external view returns (address[] memory) {
-        require((end >= start) && (end - start) <= _tokens.length(), "OUT_OF_BOUNDS");
+    function getTokens(uint256 start, uint256 end)
+        external
+        view
+        returns (address[] memory)
+    {
+        require(
+            (end >= start) && (end - start) <= _tokens.length(),
+            "OUT_OF_BOUNDS"
+        );
 
         address[] memory token = new address[](end - start);
         for (uint256 i = 0; i < token.length; ++i) {
@@ -57,7 +64,10 @@ contract TokenFactory {
             abi.encode(admin, name, symbol, decimals)
         );
 
-        address expectedToken = Create2.computeAddress(0, keccak256(creationCode));
+        address expectedToken = Create2.computeAddress(
+            0,
+            keccak256(creationCode)
+        );
 
         if (expectedToken.isContract()) {
             return expectedToken;

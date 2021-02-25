@@ -28,7 +28,9 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
     )
         BasePool(
             vault,
-            tokens.length == 2 ? IVault.PoolSpecialization.TWO_TOKEN : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
+            tokens.length == 2
+                ? IVault.PoolSpecialization.TWO_TOKEN
+                : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
             name,
             symbol,
             tokens,
@@ -44,7 +46,7 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         IPoolSwapStructs.SwapRequestGivenIn memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) external view override returns (uint256) {
+    ) external override view returns (uint256) {
         // Fees are subtracted before scaling happens, to reduce complexity of rounding direction analysis.
         swapRequest.amountIn = _subtractSwapFee(swapRequest.amountIn);
 
@@ -52,11 +54,24 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         uint256 scalingFactorTokenOut = _scalingFactor(swapRequest.tokenOut);
 
         // All token amounts are upscaled.
-        currentBalanceTokenIn = _upscale(currentBalanceTokenIn, scalingFactorTokenIn);
-        currentBalanceTokenOut = _upscale(currentBalanceTokenOut, scalingFactorTokenOut);
-        swapRequest.amountIn = _upscale(swapRequest.amountIn, scalingFactorTokenIn);
+        currentBalanceTokenIn = _upscale(
+            currentBalanceTokenIn,
+            scalingFactorTokenIn
+        );
+        currentBalanceTokenOut = _upscale(
+            currentBalanceTokenOut,
+            scalingFactorTokenOut
+        );
+        swapRequest.amountIn = _upscale(
+            swapRequest.amountIn,
+            scalingFactorTokenIn
+        );
 
-        uint256 amountOut = _onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+        uint256 amountOut = _onSwapGivenIn(
+            swapRequest,
+            currentBalanceTokenIn,
+            currentBalanceTokenOut
+        );
 
         // amountOut tokens are exiting the Pool, so we round down.
         return _downscaleDown(amountOut, scalingFactorTokenOut);
@@ -66,16 +81,29 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         IPoolSwapStructs.SwapRequestGivenOut memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) external view override returns (uint256) {
+    ) external override view returns (uint256) {
         uint256 scalingFactorTokenIn = _scalingFactor(swapRequest.tokenIn);
         uint256 scalingFactorTokenOut = _scalingFactor(swapRequest.tokenOut);
 
         // All token amounts are upscaled.
-        currentBalanceTokenIn = _upscale(currentBalanceTokenIn, scalingFactorTokenIn);
-        currentBalanceTokenOut = _upscale(currentBalanceTokenOut, scalingFactorTokenOut);
-        swapRequest.amountOut = _upscale(swapRequest.amountOut, scalingFactorTokenOut);
+        currentBalanceTokenIn = _upscale(
+            currentBalanceTokenIn,
+            scalingFactorTokenIn
+        );
+        currentBalanceTokenOut = _upscale(
+            currentBalanceTokenOut,
+            scalingFactorTokenOut
+        );
+        swapRequest.amountOut = _upscale(
+            swapRequest.amountOut,
+            scalingFactorTokenOut
+        );
 
-        uint256 amountIn = _onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+        uint256 amountIn = _onSwapGivenOut(
+            swapRequest,
+            currentBalanceTokenIn,
+            currentBalanceTokenOut
+        );
 
         // amountIn are tokens entering the Pool, so we round up.
         amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
@@ -88,11 +116,11 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         IPoolSwapStructs.SwapRequestGivenIn memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view virtual returns (uint256);
+    ) internal virtual view returns (uint256);
 
     function _onSwapGivenOut(
         IPoolSwapStructs.SwapRequestGivenOut memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view virtual returns (uint256);
+    ) internal virtual view returns (uint256);
 }

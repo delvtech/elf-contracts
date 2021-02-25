@@ -25,7 +25,16 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         string memory symbol,
         IERC20[] memory tokens,
         uint256 swapFee
-    ) BasePool(vault, IVault.PoolSpecialization.GENERAL, name, symbol, tokens, swapFee) {
+    )
+        BasePool(
+            vault,
+            IVault.PoolSpecialization.GENERAL,
+            name,
+            symbol,
+            tokens,
+            swapFee
+        )
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -36,7 +45,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) external view override returns (uint256) {
+    ) external override view returns (uint256) {
         _validateIndexes(indexIn, indexOut, _totalTokens);
 
         // Fees are subtracted before scaling happens, to reduce complexity of rounding direction analysis.
@@ -45,10 +54,18 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256[] memory scalingFactors = _scalingFactors();
 
         // All token amounts are upscaled.
-        swapRequest.amountIn = _upscale(swapRequest.amountIn, scalingFactors[indexIn]);
+        swapRequest.amountIn = _upscale(
+            swapRequest.amountIn,
+            scalingFactors[indexIn]
+        );
         _upscaleArray(balances, scalingFactors);
 
-        uint256 amountOut = _onSwapGivenIn(swapRequest, balances, indexIn, indexOut);
+        uint256 amountOut = _onSwapGivenIn(
+            swapRequest,
+            balances,
+            indexIn,
+            indexOut
+        );
 
         // amountOut tokens are exiting the Pool, so we round down.
         return _downscaleDown(amountOut, scalingFactors[indexOut]);
@@ -59,16 +76,24 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) external view override returns (uint256) {
+    ) external override view returns (uint256) {
         _validateIndexes(indexIn, indexOut, _totalTokens);
 
         uint256[] memory scalingFactors = _scalingFactors();
 
         // All token amounts are upscaled.
-        swapRequest.amountOut = _upscale(swapRequest.amountOut, scalingFactors[indexOut]);
+        swapRequest.amountOut = _upscale(
+            swapRequest.amountOut,
+            scalingFactors[indexOut]
+        );
         _upscaleArray(balances, scalingFactors);
 
-        uint256 amountIn = _onSwapGivenOut(swapRequest, balances, indexIn, indexOut);
+        uint256 amountIn = _onSwapGivenOut(
+            swapRequest,
+            balances,
+            indexIn,
+            indexOut
+        );
 
         // amountIn are tokens entering the Pool, so we round up.
         amountIn = _downscaleUp(amountIn, scalingFactors[indexIn]);
@@ -82,14 +107,14 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view virtual returns (uint256);
+    ) internal virtual view returns (uint256);
 
     function _onSwapGivenOut(
         IPoolSwapStructs.SwapRequestGivenOut memory swapRequest,
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view virtual returns (uint256);
+    ) internal virtual view returns (uint256);
 
     function _validateIndexes(
         uint256 indexIn,

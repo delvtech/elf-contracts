@@ -19,43 +19,23 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./StablePool.sol";
 
 library StablePoolUserDataHelpers {
-    function joinKind(bytes memory self)
-        internal
-        pure
-        returns (StablePool.JoinKind)
-    {
+    function joinKind(bytes memory self) internal pure returns (StablePool.JoinKind) {
         return abi.decode(self, (StablePool.JoinKind));
     }
 
-    function exitKind(bytes memory self)
-        internal
-        pure
-        returns (StablePool.ExitKind)
-    {
+    function exitKind(bytes memory self) internal pure returns (StablePool.ExitKind) {
         return abi.decode(self, (StablePool.ExitKind));
     }
 
-    function initialAmountsIn(bytes memory self)
-        internal
-        pure
-        returns (uint256[] memory amountsIn)
-    {
+    function initialAmountsIn(bytes memory self) internal pure returns (uint256[] memory amountsIn) {
         (, amountsIn) = abi.decode(self, (StablePool.JoinKind, uint256[]));
     }
 
-    function allTokensInForExactBptOut(bytes memory self)
-        internal
-        pure
-        returns (uint256 bptAmountOut)
-    {
+    function allTokensInForExactBptOut(bytes memory self) internal pure returns (uint256 bptAmountOut) {
         (, bptAmountOut) = abi.decode(self, (StablePool.JoinKind, uint256));
     }
 
-    function exactBptInForAllTokensOut(bytes memory self)
-        internal
-        pure
-        returns (uint256 bptAmountIn)
-    {
+    function exactBptInForAllTokensOut(bytes memory self) internal pure returns (uint256 bptAmountIn) {
         (, bptAmountIn) = abi.decode(self, (StablePool.ExitKind, uint256));
     }
 }

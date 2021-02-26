@@ -64,16 +64,10 @@ abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
             uint256 preLoanBalance = preLoanBalances[i];
 
             uint256 postLoanBalance = token.balanceOf(address(this));
-            require(
-                postLoanBalance >= preLoanBalance,
-                "INVALID_POST_LOAN_BALANCE"
-            );
+            require(postLoanBalance >= preLoanBalance, "INVALID_POST_LOAN_BALANCE");
 
             uint256 receivedFees = postLoanBalance - preLoanBalance;
-            require(
-                receivedFees >= feeAmounts[i],
-                "INSUFFICIENT_COLLECTED_FEES"
-            );
+            require(receivedFees >= feeAmounts[i], "INSUFFICIENT_COLLECTED_FEES");
 
             _increaseCollectedFees(token, receivedFees);
         }

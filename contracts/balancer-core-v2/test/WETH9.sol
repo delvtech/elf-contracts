@@ -83,10 +83,7 @@ contract WETH9 is AccessControl {
         require(balanceOf[src] >= wad, "INSUFFICIENT_BALANCE");
 
         if (src != msg.sender && allowance[src][msg.sender] != uint256(-1)) {
-            require(
-                allowance[src][msg.sender] >= wad,
-                "INSUFFICIENT_ALLOWANCE"
-            );
+            require(allowance[src][msg.sender] >= wad, "INSUFFICIENT_ALLOWANCE");
             allowance[src][msg.sender] -= wad;
         }
 

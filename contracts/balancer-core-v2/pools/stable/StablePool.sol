@@ -35,8 +35,8 @@ contract StablePool is BaseGeneralPool, StableMath {
     uint256 private constant _MIN_AMP = 50 * (10**18);
     uint256 private constant _MAX_AMP = 2000 * (10**18);
 
-    enum JoinKind {INIT, ALL_TOKENS_IN_FOR_EXACT_BPT_OUT}
-    enum ExitKind {EXACT_BPT_IN_FOR_ONE_TOKEN_OUT}
+    enum JoinKind { INIT, ALL_TOKENS_IN_FOR_EXACT_BPT_OUT }
+    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT }
 
     constructor(
         IVault vault,
@@ -64,15 +64,8 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal override view returns (uint256) {
-        return
-            StableMath._outGivenIn(
-                _amp,
-                balances,
-                indexIn,
-                indexOut,
-                swapRequest.amountIn
-            );
+    ) internal view override returns (uint256) {
+        return StableMath._outGivenIn(_amp, balances, indexIn, indexOut, swapRequest.amountIn);
     }
 
     function _onSwapGivenOut(
@@ -80,15 +73,8 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal override view returns (uint256) {
-        return
-            StableMath._inGivenOut(
-                _amp,
-                balances,
-                indexIn,
-                indexOut,
-                swapRequest.amountOut
-            );
+    ) internal view override returns (uint256) {
+        return StableMath._inGivenOut(_amp, balances, indexIn, indexOut, swapRequest.amountOut);
     }
 
     // Initialize
@@ -144,15 +130,10 @@ contract StablePool is BaseGeneralPool, StableMath {
         // Update the balances by subtracting the protocol fees that will be charged by the Vault once this function
         // returns.
         for (uint256 i = 0; i < _totalTokens; ++i) {
-            currentBalances[i] = currentBalances[i].sub(
-                dueProtocolFeeAmounts[i]
-            );
+            currentBalances[i] = currentBalances[i].sub(dueProtocolFeeAmounts[i]);
         }
 
-        (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
-            currentBalances,
-            userData
-        );
+        (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(currentBalances, userData);
 
         // Update the invariant with the balances the Pool will have after the join, in order to compute the due
         // protocol swap fees in future joins and exits.
@@ -175,10 +156,11 @@ contract StablePool is BaseGeneralPool, StableMath {
         }
     }
 
-    function _joinAllTokensInForExactBPTOut(
-        uint256[] memory currentBalances,
-        bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
+    function _joinAllTokensInForExactBPTOut(uint256[] memory currentBalances, bytes memory userData)
+        private
+        view
+        returns (uint256, uint256[] memory)
+    {
         uint256 bptAmountOut = userData.allTokensInForExactBptOut();
 
         uint256[] memory amountsIn = StableMath._allTokensInForExactBPTOut(
@@ -220,15 +202,10 @@ contract StablePool is BaseGeneralPool, StableMath {
         // Update the balances by subtracting the protocol fees that will be charged by the Vault once this function
         // returns.
         for (uint256 i = 0; i < _totalTokens; ++i) {
-            currentBalances[i] = currentBalances[i].sub(
-                dueProtocolFeeAmounts[i]
-            );
+            currentBalances[i] = currentBalances[i].sub(dueProtocolFeeAmounts[i]);
         }
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
-            currentBalances,
-            userData
-        );
+        (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(currentBalances, userData);
 
         // Update the invariant with the balances the Pool will have after the exit, in order to compute the due
         // protocol swap fees in future joins and exits.
@@ -251,10 +228,11 @@ contract StablePool is BaseGeneralPool, StableMath {
         }
     }
 
-    function _exitExactBPTInForAllTokensOut(
-        uint256[] memory currentBalances,
-        bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
+    function _exitExactBPTInForAllTokensOut(uint256[] memory currentBalances, bytes memory userData)
+        private
+        view
+        returns (uint256, uint256[] memory)
+    {
         uint256 bptAmountIn = userData.exactBptInForAllTokensOut();
 
         uint256[] memory amountsOut = StableMath._exactBPTInForAllTokensOut(
@@ -284,8 +262,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         // Initialize with zeros
         uint256[] memory dueProtocolFeeAmounts = new uint256[](_totalTokens);
         // Set the fee to pay in the selected token
-        dueProtocolFeeAmounts[chosenTokenIndex] = StableMath
-            ._calculateDueTokenProtocolSwapFee(
+        dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calculateDueTokenProtocolSwapFee(
             _amp,
             currentBalances,
             previousInvariant,
@@ -296,10 +273,11 @@ contract StablePool is BaseGeneralPool, StableMath {
         return dueProtocolFeeAmounts;
     }
 
-    function _invariantAfterJoin(
-        uint256[] memory currentBalances,
-        uint256[] memory amountsIn
-    ) private view returns (uint256) {
+    function _invariantAfterJoin(uint256[] memory currentBalances, uint256[] memory amountsIn)
+        private
+        view
+        returns (uint256)
+    {
         for (uint256 i = 0; i < _totalTokens; ++i) {
             currentBalances[i] = currentBalances[i].add(amountsIn[i]);
         }
@@ -307,10 +285,11 @@ contract StablePool is BaseGeneralPool, StableMath {
         return StableMath._invariant(_amp, currentBalances);
     }
 
-    function _invariantAfterExit(
-        uint256[] memory currentBalances,
-        uint256[] memory amountsOut
-    ) private view returns (uint256) {
+    function _invariantAfterExit(uint256[] memory currentBalances, uint256[] memory amountsOut)
+        private
+        view
+        returns (uint256)
+    {
         for (uint256 i = 0; i < _totalTokens; ++i) {
             currentBalances[i] = currentBalances[i].sub(amountsOut[i]);
         }

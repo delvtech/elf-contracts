@@ -33,18 +33,15 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         _vault = vault;
     }
 
-    function getVault() external override view returns (IVault) {
+    function getVault() external view override returns (IVault) {
         return _vault;
     }
 
-    function getPoolId() external override view returns (bytes32) {
+    function getPoolId() external view override returns (bytes32) {
         return _poolId;
     }
 
-    function registerTokens(
-        IERC20[] memory tokens,
-        address[] memory assetManagers
-    ) external {
+    function registerTokens(IERC20[] memory tokens, address[] memory assetManagers) external {
         _vault.registerTokens(_poolId, tokens, assetManagers);
     }
 
@@ -80,14 +77,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         uint256 latestBlockNumberUsed,
         uint256 protocolSwapFee,
         bytes memory userData
-    )
-        external
-        override
-        returns (
-            uint256[] memory amountsIn,
-            uint256[] memory dueProtocolFeeAmounts
-        )
-    {
+    ) external override returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
         emit OnJoinPoolCalled(
             poolId,
             sender,
@@ -98,10 +88,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
             userData
         );
 
-        (amountsIn, dueProtocolFeeAmounts) = abi.decode(
-            userData,
-            (uint256[], uint256[])
-        );
+        (amountsIn, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
     }
 
     function onExitPool(
@@ -112,14 +99,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         uint256 latestBlockNumberUsed,
         uint256 protocolSwapFee,
         bytes memory userData
-    )
-        external
-        override
-        returns (
-            uint256[] memory amountsOut,
-            uint256[] memory dueProtocolFeeAmounts
-        )
-    {
+    ) external override returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
         emit OnExitPoolCalled(
             poolId,
             sender,
@@ -130,10 +110,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
             userData
         );
 
-        (amountsOut, dueProtocolFeeAmounts) = abi.decode(
-            userData,
-            (uint256[], uint256[])
-        );
+        (amountsOut, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
     }
 
     // Amounts in are multiplied by the multiplier, amounts out divided by it
@@ -149,7 +126,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         uint256[] calldata,
         uint256,
         uint256
-    ) external override view returns (uint256) {
+    ) external view override returns (uint256) {
         return swapRequest.amountIn.mul(_multiplier);
     }
 
@@ -158,7 +135,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         uint256[] calldata,
         uint256,
         uint256
-    ) external override view returns (uint256) {
+    ) external view override returns (uint256) {
         uint256 amountIn = swapRequest.amountOut.div(_multiplier);
         return amountIn;
     }
@@ -168,7 +145,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         IPoolSwapStructs.SwapRequestGivenIn calldata swapRequest,
         uint256,
         uint256
-    ) external override view returns (uint256) {
+    ) external view override returns (uint256) {
         return swapRequest.amountIn.mul(_multiplier);
     }
 
@@ -176,7 +153,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         IPoolSwapStructs.SwapRequestGivenOut calldata swapRequest,
         uint256,
         uint256
-    ) external override view returns (uint256) {
+    ) external view override returns (uint256) {
         uint256 amountIn = swapRequest.amountOut.div(_multiplier);
         return amountIn;
     }

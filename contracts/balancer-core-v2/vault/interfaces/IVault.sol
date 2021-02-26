@@ -68,10 +68,7 @@ interface IVault {
     /**
      * @dev Returns true if `user` has allowed `relayer` as a relayer for them.
      */
-    function hasAllowedRelayer(address user, address relayer)
-        external
-        view
-        returns (bool);
+    function hasAllowedRelayer(address user, address relayer) external view returns (bool);
 
     /**
      * @dev Allows `relayer` to act as a relayer for the caller if `allowed` is true, and disallows it otherwise.
@@ -104,10 +101,7 @@ interface IVault {
     /**
      * @dev Returns `user`'s Internal Balance for a set of tokens.
      */
-    function getInternalBalance(address user, IERC20[] memory tokens)
-        external
-        view
-        returns (uint256[] memory);
+    function getInternalBalance(address user, IERC20[] memory tokens) external view returns (uint256[] memory);
 
     /**
      * @dev Deposits tokens from each `sender` address into Internal Balances of the corresponding `recipient`
@@ -115,8 +109,7 @@ interface IVault {
      * via `IERC20.approve()`.
      * Allows aggregators to settle multiple accounts in a single transaction.
      */
-    function depositToInternalBalance(BalanceTransfer[] memory transfers)
-        external;
+    function depositToInternalBalance(BalanceTransfer[] memory transfers) external;
 
     /**
      * @dev Withdraws tokens from each the internal balance of each `sender` address into the `recipient` accounts
@@ -124,8 +117,7 @@ interface IVault {
      *
      * This charges protocol withdrawal fees.
      */
-    function withdrawFromInternalBalance(BalanceTransfer[] memory transfers)
-        external;
+    function withdrawFromInternalBalance(BalanceTransfer[] memory transfers) external;
 
     /**
      * @dev Transfers tokens from the internal balance of each `sender` address to Internal Balances
@@ -133,18 +125,13 @@ interface IVault {
      *
      * This does not charge protocol withdrawal fees.
      */
-    function transferInternalBalance(BalanceTransfer[] memory transfers)
-        external;
+    function transferInternalBalance(BalanceTransfer[] memory transfers) external;
 
     /**
      * @dev Emitted when a user's Internal Balance changes, either due to calls to the Internal Balance functions, or
      * due to interacting with Pools using Internal Balance.
      */
-    event InternalBalanceChanged(
-        address indexed user,
-        IERC20 indexed token,
-        uint256 balance
-    );
+    event InternalBalanceChanged(address indexed user, IERC20 indexed token, uint256 balance);
 
     // Pools
     //
@@ -163,7 +150,7 @@ interface IVault {
     //  - two tokens: only allows two tokens to be registered. This achieves the lowest possible swap gas costs. Like
     // minimal swap info Pools, these are called via IMinimalSwapInfoPool.
 
-    enum PoolSpecialization {GENERAL, MINIMAL_SWAP_INFO, TWO_TOKEN}
+    enum PoolSpecialization { GENERAL, MINIMAL_SWAP_INFO, TWO_TOKEN }
 
     /**
      * @dev Registers a the caller as a Pool with a chosen specialization setting. Returns the Pool's ID, which is used
@@ -175,9 +162,7 @@ interface IVault {
      *
      * Emits a `PoolCreated` event.
      */
-    function registerPool(PoolSpecialization specialization)
-        external
-        returns (bytes32);
+    function registerPool(PoolSpecialization specialization) external returns (bytes32);
 
     /**
      * @dev Emitted when a Pool is registered by calling `registerPool`.
@@ -187,10 +172,7 @@ interface IVault {
     /**
      * @dev Returns a Pool's contract address and specialization setting.
      */
-    function getPool(bytes32 poolId)
-        external
-        view
-        returns (address, PoolSpecialization);
+    function getPool(bytes32 poolId) external view returns (address, PoolSpecialization);
 
     /**
      * @dev Registers `tokens` for the `poolId` Pool. Must be called by the Pool's contract.
@@ -221,11 +203,7 @@ interface IVault {
     /**
      * @dev Emitted when a Pool registers tokens by calling `registerTokens`.
      */
-    event TokensRegistered(
-        bytes32 poolId,
-        IERC20[] tokens,
-        address[] assetManagers
-    );
+    event TokensRegistered(bytes32 poolId, IERC20[] tokens, address[] assetManagers);
 
     /**
      * @dev Deregisters `tokens` for the `poolId` Pool. Must be called by the Pool's contract.
@@ -238,8 +216,7 @@ interface IVault {
      *
      * Emits a `TokensDeregistered` event.
      */
-    function deregisterTokens(bytes32 poolId, IERC20[] calldata tokens)
-        external;
+    function deregisterTokens(bytes32 poolId, IERC20[] calldata tokens) external;
 
     /**
      * @dev Emitted when a Pool deregisters tokens by calling `deregisterTokens`.
@@ -257,10 +234,7 @@ interface IVault {
      * Total balances include both tokens held by the Vault and those withdrawn by the Pool's Asset Managers. These are
      * the amounts used by joins, exits and swaps.
      */
-    function getPoolTokens(bytes32 poolId)
-        external
-        view
-        returns (IERC20[] memory tokens, uint256[] memory balances);
+    function getPoolTokens(bytes32 poolId) external view returns (IERC20[] memory tokens, uint256[] memory balances);
 
     /**
      * @dev Returns detailed information for a Pool's registered token.
@@ -566,7 +540,7 @@ interface IVault {
         FundManagement memory funds
     ) external returns (int256[] memory tokenDeltas);
 
-    enum SwapKind {GIVEN_IN, GIVEN_OUT}
+    enum SwapKind { GIVEN_IN, GIVEN_OUT }
 
     // This struct is identical in layout to SwapIn and SwapOut, except the 'amountIn/Out' field is named 'amount'.
     struct SwapRequest {
@@ -623,22 +597,14 @@ interface IVault {
      * @dev Emitted when a Pool's token Asset manager withdraws or deposits token balance via `withdrawFromPoolBalance`
      * or `depositToPoolBalance`.
      */
-    event PoolBalanceChanged(
-        bytes32 indexed poolId,
-        address indexed assetManager,
-        IERC20 indexed token,
-        int256 amount
-    );
+    event PoolBalanceChanged(bytes32 indexed poolId, address indexed assetManager, IERC20 indexed token, int256 amount);
 
     /**
      * @dev Called by a Pool's Asset Manager to withdraw tokens from the Vault. This decreases
      * the Pool's cash but increases its managed balance, leaving the total balance unchanged.
      * Array input allows asset managers to manage multiple tokens for a pool in a single transaction.
      */
-    function withdrawFromPoolBalance(
-        bytes32 poolId,
-        AssetManagerTransfer[] memory transfers
-    ) external;
+    function withdrawFromPoolBalance(bytes32 poolId, AssetManagerTransfer[] memory transfers) external;
 
     /**
      * @dev Called by a Pool's Asset Manager to deposit tokens into the Vault. This increases the Pool's cash,
@@ -646,10 +612,7 @@ interface IVault {
      * the Vault to use each token. Array input allows asset managers to manage multiple tokens for a pool in a
      * single transaction.
      */
-    function depositToPoolBalance(
-        bytes32 poolId,
-        AssetManagerTransfer[] memory transfers
-    ) external;
+    function depositToPoolBalance(bytes32 poolId, AssetManagerTransfer[] memory transfers) external;
 
     /**
      * @dev Called by a Pool's Asset Manager for to update the amount held outside the vault. This does not affect
@@ -657,10 +620,7 @@ interface IVault {
      * amount can be either increased or decreased by this call (i.e., reporting a gain or a loss).
      * Array input allows asset managers to manage multiple tokens for a pool in a single transaction.
      */
-    function updateManagedBalance(
-        bytes32 poolId,
-        AssetManagerTransfer[] memory transfers
-    ) external;
+    function updateManagedBalance(bytes32 poolId, AssetManagerTransfer[] memory transfers) external;
 
     // Protocol Fees
     //
@@ -707,10 +667,7 @@ interface IVault {
     /**
      * @dev Returns the amount of protocol fees collected by the Vault for each token in the `tokens` array.
      */
-    function getCollectedFees(IERC20[] memory tokens)
-        external
-        view
-        returns (uint256[] memory);
+    function getCollectedFees(IERC20[] memory tokens) external view returns (uint256[] memory);
 
     /**
      * @dev Withdraws collected protocol fees, transferring them to `recipient`. The caller must be allowed by the

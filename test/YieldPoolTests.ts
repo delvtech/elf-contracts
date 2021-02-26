@@ -389,7 +389,7 @@ describe("YieldPool", function () {
     const reserveBond = ethers.utils.parseUnits("12000", BOND_DECIMALS);
     const reserveUnderlying = ethers.utils.parseUnits("10000", BASE_DECIMALS);
 
-    let quote = await pool.callStatic.quoteOutGivenIn(
+    let quote = await pool.callStatic.onSwapGivenIn(
       {
         tokenIn: erc20_base.address,
         tokenOut: erc20_bond.address,
@@ -413,7 +413,7 @@ describe("YieldPool", function () {
     const reserveBond = ethers.utils.parseUnits("12000", BOND_DECIMALS);
     const reserveUnderlying = ethers.utils.parseUnits("10000", BASE_DECIMALS);
 
-    let quote = await pool.callStatic.quoteOutGivenIn(
+    let quote = await pool.callStatic.onSwapGivenIn(
       {
         tokenIn: erc20_bond.address,
         tokenOut: erc20_base.address,
@@ -435,7 +435,7 @@ describe("YieldPool", function () {
     const reserveBond = ethers.utils.parseUnits("12000", BOND_DECIMALS);
     const reserveUnderlying = ethers.utils.parseUnits("10000", BASE_DECIMALS);
 
-    let quote = await pool.callStatic.quoteInGivenOut(
+    let quote = await pool.callStatic.onSwapGivenOut(
       {
         tokenIn: erc20_base.address,
         tokenOut: erc20_bond.address,
@@ -459,7 +459,7 @@ describe("YieldPool", function () {
     const reserveBond = ethers.utils.parseUnits("12000", BOND_DECIMALS);
     const reserveUnderlying = ethers.utils.parseUnits("10000", BASE_DECIMALS);
 
-    let quote = await pool.callStatic.quoteInGivenOut(
+    let quote = await pool.callStatic.onSwapGivenOut(
       {
         tokenIn: erc20_bond.address,
         tokenOut: erc20_base.address,

@@ -7,14 +7,9 @@ import "./balancer-core-v2/lib/math/LogExpMath.sol";
 import "./balancer-core-v2/lib/math/FixedPoint.sol";
 import "./balancer-core-v2/vault/interfaces/IMinimalSwapInfoPool.sol";
 import "./balancer-core-v2/vault/interfaces/IVault.sol";
-import "./balancer-core-v2/vault/interfaces/IBasePool.sol";
 import "./balancer-core-v2/pools/BalancerPoolToken.sol";
 
-contract YieldCurvePool is
-    IMinimalSwapInfoPool,
-    BalancerPoolToken,
-    IBasePool,
-{
+contract YieldCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     using LogExpMath for uint256;
     using FixedPoint for uint256;
 
@@ -212,8 +207,8 @@ contract YieldCurvePool is
     /// @return amountsIn The actual amounts of token the vault should move to this pool
     /// @return dueProtocolFeeAmounts The amounts of each token to pay as protocol fees
     function onJoinPool(
-        bytes32,
-        address,
+        bytes32 poolId,
+        address sender,
         address recipient,
         uint256[] calldata currentBalances,
         uint256[] calldata maxAmountsIn,
@@ -221,7 +216,6 @@ contract YieldCurvePool is
         bytes calldata
     )
         external
-        override
         returns (
             uint256[] memory amountsIn,
             uint256[] memory dueProtocolFeeAmounts

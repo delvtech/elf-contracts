@@ -1,16 +1,15 @@
-import {ethers} from "hardhat";
-import {loadFixture, fixtureInterface} from "./helpers/deployer";
-import {createSnapshot, restoreSnapshot} from "./helpers/snapshots";
-
 import {expect} from "chai";
 import {Signer} from "ethers";
+import {ethers, waffle} from "hardhat";
 
-const {waffle} = require("hardhat");
-const provider = waffle.provider;
+import {FixtureInterface, loadFixture} from "./helpers/deployer";
+import {createSnapshot, restoreSnapshot} from "./helpers/snapshots";
+
+const {provider} = waffle;
 
 describe("Elf", () => {
   let users: {user: Signer; address: string}[];
-  let fixture: fixtureInterface;
+  let fixture: FixtureInterface;
   before(async () => {
     // snapshot initial state
     await createSnapshot(provider);
@@ -27,18 +26,19 @@ describe("Elf", () => {
     // and approve 6e6 usdc to the elf contract for each address
     await Promise.all(
       users.map(async (userInfo) => {
-        let user = userInfo.user;
+        const {user} = userInfo;
         userInfo.address = await user.getAddress();
         await fixture.usdc.mint(userInfo.address, 6e6);
         await fixture.usdc.connect(user).approve(fixture.elf.address, 6e6);
       })
     );
+    await fixture.yusdcAsset.setPool(fixture.elf.address);
   });
   after(async () => {
     // revert back to initial state after all tests pass
     await restoreSnapshot(provider);
   });
-  describe("balanceOfUnderlying", () => {
+  describe("balance", () => {
     beforeEach(async () => {
       await createSnapshot(provider);
     });
@@ -47,10 +47,23 @@ describe("Elf", () => {
     });
     it("should return the correct balance", async () => {
       await fixture.elf.connect(users[1].user).deposit(users[1].address, 1e6);
+      await fixture.elf.connect(users[2].user).deposit(users[2].address, 1e6);
 
-      expect(await fixture.elf.balanceOfUnderlying(users[1].address)).to.equal(
-        1e6
-      );
+      expect(await fixture.elf.balance()).to.equal(2e6);
+    });
+  });
+  describe("balanceUnderlying", () => {
+    beforeEach(async () => {
+      await createSnapshot(provider);
+    });
+    afterEach(async () => {
+      await restoreSnapshot(provider);
+    });
+    it("should return the correct balance", async () => {
+      await fixture.elf.connect(users[1].user).deposit(users[1].address, 1e6);
+      await fixture.elf.connect(users[2].user).deposit(users[2].address, 1e6);
+
+      expect(await fixture.elf.balance()).to.equal(2e6);
     });
   });
   // WARNING: Tests from now on do not use snapshots. They are interdependant!
@@ -91,9 +104,7 @@ describe("Elf", () => {
        * User 3: 1 shares
        * These shares are worth 11 USDC
        */
-      await fixture.elf
-        .connect(users[1].user)
-        .withdraw(users[1].address, 1e6, 0);
+      await fixture.elf.connect(users[1].user).withdraw(users[1].address, 1e6);
       expect(await fixture.elf.balanceOf(users[1].address)).to.equal(6e6);
 
       const elfBalanceUser0 = await fixture.elf.balanceOf(users[1].address);
@@ -102,17 +113,17 @@ describe("Elf", () => {
 
       await fixture.elf
         .connect(users[1].user)
-        .withdraw(users[1].address, elfBalanceUser0, 0);
+        .withdraw(users[1].address, elfBalanceUser0);
       expect(await fixture.elf.balanceOf(users[1].address)).to.equal(0);
 
       await fixture.elf
         .connect(users[2].user)
-        .withdraw(users[2].address, elfBalanceUser1, 0);
+        .withdraw(users[2].address, elfBalanceUser1);
       expect(await fixture.elf.balanceOf(users[2].address)).to.equal(0);
 
       await fixture.elf
         .connect(users[3].user)
-        .withdraw(users[3].address, elfBalanceUser2, 0);
+        .withdraw(users[3].address, elfBalanceUser2);
       expect(await fixture.elf.balanceOf(users[3].address)).to.equal(0);
 
       const usdcBalaceUser0 = await fixture.usdc.balanceOf(users[1].address);

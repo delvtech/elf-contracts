@@ -25,7 +25,7 @@ import {Signer} from "ethers";
 import {ethers} from "hardhat";
 import {ElfStub} from "../../typechain/ElfStub";
 
-export interface fixtureInterface {
+export interface FixtureInterface {
   signer: Signer;
   usdc: AToken;
   yusdc: AYVault;

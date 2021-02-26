@@ -1,6 +1,5 @@
 import {ethers} from "hardhat";
-import {loadFixture, fixtureInterface} from "./helpers/deployer";
-import {expect} from "chai";
+import {loadFixture} from "./helpers/deployer";
 import {Contract} from "ethers";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 

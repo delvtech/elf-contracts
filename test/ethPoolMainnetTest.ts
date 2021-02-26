@@ -1,4 +1,4 @@
-import {ethers} from "hardhat";
+import {ethers, waffle} from "hardhat";
 
 import {
   loadEthPoolMainnetFixture,
@@ -10,8 +10,7 @@ import {impersonate} from "./helpers/impersonate";
 import {expect} from "chai";
 import {Signer} from "ethers";
 
-const {waffle} = require("hardhat");
-const provider = waffle.provider;
+const {provider} = waffle;
 
 describe("ETHPool-Mainnet", () => {
   let users: {user: Signer; address: string}[];
@@ -40,7 +39,7 @@ describe("ETHPool-Mainnet", () => {
     // finish populating the user array by assigning each index a signer address
     await Promise.all(
       users.map(async (userInfo) => {
-        let user = userInfo.user;
+        const {user} = userInfo;
         userInfo.address = await user.getAddress();
       })
     );
@@ -108,7 +107,7 @@ describe("ETHPool-Mainnet", () => {
 
       // Test a transfer
       let user1Balance = await fixture.elf.balanceOf(users[1].address);
-      let user3Balance = await fixture.elf.balanceOf(users[3].address);
+      const user3Balance = await fixture.elf.balanceOf(users[3].address);
       await fixture.elf
         .connect(users[3].user)
         .transfer(users[1].address, user3Balance.div(ethers.BigNumber.from(2)));

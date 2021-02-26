@@ -2,7 +2,7 @@ import {expect} from "chai";
 import {ethers} from "hardhat";
 import {Contract, BigNumber} from "ethers";
 
-const testTrades = require("./testTrades.json");
+import testTrades from "./testTrades.json";
 
 // This simulation loads the data from ./testTrades.json and makes sure that
 // our quotes are with-in 10^9 of the quotes from the python script
@@ -88,7 +88,7 @@ describe("YieldPoolErrSim", function () {
         : trade.input.x_reserves;
 
       if (trade.input.direction === "in") {
-        const value = pool.callStatic
+        pool.callStatic
           .quoteInGivenOutSimulation(
             {
               tokenIn: tokenAddressIn,
@@ -113,7 +113,7 @@ describe("YieldPoolErrSim", function () {
           )
           .then(check);
       } else if (trade.input.direction === "out") {
-        const value = pool.callStatic
+        pool.callStatic
           .quoteOutGivenInSimulation(
             {
               tokenIn: tokenAddressIn,
@@ -140,7 +140,7 @@ describe("YieldPoolErrSim", function () {
       }
       // We use a closure after the promise to retain access to the mocha done
       // call
-      function check(value: any) {
+      function check(value: BigNumber) {
         try {
           // We try the expectation
           expect(value.lt(epsilon)).to.be.eq(true);

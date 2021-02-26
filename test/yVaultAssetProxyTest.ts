@@ -1,12 +1,12 @@
-import {AddressZero} from "@ethersproject/constants";
-import {expect} from "chai";
-import {Signer} from "ethers";
-import {ethers, waffle} from "hardhat";
+import { AddressZero } from "@ethersproject/constants";
+import { expect } from "chai";
+import { Signer } from "ethers";
+import { ethers, waffle } from "hardhat";
 
-import {FixtureInterface, loadFixture} from "./helpers/deployer";
-import {createSnapshot, restoreSnapshot} from "./helpers/snapshots";
+import { FixtureInterface, loadFixture } from "./helpers/deployer";
+import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 
-const {provider} = waffle;
+const { provider } = waffle;
 
 describe("YVaultAssetProxy", () => {
   let fixture: FixtureInterface;

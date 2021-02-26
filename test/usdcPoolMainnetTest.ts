@@ -1,18 +1,18 @@
-import {expect} from "chai";
-import {Signer} from "ethers";
-import {ethers, waffle} from "hardhat";
+import { expect } from "chai";
+import { Signer } from "ethers";
+import { ethers, waffle } from "hardhat";
 
 import {
   loadUsdcPoolMainnetFixture,
   usdcPoolMainnetInterface,
 } from "./helpers/deployer";
-import {impersonate, stopImpersonating} from "./helpers/impersonate";
-import {createSnapshot, restoreSnapshot} from "./helpers/snapshots";
+import { impersonate, stopImpersonating } from "./helpers/impersonate";
+import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 
-const {provider} = waffle;
+const { provider } = waffle;
 
 describe("USDCPool-Mainnet", () => {
-  let users: {user: Signer; address: string}[];
+  let users: { user: Signer; address: string }[];
   let fixture: usdcPoolMainnetInterface;
   before(async () => {
     // snapshot initial state
@@ -26,13 +26,13 @@ describe("USDCPool-Mainnet", () => {
 
     // begin to populate the user array by assigning each index a signer
     users = ((await ethers.getSigners()) as Signer[]).map(function (user) {
-      return {user, address: ""};
+      return { user, address: "" };
     });
 
     // finish populating the user array by assigning each index a signer address
     await Promise.all(
       users.map(async (userInfo) => {
-        const {user} = userInfo;
+        const { user } = userInfo;
         userInfo.address = await user.getAddress();
       })
     );

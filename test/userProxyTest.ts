@@ -1,7 +1,8 @@
-import {ethers} from "hardhat";
-import {loadFixture} from "./helpers/deployer";
-import {Contract} from "ethers";
-import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { Contract } from "ethers";
+import { ethers } from "hardhat";
+
+import { loadFixture } from "./helpers/deployer";
 
 describe("UserProxyTests", function () {
   let fixture: fixtureInterface;

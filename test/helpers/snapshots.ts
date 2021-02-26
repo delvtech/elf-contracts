@@ -1,4 +1,4 @@
-import {MockProvider} from "ethereum-waffle";
+import { MockProvider } from "ethereum-waffle";
 
 const snapshotIdStack: number[] = [];
 export const createSnapshot = async (provider: MockProvider) => {

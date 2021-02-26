@@ -1,19 +1,18 @@
-import {ethers, waffle} from "hardhat";
+import { ethers, waffle } from "hardhat";
 
 import {
   loadEthPoolMainnetFixture,
   ethPoolMainnetInterface,
 } from "./helpers/deployer";
-import {createSnapshot, restoreSnapshot} from "./helpers/snapshots";
-import {impersonate} from "./helpers/impersonate";
+import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 
-import {expect} from "chai";
-import {Signer} from "ethers";
+import { expect } from "chai";
+import { Signer } from "ethers";
 
-const {provider} = waffle;
+const { provider } = waffle;
 
 describe("ETHPool-Mainnet", () => {
-  let users: {user: Signer; address: string}[];
+  let users: { user: Signer; address: string }[];
   let fixture: ethPoolMainnetInterface;
   before(async () => {
     // snapshot initial state
@@ -24,43 +23,35 @@ describe("ETHPool-Mainnet", () => {
 
     // begin to populate the user array by assigning each index a signer
     users = ((await ethers.getSigners()) as Signer[]).map(function (user) {
-      return {user, address: ""};
+      return { user, address: "" };
     });
-
-    // We load and impersonate the governance of the yweth contract
-    const yearnGovAddress = await fixture.yweth.governance();
-    impersonate(yearnGovAddress);
-    const yearnGov = ethers.provider.getSigner(yearnGovAddress);
-    // We set the deposit limit to very high
-    fixture.yweth
-      .connect(yearnGov)
-      .setDepositLimit(ethers.utils.parseEther("100000000000"));
 
     // finish populating the user array by assigning each index a signer address
     await Promise.all(
       users.map(async (userInfo) => {
-        const {user} = userInfo;
+        const { user } = userInfo;
         userInfo.address = await user.getAddress();
       })
     );
     await fixture.weth
       .connect(users[1].user)
-      .deposit({value: ethers.utils.parseEther("20000")});
+      .deposit({ value: ethers.utils.parseEther("20000") });
     await fixture.weth
       .connect(users[1].user)
       .approve(fixture.elf.address, ethers.utils.parseEther("20000"));
     await fixture.weth
       .connect(users[2].user)
-      .deposit({value: ethers.utils.parseEther("20000")});
+      .deposit({ value: ethers.utils.parseEther("20000") });
     await fixture.weth
       .connect(users[2].user)
       .approve(fixture.elf.address, ethers.utils.parseEther("20000"));
     await fixture.weth
       .connect(users[3].user)
-      .deposit({value: ethers.utils.parseEther("60000")});
+      .deposit({ value: ethers.utils.parseEther("60000") });
     await fixture.weth
       .connect(users[3].user)
       .approve(fixture.elf.address, ethers.utils.parseEther("60000"));
+    await fixture.ywethAsset.setPool(fixture.elf.address);
   });
   after(async () => {
     // revert back to initial state after all tests pass
@@ -88,11 +79,9 @@ describe("ETHPool-Mainnet", () => {
         .connect(users[3].user)
         .deposit(users[3].address, ethers.utils.parseEther("60000"));
 
-      let pricePerFullShare = await fixture.yweth.pricePerShare();
+      let pricePerFullShare = await fixture.yweth.getPricePerFullShare();
       const balance = (
-        await (await fixture.yweth.balanceOf(fixture.elf.address)).mul(
-          pricePerFullShare
-        )
+        await (await fixture.elf.balance()).mul(pricePerFullShare)
       ).div(ethers.utils.parseEther("1"));
       expect(balance.add(ethers.BigNumber.from("5"))).to.be.at.least(
         ethers.BigNumber.from("1000000000000")
@@ -128,14 +117,14 @@ describe("ETHPool-Mainnet", () => {
 
       const toWithdraw = ethers.utils.parseEther("1");
       user1Balance = await fixture.elf.balanceOf(users[1].address);
-      pricePerFullShare = await fixture.yweth.pricePerShare();
+      pricePerFullShare = await fixture.yweth.getPricePerFullShare();
       const withdrawWeth = toWithdraw
         .mul(pricePerFullShare)
         .div(ethers.utils.parseEther("1"));
 
       await fixture.elf
         .connect(users[1].user)
-        .withdraw(users[1].address, toWithdraw, 0);
+        .withdraw(users[1].address, toWithdraw);
       expect(await fixture.elf.balanceOf(users[1].address)).to.equal(
         user1Balance.sub(toWithdraw)
       );
@@ -153,19 +142,19 @@ describe("ETHPool-Mainnet", () => {
       const elfBalanceU1 = await fixture.elf.balanceOf(users[1].address);
       await fixture.elf
         .connect(users[1].user)
-        .withdraw(users[1].address, elfBalanceU1, 0);
+        .withdraw(users[1].address, elfBalanceU1);
       expect(await fixture.elf.balanceOf(users[1].address)).to.equal(0);
 
       const elfBalanceU2 = await fixture.elf.balanceOf(users[2].address);
       await fixture.elf
         .connect(users[2].user)
-        .withdraw(users[2].address, elfBalanceU2, 0);
+        .withdraw(users[2].address, elfBalanceU2);
       expect(await fixture.elf.balanceOf(users[2].address)).to.equal(0);
 
       const elfBalanceU3 = await fixture.elf.balanceOf(users[3].address);
       await fixture.elf
         .connect(users[3].user)
-        .withdraw(users[3].address, elfBalanceU3, 0);
+        .withdraw(users[3].address, elfBalanceU3);
       expect(await fixture.elf.balanceOf(users[3].address)).to.equal(0);
 
       /* At this point:
@@ -193,13 +182,25 @@ describe("ETHPool-Mainnet", () => {
         .connect(users[1].user)
         .deposit(users[1].address, ethers.utils.parseEther("10000"));
 
-      const pricePerFullShare = await fixture.yweth.pricePerShare();
-      const balance = (await fixture.yweth.balanceOf(fixture.elf.address))
+      const pricePerFullShare = await fixture.yweth.getPricePerFullShare();
+      const balance = (await fixture.elf.balance())
         .mul(pricePerFullShare)
         .div(ethers.utils.parseEther("1"));
 
       // Sub 1 ETH for 0.01% loss due to high volume deposit
       expect(balance).to.be.at.least(ethers.utils.parseEther("9999"));
+    });
+  });
+  describe("balanceUnderlying", () => {
+    it("should return the correct underlying balance", async () => {
+      await fixture.elf
+        .connect(users[1].user)
+        .deposit(users[1].address, ethers.utils.parseEther("10000"));
+
+      // Sub 1 ETH for 0.01% loss due to high volume deposit
+      expect(await fixture.elf.balanceUnderlying()).to.be.at.least(
+        ethers.utils.parseEther("9999")
+      );
     });
   });
 });

@@ -1,14 +1,14 @@
-import {ethers, waffle} from "hardhat";
+import { ethers, waffle } from "hardhat";
 
-import {bnFloatMultiplier} from "./helpers/math";
-import {loadFixture, FixtureInterface} from "./helpers/deployer";
-import {createSnapshot, restoreSnapshot} from "./helpers/snapshots";
-import {advanceTime} from "./helpers/time";
+import { bnFloatMultiplier } from "./helpers/math";
+import { loadFixture, FixtureInterface } from "./helpers/deployer";
+import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
+import { advanceTime } from "./helpers/time";
 
-import {expect} from "chai";
-import {Signer} from "ethers";
+import { expect } from "chai";
+import { Signer } from "ethers";
 
-const {provider} = waffle;
+const { provider } = waffle;
 
 describe("Tranche", () => {
   let fixture: FixtureInterface;

@@ -89,7 +89,8 @@
         "solidity"
     ],
     "ignorePaths": [
-        "node_modules/**"
+        "node_modules/**/*",
+        "contracts/balancer-core-v2/**/*"
     ],
     "allowCompoundWords": true
 }

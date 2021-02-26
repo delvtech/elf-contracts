@@ -21,9 +21,8 @@ contract UserProxy is Authorizable {
     // Constant wrapped ether address
     IWETH public immutable weth;
     // A constant which represents ether
-    address constant ETH_CONSTANT = address(
-        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
-    );
+    address constant ETH_CONSTANT =
+        address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
     /// @param _weth The constant weth contract address
     /// @dev Marks the msg.sender as authorized and sets them
@@ -135,8 +134,8 @@ contract UserProxy is Authorizable {
     /// @return The derived Tranche contract
     function deriveTranche(address elf, uint256 expiration)
         internal
-        virtual
         view
+        virtual
         returns (ITranche)
     {
         return ITranche(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);

@@ -3,3 +3,4 @@
 *.md
 *.yaml
 lib/
+contracts/balancer-core-v2/

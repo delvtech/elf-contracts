@@ -1,8 +1,10 @@
-pragma solidity >=0.7.1;
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../balancer/YieldPool.sol";
-import "../balancer/FixedPoint.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../YieldPool.sol";
+import "../balancer-core-v2/lib/math/FixedPoint.sol";
 
 contract YieldPoolTest is YieldCurvePool {
     using FixedPoint for uint256;
@@ -97,7 +99,7 @@ contract YieldPoolTest is YieldCurvePool {
     }
 
     function setLPBalance(address who, uint256 what) public {
-        uint256 current = balanceOf(who);
+        uint256 current = this.balanceOf(who);
         if (what > current) {
             _mintPoolTokens(who, what - current);
         } else if (what < current) {
@@ -141,7 +143,7 @@ contract YieldPoolTest is YieldCurvePool {
     // if expectedPrice is nonzero it returns the delta in price instead of
     // the quote
     function quoteInGivenOutSimulation(
-        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
+        IPoolSwapStructs.SwapRequestGivenOut calldata request,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut,
         uint256 _time,
@@ -151,7 +153,7 @@ contract YieldPoolTest is YieldCurvePool {
         time = _time;
         // We now set the total supply
         setLPBalance(request.from, totalSupply);
-        uint256 quote = quoteInGivenOut(
+        uint256 quote = onSwapGivenOut(
             request,
             currentBalanceTokenIn,
             currentBalanceTokenOut
@@ -171,7 +173,7 @@ contract YieldPoolTest is YieldCurvePool {
     // if expectedPrice is nonzero it returns the delta in price instead of
     // the quote
     function quoteOutGivenInSimulation(
-        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
+        IPoolSwapStructs.SwapRequestGivenIn calldata request,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut,
         uint256 _time,
@@ -181,7 +183,7 @@ contract YieldPoolTest is YieldCurvePool {
         time = _time;
         // We now set the total supply
         setLPBalance(request.from, totalSupply);
-        uint256 quote = quoteOutGivenIn(
+        uint256 quote = onSwapGivenIn(
             request,
             currentBalanceTokenIn,
             currentBalanceTokenOut

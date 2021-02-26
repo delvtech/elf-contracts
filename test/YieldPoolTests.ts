@@ -389,7 +389,7 @@ describe("YieldPool", function () {
     const reserveBond = ethers.utils.parseUnits("12000", BOND_DECIMALS);
     const reserveUnderlying = ethers.utils.parseUnits("10000", BASE_DECIMALS);
 
-    let quote = await pool.callStatic.quoteOutGivenIn(
+    let quote = await pool.callStatic.onSwapGivenIn(
       {
         tokenIn: erc20_base.address,
         tokenOut: erc20_bond.address,
@@ -397,6 +397,7 @@ describe("YieldPool", function () {
         // Misc data
         poolId:
           "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
+        latestBlockNumberUsed: BigNumber.from(0),
         from: fakeAddress,
         to: fakeAddress,
         userData: "0x",
@@ -413,7 +414,7 @@ describe("YieldPool", function () {
     const reserveBond = ethers.utils.parseUnits("12000", BOND_DECIMALS);
     const reserveUnderlying = ethers.utils.parseUnits("10000", BASE_DECIMALS);
 
-    let quote = await pool.callStatic.quoteOutGivenIn(
+    let quote = await pool.callStatic.onSwapGivenIn(
       {
         tokenIn: erc20_bond.address,
         tokenOut: erc20_base.address,
@@ -421,6 +422,7 @@ describe("YieldPool", function () {
         // Misc data
         poolId:
           "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
+        latestBlockNumberUsed: BigNumber.from(0),
         from: fakeAddress,
         to: fakeAddress,
         userData: "0x",
@@ -435,7 +437,7 @@ describe("YieldPool", function () {
     const reserveBond = ethers.utils.parseUnits("12000", BOND_DECIMALS);
     const reserveUnderlying = ethers.utils.parseUnits("10000", BASE_DECIMALS);
 
-    let quote = await pool.callStatic.quoteInGivenOut(
+    let quote = await pool.callStatic.onSwapGivenOut(
       {
         tokenIn: erc20_base.address,
         tokenOut: erc20_bond.address,
@@ -443,6 +445,7 @@ describe("YieldPool", function () {
         // Misc data
         poolId:
           "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
+        latestBlockNumberUsed: BigNumber.from(0),
         from: fakeAddress,
         to: fakeAddress,
         userData: "0x",
@@ -459,7 +462,7 @@ describe("YieldPool", function () {
     const reserveBond = ethers.utils.parseUnits("12000", BOND_DECIMALS);
     const reserveUnderlying = ethers.utils.parseUnits("10000", BASE_DECIMALS);
 
-    let quote = await pool.callStatic.quoteInGivenOut(
+    let quote = await pool.callStatic.onSwapGivenOut(
       {
         tokenIn: erc20_bond.address,
         tokenOut: erc20_base.address,
@@ -467,6 +470,7 @@ describe("YieldPool", function () {
         // Misc data
         poolId:
           "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
+        latestBlockNumberUsed: BigNumber.from(0),
         from: fakeAddress,
         to: fakeAddress,
         userData: "0x",

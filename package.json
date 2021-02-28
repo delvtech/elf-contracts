@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "solhint": "npx solhint -f table src/**/*.sol src/**/**/*.sol",
+    "solhint": "npx solhint -f table contracts/**/*.sol contracts/**/**/*.sol",
     "style-check": "npx prettier --check .",
     "prettier": "npx prettier --write .",
     "build": "npx hardhat compile",

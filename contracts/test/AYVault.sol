@@ -55,7 +55,7 @@ contract AYVault is ERC20 {
         AToken(token).mint(address(this), balance / 10);
     }
 
-    function totalSupply() internal view returns (uint256) {
+    function totalSupply() public view returns (uint256) {
         return _supply;
     }
 }

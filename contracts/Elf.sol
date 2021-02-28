@@ -15,7 +15,7 @@ abstract contract Elf is ERC20Permit, IElf {
     using SafeERC20 for IERC20;
     using Address for address;
 
-    IERC20 public override immutable token;
+    IERC20 public immutable override token;
 
     /// @notice Constucts this contract
     /// @param _token The underlying token
@@ -29,9 +29,9 @@ abstract contract Elf is ERC20Permit, IElf {
         token = IERC20(_token);
     }
 
-    /// We expect that the following logic will be present in an integration implementation 
+    /// We expect that the following logic will be present in an integration implementation
     /// which inherits from this contracts
-    
+
     /// @dev Makes the actual deposit into the 'vault'
     /// @return (the shares minted, amount underlying used)
     function _deposit() internal virtual returns (uint256, uint256);

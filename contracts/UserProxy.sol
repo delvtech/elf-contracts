@@ -21,7 +21,9 @@ contract UserProxy is Authorizable {
     // Constant wrapped ether address
     IWETH public immutable weth;
     // A constant which represents ether
-    address constant ETH_CONSTANT = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+    address constant ETH_CONSTANT = address(
+        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
+    );
 
     /// @param _weth The constant weth contract address
     /// @dev Marks the msg.sender as authorized and sets them

@@ -197,7 +197,7 @@ contract YieldPoolTest is YieldCurvePool {
         }
     }
 
-    uint256 time;
+    uint256 public time;
 
     // Allows the error measurement test to set the time
     function _getYieldExponent() internal override view returns (uint256) {

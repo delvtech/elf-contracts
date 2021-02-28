@@ -70,7 +70,7 @@ contract Tranche is ERC20Permit, ITranche {
             of FYT tokens minted is reduced in order to pay for the accrued interest.
     @param _amount The amount of underlying to deposit
     @param _destination The address to mint to
-    @return The amount of FYT tokens minted after earned intrest discount
+    @return The amount of FYT tokens minted after earned interest discount
      */
     function deposit(uint256 _amount, address _destination)
         external
@@ -102,13 +102,12 @@ contract Tranche is ERC20Permit, ITranche {
         // is the balanceBefore*(usedUnderlying/shares) since (usedUnderlying/shares)
         // is underlying per share and balanceBefore is the balance of this contract
         // in ELF token before this deposit.
-        uint256 currentHoldingsValue = (balanceBefore * usedUnderlying) /
-            shares;
-        // This formula is inputUnderlying - inputUnderlying*intrestPerUnderlying
-        // Accumulated intrest has its value in the YC so we have to mint less FYT
+        uint256 holdingsValue = (balanceBefore * usedUnderlying) / shares;
+        // This formula is inputUnderlying - inputUnderlying*interestPerUnderlying
+        // Accumulated interest has its value in the YC so we have to mint less FYT
         // to account for that.
-        // NOTE - If a pool has more than 100% intrest in the period this will revert on underflow
-        //        The user cannot discount the FYT enough to pay for the outstanding intrest accrued.
+        // NOTE - If a pool has more than 100% interest in the period this will revert on underflow
+        //        The user cannot discount the FYT enough to pay for the outstanding interest accrued.
         (uint256 _valueSupplied, uint256 _ycSupply) = (
             uint256(valueSupplied),
             uint256(ycSupply)
@@ -119,12 +118,12 @@ contract Tranche is ERC20Permit, ITranche {
             adjustedAmount =
                 2 *
                 usedUnderlying -
-                (usedUnderlying * currentHoldingsValue) /
+                (usedUnderlying * holdingsValue) /
                 _valueSupplied;
         } else {
             adjustedAmount = usedUnderlying;
         }
-        // If negative intrest has been accumulated we don't want to
+        // If negative interest has been accumulated we don't want to
         // give a bonus so we reset the amount to be exactly what was provided
         if (adjustedAmount > usedUnderlying) {
             adjustedAmount = usedUnderlying;
@@ -136,7 +135,7 @@ contract Tranche is ERC20Permit, ITranche {
         );
         // We mint YC for each underlying provided
         yc.mint(_destination, usedUnderlying);
-        // We mint FYT discounted by the accumulated intrest.
+        // We mint FYT discounted by the accumulated interest.
         _mint(_destination, adjustedAmount);
         // We return the number of FYT because it may be useful.
         return adjustedAmount;
@@ -147,7 +146,7 @@ contract Tranche is ERC20Permit, ITranche {
     @param _amount The number of FYT tokens to burn.
     @param _destination The address to send the underlying too
     @return The number of underlying tokens released
-    @dev This method will return 1 underlying for 1 FYT except when intrest
+    @dev This method will return 1 underlying for 1 FYT except when interest
          is negative, in that case liquidity might run out and some FYT may
          not be redeemable. 
          Also note: FYT redemption has the possibility of at most SLIPPAGE_BP
@@ -164,9 +163,8 @@ contract Tranche is ERC20Permit, ITranche {
         // Burn from the sender
         _burn(msg.sender, _amount);
         // We normalize the FYT to the same units as the underlying
-        uint256 amountUnderlying = (_amount * (10**(underlyingDecimals))) /
-            1e18;
-        // Remove these FYT from the intrest calculations for future YC redemptions
+        uint256 amountUnderlying = (_amount * 10**underlyingDecimals) / 1e18;
+        // Remove these FYT from the interest calculations for future YC redemptions
         valueSupplied -= uint128(amountUnderlying);
         uint256 minOutput = amountUnderlying -
             (amountUnderlying * SLIPPAGE_BP) /
@@ -199,11 +197,11 @@ contract Tranche is ERC20Permit, ITranche {
             uint256(ycSupply)
         );
         // Intrest is value locked minus current value
-        uint256 intrest = underlyingValueLocked > _valueSupplied
+        uint256 interest = underlyingValueLocked > _valueSupplied
             ? underlyingValueLocked - _valueSupplied
             : 0;
-        // The redemption amount is the intrest per YC times the amount
-        uint256 redemptionAmount = (intrest * _amount) / _ycSupply;
+        // The redemption amount is the interest per YC times the amount
+        uint256 redemptionAmount = (interest * _amount) / _ycSupply;
         uint256 minRedemption = redemptionAmount -
             (redemptionAmount * SLIPPAGE_BP) /
             1e18;

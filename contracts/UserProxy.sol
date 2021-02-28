@@ -21,7 +21,7 @@ contract UserProxy is Authorizable {
     // Constant wrapped ether address
     IWETH public immutable weth;
     // A constant which represents ether
-    address ETH_CONSTANT = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+    address constant ETH_CONSTANT = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
     /// @param _weth The constant weth contract address
     /// @dev Marks the msg.sender as authorized and sets them
@@ -108,7 +108,7 @@ contract UserProxy is Authorizable {
             r,
             s
         );
-        // Move the user's funds to this contract
+        // Move the user's funds to the elf contract
         underlying.transferFrom(msg.sender, address(elf), amount);
         // Pass call to internal function which works once approved
         _mint(expiration, elf);

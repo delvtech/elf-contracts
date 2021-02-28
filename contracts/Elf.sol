@@ -15,8 +15,12 @@ abstract contract Elf is ERC20Permit, IElf {
     using SafeERC20 for IERC20;
     using Address for address;
 
-    IERC20 public override token;
+    IERC20 public override immutable token;
 
+    /// @notice Constucts this contract
+    /// @param _token The underlying token
+    /// @param _name the name of this contract
+    /// @param _symbol the symbol for this contract
     constructor(
         address _token,
         string memory _name,
@@ -25,8 +29,9 @@ abstract contract Elf is ERC20Permit, IElf {
         token = IERC20(_token);
     }
 
-    /// We expect that this logic will be present in an integration implementation
+    /// We expect that the following logic will be present in an integration implementation 
     /// which inherits from this contracts
+    
     /// @dev Makes the actual deposit into the 'vault'
     /// @return (the shares minted, amount underlying used)
     function _deposit() internal virtual returns (uint256, uint256);
@@ -86,10 +91,6 @@ abstract contract Elf is ERC20Permit, IElf {
         _mint(_destination, shares);
         return shares;
     }
-
-    // TODO - Overload the balance storage map to store the total underlying
-    //        minted and return that fact as well. This will save and sstore
-    //        and sload in the the Tranche contract.
 
     /// @notice Entry point to deposit tokens into the Elf contract
     ///         Assumes the tokens were transferred before this was called

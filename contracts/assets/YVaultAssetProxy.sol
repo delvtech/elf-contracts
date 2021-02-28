@@ -9,8 +9,6 @@ import "../Elf.sol";
 import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
 
-import "hardhat/console.sol";
-
 /// @author Element Finance
 /// @title Yearn Vault v1 Asset Proxy
 contract YVaultAssetProxy is Elf {
@@ -20,6 +18,11 @@ contract YVaultAssetProxy is Elf {
     YearnVault public immutable vault;
     uint8 public immutable vaultDecimals;
 
+    /// @notice Constructs this contract and stores needed data
+    /// @param vault_ the yearn v2 vault
+    /// @param _token the underlying token
+    /// @param _name the name of the token created
+    /// @param _symbol the symbol of the token created
     constructor(
         address vault_,
         address _token,
@@ -36,11 +39,8 @@ contract YVaultAssetProxy is Elf {
     function _deposit() internal override returns (uint256, uint256) {
         // Load the balance of this contract
         uint256 amount = token.balanceOf(address(this));
-        // Deposit into the vault
-        // uint256 gasBefore = gasleft();
         // Deposit and get the shares that were minted to this
         uint256 shares = vault.deposit(amount, address(this));
-        // console.log("yearn gas used", gasBefore - gasleft());
         // As of V2 yearn vault shares are the same decimals as the
         // underlying. But we want our tokens to have a consistent
         return (shares, amount);
@@ -68,9 +68,7 @@ contract YVaultAssetProxy is Elf {
         view
         returns (uint256)
     {
-        // uint256 gasBefore = gasleft();
         uint256 pricePerShare = vault.pricePerShare();
-        // console.log("Yearn pps call cost", gasBefore- gasleft());
         return (pricePerShare * _amount) / (10**vaultDecimals);
     }
 

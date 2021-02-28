@@ -12,30 +12,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity >=0.7.1;
+pragma solidity ^0.7.0;
 
-import "../../interfaces/IERC20.sol";
+// Inspired by Aave Protocol's IFlashLoanReceiver
 
-interface IAuthorizer {
-    function canChangeAuthorizer(address account) external view returns (bool);
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-    function canSetProtocolWithdrawFee(address account)
-        external
-        view
-        returns (bool);
-
-    function canSetProtocolSwapFee(address account)
-        external
-        view
-        returns (bool);
-
-    function canSetProtocolFlashLoanFee(address account)
-        external
-        view
-        returns (bool);
-
-    function canWithdrawProtocolFees(address account, IERC20 token)
-        external
-        view
-        returns (bool);
+interface IFlashLoanReceiver {
+    function receiveFlashLoan(
+        IERC20[] calldata tokens,
+        uint256[] calldata amounts,
+        uint256[] calldata feeAmounts,
+        bytes calldata receiverData
+    ) external;
 }

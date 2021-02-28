@@ -1,4 +1,3 @@
-/* cSpell:disable */
 // SPDX-License-Identifier: GPL-3.0-or-later
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,7 +12,7 @@
 // You should have received a copy of the GNU General internal License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity >=0.7.1;
+pragma solidity ^0.7.0;
 
 // There's plenty of linter errors caused by this file, we'll eventually
 // revisit it to make it more readable, verfiable and testable.
@@ -69,10 +68,8 @@ library LogExpMath {
      * @return eˆx
      */
     function n_exp(int256 x) internal pure returns (int256) {
-        require(
-            x >= EXPONENT_LB && x <= EXPONENT_UB,
-            "Natural exp argument must be between -41.446531673892822312 and 130.700829182905140221"
-        );
+        require(x >= EXPONENT_LB && x <= EXPONENT_UB, "OUT_OF_BOUNDS");
+
         if (x < 0) return (DOUBLE_DECIMALS / n_exp(-x));
         int256 ans = PRECISION;
         int256 last = 1;
@@ -151,7 +148,7 @@ library LogExpMath {
      * @return ln(x)
      */
     function n_log(int256 a) internal pure returns (int256) {
-        require(a > 0, "Natural log argument must be positive");
+        require(a > 0, "OUT_OF_BOUNDS");
         if (a < DECIMALS) return (-n_log(DOUBLE_DECIMALS / a));
         int256 ans = 0;
         if (a >= a0 * DECIMALS) {
@@ -236,33 +233,31 @@ library LogExpMath {
             return 0;
         }
 
-        require(x < 2**255, "x must be less than 2**255"); // uint256 can be casted to a positive int256
-        require(
-            y < MILD_EXPONENT_BOUND,
-            "input y has to be less than 2**254 / 10**20"
-        );
+        require(x < 2**255, "X_OUT_OF_BOUNDS"); // uint256 can be casted to a positive int256
+        require(y < MILD_EXPONENT_BOUND, "Y_OUT_OF_BOUNDS");
         int256 x_int256 = int256(x);
         int256 y_int256 = int256(y);
         int256 logx_times_y;
-        if (
-            PRECISION_LOG_UNDER_BOUND < x_int256 &&
-            x_int256 < PRECISION_LOG_UPPER_BOUND
-        ) {
+        if (PRECISION_LOG_UNDER_BOUND < x_int256 && x_int256 < PRECISION_LOG_UPPER_BOUND) {
             int256 logbase = n_log_36(x_int256);
-            logx_times_y = ((logbase / DECIMALS) *
-                y_int256 +
-                ((logbase % DECIMALS) * y_int256) /
-                DECIMALS);
+            logx_times_y = ((logbase / DECIMALS) * y_int256 + ((logbase % DECIMALS) * y_int256) / DECIMALS);
         } else {
             logx_times_y = n_log(x_int256) * y_int256;
         }
         require(
-            EXPONENT_LB * DECIMALS <= logx_times_y &&
-                logx_times_y <= EXPONENT_UB * DECIMALS,
-            "log(x) times y must be between -41.446531673892822312 and 130.700829182905140221"
+            EXPONENT_LB * DECIMALS <= logx_times_y && logx_times_y <= EXPONENT_UB * DECIMALS,
+            "PRODUCT_OUT_OF_BOUNDS"
         );
         logx_times_y /= DECIMALS;
         return uint256(n_exp(logx_times_y));
+    }
+
+    function powDown(uint256 x, uint256 y) internal pure returns (uint256) {
+        return pow(x, y);
+    }
+
+    function powUp(uint256 x, uint256 y) internal pure returns (uint256) {
+        return pow(x, y);
     }
 
     /**
@@ -274,17 +269,13 @@ library LogExpMath {
      */
     function log(int256 arg, int256 base) internal pure returns (int256) {
         int256 logbase;
-        if (
-            PRECISION_LOG_UNDER_BOUND < base && base < PRECISION_LOG_UPPER_BOUND
-        ) {
+        if (PRECISION_LOG_UNDER_BOUND < base && base < PRECISION_LOG_UPPER_BOUND) {
             logbase = n_log_36(base);
         } else {
             logbase = n_log(base) * DECIMALS;
         }
         int256 logarg;
-        if (
-            PRECISION_LOG_UNDER_BOUND < arg && arg < PRECISION_LOG_UPPER_BOUND
-        ) {
+        if (PRECISION_LOG_UNDER_BOUND < arg && arg < PRECISION_LOG_UPPER_BOUND) {
             logarg = n_log_36(arg);
         } else {
             logarg = n_log(arg) * DECIMALS;
@@ -299,8 +290,7 @@ library LogExpMath {
      */
     function n_log_36(int256 a) private pure returns (int256) {
         a *= DECIMALS;
-        int256 z = (DOUBLE_DECIMALS * (a - DOUBLE_DECIMALS)) /
-            (a + DOUBLE_DECIMALS);
+        int256 z = (DOUBLE_DECIMALS * (a - DOUBLE_DECIMALS)) / (a + DOUBLE_DECIMALS);
         int256 s = z;
         int256 z_squared = (z * z) / DOUBLE_DECIMALS;
         int256 t = (z * z_squared) / DOUBLE_DECIMALS;

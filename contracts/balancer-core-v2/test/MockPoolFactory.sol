@@ -12,19 +12,27 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-pragma solidity >=0.7.1;
+import "../vault/interfaces/IVault.sol";
 
-import "../../interfaces/IERC20.sol";
+import "../pools/BasePoolFactory.sol";
 
-interface ISwapValidator {
-    function validate(
-        IERC20[] calldata tokens,
-        int256[] calldata vaultDeltas,
-        //address caller, //TODO: is it useful to validate?
-        //address from, //TODO: is it useful to validate?
-        //address to, //TODO: is it useful to validate?
-        bytes calldata data
-    ) external;
+contract MockFactoryCreatedPool {
+    function getPoolId() external view returns (bytes32) {
+        return bytes32(uint256(address(this)));
+    }
+}
+
+contract MockPoolFactory is BasePoolFactory {
+    // solhint-disable-next-line no-empty-blocks
+    constructor(IVault _vault) BasePoolFactory(_vault) {}
+
+    function create() external returns (address) {
+        return
+            _create(
+                abi.encodePacked(type(MockFactoryCreatedPool).creationCode)
+            );
+    }
 }

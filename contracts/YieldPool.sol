@@ -1,15 +1,16 @@
-pragma solidity >=0.7.1;
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/IERC20.sol";
-import "./LogExpMath.sol";
-import "./FixedPoint.sol";
-import "./interfaces/IMinimalSwapInfoPoolQuote.sol";
-import "./interfaces/IVault.sol";
-import "./interfaces/IPool.sol";
-import "./BalancerPoolToken.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./interfaces/IERC20Decimals.sol";
+import "./balancer-core-v2/lib/math/LogExpMath.sol";
+import "./balancer-core-v2/lib/math/FixedPoint.sol";
+import "./balancer-core-v2/vault/interfaces/IMinimalSwapInfoPool.sol";
+import "./balancer-core-v2/vault/interfaces/IVault.sol";
+import "./balancer-core-v2/pools/BalancerPoolToken.sol";
 
-contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
+contract YieldCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     using LogExpMath for uint256;
     using FixedPoint for uint256;
 
@@ -22,7 +23,7 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
     // The expiration time
     uint256 public immutable expiration;
     // The number of seconds in our timescale
-    uint256 public immutable unit_seconds;
+    uint256 public immutable unitSeconds;
     // The Balancer pool data
     // Note we change style to match Balancer's custom getter
     IVault private immutable _vault;
@@ -41,7 +42,7 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
     /// @param _underlying The asset which the second asset should appreciate to match
     /// @param _bond The asset which should be appreciating
     /// @param _expiration The time in unix seconds when the bond asset should equal the underlying asset
-    /// @param _unit_seconds The number of seconds in a unit of time, for example 1 year in seconds
+    /// @param _unitSeconds The number of seconds in a unit of time, for example 1 year in seconds
     /// @param vault The balancer vault
     /// @param _percentFee The percent of assigned fees which go to governance
     /// @param _governance The address which gets minted reward lp
@@ -51,7 +52,7 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         IERC20 _underlying,
         IERC20 _bond,
         uint256 _expiration,
-        uint256 _unit_seconds,
+        uint256 _unitSeconds,
         IVault vault,
         uint256 _percentFee,
         address _governance,
@@ -76,11 +77,11 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         _poolId = poolId;
         percentFee = _percentFee;
         underlying = _underlying;
-        underlyingDecimals = _underlying.decimals();
+        underlyingDecimals = IERC20Decimals(address(_underlying)).decimals();
         bond = _bond;
-        bondDecimals = _bond.decimals();
+        bondDecimals = IERC20Decimals(address(_bond)).decimals();
         expiration = _expiration;
-        unit_seconds = _unit_seconds;
+        unitSeconds = _unitSeconds;
         governance = _governance;
     }
 
@@ -105,8 +106,8 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
     /// @param currentBalanceTokenIn the reserve of the input token
     /// @param currentBalanceTokenOut the reserve of the output token
     /// @return The amount of output token to send for the input token
-    function quoteOutGivenIn(
-        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
+    function onSwapGivenIn(
+        IPoolSwapStructs.SwapRequestGivenIn calldata request,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) public override returns (uint256) {
@@ -153,8 +154,8 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
     /// @param currentBalanceTokenIn the reserve of the input token
     /// @param currentBalanceTokenOut the reserve of the output token
     /// @return The amount of input token to receive the requested output
-    function quoteInGivenOut(
-        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
+    function onSwapGivenOut(
+        IPoolSwapStructs.SwapRequestGivenOut calldata request,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) public override returns (uint256) {
@@ -202,19 +203,20 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
     // @param sender Unused by this pool but in interface
     /// @param recipient The address which will receive lp tokens.
     /// @param currentBalances The current pool balances, will be length 2
-    /// @param maxAmountsIn The max amount each token transferable in this mint
+    // @param latestBlockNumberUsed Last block number, but not used in this pool
     /// @param protocolSwapFee The percent of pool fees to be paid to the Balancer Protocol
-    // @param userData Unused by this pool but in interface
+    /// @param userData Abi encoded fixed length 2 uint array containing:
+    ///                 [max amount of underlying in, max amount of bond in]
     /// @return amountsIn The actual amounts of token the vault should move to this pool
     /// @return dueProtocolFeeAmounts The amounts of each token to pay as protocol fees
     function onJoinPool(
-        bytes32,
-        address,
+        bytes32 poolId,
+        address sender,
         address recipient,
         uint256[] calldata currentBalances,
-        uint256[] calldata maxAmountsIn,
+        uint256,
         uint256 protocolSwapFee,
-        bytes calldata
+        bytes calldata userData
     )
         external
         override
@@ -225,6 +227,7 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
     {
         // Default checks
         require(msg.sender == address(_vault), "Non Vault caller");
+        uint256[2] memory maxAmountsIn = abi.decode(userData, (uint256[2]));
         require(
             currentBalances.length == 2 && maxAmountsIn.length == 2,
             "Invalid format"
@@ -262,9 +265,10 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
     // @param sender Unused by this pool but in interface
     /// @param recipient The address which will receive lp tokens.
     /// @param currentBalances The current pool balances, will be length 2
-    /// @param minAmountsOut The minium outputs the user wants
+    // @param latestBlockNumberUsed last block number unused in this pool
     /// @param protocolSwapFee The percent of pool fees to be paid to the Balancer Protocol
-    // @param userData Unused by this pool but in interface
+    /// @param userData Abi encoded fixed length 2 array containing
+    ///                 [min output of underlying, min output of bond]
     /// @return amountsOut The number of each token to send to the caller
     /// @return dueProtocolFeeAmounts The amounts of each token to pay as protocol fees
     function onExitPool(
@@ -272,9 +276,9 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
         address,
         address recipient,
         uint256[] calldata currentBalances,
-        uint256[] calldata minAmountsOut,
+        uint256,
         uint256 protocolSwapFee,
-        bytes calldata
+        bytes calldata userData
     )
         external
         override
@@ -285,6 +289,7 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
     {
         // Default checks
         require(msg.sender == address(_vault), "Non Vault caller");
+        uint256[2] memory minAmountsOut = abi.decode(userData, (uint256[2]));
         require(
             currentBalances.length == 2 && minAmountsOut.length == 2,
             "Invalid format"
@@ -567,7 +572,7 @@ contract YieldCurvePool is IMinimalSwapInfoPoolQuote, BalancerPoolToken, IPool {
             : 0;
         timeTillExpiry *= 1e18;
         // timeTillExpiry now contains the a fixed point of the years remaining
-        timeTillExpiry = timeTillExpiry.div(unit_seconds * 1e18);
+        timeTillExpiry = timeTillExpiry.div(unitSeconds * 1e18);
         return uint256(FixedPoint.ONE).sub(timeTillExpiry);
     }
 

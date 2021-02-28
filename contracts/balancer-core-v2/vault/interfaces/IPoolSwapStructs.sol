@@ -1,12 +1,24 @@
-/* cSpell:disable */
-pragma solidity >=0.7.1;
-pragma experimental ABIEncoderV2;
+// SPDX-License-Identifier: GPL-3.0-or-later
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
 
-import "../../interfaces/IERC20.sol";
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
 
-interface IPoolQuoteStructs {
-    // This is not really an interface - it just defines common structs used by other interfaces: IPoolQuote and
-    // IPoolQuoteSimplified.
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+pragma solidity ^0.7.0;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+interface IPoolSwapStructs {
+    // This is not really an interface - it just defines common structs used by other interfaces: IGeneralPool and
+    // IMinimalSwapInfoPool.
 
     // This data structure represents a request for a token swap, where the amount received by the Pool is known.
     //
@@ -20,12 +32,13 @@ interface IPoolQuoteStructs {
     // `from` is the origin address where funds the Pool receives are coming from, and `to` is the destination address
     // where the funds the Pool sends are going to.
     // `userData` is extra data provided by the caller - typically a signature from a trusted party.
-    struct QuoteRequestGivenIn {
+    struct SwapRequestGivenIn {
         IERC20 tokenIn;
         IERC20 tokenOut;
         uint256 amountIn;
         // Misc data
         bytes32 poolId;
+        uint256 latestBlockNumberUsed;
         address from;
         address to;
         bytes userData;
@@ -43,28 +56,15 @@ interface IPoolQuoteStructs {
     // `from` is the origin address where funds the Pool receives are coming from, and `to` is the destination address
     // where the funds the Pool sends are going to.
     // `userData` is extra data provided by the caller - typically a signature from a trusted party.
-    struct QuoteRequestGivenOut {
+    struct SwapRequestGivenOut {
         IERC20 tokenIn;
         IERC20 tokenOut;
         uint256 amountOut;
         // Misc data
         bytes32 poolId;
+        uint256 latestBlockNumberUsed;
         address from;
         address to;
         bytes userData;
     }
-}
-
-interface IMinimalSwapInfoPoolQuote {
-    function quoteOutGivenIn(
-        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) external returns (uint256 amountOut);
-
-    function quoteInGivenOut(
-        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) external returns (uint256 amountIn);
 }

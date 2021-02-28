@@ -1,4 +1,3 @@
-/* cSpell:disable */
 // SPDX-License-Identifier: GPL-3.0-or-later
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,17 +12,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity >=0.7.1;
+pragma solidity ^0.7.0;
 
-// Inspired by Aave Protocol's IFlashLoanReceiver
-
-import "../../interfaces/IERC20.sol";
-
-interface IFlashLoanReceiver {
-    function receiveFlashLoan(
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        uint256[] calldata feeAmounts,
-        bytes calldata receiverData
-    ) external;
+interface IAuthorizer {
+    function hasRole(bytes32 role, address account)
+        external
+        view
+        returns (bool);
 }

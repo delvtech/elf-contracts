@@ -1,4 +1,3 @@
-/* cSpell:disable */
 // SPDX-License-Identifier: GPL-3.0-or-later
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,11 +12,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity >=0.7.1;
+pragma solidity ^0.7.0;
 
-import "../interfaces/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./Math.sol";
+import "../lib/math/Math.sol";
 
 /**
  * @title Highly opinionated token implementation
@@ -64,7 +63,12 @@ contract BalancerPoolToken is IERC20 {
         return _allowance[owner][spender];
     }
 
-    function balanceOf(address account) public override view returns (uint256) {
+    function balanceOf(address account)
+        external
+        override
+        view
+        returns (uint256)
+    {
         return _balance[account];
     }
 
@@ -121,19 +125,17 @@ contract BalancerPoolToken is IERC20 {
         address recipient,
         uint256 amount
     ) external override returns (bool) {
+        uint256 currentAllowance = _allowance[sender][msg.sender];
         require(
-            msg.sender == sender || amount <= _allowance[sender][msg.sender],
-            "ERR_BPT_BAD_CALLER"
+            msg.sender == sender || currentAllowance >= amount,
+            "BPT_BAD_CALLER"
         );
 
         _move(sender, recipient, amount);
 
-        // memoize for gas optimization
-        uint256 oldAllowance = _allowance[sender][msg.sender];
-
-        if (msg.sender != sender && oldAllowance != type(uint256).max) {
-            require(oldAllowance >= amount, "ERR_INSUFFICIENT_ALLOWANCE");
-            _setAllowance(sender, msg.sender, oldAllowance - amount);
+        if (msg.sender != sender && currentAllowance != uint256(-1)) {
+            require(currentAllowance >= amount, "INSUFFICIENT_ALLOWANCE");
+            _setAllowance(sender, msg.sender, currentAllowance - amount);
         }
 
         return true;
@@ -145,11 +147,11 @@ contract BalancerPoolToken is IERC20 {
         return _name;
     }
 
-    function symbol() public override view returns (string memory) {
+    function symbol() public view returns (string memory) {
         return _symbol;
     }
 
-    function decimals() public override pure returns (uint8) {
+    function decimals() public pure returns (uint8) {
         return _DECIMALS;
     }
 
@@ -172,7 +174,7 @@ contract BalancerPoolToken is IERC20 {
         _move(sender, address(this), amount);
 
         uint256 currentBalance = _balance[address(this)];
-        require(currentBalance >= amount, "ERR_INSUFFICIENT_BALANCE");
+        require(currentBalance >= amount, "INSUFFICIENT_BALANCE");
 
         _balance[address(this)] = currentBalance - amount;
         _totalSupply = _totalSupply.sub(amount);
@@ -186,7 +188,7 @@ contract BalancerPoolToken is IERC20 {
         uint256 amount
     ) internal {
         uint256 currentBalance = _balance[sender];
-        require(currentBalance >= amount, "ERR_INSUFFICIENT_BAL");
+        require(currentBalance >= amount, "INSUFFICIENT_BALANCE");
 
         _balance[sender] = currentBalance - amount;
         _balance[recipient] = _balance[recipient].add(amount);

@@ -30,7 +30,7 @@ abstract contract Elf is ERC20Permit, IElf {
     }
 
     /// We expect that the following logic will be present in an integration implementation
-    /// which inherits from this contracts
+    /// which inherits from this contract
 
     /// @dev Makes the actual deposit into the 'vault'
     /// @return (the shares minted, amount underlying used)

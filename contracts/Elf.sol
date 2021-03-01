@@ -42,11 +42,8 @@ abstract contract Elf is ERC20Permit, IElf {
 
     /// @dev Converts between an internal balance representation
     ///      and underlying tokens.
+    /// @return returns the amount of underlying the input is worth
     function _underlying(uint256) internal virtual view returns (uint256);
-
-    /// @dev Returns the IERC20 coded vault address for the balance
-    ///      looks, may be depreciated in future.
-    function _vault() internal virtual view returns (IERC20);
 
     /// @notice Get the underlying balance of an address
     /// @param _who The address to query

@@ -8,7 +8,7 @@ import "../interfaces/IYC.sol";
 
 contract YC is ERC20Permit, IYC {
     // The tranche address which controls the minting
-    address public tranche;
+    address public immutable tranche;
 
     /// @dev Initializes the ERC20 and writes the correct names
     /// @param _tranche The tranche contract address

@@ -22,7 +22,7 @@ describe("Tranche", () => {
 
   function subError(amount: BigNumber) {
     // 1 tenth of a bp of error subbed
-    return amount.sub(bnFloatMultiplier(amount, 0.000001));
+    return amount.sub(bnFloatMultiplier(amount, 0.00001));
   }
 
   before(async () => {
@@ -56,10 +56,17 @@ describe("Tranche", () => {
     });
     it("should not allow new deposits after the timeout", async () => {
       advanceTime(provider, lockDuration);
+      // Regular deposit fails
       await expect(
         fixture.tranche
           .connect(user1)
           .deposit(initialBalance, await user1.getAddress())
+      ).to.be.revertedWith("expired");
+      // And prefunded deposit fails
+      await expect(
+        fixture.tranche
+          .connect(user1)
+          .prefundedDeposit(await user1.getAddress())
       ).to.be.revertedWith("expired");
     });
     it("should correctly handle deposits with no accrued interest", async () => {
@@ -116,7 +123,7 @@ describe("Tranche", () => {
       // We use a slightly lower ratio allowing for at most 0.001% error
       // The second deposit receive fyt discounted by the 20% intrest earned
       const intrestSubtracted = initialBalance.sub(
-        bnFloatMultiplier(initialBalance, 0.200001)
+        bnFloatMultiplier(initialBalance, 0.20001)
       );
       expect(await fixture.tranche.balanceOf(user2Address)).to.be.least(
         intrestSubtracted

@@ -34,10 +34,6 @@ contract ElfStub is Elf {
         return (amount * underlyingUnitValue);
     }
 
-    function _vault() internal override view returns (IERC20) {
-        return IERC20(address(0));
-    }
-
     function setSharesToUnderlying(uint256 _value) external {
         underlyingUnitValue = _value;
     }

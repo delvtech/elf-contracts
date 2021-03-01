@@ -72,10 +72,6 @@ contract YVaultAssetProxy is Elf {
         return (pricePerShare * _amount) / (10**vaultDecimals);
     }
 
-    function _vault() internal override view returns (IERC20) {
-        return IERC20(address(vault));
-    }
-
     /// @notice Function to reset approvals for the proxy
     function approve() external {
         token.approve(address(vault), 0);

@@ -17,9 +17,11 @@ contract YC is ERC20Permit, IYC {
     constructor(
         address _tranche,
         string memory strategySymbol,
-        uint256 timestamp
+        uint256 timestamp,
+        uint8 _decimals
     ) ERC20("Yield Coupon ", "YC:") ERC20Permit("Yield Coupon") {
         tranche = _tranche;
+        _setupDecimals(_decimals);
         // Write the elfSymbol and expiration time to name and symbol
         DateString.encodeAndWriteTimestamp(strategySymbol, timestamp, _name);
         DateString.encodeAndWriteTimestamp(strategySymbol, timestamp, _symbol);

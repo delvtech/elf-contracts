@@ -46,13 +46,19 @@ contract Tranche is ERC20Permit, ITranche {
         elf = IElf(_elfContract);
         string memory elfSymbol = _elfContract.symbol();
         uint256 _unlockTimestamp = block.timestamp + _lockDuration;
+        // Store the immutable time variables
         unlockTimestamp = _unlockTimestamp;
-        yc = new YC(address(this), elfSymbol, _unlockTimestamp);
+        lockDuration = _lockDuration;
         // We use local because immutables are not readable in construction
         IERC20 localUnderlying = _elfContract.token();
         underlying = _elfContract.token();
-        underlyingDecimals = localUnderlying.decimals();
-        lockDuration = _lockDuration;
+        // We load and store the underlying decimals
+        uint8 localUnderlyingDecimals = localUnderlying.decimals();
+        underlyingDecimals = localUnderlyingDecimals;
+        // And set this contract to have the same
+        _setupDecimals(localUnderlyingDecimals);
+        // Deploy a new YC
+        yc = new YC(address(this), elfSymbol, _unlockTimestamp, localUnderlyingDecimals);
 
         // Write the elfSymbol and expiration time to name and symbol
         DateString.encodeAndWriteTimestamp(elfSymbol, _unlockTimestamp, _name);

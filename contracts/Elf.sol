@@ -22,11 +22,13 @@ abstract contract Elf is ERC20Permit, IElf {
     /// @param _name the name of this contract
     /// @param _symbol the symbol for this contract
     constructor(
-        address _token,
+        IERC20 _token,
         string memory _name,
         string memory _symbol
     ) ERC20(_name, _symbol) ERC20Permit(_name) {
-        token = IERC20(_token);
+        token = _token;
+        // We set our decimals to be the same as the underlying
+        _setupDecimals(_token.decimals());
     }
 
     /// We expect that the following logic will be present in an integration implementation

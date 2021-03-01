@@ -25,12 +25,12 @@ contract YVaultAssetProxy is Elf {
     /// @param _symbol the symbol of the token created
     constructor(
         address vault_,
-        address _token,
+        IERC20 _token,
         string memory _name,
         string memory _symbol
     ) Elf(_token, _name, _symbol) {
         vault = YearnVault(vault_);
-        IERC20(_token).approve(vault_, type(uint256).max);
+        _token.approve(vault_, type(uint256).max);
         vaultDecimals = IERC20(vault_).decimals();
     }
 

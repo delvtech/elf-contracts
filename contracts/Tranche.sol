@@ -197,7 +197,7 @@ contract Tranche is ERC20Permit, ITranche {
             uint256(valueSupplied),
             uint256(ycSupply)
         );
-        // Intrest is value locked minus current value
+        // Interest is value locked minus current value
         uint256 interest = underlyingValueLocked > _valueSupplied
             ? underlyingValueLocked - _valueSupplied
             : 0;

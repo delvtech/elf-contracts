@@ -18,6 +18,16 @@ contract YVaultAssetProxy is Elf {
     YearnVault public immutable vault;
     uint8 public immutable vaultDecimals;
 
+    // This contract allows deposits to a reserve which can
+    // be used to short circut the deposit process and save gas
+
+    // The following mapping tracks those non-transferable deposits
+    mapping(address => uint256) public reserveBalance;
+    // These variables store the token balances of this contract and
+    // should be packed by solidity into a single slot.
+    uint128 reserveElf;
+    uint128 reserveUnderlying;
+
     /// @notice Constructs this contract and stores needed data
     /// @param vault_ the yearn v2 vault
     /// @param _token the underlying token

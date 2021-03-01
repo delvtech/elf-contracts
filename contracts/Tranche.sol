@@ -58,7 +58,12 @@ contract Tranche is ERC20Permit, ITranche {
         // And set this contract to have the same
         _setupDecimals(localUnderlyingDecimals);
         // Deploy a new YC
-        yc = new YC(address(this), elfSymbol, _unlockTimestamp, localUnderlyingDecimals);
+        yc = new YC(
+            address(this),
+            elfSymbol,
+            _unlockTimestamp,
+            localUnderlyingDecimals
+        );
 
         // Write the elfSymbol and expiration time to name and symbol
         DateString.encodeAndWriteTimestamp(elfSymbol, _unlockTimestamp, _name);

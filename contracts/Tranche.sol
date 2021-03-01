@@ -94,7 +94,7 @@ contract Tranche is ERC20Permit, ITranche {
         override
         returns (uint256)
     {
-        // We check that this it is possible to deposit 
+        // We check that this it is possible to deposit
         require(block.timestamp < unlockTimestamp, "expired");
         // Since the ELF holds a balance we use the prefunded deposit method
         (uint256 shares, uint256 usedUnderlying, uint256 balanceBefore) = elf

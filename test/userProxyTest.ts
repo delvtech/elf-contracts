@@ -1,23 +1,20 @@
-import {ethers} from "hardhat";
-import {loadFixture, fixtureInterface} from "./helpers/deployer";
-import {expect} from "chai";
-import {Contract} from "ethers";
-import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { Contract } from "ethers";
+import { ethers } from "hardhat";
+
+import { FixtureInterface, loadFixture } from "./helpers/deployer";
 
 describe("UserProxyTests", function () {
-  let fixture: fixtureInterface;
-  let tranche: Contract;
+  let fixture: FixtureInterface;
   let proxy: Contract;
   let underlying: Contract;
   let signers: SignerWithAddress[];
-  const fakeAddress = "0x7109709ECfa91a80626fF3989D68f67F5b1DD12D";
   const lots = ethers.utils.parseEther("1000000000000");
 
   before(async function () {
     // Get the setup contracts
     fixture = await loadFixture();
-    tranche = fixture.tranche;
-    proxy = fixture.proxy;
+    ({ proxy } = fixture);
 
     underlying = await ethers.getContractAt(
       "AToken",

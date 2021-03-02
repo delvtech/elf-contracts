@@ -1,20 +1,19 @@
-import {ethers} from "hardhat";
+import { expect } from "chai";
+import { Signer } from "ethers";
+import { ethers, waffle } from "hardhat";
+
 import {
   loadUsdcPoolMainnetFixture,
-  usdcPoolMainnetInterface,
+  UsdcPoolMainnetInterface,
 } from "./helpers/deployer";
-import {createSnapshot, restoreSnapshot} from "./helpers/snapshots";
-import {impersonate, stopImpersonating} from "./helpers/impersonate";
+import { impersonate, stopImpersonating } from "./helpers/impersonate";
+import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 
-import {expect} from "chai";
-import {Signer} from "ethers";
-
-const {waffle} = require("hardhat");
-const provider = waffle.provider;
+const { provider } = waffle;
 
 describe("USDCPool-Mainnet", () => {
-  let users: {user: Signer; address: string}[];
-  let fixture: usdcPoolMainnetInterface;
+  let users: { user: Signer; address: string }[];
+  let fixture: UsdcPoolMainnetInterface;
   before(async () => {
     // snapshot initial state
     await createSnapshot(provider);
@@ -27,13 +26,13 @@ describe("USDCPool-Mainnet", () => {
 
     // begin to populate the user array by assigning each index a signer
     users = ((await ethers.getSigners()) as Signer[]).map(function (user) {
-      return {user, address: ""};
+      return { user, address: "" };
     });
 
     // finish populating the user array by assigning each index a signer address
     await Promise.all(
       users.map(async (userInfo) => {
-        let user = userInfo.user;
+        const { user } = userInfo;
         userInfo.address = await user.getAddress();
       })
     );
@@ -93,7 +92,7 @@ describe("USDCPool-Mainnet", () => {
 
       // Test a transfer
       let user1Balance = await fixture.elf.balanceOf(users[1].address);
-      let user3Balance = await fixture.elf.balanceOf(users[3].address);
+      const user3Balance = await fixture.elf.balanceOf(users[3].address);
       await fixture.elf
         .connect(users[3].user)
         .transfer(users[1].address, user3Balance.div(ethers.BigNumber.from(2)));

@@ -58,14 +58,8 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         uint256 newFlashLoanFee
     ) external override nonReentrant authenticate {
         require(newSwapFee <= _MAX_PROTOCOL_SWAP_FEE, "SWAP_FEE_TOO_HIGH");
-        require(
-            newWithdrawFee <= _MAX_PROTOCOL_WITHDRAW_FEE,
-            "WITHDRAW_FEE_TOO_HIGH"
-        );
-        require(
-            newFlashLoanFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE,
-            "FLASH_LOAN_FEE_TOO_HIGH"
-        );
+        require(newWithdrawFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "WITHDRAW_FEE_TOO_HIGH");
+        require(newFlashLoanFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, "FLASH_LOAN_FEE_TOO_HIGH");
 
         _protocolSwapFee = newSwapFee;
         _protocolWithdrawFee = newWithdrawFee;
@@ -74,8 +68,8 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
 
     function getProtocolFees()
         external
-        override
         view
+        override
         returns (
             uint256 swapFee,
             uint256 withdrawFee,
@@ -95,11 +89,7 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     /**
      * @dev Returns the protocol fee to charge for a withdrawal of `amount`.
      */
-    function _calculateProtocolWithdrawFeeAmount(uint256 amount)
-        internal
-        view
-        returns (uint256)
-    {
+    function _calculateProtocolWithdrawFeeAmount(uint256 amount) internal view returns (uint256) {
         // Fixed point multiplication introduces error: we round up, which means in certain scenarios the charged
         // percentage can be slightly higher than intended.
         return FixedPoint.mulUp(amount, _protocolWithdrawFee);
@@ -108,22 +98,13 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     /**
      * @dev Returns the protocol fee to charge for a flash loan of `amount`.
      */
-    function _calculateProtocolFlashLoanFeeAmount(uint256 amount)
-        internal
-        view
-        returns (uint256)
-    {
+    function _calculateProtocolFlashLoanFeeAmount(uint256 amount) internal view returns (uint256) {
         // Fixed point multiplication introduces error: we round up, which means in certain scenarios the charged
         // percentage can be slightly higher than intended.
         return FixedPoint.mulUp(amount, _protocolFlashLoanFee);
     }
 
-    function getCollectedFees(IERC20[] memory tokens)
-        external
-        override
-        view
-        returns (uint256[] memory)
-    {
+    function getCollectedFees(IERC20[] memory tokens) external view override returns (uint256[] memory) {
         return _getCollectedFees(tokens);
     }
 
@@ -175,11 +156,7 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     /**
      * @dev Returns the number of collected fees for each token in the `tokens` array.
      */
-    function _getCollectedFees(IERC20[] memory tokens)
-        internal
-        view
-        returns (uint256[] memory fees)
-    {
+    function _getCollectedFees(IERC20[] memory tokens) internal view returns (uint256[] memory fees) {
         fees = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {

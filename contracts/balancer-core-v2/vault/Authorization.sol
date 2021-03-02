@@ -28,33 +28,19 @@ abstract contract Authorization is IVault, ReentrancyGuard {
         _authorizer = authorizer;
     }
 
-    function changeAuthorizer(IAuthorizer newAuthorizer)
-        external
-        override
-        nonReentrant
-        authenticate
-    {
+    function changeAuthorizer(IAuthorizer newAuthorizer) external override nonReentrant authenticate {
         _authorizer = newAuthorizer;
     }
 
-    function getAuthorizer() external override view returns (IAuthorizer) {
+    function getAuthorizer() external view override returns (IAuthorizer) {
         return _authorizer;
     }
 
-    function changeRelayerAllowance(address relayer, bool allowed)
-        external
-        override
-        nonReentrant
-    {
+    function changeRelayerAllowance(address relayer, bool allowed) external override nonReentrant {
         _allowedRelayers[msg.sender][relayer] = allowed;
     }
 
-    function hasAllowedRelayer(address user, address relayer)
-        external
-        override
-        view
-        returns (bool)
-    {
+    function hasAllowedRelayer(address user, address relayer) external view override returns (bool) {
         return _hasAllowedRelayer(user, relayer);
     }
 
@@ -93,18 +79,11 @@ abstract contract Authorization is IVault, ReentrancyGuard {
     function _authenticateCallerFor(address user) internal view {
         if (msg.sender != user) {
             _authenticateCaller();
-            require(
-                _hasAllowedRelayer(user, msg.sender),
-                "USER_DOESNT_ALLOW_RELAYER"
-            );
+            require(_hasAllowedRelayer(user, msg.sender), "USER_DOESNT_ALLOW_RELAYER");
         }
     }
 
-    function _hasAllowedRelayer(address user, address relayer)
-        internal
-        view
-        returns (bool)
-    {
+    function _hasAllowedRelayer(address user, address relayer) internal view returns (bool) {
         return _allowedRelayers[user][relayer];
     }
 }

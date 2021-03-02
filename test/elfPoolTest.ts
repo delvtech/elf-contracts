@@ -1,16 +1,15 @@
-import {ethers} from "hardhat";
-import {loadFixture, fixtureInterface} from "./helpers/deployer";
-import {createSnapshot, restoreSnapshot} from "./helpers/snapshots";
+import { expect } from "chai";
+import { Signer } from "ethers";
+import { ethers, waffle } from "hardhat";
 
-import {expect} from "chai";
-import {Signer} from "ethers";
+import { FixtureInterface, loadFixture } from "./helpers/deployer";
+import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 
-const {waffle} = require("hardhat");
-const provider = waffle.provider;
+const { provider } = waffle;
 
 describe("Elf", () => {
-  let users: {user: Signer; address: string}[];
-  let fixture: fixtureInterface;
+  let users: { user: Signer; address: string }[];
+  let fixture: FixtureInterface;
   before(async () => {
     // snapshot initial state
     await createSnapshot(provider);
@@ -20,14 +19,14 @@ describe("Elf", () => {
 
     // begin to populate the user array by assigning each index a signer
     users = ((await ethers.getSigners()) as Signer[]).map(function (user) {
-      return {user, address: ""};
+      return { user, address: "" };
     });
 
     // finish populating the user array by assigning each index a signer address
     // and approve 6e6 usdc to the elf contract for each address
     await Promise.all(
       users.map(async (userInfo) => {
-        let user = userInfo.user;
+        const { user } = userInfo;
         userInfo.address = await user.getAddress();
         await fixture.usdc.mint(userInfo.address, 6e6);
         await fixture.usdc.connect(user).approve(fixture.elf.address, 6e6);

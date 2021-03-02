@@ -38,10 +38,7 @@ contract StablePoolFactory is BasePoolFactory {
     ) external returns (address) {
         return
             _create(
-                abi.encodePacked(
-                    type(StablePool).creationCode,
-                    abi.encode(vault, name, symbol, tokens, amp, swapFee)
-                )
+                abi.encodePacked(type(StablePool).creationCode, abi.encode(vault, name, symbol, tokens, amp, swapFee))
             );
     }
 }

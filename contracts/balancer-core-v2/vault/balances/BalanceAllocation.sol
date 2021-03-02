@@ -82,11 +82,7 @@ library BalanceAllocation {
     /**
      * @dev Returns the total balance for each entry in `balances`.
      */
-    function totals(bytes32[] memory balances)
-        internal
-        pure
-        returns (uint256[] memory results)
-    {
+    function totals(bytes32[] memory balances) internal pure returns (uint256[] memory results) {
         results = new uint256[](balances.length);
         for (uint256 i = 0; i < results.length; i++) {
             results[i] = total(balances[i]);
@@ -149,11 +145,7 @@ library BalanceAllocation {
      * @dev Increases a Pool's 'cash' (and therefore its 'total'). Called when Pool tokens are sent to the Vault (except
      * when an Asset Manager action decreases the managed balance).
      */
-    function increaseCash(bytes32 balance, uint256 amount)
-        internal
-        view
-        returns (bytes32)
-    {
+    function increaseCash(bytes32 balance, uint256 amount) internal view returns (bytes32) {
         uint256 newCash = cash(balance).add(amount);
         uint256 currentManaged = managed(balance);
         uint256 newBlockNumber = block.number;
@@ -165,11 +157,7 @@ library BalanceAllocation {
      * @dev Decreases a Pool's 'cash' (and therefore its 'total'). Called when Pool tokens are sent from the Vault
      * (except as an Asset Manager action that increases the managed balance).
      */
-    function decreaseCash(bytes32 balance, uint256 amount)
-        internal
-        view
-        returns (bytes32)
-    {
+    function decreaseCash(bytes32 balance, uint256 amount) internal view returns (bytes32) {
         uint256 newCash = cash(balance).sub(amount);
         uint256 currentManaged = managed(balance);
         uint256 newBlockNumber = block.number;
@@ -181,11 +169,7 @@ library BalanceAllocation {
      * @dev Moves 'cash' into 'managed', leaving 'total' unchanged. Called when Pool tokens are sent from the Vault
      * when an Asset Manager action increases the managed balance.
      */
-    function cashToManaged(bytes32 balance, uint256 amount)
-        internal
-        pure
-        returns (bytes32)
-    {
+    function cashToManaged(bytes32 balance, uint256 amount) internal pure returns (bytes32) {
         uint256 newCash = cash(balance).sub(amount);
         uint256 newManaged = managed(balance).add(amount);
         uint256 currentBlockNumber = blockNumber(balance);
@@ -197,11 +181,7 @@ library BalanceAllocation {
      * @dev Moves 'managed' into 'cash', leaving 'total' unchanged. Called when Pool tokens are sent to the Vault when
      * an Asset Manager action decreases the managed balance.
      */
-    function managedToCash(bytes32 balance, uint256 amount)
-        internal
-        pure
-        returns (bytes32)
-    {
+    function managedToCash(bytes32 balance, uint256 amount) internal pure returns (bytes32) {
         uint256 newCash = cash(balance).add(amount);
         uint256 newManaged = managed(balance).sub(amount);
         uint256 currentBlockNumber = blockNumber(balance);
@@ -213,11 +193,7 @@ library BalanceAllocation {
      * @dev Sets 'managed' balance to an arbitrary value, changing 'total'. Called when the Asset Manager reports
      * profits or losses. It's the Manager's responsibility to provide a meaningful value.
      */
-    function setManaged(bytes32 balance, uint256 newManaged)
-        internal
-        view
-        returns (bytes32)
-    {
+    function setManaged(bytes32 balance, uint256 newManaged) internal view returns (bytes32) {
         uint256 currentCash = cash(balance);
         uint256 newBlockNumber = block.number;
         return toBalance(currentCash, newManaged, newBlockNumber);
@@ -239,61 +215,30 @@ library BalanceAllocation {
     /**
      * @dev Unpacks the shared token A and token B cash and managed balances into the balance for token A.
      */
-    function fromSharedToBalanceA(bytes32 sharedCash, bytes32 sharedManaged)
-        internal
-        pure
-        returns (bytes32)
-    {
-        return
-            toBalance(
-                _decodeBalanceA(sharedCash),
-                _decodeBalanceA(sharedManaged),
-                blockNumber(sharedCash)
-            );
+    function fromSharedToBalanceA(bytes32 sharedCash, bytes32 sharedManaged) internal pure returns (bytes32) {
+        return toBalance(_decodeBalanceA(sharedCash), _decodeBalanceA(sharedManaged), blockNumber(sharedCash));
     }
 
     /**
      * @dev Unpacks the shared token A and token B cash and managed balances into the balance for token B.
      */
-    function fromSharedToBalanceB(bytes32 sharedCash, bytes32 sharedManaged)
-        internal
-        pure
-        returns (bytes32)
-    {
-        return
-            toBalance(
-                _decodeBalanceB(sharedCash),
-                _decodeBalanceB(sharedManaged),
-                blockNumber(sharedCash)
-            );
+    function fromSharedToBalanceB(bytes32 sharedCash, bytes32 sharedManaged) internal pure returns (bytes32) {
+        return toBalance(_decodeBalanceB(sharedCash), _decodeBalanceB(sharedManaged), blockNumber(sharedCash));
     }
 
     /**
      * @dev Returns the sharedCash shared field, given the current balances for tokenA and tokenB.
      */
-    function toSharedCash(bytes32 tokenABalance, bytes32 tokenBBalance)
-        internal
-        pure
-        returns (bytes32)
-    {
+    function toSharedCash(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {
         // Both balances have the block number, since both balances are always updated at the same time it does not
         // mater where we pick it from.
-        return
-            _pack(
-                cash(tokenABalance),
-                cash(tokenBBalance),
-                blockNumber(tokenABalance)
-            );
+        return _pack(cash(tokenABalance), cash(tokenBBalance), blockNumber(tokenABalance));
     }
 
     /**
      * @dev Returns the sharedManaged shared field, given the current balances for tokenA and tokenB.
      */
-    function toSharedManaged(bytes32 tokenABalance, bytes32 tokenBBalance)
-        internal
-        pure
-        returns (bytes32)
-    {
+    function toSharedManaged(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {
         return _pack(managed(tokenABalance), managed(tokenBBalance), 0);
     }
 
@@ -301,11 +246,7 @@ library BalanceAllocation {
      * @dev Unpacks the balance corresponding to token A for a shared balance
      * Note that this function can be used to decode both cash and managed balances.
      */
-    function _decodeBalanceA(bytes32 sharedBalance)
-        private
-        pure
-        returns (uint256)
-    {
+    function _decodeBalanceA(bytes32 sharedBalance) private pure returns (uint256) {
         uint256 mask = 2**(112) - 1;
         return uint256(sharedBalance) & mask;
     }
@@ -314,11 +255,7 @@ library BalanceAllocation {
      * @dev Unpacks the balance corresponding to token B for a shared balance
      * Note that this function can be used to decode both cash and managed balances.
      */
-    function _decodeBalanceB(bytes32 sharedBalance)
-        private
-        pure
-        returns (uint256)
-    {
+    function _decodeBalanceB(bytes32 sharedBalance) private pure returns (uint256) {
         uint256 mask = 2**(112) - 1;
         return uint256(sharedBalance >> 112) & mask;
     }
@@ -333,11 +270,6 @@ library BalanceAllocation {
         uint256 _midSignificant,
         uint256 _mostSignificant
     ) private pure returns (bytes32) {
-        return
-            bytes32(
-                (_mostSignificant << 224) +
-                    (_midSignificant << 112) +
-                    _leastSignificant
-            );
+        return bytes32((_mostSignificant << 224) + (_midSignificant << 112) + _leastSignificant);
     }
 }

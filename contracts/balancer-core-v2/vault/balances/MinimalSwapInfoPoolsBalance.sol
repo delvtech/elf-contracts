@@ -32,10 +32,8 @@ contract MinimalSwapInfoPoolsBalance {
     // Tokens in the set always have a non-zero balance, so we don't need
     // to check the set for token existence during a swap: the non-zero balance check achieves this for less gas.
 
-    mapping(bytes32 => EnumerableSet.AddressSet)
-        internal _minimalSwapInfoPoolsTokens;
-    mapping(bytes32 => mapping(IERC20 => bytes32))
-        internal _minimalSwapInfoPoolsBalances;
+    mapping(bytes32 => EnumerableSet.AddressSet) internal _minimalSwapInfoPoolsTokens;
+    mapping(bytes32 => mapping(IERC20 => bytes32)) internal _minimalSwapInfoPoolsBalances;
 
     /**
      * @dev Registers a list of tokens in a Minimal Swap Info Pool.
@@ -45,13 +43,8 @@ contract MinimalSwapInfoPoolsBalance {
      * - Each token must not be the zero address.
      * - Each token must not be registered in the Pool.
      */
-    function _registerMinimalSwapInfoPoolTokens(
-        bytes32 poolId,
-        IERC20[] memory tokens
-    ) internal {
-
-            EnumerableSet.AddressSet storage poolTokens
-         = _minimalSwapInfoPoolsTokens[poolId];
+    function _registerMinimalSwapInfoPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
+        EnumerableSet.AddressSet storage poolTokens = _minimalSwapInfoPoolsTokens[poolId];
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
@@ -69,20 +62,12 @@ contract MinimalSwapInfoPoolsBalance {
      * - Each token must be registered in the Pool.
      * - Each token must have non balance in the Vault.
      */
-    function _deregisterMinimalSwapInfoPoolTokens(
-        bytes32 poolId,
-        IERC20[] memory tokens
-    ) internal {
-
-            EnumerableSet.AddressSet storage poolTokens
-         = _minimalSwapInfoPoolsTokens[poolId];
+    function _deregisterMinimalSwapInfoPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
+        EnumerableSet.AddressSet storage poolTokens = _minimalSwapInfoPoolsTokens[poolId];
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            require(
-                _minimalSwapInfoPoolsBalances[poolId][token].isZero(),
-                "NONZERO_TOKEN_BALANCE"
-            );
+            require(_minimalSwapInfoPoolsBalances[poolId][token].isZero(), "NONZERO_TOKEN_BALANCE");
             bool removed = poolTokens.remove(address(token));
             require(removed, "TOKEN_NOT_REGISTERED");
             // No need to delete the balance entries, since they already are zero
@@ -104,12 +89,7 @@ contract MinimalSwapInfoPoolsBalance {
         IERC20 token,
         uint256 amount
     ) internal {
-        _updateMinimalSwapInfoPoolBalance(
-            poolId,
-            token,
-            BalanceAllocation.cashToManaged,
-            amount
-        );
+        _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation.cashToManaged, amount);
     }
 
     function _minimalSwapInfoPoolManagedToCash(
@@ -117,12 +97,7 @@ contract MinimalSwapInfoPoolsBalance {
         IERC20 token,
         uint256 amount
     ) internal {
-        _updateMinimalSwapInfoPoolBalance(
-            poolId,
-            token,
-            BalanceAllocation.managedToCash,
-            amount
-        );
+        _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation.managedToCash, amount);
     }
 
     function _setMinimalSwapInfoPoolManagedBalance(
@@ -130,12 +105,7 @@ contract MinimalSwapInfoPoolsBalance {
         IERC20 token,
         uint256 amount
     ) internal {
-        _updateMinimalSwapInfoPoolBalance(
-            poolId,
-            token,
-            BalanceAllocation.setManaged,
-            amount
-        );
+        _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation.setManaged, amount);
     }
 
     function _updateMinimalSwapInfoPoolBalance(
@@ -145,10 +115,7 @@ contract MinimalSwapInfoPoolsBalance {
         uint256 amount
     ) internal {
         bytes32 currentBalance = _getMinimalSwapInfoPoolBalance(poolId, token);
-        _minimalSwapInfoPoolsBalances[poolId][token] = mutation(
-            currentBalance,
-            amount
-        );
+        _minimalSwapInfoPoolsBalances[poolId][token] = mutation(currentBalance, amount);
     }
 
     /**
@@ -160,9 +127,7 @@ contract MinimalSwapInfoPoolsBalance {
         view
         returns (IERC20[] memory tokens, bytes32[] memory balances)
     {
-
-            EnumerableSet.AddressSet storage poolTokens
-         = _minimalSwapInfoPoolsTokens[poolId];
+        EnumerableSet.AddressSet storage poolTokens = _minimalSwapInfoPoolsTokens[poolId];
         tokens = new IERC20[](poolTokens.length());
         balances = new bytes32[](tokens.length);
 
@@ -180,26 +145,15 @@ contract MinimalSwapInfoPoolsBalance {
      *
      * - `token` must be in the Pool.
      */
-    function _getMinimalSwapInfoPoolBalance(bytes32 poolId, IERC20 token)
-        internal
-        view
-        returns (bytes32)
-    {
+    function _getMinimalSwapInfoPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
         bytes32 balance = _minimalSwapInfoPoolsBalances[poolId][token];
-        bool existsToken = balance.isNotZero() ||
-            _minimalSwapInfoPoolsTokens[poolId].contains(address(token));
+        bool existsToken = balance.isNotZero() || _minimalSwapInfoPoolsTokens[poolId].contains(address(token));
         require(existsToken, "TOKEN_NOT_REGISTERED");
         return balance;
     }
 
-    function _isMinimalSwapInfoPoolTokenRegistered(bytes32 poolId, IERC20 token)
-        internal
-        view
-        returns (bool)
-    {
-
-            EnumerableSet.AddressSet storage poolTokens
-         = _minimalSwapInfoPoolsTokens[poolId];
+    function _isMinimalSwapInfoPoolTokenRegistered(bytes32 poolId, IERC20 token) internal view returns (bool) {
+        EnumerableSet.AddressSet storage poolTokens = _minimalSwapInfoPoolsTokens[poolId];
         return poolTokens.contains(address(token));
     }
 }

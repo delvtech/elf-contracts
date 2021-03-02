@@ -1,4 +1,4 @@
-import {MockProvider} from "ethereum-waffle";
+import { MockProvider } from "ethereum-waffle";
 
 export const advanceTime = async (provider: MockProvider, time: number) => {
   await provider.send("evm_increaseTime", [time]);

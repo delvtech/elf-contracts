@@ -1,5 +1,5 @@
 import hre from "hardhat";
-import {ethers} from "hardhat";
+import { ethers } from "hardhat";
 
 export const impersonate = async (address: string) => {
   await hre.network.provider.request({

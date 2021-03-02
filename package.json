@@ -40,7 +40,6 @@
     "cspell": "^5.2.3",
     "eslint": "^7.20.0",
     "eslint-config-prettier": "^8.1.0",
-    "eslint-plugin-react": "^7.22.0",
     "ethereum-waffle": "^3.2.2",
     "ethers": "^5.0.29",
     "hardhat": "^2.0.8",

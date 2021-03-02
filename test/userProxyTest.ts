@@ -29,6 +29,12 @@ describe("UserProxyTests", function () {
     await underlying.mint(signers[0].address, lots);
     // mint to the user 1
     await underlying.mint(signers[1].address, lots);
+
+    // Make an initial deposit in the aypool contract
+    // This prevents a div by zero reversion in several cases
+    await fixture.usdc.mint(signers[0].address, 100);
+    await fixture.usdc.approve(fixture.yusdc.address, 100);
+    await fixture.yusdc.deposit(100, signers[0].address);
   });
 
   it("Successfully mints", async function () {

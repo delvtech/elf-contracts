@@ -58,4 +58,8 @@ contract AYVault is ERC20 {
     function totalSupply() public view returns (uint256) {
         return _supply;
     }
+
+    function totalAssets() public view returns(uint256) {
+        return ERC20(token).balanceOf(address(this));
+    }
 }

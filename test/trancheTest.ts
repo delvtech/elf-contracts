@@ -1,6 +1,6 @@
 import {ethers} from "hardhat";
 
-import {bnFloatMultiplier} from "./helpers/math";
+import {bnFloatMultiplier, subError} from "./helpers/math";
 import {loadTestTrancheFixture, trancheTestFixture} from "./helpers/deployer";
 import {createSnapshot, restoreSnapshot} from "./helpers/snapshots";
 import {advanceTime} from "./helpers/time";
@@ -19,11 +19,6 @@ describe("Tranche", () => {
   let user2Address: string;
   let lockDuration = 5000000; //seconds
   let initialBalance = ethers.BigNumber.from("2000000000"); // 2e9
-
-  function subError(amount: BigNumber) {
-    // 1 tenth of a bp of error subbed
-    return amount.sub(bnFloatMultiplier(amount, 0.00001));
-  }
 
   before(async () => {
     // snapshot initial state

@@ -26,4 +26,7 @@ interface YearnVault {
     function governance() external view returns (address);
 
     function setDepositLimit(uint256) external;
+
+    function totalSupply() external view returns(uint256);
+    function totalAssets() external view returns(uint256);
 }

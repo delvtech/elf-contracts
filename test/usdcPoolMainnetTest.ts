@@ -5,9 +5,10 @@ import {
 } from "./helpers/deployer";
 import {createSnapshot, restoreSnapshot} from "./helpers/snapshots";
 import {impersonate, stopImpersonating} from "./helpers/impersonate";
+import {subError} from "./helpers/math";
 
 import {expect} from "chai";
-import {Signer} from "ethers";
+import {BigNumber, Signer} from "ethers";
 
 const {waffle} = require("hardhat");
 const provider = waffle.provider;
@@ -15,12 +16,11 @@ const provider = waffle.provider;
 describe("USDCPool-Mainnet", () => {
   let users: {user: Signer; address: string}[];
   let fixture: usdcPoolMainnetInterface;
+  // address of a large usdc holder to impersonate. 69 million usdc as of block 11860000
+  const usdcWhaleAddress = "0xAe2D4617c862309A3d75A0fFB358c7a5009c673F";
   before(async () => {
     // snapshot initial state
     await createSnapshot(provider);
-
-    // address of a large usdc holder to impersonate. 69 million usdc as of block 11860000
-    const usdcWhaleAddress = "0xAe2D4617c862309A3d75A0fFB358c7a5009c673F";
 
     // load all related contracts
     fixture = await loadUsdcPoolMainnetFixture();
@@ -82,7 +82,7 @@ describe("USDCPool-Mainnet", () => {
         )
       ).div(ethers.utils.parseUnits("1", 6));
       // Allows a 0.01% conversion error
-      expect(balance).to.be.at.least(ethers.BigNumber.from(1e12 * 0.9999));
+      expect(balance).to.be.at.least(subError(ethers.BigNumber.from(1e11)));
 
       /* At this point:
        *         deposited     held
@@ -169,7 +169,7 @@ describe("USDCPool-Mainnet", () => {
           .add(finalWethBalanceU2)
           .add(finalWethBalanceU3)
           .add(ethers.BigNumber.from("5"))
-      ).to.be.at.least(1e12);
+      ).to.be.at.least(subError(BigNumber.from("1000000000000")));
     });
   });
 
@@ -181,5 +181,109 @@ describe("USDCPool-Mainnet", () => {
         await fixture.elf.balanceOfUnderlying(users[1].address)
       ).to.be.at.least(99999000000);
     });
+  });
+
+  describe("Funded Reserve Deposit/Withdraw", () => {
+
+    it("should correctly handle deposits and withdrawals", async () => {
+      impersonate(usdcWhaleAddress);
+      const usdcWhale = await ethers.provider.getSigner(usdcWhaleAddress);
+      // A user funds the reserves to enable gas efficient actions
+      await fixture.usdc.connect(usdcWhale).approve(fixture.elf.address, 4e11);
+      await fixture.elf.connect(usdcWhale).reserveDeposit(3e11 + 1);
+      let pricePerFullShare = await fixture.yusdc.pricePerShare();
+
+      // Now we try some deposits
+      // Note we use less here because the second calc has some rounding error
+      // In the first trade the reserve has no elf
+      let receipt = await (await fixture.elf.connect(users[1].user).deposit(users[1].address, 1e11)).wait();
+      let userBalance = await fixture.elf.balanceOf(users[1].address);
+      let elfAmount = BigNumber.from(1e11).mul(1e6).div(pricePerFullShare);
+      expect(userBalance).to.be.at.least(subError(elfAmount));
+      console.log("full consumed", receipt.gasUsed.toNumber());
+
+      // The second is fully fillable from the reserve's elf
+      receipt = await (await fixture.elf.connect(users[2].user).deposit(users[2].address, 2e11)).wait();
+      userBalance = await fixture.elf.balanceOf(users[2].address);
+      elfAmount = BigNumber.from(2e11).mul(1e6).div(pricePerFullShare);
+      expect(userBalance).to.be.at.least(subError(elfAmount));
+      console.log("full consumed", receipt.gasUsed.toNumber());
+
+      // The third consumes the remaining requiring switchover
+      receipt = await (await fixture.elf.connect(users[1].user).deposit(users[1].address, 1e11)).wait();
+      userBalance = await fixture.elf.balanceOf(users[1].address);
+      elfAmount = BigNumber.from(2e11).mul(1e6).div(pricePerFullShare);
+      expect(userBalance).to.be.at.least(subError(elfAmount));
+      console.log("full consumed", receipt.gasUsed.toNumber());
+
+
+      receipt = await (await fixture.elf.connect(users[3].user).deposit(users[3].address, 6e11)).wait();
+      userBalance = await fixture.elf.balanceOf(users[3].address);
+      elfAmount = BigNumber.from(6e11).mul(1e6).div(pricePerFullShare);
+      expect(userBalance).to.be.at.least(subError(elfAmount));
+      console.log("full consumed", receipt.gasUsed.toNumber());
+
+
+      // Test withdraws
+      const toWithdraw = ethers.BigNumber.from("1000000"); // 1 usdc
+      let user1Balance = await fixture.elf.balanceOf(users[1].address);
+      pricePerFullShare = await fixture.yusdc.pricePerShare();
+      const withdrawUsdc = toWithdraw
+        .mul(pricePerFullShare)
+        .div(ethers.utils.parseUnits("1", 6));
+
+      await fixture.elf
+        .connect(users[1].user)
+        .withdraw(users[1].address, toWithdraw, 0);
+      expect(await fixture.elf.balanceOf(users[1].address)).to.equal(
+        user1Balance.sub(toWithdraw)
+      );
+      expect(await fixture.usdc.balanceOf(users[1].address)).to.equal(
+        withdrawUsdc
+      );
+
+      /* At this point:
+       *         deposited     held
+       * User 1: 49,999 USDC | 1 USDC
+       * user 2: 20,000 USDC | 0 USDC
+       * User 3: 30,000 USDC | 0 USDC
+       */
+
+      const elfBalanceU1 = await fixture.elf.balanceOf(users[1].address);
+      await fixture.elf
+        .connect(users[1].user)
+        .withdraw(users[1].address, elfBalanceU1, 0);
+      expect(await fixture.elf.balanceOf(users[1].address)).to.equal(0);
+
+      const elfBalanceU2 = await fixture.elf.balanceOf(users[2].address);
+      await fixture.elf
+        .connect(users[2].user)
+        .withdraw(users[2].address, elfBalanceU2, 0);
+      expect(await fixture.elf.balanceOf(users[2].address)).to.equal(0);
+
+      const elfBalanceU3 = await fixture.elf.balanceOf(users[3].address);
+      await fixture.elf
+        .connect(users[3].user)
+        .withdraw(users[3].address, elfBalanceU3, 0);
+      expect(await fixture.elf.balanceOf(users[3].address)).to.equal(0);
+
+      /* At this point:
+       *         deposited     held
+       * User 1: 0 USDC      | 50,000 USDC
+       * user 2: 0 USDC      | 20,000 USDC
+       * User 3: 0 USDC      | 30,000 USDC
+       */
+
+      const finalWethBalanceU1 = await fixture.usdc.balanceOf(users[1].address);
+      const finalWethBalanceU2 = await fixture.usdc.balanceOf(users[2].address);
+      const finalWethBalanceU3 = await fixture.usdc.balanceOf(users[3].address);
+      expect(
+        finalWethBalanceU1
+          .add(finalWethBalanceU2)
+          .add(finalWethBalanceU3)
+          .add(ethers.BigNumber.from("5"))
+      ).to.be.at.least(subError(BigNumber.from("1000000000000")));
+    });
+
   });
 });

@@ -33,6 +33,12 @@ describe("Elf", () => {
         await fixture.usdc.connect(user).approve(fixture.elf.address, 6e6);
       })
     );
+
+    // Make an initial deposit in the aypool contract
+    // This prevents a div by zero reversion in several cases
+    await fixture.usdc.mint(users[0].address, 100);
+    await fixture.usdc.approve(fixture.yusdc.address, 100);
+    await fixture.yusdc.deposit(100, users[0].address);
   });
   after(async () => {
     // revert back to initial state after all tests pass

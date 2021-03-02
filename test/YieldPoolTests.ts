@@ -1,3 +1,4 @@
+import { YieldCurvePool } from "./typechain/YieldCurvePool.d";
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
 import { Contract, BigNumber, providers } from "ethers";
@@ -9,7 +10,7 @@ describe("YieldPool", function () {
   const SECONDS_IN_YEAR = 31536000;
   const fakeAddress = "0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c";
   let accounts: SignerWithAddress[];
-  let pool: Contract;
+  let pool: YieldCurvePool;
   let startTimestamp: number;
   let erc20_base: Contract;
   let erc20_bond: Contract;
@@ -46,7 +47,7 @@ describe("YieldPool", function () {
 
   async function resetPool() {
     const Pool = await ethers.getContractFactory("YieldPoolTest");
-    pool = await Pool.deploy(
+    pool = (await Pool.deploy(
       erc20_base.address.toString(),
       erc20_bond.address.toString(),
       startTimestamp + SECONDS_IN_YEAR,
@@ -56,7 +57,7 @@ describe("YieldPool", function () {
       fakeAddress,
       "YieldBPT",
       "BPT"
-    );
+    )) as YieldCurvePool;
   }
 
   before(async function () {
@@ -70,7 +71,7 @@ describe("YieldPool", function () {
     vault = await Vault.deploy();
 
     const Pool = await ethers.getContractFactory("YieldPoolTest");
-    pool = await Pool.deploy(
+    pool = (await Pool.deploy(
       erc20_base.address.toString(),
       erc20_bond.address.toString(),
       startTimestamp + SECONDS_IN_YEAR,
@@ -80,7 +81,7 @@ describe("YieldPool", function () {
       fakeAddress,
       "YieldBPT",
       "BPT"
-    );
+    )) as YieldCurvePool;
 
     accounts = await ethers.getSigners();
   });

@@ -1,24 +1,22 @@
-import { ethers } from "hardhat";
+import { expect } from "chai";
+import { BigNumber, Signer } from "ethers";
+import { ethers, waffle } from "hardhat";
 
+import { loadTestTrancheFixture, TrancheTestFixture } from "./helpers/deployer";
 import { bnFloatMultiplier } from "./helpers/math";
-import { loadTestTrancheFixture, trancheTestFixture } from "./helpers/deployer";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 import { advanceTime } from "./helpers/time";
 
-import { expect } from "chai";
-import { BigNumber, Signer } from "ethers";
-
-const { waffle } = require("hardhat");
-const provider = waffle.provider;
+const { provider } = waffle;
 
 describe("Tranche", () => {
-  let fixture: trancheTestFixture;
+  let fixture: TrancheTestFixture;
   let user1: Signer;
   let user2: Signer;
   let user1Address: string;
   let user2Address: string;
-  let lockDuration = 5000000; //seconds
-  let initialBalance = ethers.BigNumber.from("2000000000"); // 2e9
+  const lockDuration = 5000000; //seconds
+  const initialBalance = ethers.BigNumber.from("2000000000"); // 2e9
 
   function subError(amount: BigNumber) {
     // 1 tenth of a bp of error subbed
@@ -70,8 +68,6 @@ describe("Tranche", () => {
       ).to.be.revertedWith("expired");
     });
     it("should correctly handle deposits with no accrued interest", async () => {
-      const initialUnderlying = await fixture.elfStub.underlyingUnitValue();
-
       await fixture.tranche
         .connect(user1)
         .deposit(initialBalance, await user1.getAddress());

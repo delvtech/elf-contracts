@@ -25,7 +25,7 @@ import { Signer } from "ethers";
 import { ethers } from "hardhat";
 import { ElfStub } from "../../typechain/ElfStub";
 
-export interface fixtureInterface {
+export interface FixtureInterface {
   signer: Signer;
   usdc: AToken;
   yusdc: AYVault;
@@ -35,21 +35,21 @@ export interface fixtureInterface {
   proxy: UserProxyTest;
 }
 
-export interface ethPoolMainnetInterface {
+export interface EthPoolMainnetInterface {
   signer: Signer;
   weth: IWETH;
   yweth: YearnVault;
   elf: YVaultAssetProxy;
 }
 
-export interface usdcPoolMainnetInterface {
+export interface UsdcPoolMainnetInterface {
   signer: Signer;
   usdc: IERC20;
   yusdc: YearnVault;
   elf: YVaultAssetProxy;
 }
 
-export interface trancheTestFixture {
+export interface TrancheTestFixture {
   signer: Signer;
   usdc: TestERC20;
   elfStub: ElfStub;
@@ -174,7 +174,6 @@ export async function loadUsdcPoolMainnetFixture() {
 
 export async function loadTestTrancheFixture() {
   const [signer] = await ethers.getSigners();
-  const signerAddress = (await signer.getAddress()) as string;
   const testTokenDeployer = new TestERC20__factory(signer);
   const usdc = await testTokenDeployer.deploy("test token", "TEST", 18);
 

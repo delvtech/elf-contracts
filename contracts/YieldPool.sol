@@ -70,7 +70,7 @@ contract YieldCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         IERC20[] memory tokens = new IERC20[](2);
         tokens[0] = _underlying;
         tokens[1] = _bond;
-        vault.registerTokens(poolId, tokens, new address[](0));
+        vault.registerTokens(poolId, tokens, new address[](2));
 
         // Set immutable state variables
         _vault = vault;

@@ -1,14 +1,14 @@
-import {ethers} from "hardhat";
+import { ethers } from "hardhat";
 
-import {bnFloatMultiplier} from "./helpers/math";
-import {loadTestTrancheFixture, trancheTestFixture} from "./helpers/deployer";
-import {createSnapshot, restoreSnapshot} from "./helpers/snapshots";
-import {advanceTime} from "./helpers/time";
+import { bnFloatMultiplier } from "./helpers/math";
+import { loadTestTrancheFixture, trancheTestFixture } from "./helpers/deployer";
+import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
+import { advanceTime } from "./helpers/time";
 
-import {expect} from "chai";
-import {BigNumber, Signer} from "ethers";
+import { expect } from "chai";
+import { BigNumber, Signer } from "ethers";
 
-const {waffle} = require("hardhat");
+const { waffle } = require("hardhat");
 const provider = waffle.provider;
 
 describe("Tranche", () => {

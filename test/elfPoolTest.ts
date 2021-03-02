@@ -1,15 +1,15 @@
-import {ethers} from "hardhat";
-import {loadFixture, fixtureInterface} from "./helpers/deployer";
-import {createSnapshot, restoreSnapshot} from "./helpers/snapshots";
+import { ethers } from "hardhat";
+import { loadFixture, fixtureInterface } from "./helpers/deployer";
+import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 
-import {expect} from "chai";
-import {Signer} from "ethers";
+import { expect } from "chai";
+import { Signer } from "ethers";
 
-const {waffle} = require("hardhat");
+const { waffle } = require("hardhat");
 const provider = waffle.provider;
 
 describe("Elf", () => {
-  let users: {user: Signer; address: string}[];
+  let users: { user: Signer; address: string }[];
   let fixture: fixtureInterface;
   before(async () => {
     // snapshot initial state
@@ -20,7 +20,7 @@ describe("Elf", () => {
 
     // begin to populate the user array by assigning each index a signer
     users = ((await ethers.getSigners()) as Signer[]).map(function (user) {
-      return {user, address: ""};
+      return { user, address: "" };
     });
 
     // finish populating the user array by assigning each index a signer address

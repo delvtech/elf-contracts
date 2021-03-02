@@ -1,20 +1,20 @@
-import {ethers} from "hardhat";
+import { ethers } from "hardhat";
 
 import {
   loadEthPoolMainnetFixture,
   ethPoolMainnetInterface,
 } from "./helpers/deployer";
-import {createSnapshot, restoreSnapshot} from "./helpers/snapshots";
-import {impersonate} from "./helpers/impersonate";
+import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
+import { impersonate } from "./helpers/impersonate";
 
-import {expect} from "chai";
-import {Signer} from "ethers";
+import { expect } from "chai";
+import { Signer } from "ethers";
 
-const {waffle} = require("hardhat");
+const { waffle } = require("hardhat");
 const provider = waffle.provider;
 
 describe("ETHPool-Mainnet", () => {
-  let users: {user: Signer; address: string}[];
+  let users: { user: Signer; address: string }[];
   let fixture: ethPoolMainnetInterface;
   before(async () => {
     // snapshot initial state
@@ -25,7 +25,7 @@ describe("ETHPool-Mainnet", () => {
 
     // begin to populate the user array by assigning each index a signer
     users = ((await ethers.getSigners()) as Signer[]).map(function (user) {
-      return {user, address: ""};
+      return { user, address: "" };
     });
 
     // We load and impersonate the governance of the yweth contract
@@ -46,19 +46,19 @@ describe("ETHPool-Mainnet", () => {
     );
     await fixture.weth
       .connect(users[1].user)
-      .deposit({value: ethers.utils.parseEther("20000")});
+      .deposit({ value: ethers.utils.parseEther("20000") });
     await fixture.weth
       .connect(users[1].user)
       .approve(fixture.elf.address, ethers.utils.parseEther("20000"));
     await fixture.weth
       .connect(users[2].user)
-      .deposit({value: ethers.utils.parseEther("20000")});
+      .deposit({ value: ethers.utils.parseEther("20000") });
     await fixture.weth
       .connect(users[2].user)
       .approve(fixture.elf.address, ethers.utils.parseEther("20000"));
     await fixture.weth
       .connect(users[3].user)
-      .deposit({value: ethers.utils.parseEther("60000")});
+      .deposit({ value: ethers.utils.parseEther("60000") });
     await fixture.weth
       .connect(users[3].user)
       .approve(fixture.elf.address, ethers.utils.parseEther("60000"));

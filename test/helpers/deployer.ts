@@ -1,29 +1,29 @@
-import {Tranche} from "../../typechain/Tranche";
-import {Tranche__factory} from "../../typechain/factories/Tranche__factory";
+import { Tranche } from "../../typechain/Tranche";
+import { Tranche__factory } from "../../typechain/factories/Tranche__factory";
 
-import {ElfStub__factory} from "../../typechain/factories/ElfStub__factory";
+import { ElfStub__factory } from "../../typechain/factories/ElfStub__factory";
 
-import {YC} from "../../typechain/YC";
-import {YC__factory} from "../../typechain/factories/YC__factory";
-import {AToken} from "../../typechain/AToken";
-import {AToken__factory} from "../../typechain/factories/AToken__factory";
-import {AYVault} from "../../typechain/AYVault";
-import {AYVault__factory} from "../../typechain/factories/AYVault__factory";
-import {YVaultAssetProxy} from "../../typechain/YVaultAssetProxy";
-import {YVaultAssetProxy__factory} from "../../typechain/factories/YVaultAssetProxy__factory";
-import {YearnVault} from "../../typechain/YearnVault";
-import {YearnVault__factory} from "../../typechain/factories/YearnVault__factory";
-import {IWETH} from "../../typechain/IWETH";
-import {IWETH__factory} from "../../typechain/factories/IWETH__factory";
-import {IERC20} from "../../typechain/IERC20";
-import {IERC20__factory} from "../../typechain/factories/IERC20__factory";
-import {TestERC20} from "../../typechain/TestERC20";
-import {TestERC20__factory} from "../../typechain/factories/TestERC20__factory";
-import {UserProxyTest} from "../../typechain/UserProxyTest";
-import {UserProxyTest__factory} from "../../typechain/factories/UserProxyTest__factory";
-import {Signer} from "ethers";
-import {ethers} from "hardhat";
-import {ElfStub} from "../../typechain/ElfStub";
+import { YC } from "../../typechain/YC";
+import { YC__factory } from "../../typechain/factories/YC__factory";
+import { AToken } from "../../typechain/AToken";
+import { AToken__factory } from "../../typechain/factories/AToken__factory";
+import { AYVault } from "../../typechain/AYVault";
+import { AYVault__factory } from "../../typechain/factories/AYVault__factory";
+import { YVaultAssetProxy } from "../../typechain/YVaultAssetProxy";
+import { YVaultAssetProxy__factory } from "../../typechain/factories/YVaultAssetProxy__factory";
+import { YearnVault } from "../../typechain/YearnVault";
+import { YearnVault__factory } from "../../typechain/factories/YearnVault__factory";
+import { IWETH } from "../../typechain/IWETH";
+import { IWETH__factory } from "../../typechain/factories/IWETH__factory";
+import { IERC20 } from "../../typechain/IERC20";
+import { IERC20__factory } from "../../typechain/factories/IERC20__factory";
+import { TestERC20 } from "../../typechain/TestERC20";
+import { TestERC20__factory } from "../../typechain/factories/TestERC20__factory";
+import { UserProxyTest } from "../../typechain/UserProxyTest";
+import { UserProxyTest__factory } from "../../typechain/factories/UserProxyTest__factory";
+import { Signer } from "ethers";
+import { ethers } from "hardhat";
+import { ElfStub } from "../../typechain/ElfStub";
 
 export interface fixtureInterface {
   signer: Signer;

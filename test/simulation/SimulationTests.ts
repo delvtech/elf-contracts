@@ -1,6 +1,6 @@
-import {expect} from "chai";
-import {ethers} from "hardhat";
-import {Contract, BigNumber} from "ethers";
+import { expect } from "chai";
+import { ethers } from "hardhat";
+import { Contract, BigNumber } from "ethers";
 
 const testTrades = require("./testTrades.json");
 

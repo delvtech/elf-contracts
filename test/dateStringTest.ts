@@ -1,6 +1,6 @@
-import {ethers} from "hardhat";
-import {expect} from "chai";
-import {Contract} from "ethers";
+import { ethers } from "hardhat";
+import { expect } from "chai";
+import { Contract } from "ethers";
 
 describe("DateString", () => {
   const testTimestamp = 1613496173;

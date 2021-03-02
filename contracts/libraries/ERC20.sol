@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "./Context.sol";
 import "../interfaces/IERC20.sol";
 
 /**
@@ -29,12 +28,10 @@ import "../interfaces/IERC20.sol";
  * functions have been added to mitigate the well-known issues around setting
  * allowances. See {IERC20-approve}.
  */
-contract ERC20 is Context, IERC20 {
-    mapping(address => uint256) private _balances;
+contract ERC20 is IERC20 {
+    mapping(address => uint256) internal _balances;
 
     mapping(address => mapping(address => uint256)) private _allowances;
-
-    uint256 private _totalSupply;
 
     string internal _name;
     string internal _symbol;
@@ -88,13 +85,6 @@ contract ERC20 is Context, IERC20 {
     }
 
     /**
-     * @dev See {IERC20-totalSupply}.
-     */
-    function totalSupply() public override view returns (uint256) {
-        return _totalSupply;
-    }
-
-    /**
      * @dev See {IERC20-balanceOf}.
      */
     function balanceOf(address account) public override view returns (uint256) {
@@ -115,7 +105,7 @@ contract ERC20 is Context, IERC20 {
         override
         returns (bool)
     {
-        _transfer(_msgSender(), recipient, amount);
+        _transfer(msg.sender, recipient, amount);
         return true;
     }
 
@@ -145,7 +135,7 @@ contract ERC20 is Context, IERC20 {
         override
         returns (bool)
     {
-        _approve(_msgSender(), spender, amount);
+        _approve(msg.sender, spender, amount);
         return true;
     }
 
@@ -168,11 +158,7 @@ contract ERC20 is Context, IERC20 {
         uint256 amount
     ) public virtual override returns (bool) {
         _transfer(sender, recipient, amount);
-        _approve(
-            sender,
-            _msgSender(),
-            _allowances[sender][_msgSender()] - amount
-        );
+        _approve(sender, msg.sender, _allowances[sender][msg.sender] - amount);
         return true;
     }
 
@@ -194,9 +180,9 @@ contract ERC20 is Context, IERC20 {
         returns (bool)
     {
         _approve(
-            _msgSender(),
+            msg.sender,
             spender,
-            _allowances[_msgSender()][spender] + addedValue
+            _allowances[msg.sender][spender] + addedValue
         );
         return true;
     }
@@ -221,9 +207,9 @@ contract ERC20 is Context, IERC20 {
         returns (bool)
     {
         _approve(
-            _msgSender(),
+            msg.sender,
             spender,
-            _allowances[_msgSender()][spender] - subtractedValue
+            _allowances[msg.sender][spender] - subtractedValue
         );
         return true;
     }
@@ -257,8 +243,7 @@ contract ERC20 is Context, IERC20 {
         emit Transfer(sender, recipient, amount);
     }
 
-    /** @dev Creates `amount` tokens and assigns them to `account`, increasing
-     * the total supply.
+    /** @dev Creates `amount` tokens and assigns them to `account`
      *
      * Emits a {Transfer} event with `from` set to the zero address.
      *
@@ -271,14 +256,12 @@ contract ERC20 is Context, IERC20 {
 
         _beforeTokenTransfer(address(0), account, amount);
 
-        _totalSupply = _totalSupply + amount;
         _balances[account] = _balances[account] + amount;
         emit Transfer(address(0), account, amount);
     }
 
     /**
-     * @dev Destroys `amount` tokens from `account`, reducing the
-     * total supply.
+     * @dev Destroys `amount` tokens from `account`
      *
      * Emits a {Transfer} event with `to` set to the zero address.
      *
@@ -293,7 +276,6 @@ contract ERC20 is Context, IERC20 {
         _beforeTokenTransfer(account, address(0), amount);
 
         _balances[account] = _balances[account] - amount;
-        _totalSupply = _totalSupply - amount;
         emit Transfer(account, address(0), amount);
     }
 

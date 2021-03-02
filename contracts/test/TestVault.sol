@@ -2,7 +2,7 @@ pragma solidity >=0.7.1;
 
 // A contract who's whole purpose is to not trigger call failure reverts
 contract TestVault {
-    address pool;
+    address public pool;
 
     function setPool(address _pool) external {
         pool = _pool;
@@ -10,10 +10,7 @@ contract TestVault {
 
     enum PoolSpecialization {GENERAL, MINIMAL_SWAP_INFO, TWO_TOKEN}
 
-    function registerPool(PoolSpecialization specialization)
-        external
-        returns (bytes32)
-    {
+    function registerPool(PoolSpecialization) external pure returns (bytes32) {
         return (bytes32)("0x00");
     }
 

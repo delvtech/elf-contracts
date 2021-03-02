@@ -5,7 +5,7 @@ import {Contract} from "ethers";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
 describe("UserProxyTests", function () {
-  let fixture;
+  let fixture: fixtureInterface;
   let tranche: Contract;
   let proxy: Contract;
   let underlying: Contract;
@@ -16,34 +16,19 @@ describe("UserProxyTests", function () {
   before(async function () {
     // Get the setup contracts
     fixture = await loadFixture();
-    const trancheFactory = await ethers.getContractFactory("Tranche");
-    tranche = await trancheFactory.deploy(fixture.elf.address, 500000);
-    // Setup the proxy
-    const proxyFactory = await ethers.getContractFactory("UserProxyTest");
-    // Without a real weth address this can't accept eth deposits
-    proxy = await proxyFactory.deploy(
-      fakeAddress,
-      fixture.elf.address,
-      tranche.address
-    );
+    tranche = fixture.tranche;
+    proxy = fixture.proxy;
+
     underlying = await ethers.getContractAt(
       "AToken",
       await fixture.elf.token()
     );
-    // Since the internal lookup method are overridden we can provide
-    // any data to the first param
-    await proxy.allowElf(underlying.address, fakeAddress);
-    // Since the internal lookup method are overridden we can provide
-    // any data
-    await proxy.allowTranche(fakeAddress, 0);
     // Get the signers
     signers = await ethers.getSigners();
     // mint to the user 0
     await underlying.mint(signers[0].address, lots);
     // mint to the user 1
     await underlying.mint(signers[1].address, lots);
-    // Set the pool to actually be the ELF
-    await fixture.yusdcAsset.setPool(fixture.elf.address);
   });
 
   it("Successfully mints", async function () {
@@ -53,7 +38,7 @@ describe("UserProxyTests", function () {
       ethers.utils.parseEther("1"),
       underlying.address,
       5000,
-      fakeAddress
+      fixture.elf.address
     );
     // Mint for the first time
     receipt = await receipt.wait();
@@ -62,7 +47,7 @@ describe("UserProxyTests", function () {
       ethers.utils.parseEther("1"),
       underlying.address,
       5000,
-      fakeAddress
+      fixture.elf.address
     );
     receipt = await receipt.wait();
     console.log("Repeat Mint", receipt.gasUsed.toNumber());
@@ -74,7 +59,7 @@ describe("UserProxyTests", function () {
         ethers.utils.parseEther("1"),
         underlying.address,
         5000,
-        fakeAddress
+        fixture.elf.address
       );
     receipt = await receipt.wait();
     console.log("New User First mint", receipt.gasUsed.toNumber());

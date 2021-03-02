@@ -67,7 +67,7 @@ contract UserProxy is Authorizable {
             // Create weth from the provided eth
             // NOTE - This can be made slightly cheaper by depositing 1 wei into this
             //        contract address on weth.
-            weth.deposit{value: msg.value}();
+            weth.deposit{ value: msg.value }();
             weth.transfer(address(elf), amount);
             // Proceed to internal minting steps
             _mint(expiration, elf);

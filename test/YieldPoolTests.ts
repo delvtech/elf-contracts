@@ -1,8 +1,9 @@
-import { YieldCurvePool } from "./typechain/YieldCurvePool.d";
-import { expect } from "chai";
-import { ethers, network } from "hardhat";
-import { Contract, BigNumber, providers } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { expect } from "chai";
+import { BigNumber, Contract, providers } from "ethers";
+import { ethers, network } from "hardhat";
+
+import { YieldCurvePool } from "../typechain/YieldCurvePool";
 
 describe("YieldPool", function () {
   const BOND_DECIMALS = 17;

@@ -47,6 +47,8 @@ export interface usdcPoolMainnetInterface {
   usdc: IERC20;
   yusdc: YearnVault;
   elf: YVaultAssetProxy;
+  tranche: Tranche;
+  proxy: UserProxyTest;
 }
 
 export interface trancheTestFixture {
@@ -163,12 +165,19 @@ export async function loadUsdcPoolMainnetFixture() {
     "Element Yearn USDC",
     "eyUSDC"
   );
+  const tranche = await deployTranche(signer, elf.address, 5000000);
+
+  // Setup the proxy
+  const proxyFactory = new UserProxyTest__factory(signer);
+  const proxy = await proxyFactory.deploy(usdcAddress, tranche.address);
 
   return {
     signer,
     usdc,
     yusdc,
     elf,
+    tranche,
+    proxy
   };
 }
 

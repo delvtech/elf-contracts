@@ -27,8 +27,8 @@ contract YVaultAssetProxy is Elf {
     mapping(address => uint256) public reserveBalances;
     // These variables store the token balances of this contract and
     // should be packed by solidity into a single slot.
-    uint128 reserveElf;
     uint128 reserveUnderlying;
+    uint128 reserveElf;
     // This is the total amount of reserve deposits
     uint256 reserveSupply;
 
@@ -83,6 +83,7 @@ contract YVaultAssetProxy is Elf {
         setReserves(localUnderlying + _amount, localElf);
         // Note that the sender has deposited and increase reserveSupply
         reserveBalances[msg.sender] += mintAmount;
+        console.log("Reserve deposited", _amount);
         reserveSupply += mintAmount;
     }
 
@@ -128,6 +129,8 @@ contract YVaultAssetProxy is Elf {
         console.log("double call gas used", gas - gasleft());
         uint256 neededElf = (amount * yearnTotalSupply)/yearnTotalAssets;
         // If we have enough in local reserves we don't call out for deposits
+        console.log(localElf, neededElf);
+        console.log(localUnderlying);
         if (localElf > neededElf) {
             console.log("used reserves");
             // We set the reserves
@@ -219,6 +222,7 @@ contract YVaultAssetProxy is Elf {
     /// @param newReserveUnderlying the new reserve of underlying
     /// @param newReserveElf the new reserve of elf
     function setReserves(uint256 newReserveUnderlying, uint256 newReserveElf) internal {
-        (reserveUnderlying, reserveElf) = (uint128(newReserveUnderlying), uint128(newReserveElf));
+        reserveUnderlying = uint128(newReserveUnderlying);
+        reserveElf = uint128(newReserveElf);
     }
 }

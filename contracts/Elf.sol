@@ -85,6 +85,7 @@ abstract contract Elf is ERC20Permit, IElf {
         returns (uint256)
     {
         // Send tokens to the proxy
+        console.log(address(token));
         token.safeTransferFrom(msg.sender, address(this), _amount);
         // Calls our internal deposit function
         (uint256 shares, ) = _deposit();

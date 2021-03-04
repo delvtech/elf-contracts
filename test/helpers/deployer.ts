@@ -40,6 +40,8 @@ export interface ethPoolMainnetInterface {
   weth: IWETH;
   yweth: YearnVault;
   elf: YVaultAssetProxy;
+  tranche: Tranche;
+  proxy: UserProxyTest;
 }
 
 export interface usdcPoolMainnetInterface {
@@ -143,11 +145,19 @@ export async function loadEthPoolMainnetFixture() {
     "eyWETH"
   );
 
+  const tranche = await deployTranche(signer, elf.address, 5000000);
+
+  // Setup the proxy
+  const proxyFactory = new UserProxyTest__factory(signer);
+  const proxy = await proxyFactory.deploy(wethAddress, tranche.address);
+
   return {
     signer,
     weth,
     yweth,
     elf,
+    tranche,
+    proxy,
   };
 }
 
@@ -177,7 +187,7 @@ export async function loadUsdcPoolMainnetFixture() {
     yusdc,
     elf,
     tranche,
-    proxy
+    proxy,
   };
 }
 

@@ -1,5 +1,8 @@
 import {ethers} from "hardhat";
-import {loadUsdcPoolMainnetFixture, usdcPoolMainnetInterface} from "./helpers/deployer";
+import {
+  loadUsdcPoolMainnetFixture,
+  usdcPoolMainnetInterface,
+} from "./helpers/deployer";
 import {impersonate, stopImpersonating} from "./helpers/impersonate";
 import {Contract} from "ethers";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
@@ -41,7 +44,9 @@ describe("UserProxyTests", function () {
 
     // Make a gas reserve deposit to test that logic
     const twohundred = ethers.utils.parseUnits("200", 6);
-    await fixture.usdc.connect(usdcWhale).approve(fixture.elf.address, twohundred.mul(2));
+    await fixture.usdc
+      .connect(usdcWhale)
+      .approve(fixture.elf.address, twohundred.mul(2));
     await fixture.elf.connect(usdcWhale).reserveDeposit(twohundred);
   });
 

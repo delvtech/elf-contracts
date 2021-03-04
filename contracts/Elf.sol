@@ -42,7 +42,11 @@ abstract contract Elf is ERC20Permit, IElf {
 
     /// @dev Makes the actual withdraw from the 'vault'
     /// @return returns the amount produced
-    function _withdraw(uint256, address, uint256) internal virtual returns (uint256);
+    function _withdraw(
+        uint256,
+        address,
+        uint256
+    ) internal virtual returns (uint256);
 
     /// @dev Converts between an internal balance representation
     ///      and underlying tokens.
@@ -85,7 +89,6 @@ abstract contract Elf is ERC20Permit, IElf {
         returns (uint256)
     {
         // Send tokens to the proxy
-        console.log(address(token));
         token.safeTransferFrom(msg.sender, address(this), _amount);
         // Calls our internal deposit function
         (uint256 shares, ) = _deposit();
@@ -109,7 +112,9 @@ abstract contract Elf is ERC20Permit, IElf {
         )
     {
         // Calls our internal deposit function
+        // uint256 gas = gasleft();
         (uint256 shares, uint256 usedUnderlying) = _deposit();
+        // console.log("deposit gas", gas - gasleft());
         // TODO - When we roll our own custom token encoding this sstore can be collapsed
         // into the one that's done in mint.
         uint256 balanceBefore = balanceOf(msg.sender);
@@ -128,7 +133,7 @@ abstract contract Elf is ERC20Permit, IElf {
         uint256 _shares,
         uint256 _minUnderlying
     ) public override returns (uint256) {
-        _elfWithdraw(_destination, _shares, _minUnderlying, 0);
+        return _elfWithdraw(_destination, _shares, _minUnderlying, 0);
     }
 
     /// @notice This function burns enough tokens from the sender to send _amount
@@ -147,7 +152,13 @@ abstract contract Elf is ERC20Permit, IElf {
         // Then we calculate the number of shares we need
         uint256 shares = (_amount * 1e18) / underlyingPerElf;
         // Using this we call the normal withdraw function
-        return _elfWithdraw(_destination, shares, _minUnderlying, underlyingPerElf);
+        return
+            _elfWithdraw(
+                _destination,
+                shares,
+                _minUnderlying,
+                underlyingPerElf
+            );
     }
 
     /// @notice This internal function allows the caller to provide a precomputed 'underlyingPerElf'
@@ -161,12 +172,17 @@ abstract contract Elf is ERC20Permit, IElf {
         address _destination,
         uint256 _shares,
         uint256 _minUnderlying,
-        uint256 _underlyingPerShare) internal returns(uint256){
+        uint256 _underlyingPerShare
+    ) internal returns (uint256) {
         // Burn users ELF shares
         _burn(msg.sender, _shares);
 
         // Withdraw that many shares from the vault
-        uint256 withdrawAmount = _withdraw(_shares, _destination, _underlyingPerShare);
+        uint256 withdrawAmount = _withdraw(
+            _shares,
+            _destination,
+            _underlyingPerShare
+        );
 
         // We revert if this call doesn't produce enough underlying
         // This security feature is useful in some edge cases

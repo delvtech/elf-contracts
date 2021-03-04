@@ -9,8 +9,6 @@ import "../Elf.sol";
 import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
 
-import "hardhat/console.sol";
-
 /// @author Element Finance
 /// @title Yearn Vault v1 Asset Proxy
 contract YVaultAssetProxy is Elf {
@@ -27,10 +25,10 @@ contract YVaultAssetProxy is Elf {
     mapping(address => uint256) public reserveBalances;
     // These variables store the token balances of this contract and
     // should be packed by solidity into a single slot.
-    uint128 reserveUnderlying;
-    uint128 reserveElf;
+    uint128 public reserveUnderlying;
+    uint128 public reserveElf;
     // This is the total amount of reserve deposits
-    uint256 reserveSupply;
+    uint256 public reserveSupply;
 
     /// @notice Constructs this contract and stores needed data
     /// @param vault_ the yearn v2 vault
@@ -50,7 +48,7 @@ contract YVaultAssetProxy is Elf {
 
     /// @notice This function allows a user to deposit to the reserve
     ///      Note - there's no incentive to do so you would earn some
-    ///      intrest but less intrest than yearn. All deposits use 
+    ///      intrest but less intrest than yearn. All deposits use
     ///      the underlying token.
     /// @param _amount The amount of underlying to deposit
     function reserveDeposit(uint256 _amount) external {
@@ -58,7 +56,7 @@ contract YVaultAssetProxy is Elf {
         // inheritied from the abstract Elf contract.
         token.transferFrom(msg.sender, address(this), _amount);
         // Load the reserves
-        (uint256 localUnderlying, uint256 localElf) = getReserves();
+        (uint256 localUnderlying, uint256 localElf) = _getReserves();
         // Calculate the total reserve value
         uint256 totalValue = localUnderlying;
         totalValue += _underlying(localElf);
@@ -70,7 +68,7 @@ contract YVaultAssetProxy is Elf {
             mintAmount = _amount;
         } else {
             // Otherwise we mint the propotion that this increase the value held by this contract
-            mintAmount = (reserveSupply*_amount)/totalValue;
+            mintAmount = (reserveSupply * _amount) / totalValue;
         }
 
         // This hack means that the contract will never have zero balance of underlying
@@ -80,10 +78,9 @@ contract YVaultAssetProxy is Elf {
             _amount -= 1;
         }
         // Set the reserves that this contract has more underlying
-        setReserves(localUnderlying + _amount, localElf);
+        _setReserves(localUnderlying + _amount, localElf);
         // Note that the sender has deposited and increase reserveSupply
         reserveBalances[msg.sender] += mintAmount;
-        console.log("Reserve deposited", _amount);
         reserveSupply += mintAmount;
     }
 
@@ -92,60 +89,54 @@ contract YVaultAssetProxy is Elf {
     function reserveWithdraw(uint256 _amount) external {
         // Remove '_amount' from the balances of the sender. Because this is 8.0 it will revert on underflow
         reserveBalances[msg.sender] -= _amount;
-        // We load the reserves 
-        (uint256 localUnderlying, uint256 localElf) = getReserves();
+        // We load the reserves
+        (uint256 localUnderlying, uint256 localElf) = _getReserves();
         uint256 localReserveSupply = reserveSupply;
         // Then we calculate the proportion of the ELF to redeem
-        uint256 userElf = (localElf*_amount)/localReserveSupply;
+        uint256 userElf = (localElf * _amount) / localReserveSupply;
         // First we withdraw the proportion of ELF tokens belonging to the caller
         uint256 freedUnderlying = vault.withdraw(userElf, address(this), 0);
         // We calculate the amount of underlying to send
-        uint256 userUnderlying = (localUnderlying*_amount)/localReserveSupply;
+        uint256 userUnderlying = (localUnderlying * _amount) /
+            localReserveSupply;
         // We send the redemption underlying to the caller
-        // Note 'vault' is an immutable from Elf
-        vault.transfer(msg.sender, freedUnderlying + userUnderlying);
+        // Note 'token' is an immutable from Elf
+        token.transfer(msg.sender, freedUnderlying + userUnderlying);
         // We then store the updated reserve amounts
-        setReserves(localUnderlying - userUnderlying, localElf - userElf);
+        _setReserves(localUnderlying - userUnderlying, localElf - userElf);
+        // We note a reduction in local supply
+        reserveSupply -= _amount;
     }
 
-    /// @notice Makes the actual deposit into the yearn vault 
+    /// @notice Makes the actual deposit into the yearn vault
     ///         Tries to use the local balances before depositing
     /// @return (the shares minted, amount underlying used)
     function _deposit() internal override returns (uint256, uint256) {
         //Load reserves
-        (uint256 localUnderlying, uint256 localElf) = getReserves();
+        (uint256 localUnderlying, uint256 localElf) = _getReserves();
         // Get the amount deposited
         uint256 amount = token.balanceOf(address(this)) - localUnderlying;
-        // fixing for the fact there's an extra underlying 
-        if (localUnderlying != 0 || localElf !=0 ) {
+        // fixing for the fact there's an extra underlying
+        if (localUnderlying != 0 || localElf != 0) {
             amount -= 1;
         }
         // Calculate the amount of Elf the amount deposited is worth
         // Note - to get a realistic reading and avoid rounding errors we
         // use the method of the yearn vault instead of '_pricePerShare'
-        uint256 gas = gasleft();
         uint256 yearnTotalSupply = vault.totalSupply();
         uint256 yearnTotalAssets = vault.totalAssets();
-        console.log("double call gas used", gas - gasleft());
-        uint256 neededElf = (amount * yearnTotalSupply)/yearnTotalAssets;
+        uint256 neededElf = (amount * yearnTotalSupply) / yearnTotalAssets;
         // If we have enough in local reserves we don't call out for deposits
-        console.log(localElf, neededElf);
-        console.log(localUnderlying);
         if (localElf > neededElf) {
-            console.log("used reserves");
             // We set the reserves
-            gas = gasleft();
-            setReserves(localUnderlying + amount, localElf - neededElf);
-            console.log("set reserves", gas -gasleft());
+            _setReserves(localUnderlying + amount, localElf - neededElf);
             // And then we short circut execution and return
-            return(neededElf, amount);
+            return (neededElf, amount);
         }
         // Deposit and get the shares that were minted to this
         uint256 shares = vault.deposit(localUnderlying + amount, address(this));
-        console.log("real ratio", ((localUnderlying + amount)*10**vaultDecimals)/ shares );
-        console.log(shares, neededElf);
         // We set the reserves
-        setReserves(0, shares - neededElf);
+        _setReserves(0, shares - neededElf);
         // Return the amount of elf the user needs, and the amount used for it.
         return (neededElf, amount);
     }
@@ -154,32 +145,36 @@ contract YVaultAssetProxy is Elf {
     /// @param _shares the number of shares to withdraw
     /// @param _destination the address to send the output funds
     /// @param _underlyingPerShare the possibly precomputed underlying per share
-    function _withdraw(uint256 _shares, address _destination, uint256 _underlyingPerShare)
-        internal
-        override
-        returns (uint256)
-    {
+    function _withdraw(
+        uint256 _shares,
+        address _destination,
+        uint256 _underlyingPerShare
+    ) internal override returns (uint256) {
         // If we do not have it we load the price per share
         if (_underlyingPerShare == 0) {
             _underlyingPerShare = _pricePerShare();
         }
         // We load the reserves
-        (uint256 localUnderlying, uint256 localElf) = getReserves();
+        (uint256 localUnderlying, uint256 localElf) = _getReserves();
         // If we have enough underlying we don't have to actually withdraw
-        uint256 needed = (_shares*_underlyingPerShare)/10**vaultDecimals;
-        if( needed < localUnderlying) {
+        uint256 needed = (_shares * _underlyingPerShare) / 10**vaultDecimals;
+        if (needed < localUnderlying) {
             // We set the reserves to be the new reserves
-            setReserves(localUnderlying - needed, localElf + _shares);
+            _setReserves(localUnderlying - needed, localElf + _shares);
             // Then transfer needed underlying to the destination
             // 'token' is an immutable in Elf
             token.transfer(_destination, needed);
             // Short circut and return
-            return(needed);
+            return (needed);
         }
         // If we don't have enough local reserves we do the actual withdraw
         // Withdraws shares from the vault with max loss 0.01%
-        uint256 amountReceived = vault.withdraw(_shares+localElf, address(this), 1);
-        setReserves(amountReceived - needed, 0);
+        uint256 amountReceived = vault.withdraw(
+            _shares + localElf,
+            address(this),
+            1
+        );
+        _setReserves(amountReceived - needed, 0);
         // Transfer the underlying to the destination 'token' is an immutable in elf
         token.transfer(_destination, needed);
         // Return the amount of underlying
@@ -202,7 +197,7 @@ contract YVaultAssetProxy is Elf {
 
     /// @notice Get the price per share in the vault
     /// @return The price per share in units of underlying;
-    function _pricePerShare() internal view returns(uint256) {
+    function _pricePerShare() internal view returns (uint256) {
         return vault.pricePerShare();
     }
 
@@ -214,14 +209,16 @@ contract YVaultAssetProxy is Elf {
 
     /// @notice Helper to get the reserves with one sload
     /// @return (reserve underlying, reserve elf)
-    function getReserves() internal returns(uint256, uint256) {
+    function _getReserves() internal view returns (uint256, uint256) {
         return (uint256(reserveUnderlying), uint256(reserveElf));
     }
 
     /// @notice helper to set reserves using one sstore
     /// @param newReserveUnderlying the new reserve of underlying
     /// @param newReserveElf the new reserve of elf
-    function setReserves(uint256 newReserveUnderlying, uint256 newReserveElf) internal {
+    function _setReserves(uint256 newReserveUnderlying, uint256 newReserveElf)
+        internal
+    {
         reserveUnderlying = uint128(newReserveUnderlying);
         reserveElf = uint128(newReserveElf);
     }

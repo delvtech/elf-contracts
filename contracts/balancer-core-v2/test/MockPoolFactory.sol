@@ -30,9 +30,6 @@ contract MockPoolFactory is BasePoolFactory {
     constructor(IVault _vault) BasePoolFactory(_vault) {}
 
     function create() external returns (address) {
-        return
-            _create(
-                abi.encodePacked(type(MockFactoryCreatedPool).creationCode)
-            );
+        return _create(abi.encodePacked(type(MockFactoryCreatedPool).creationCode));
     }
 }

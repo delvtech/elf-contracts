@@ -17,10 +17,11 @@ pragma solidity ^0.7.0;
 import "../pools/weighted/WeightedMath.sol";
 
 contract MockWeightedMath is WeightedMath {
-    function invariant(
-        uint256[] calldata normalizedWeights,
-        uint256[] calldata balances
-    ) external pure returns (uint256) {
+    function invariant(uint256[] calldata normalizedWeights, uint256[] calldata balances)
+        external
+        pure
+        returns (uint256)
+    {
         return _invariant(normalizedWeights, balances);
     }
 
@@ -31,14 +32,7 @@ contract MockWeightedMath is WeightedMath {
         uint256 tokenWeightOut,
         uint256 tokenAmountIn
     ) external pure returns (uint256) {
-        return
-            _outGivenIn(
-                tokenBalanceIn,
-                tokenWeightIn,
-                tokenBalanceOut,
-                tokenWeightOut,
-                tokenAmountIn
-            );
+        return _outGivenIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn);
     }
 
     function inGivenOut(
@@ -48,14 +42,7 @@ contract MockWeightedMath is WeightedMath {
         uint256 tokenWeightOut,
         uint256 tokenAmountOut
     ) external pure returns (uint256) {
-        return
-            _inGivenOut(
-                tokenBalanceIn,
-                tokenWeightIn,
-                tokenBalanceOut,
-                tokenWeightOut,
-                tokenAmountOut
-            );
+        return _inGivenOut(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountOut);
     }
 
     function calculateDueTokenProtocolSwapFee(

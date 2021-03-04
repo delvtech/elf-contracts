@@ -1,14 +1,14 @@
-import {ethers} from "hardhat";
+import { ethers } from "hardhat";
 import {
   loadUsdcPoolMainnetFixture,
-  usdcPoolMainnetInterface,
+  UsdcPoolMainnetInterface,
 } from "./helpers/deployer";
-import {impersonate, stopImpersonating} from "./helpers/impersonate";
-import {Contract} from "ethers";
-import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { impersonate, stopImpersonating } from "./helpers/impersonate";
+import { Contract } from "ethers";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
 describe("UserProxyTests", function () {
-  let fixture: usdcPoolMainnetInterface;
+  let fixture: UsdcPoolMainnetInterface;
   let tranche: Contract;
   let proxy: Contract;
   let underlying: Contract;

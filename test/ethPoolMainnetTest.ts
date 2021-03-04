@@ -1,21 +1,20 @@
-import {ethers} from "hardhat";
+import { ethers, waffle } from "hardhat";
 
 import {
   loadEthPoolMainnetFixture,
-  ethPoolMainnetInterface,
+  EthPoolMainnetInterface,
 } from "./helpers/deployer";
-import {createSnapshot, restoreSnapshot} from "./helpers/snapshots";
-import {impersonate} from "./helpers/impersonate";
+import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
+import { impersonate } from "./helpers/impersonate";
 
-import {expect} from "chai";
-import {Signer, utils} from "ethers";
+import { expect } from "chai";
+import { Signer, utils } from "ethers";
 
-const {waffle} = require("hardhat");
-const provider = waffle.provider;
+const { provider } = waffle;
 
 describe("ETHPool-Mainnet", () => {
-  let users: {user: Signer; address: string}[];
-  let fixture: ethPoolMainnetInterface;
+  let users: { user: Signer; address: string }[];
+  let fixture: EthPoolMainnetInterface;
   before(async () => {
     // snapshot initial state
     await createSnapshot(provider);
@@ -25,7 +24,7 @@ describe("ETHPool-Mainnet", () => {
 
     // begin to populate the user array by assigning each index a signer
     users = ((await ethers.getSigners()) as Signer[]).map(function (user) {
-      return {user, address: ""};
+      return { user, address: "" };
     });
 
     // We load and impersonate the governance of the yweth contract
@@ -40,25 +39,25 @@ describe("ETHPool-Mainnet", () => {
     // finish populating the user array by assigning each index a signer address
     await Promise.all(
       users.map(async (userInfo) => {
-        let user = userInfo.user;
+        const { user } = userInfo;
         userInfo.address = await user.getAddress();
       })
     );
     await fixture.weth
       .connect(users[1].user)
-      .deposit({value: utils.parseEther("20000")});
+      .deposit({ value: utils.parseEther("20000") });
     await fixture.weth
       .connect(users[1].user)
       .approve(fixture.elf.address, utils.parseEther("20000"));
     await fixture.weth
       .connect(users[2].user)
-      .deposit({value: utils.parseEther("20000")});
+      .deposit({ value: utils.parseEther("20000") });
     await fixture.weth
       .connect(users[2].user)
       .approve(fixture.elf.address, utils.parseEther("20000"));
     await fixture.weth
       .connect(users[3].user)
-      .deposit({value: utils.parseEther("90000")});
+      .deposit({ value: utils.parseEther("90000") });
     await fixture.weth
       .connect(users[3].user)
       .approve(fixture.elf.address, utils.parseEther("90000"));
@@ -112,7 +111,7 @@ describe("ETHPool-Mainnet", () => {
 
       // Test a transfer
       let user1Balance = await fixture.elf.balanceOf(users[1].address);
-      let user3Balance = await fixture.elf.balanceOf(users[3].address);
+      const user3Balance = await fixture.elf.balanceOf(users[3].address);
       await fixture.elf
         .connect(users[3].user)
         .transfer(users[1].address, user3Balance.div(ethers.BigNumber.from(2)));

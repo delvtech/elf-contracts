@@ -28,13 +28,12 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
     using SafeERC20 for IERC20;
 
     // Stores all account's Internal Balance for each token.
-    mapping(address => mapping(IERC20 => uint256))
-        private _internalTokenBalance;
+    mapping(address => mapping(IERC20 => uint256)) private _internalTokenBalance;
 
     function getInternalBalance(address user, IERC20[] memory tokens)
         external
-        override
         view
+        override
         returns (uint256[] memory balances)
     {
         balances = new uint256[](tokens.length);
@@ -43,11 +42,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         }
     }
 
-    function depositToInternalBalance(BalanceTransfer[] memory transfers)
-        external
-        override
-        nonReentrant
-    {
+    function depositToInternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
@@ -61,11 +56,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         }
     }
 
-    function withdrawFromInternalBalance(BalanceTransfer[] memory transfers)
-        external
-        override
-        nonReentrant
-    {
+    function withdrawFromInternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
@@ -82,11 +73,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         }
     }
 
-    function transferInternalBalance(BalanceTransfer[] memory transfers)
-        external
-        override
-        nonReentrant
-    {
+    function transferInternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
@@ -122,10 +109,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         uint256 amount
     ) internal {
         uint256 currentInternalBalance = _getInternalBalance(account, token);
-        require(
-            currentInternalBalance >= amount,
-            "INSUFFICIENT_INTERNAL_BALANCE"
-        );
+        require(currentInternalBalance >= amount, "INSUFFICIENT_INTERNAL_BALANCE");
         uint256 newBalance = currentInternalBalance - amount;
         _setInternalBalance(account, token, newBalance);
     }
@@ -148,11 +132,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
     /**
      * @dev Returns `account`'s Internal Balance for `token`.
      */
-    function _getInternalBalance(address account, IERC20 token)
-        internal
-        view
-        returns (uint256)
-    {
+    function _getInternalBalance(address account, IERC20 token) internal view returns (uint256) {
         return _internalTokenBalance[account][token];
     }
 }

@@ -23,11 +23,7 @@ contract BalanceAllocationMock {
         return balance.total();
     }
 
-    function totals(bytes32[] memory balances)
-        public
-        pure
-        returns (uint256[] memory)
-    {
+    function totals(bytes32[] memory balances) public pure returns (uint256[] memory) {
         return BalanceAllocation.totals(balances);
     }
 
@@ -51,85 +47,43 @@ contract BalanceAllocationMock {
         return balance.isZero();
     }
 
-    function toBalance(
-        uint256 _cash,
-        uint256 _managed,
-        uint256 _blockNumber
-    ) public pure returns (bytes32) {
+    function toBalance(uint256 _cash, uint256 _managed, uint256 _blockNumber) public pure returns (bytes32) {
         return BalanceAllocation.toBalance(_cash, _managed, _blockNumber);
     }
 
-    function increaseCash(bytes32 balance, uint256 amount)
-        public
-        view
-        returns (bytes32)
-    {
+    function increaseCash(bytes32 balance, uint256 amount) public view returns (bytes32) {
         return balance.increaseCash(amount);
     }
 
-    function decreaseCash(bytes32 balance, uint256 amount)
-        public
-        view
-        returns (bytes32)
-    {
+    function decreaseCash(bytes32 balance, uint256 amount) public view returns (bytes32) {
         return balance.decreaseCash(amount);
     }
 
-    function cashToManaged(bytes32 balance, uint256 amount)
-        public
-        pure
-        returns (bytes32)
-    {
+    function cashToManaged(bytes32 balance, uint256 amount) public pure returns (bytes32) {
         return balance.cashToManaged(amount);
     }
 
-    function managedToCash(bytes32 balance, uint256 amount)
-        public
-        pure
-        returns (bytes32)
-    {
+    function managedToCash(bytes32 balance, uint256 amount) public pure returns (bytes32) {
         return balance.managedToCash(amount);
     }
 
-    function setManaged(bytes32 balance, uint256 newManaged)
-        public
-        view
-        returns (bytes32)
-    {
+    function setManaged(bytes32 balance, uint256 newManaged) public view returns (bytes32) {
         return balance.setManaged(newManaged);
     }
 
-    function fromSharedToBalanceA(bytes32 sharedCash, bytes32 sharedManaged)
-        public
-        pure
-        returns (bytes32)
-    {
-        return
-            BalanceAllocation.fromSharedToBalanceA(sharedCash, sharedManaged);
+    function fromSharedToBalanceA(bytes32 sharedCash, bytes32 sharedManaged) public pure returns (bytes32) {
+        return BalanceAllocation.fromSharedToBalanceA(sharedCash, sharedManaged);
     }
 
-    function fromSharedToBalanceB(bytes32 sharedCash, bytes32 sharedManaged)
-        public
-        pure
-        returns (bytes32)
-    {
-        return
-            BalanceAllocation.fromSharedToBalanceB(sharedCash, sharedManaged);
+    function fromSharedToBalanceB(bytes32 sharedCash, bytes32 sharedManaged) public pure returns (bytes32) {
+        return BalanceAllocation.fromSharedToBalanceB(sharedCash, sharedManaged);
     }
 
-    function toSharedCash(bytes32 tokenABalance, bytes32 tokenBBalance)
-        public
-        pure
-        returns (bytes32)
-    {
+    function toSharedCash(bytes32 tokenABalance, bytes32 tokenBBalance) public pure returns (bytes32) {
         return BalanceAllocation.toSharedCash(tokenABalance, tokenBBalance);
     }
 
-    function toSharedManaged(bytes32 tokenABalance, bytes32 tokenBBalance)
-        public
-        pure
-        returns (bytes32)
-    {
+    function toSharedManaged(bytes32 tokenABalance, bytes32 tokenBBalance) public pure returns (bytes32) {
         return BalanceAllocation.toSharedManaged(tokenABalance, tokenBBalance);
     }
 }

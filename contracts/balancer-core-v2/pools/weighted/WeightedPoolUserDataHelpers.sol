@@ -19,27 +19,15 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./WeightedPool.sol";
 
 library WeightedPoolUserDataHelpers {
-    function joinKind(bytes memory self)
-        internal
-        pure
-        returns (WeightedPool.JoinKind)
-    {
+    function joinKind(bytes memory self) internal pure returns (WeightedPool.JoinKind) {
         return abi.decode(self, (WeightedPool.JoinKind));
     }
 
-    function exitKind(bytes memory self)
-        internal
-        pure
-        returns (WeightedPool.ExitKind)
-    {
+    function exitKind(bytes memory self) internal pure returns (WeightedPool.ExitKind) {
         return abi.decode(self, (WeightedPool.ExitKind));
     }
 
-    function initialAmountsIn(bytes memory self)
-        internal
-        pure
-        returns (uint256[] memory amountsIn)
-    {
+    function initialAmountsIn(bytes memory self) internal pure returns (uint256[] memory amountsIn) {
         (, amountsIn) = abi.decode(self, (WeightedPool.JoinKind, uint256[]));
     }
 
@@ -48,21 +36,11 @@ library WeightedPoolUserDataHelpers {
         pure
         returns (uint256[] memory amountsIn, uint256 minBPTAmountIn)
     {
-        (, amountsIn, minBPTAmountIn) = abi.decode(
-            self,
-            (WeightedPool.JoinKind, uint256[], uint256)
-        );
+        (, amountsIn, minBPTAmountIn) = abi.decode(self, (WeightedPool.JoinKind, uint256[], uint256));
     }
 
-    function tokenInForExactBptOut(bytes memory self)
-        internal
-        pure
-        returns (uint256 bptAmountOut, uint256 tokenIndex)
-    {
-        (, bptAmountOut, tokenIndex) = abi.decode(
-            self,
-            (WeightedPool.JoinKind, uint256, uint256)
-        );
+    function tokenInForExactBptOut(bytes memory self) internal pure returns (uint256 bptAmountOut, uint256 tokenIndex) {
+        (, bptAmountOut, tokenIndex) = abi.decode(self, (WeightedPool.JoinKind, uint256, uint256));
     }
 
     function exactBptInForOneTokenOut(bytes memory self)
@@ -70,17 +48,10 @@ library WeightedPoolUserDataHelpers {
         pure
         returns (uint256 bptAmountIn, uint256 tokenIndex)
     {
-        (, bptAmountIn, tokenIndex) = abi.decode(
-            self,
-            (WeightedPool.ExitKind, uint256, uint256)
-        );
+        (, bptAmountIn, tokenIndex) = abi.decode(self, (WeightedPool.ExitKind, uint256, uint256));
     }
 
-    function exactBptInForAllTokensOut(bytes memory self)
-        internal
-        pure
-        returns (uint256 bptAmountIn)
-    {
+    function exactBptInForAllTokensOut(bytes memory self) internal pure returns (uint256 bptAmountIn) {
         (, bptAmountIn) = abi.decode(self, (WeightedPool.ExitKind, uint256));
     }
 
@@ -89,9 +60,6 @@ library WeightedPoolUserDataHelpers {
         pure
         returns (uint256[] memory amountsOut, uint256 maxBPTAmountIn)
     {
-        (, amountsOut, maxBPTAmountIn) = abi.decode(
-            self,
-            (WeightedPool.ExitKind, uint256[], uint256)
-        );
+        (, amountsOut, maxBPTAmountIn) = abi.decode(self, (WeightedPool.ExitKind, uint256[], uint256));
     }
 }

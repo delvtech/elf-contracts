@@ -1,7 +1,9 @@
-import {expect} from "chai";
-import {ethers, network} from "hardhat";
-import {Contract, BigNumber, providers} from "ethers";
-import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { expect } from "chai";
+import { BigNumber, Contract, providers } from "ethers";
+import { ethers, network } from "hardhat";
+
+import { YieldCurvePool } from "../typechain/YieldCurvePool";
 
 describe("YieldPool", function () {
   const BOND_DECIMALS = 17;
@@ -9,7 +11,7 @@ describe("YieldPool", function () {
   const SECONDS_IN_YEAR = 31536000;
   const fakeAddress = "0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c";
   let accounts: SignerWithAddress[];
-  let pool: Contract;
+  let pool: YieldCurvePool;
   let startTimestamp: number;
   let erc20_base: Contract;
   let erc20_bond: Contract;
@@ -22,7 +24,9 @@ describe("YieldPool", function () {
   // An interface to allow us to access the ethers log return
   interface LogData {
     event: string;
-    data: any;
+
+    // TODO: figure out what this is.
+    data: unknown;
   }
 
   // A partially extended interface for the post mining transaction receipt
@@ -38,13 +42,13 @@ describe("YieldPool", function () {
   }
 
   function newBigNumber(data: number): BigNumber {
-    const cast = new (BigNumber.from as any)(data);
+    const cast = BigNumber.from(data);
     return cast;
   }
 
   async function resetPool() {
     const Pool = await ethers.getContractFactory("YieldPoolTest");
-    pool = await Pool.deploy(
+    pool = (await Pool.deploy(
       erc20_base.address.toString(),
       erc20_bond.address.toString(),
       startTimestamp + SECONDS_IN_YEAR,
@@ -54,7 +58,7 @@ describe("YieldPool", function () {
       fakeAddress,
       "YieldBPT",
       "BPT"
-    );
+    )) as YieldCurvePool;
   }
 
   before(async function () {
@@ -68,7 +72,7 @@ describe("YieldPool", function () {
     vault = await Vault.deploy();
 
     const Pool = await ethers.getContractFactory("YieldPoolTest");
-    pool = await Pool.deploy(
+    pool = (await Pool.deploy(
       erc20_base.address.toString(),
       erc20_bond.address.toString(),
       startTimestamp + SECONDS_IN_YEAR,
@@ -78,7 +82,7 @@ describe("YieldPool", function () {
       fakeAddress,
       "YieldBPT",
       "BPT"
-    );
+    )) as YieldCurvePool;
 
     accounts = await ethers.getSigners();
   });
@@ -102,7 +106,7 @@ describe("YieldPool", function () {
 
   it("Converts token units to decimal units", async function () {
     // Check that a random bond unit is correctly decimal encoded
-    let tokenAmount = getRandomInt(1000);
+    const tokenAmount = getRandomInt(1000);
     let normalized = await pool.tokenToFixed(
       ethers.utils.parseUnits(tokenAmount.toString(), BOND_DECIMALS),
       erc20_bond.address
@@ -122,7 +126,7 @@ describe("YieldPool", function () {
 
   it("Converts token units to decimal units", async function () {
     // Check that a random bond unit is correctly decimal encoded
-    let tokenAmount = getRandomInt(1000);
+    const tokenAmount = getRandomInt(1000);
     let normalized = await pool.tokenToFixed(
       ethers.utils.parseUnits(tokenAmount.toString(), BOND_DECIMALS),
       erc20_bond.address
@@ -142,8 +146,8 @@ describe("YieldPool", function () {
 
   it("Converts token units to decimal units", async function () {
     // Check that a random bond unit is correctly decimal encoded
-    let randAmount = getRandomInt(1000);
-    let normalized = ethers.utils.parseUnits(randAmount.toString(), 18);
+    const randAmount = getRandomInt(1000);
+    const normalized = ethers.utils.parseUnits(randAmount.toString(), 18);
     let tokenAmount = await pool.fixedToToken(normalized, erc20_bond.address);
     expect(tokenAmount).to.be.eq(
       ethers.utils.parseUnits(randAmount.toString(), BOND_DECIMALS)
@@ -162,7 +166,7 @@ describe("YieldPool", function () {
     ]);
     await network.provider.send("evm_mine");
     // We now call the function which returns 1 - t, which should be 0.5
-    let exponent = await pool.getYieldExponent();
+    const exponent = await pool.getYieldExponent();
     expect(exponent).to.be.eq(ethers.utils.parseUnits("0.5", 18));
   });
 
@@ -256,12 +260,12 @@ describe("YieldPool", function () {
     // Mint governance lp
     await mineTx(pool.mintGovLP([ten.mul(ten), five.mul(ten)]));
     // We now check that all of the fees were consume
-    let feesUnderlying = await pool.feesUnderlying();
-    let feesBond = await pool.feesBond();
+    const feesUnderlying = await pool.feesUnderlying();
+    const feesBond = await pool.feesBond();
     expect(newBigNumber(0)).to.be.eq(feesUnderlying);
     expect(newBigNumber(0)).to.be.eq(feesBond);
     // We check that the governance address got ten lp tokens
-    let govBalance = await pool.balanceOf(fakeAddress);
+    const govBalance = await pool.balanceOf(fakeAddress);
     expect(ethers.utils.parseUnits("0.5", 18)).to.be.eq(govBalance);
   });
 
@@ -389,7 +393,7 @@ describe("YieldPool", function () {
     const reserveBond = ethers.utils.parseUnits("12000", BOND_DECIMALS);
     const reserveUnderlying = ethers.utils.parseUnits("10000", BASE_DECIMALS);
 
-    let quote = await pool.callStatic.onSwapGivenIn(
+    const quote = await pool.callStatic.onSwapGivenIn(
       {
         tokenIn: erc20_base.address,
         tokenOut: erc20_bond.address,
@@ -414,7 +418,7 @@ describe("YieldPool", function () {
     const reserveBond = ethers.utils.parseUnits("12000", BOND_DECIMALS);
     const reserveUnderlying = ethers.utils.parseUnits("10000", BASE_DECIMALS);
 
-    let quote = await pool.callStatic.onSwapGivenIn(
+    const quote = await pool.callStatic.onSwapGivenIn(
       {
         tokenIn: erc20_bond.address,
         tokenOut: erc20_base.address,
@@ -437,7 +441,7 @@ describe("YieldPool", function () {
     const reserveBond = ethers.utils.parseUnits("12000", BOND_DECIMALS);
     const reserveUnderlying = ethers.utils.parseUnits("10000", BASE_DECIMALS);
 
-    let quote = await pool.callStatic.onSwapGivenOut(
+    const quote = await pool.callStatic.onSwapGivenOut(
       {
         tokenIn: erc20_base.address,
         tokenOut: erc20_bond.address,
@@ -462,7 +466,7 @@ describe("YieldPool", function () {
     const reserveBond = ethers.utils.parseUnits("12000", BOND_DECIMALS);
     const reserveUnderlying = ethers.utils.parseUnits("10000", BASE_DECIMALS);
 
-    let quote = await pool.callStatic.onSwapGivenOut(
+    const quote = await pool.callStatic.onSwapGivenOut(
       {
         tokenIn: erc20_bond.address,
         tokenOut: erc20_base.address,

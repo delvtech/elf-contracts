@@ -4,3 +4,5 @@ src/interfaces/Context.sol
 src/libraries/Address.sol
 src/libraries/SafeERC20.sol
 src/test
+contracts/balancer-core-v2
+contracts/libraries

@@ -22,11 +22,7 @@ contract MockVault {
     event PoolJoined(uint256[] amountsIn, uint256[] dueProtocolFeeAmounts);
     event PoolExited(uint256[] amountsOut, uint256[] dueProtocolFeeAmounts);
 
-    function registerPool(IVault.PoolSpecialization)
-        external
-        view
-        returns (bytes32)
-    {
+    function registerPool(IVault.PoolSpecialization) external view returns (bytes32) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -57,10 +53,7 @@ contract MockVault {
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external {
-        (
-            uint256[] memory amountsIn,
-            uint256[] memory dueProtocolFeeAmounts
-        ) = IBasePool(poolAddress).onJoinPool(
+        (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = IBasePool(poolAddress).onJoinPool(
             poolId,
             msg.sender,
             recipient,
@@ -81,10 +74,7 @@ contract MockVault {
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external {
-        (
-            uint256[] memory amountsOut,
-            uint256[] memory dueProtocolFeeAmounts
-        ) = IBasePool(poolAddress).onExitPool(
+        (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = IBasePool(poolAddress).onExitPool(
             poolId,
             msg.sender,
             recipient,

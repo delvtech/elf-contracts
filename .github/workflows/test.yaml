@@ -14,20 +14,20 @@ jobs:
       steps:
         - uses: actions/checkout@v2
         - name: Install dependencies
-          run: npm install 
+          run: npm install
         - name: compile
           run: npx hardhat compile
         - name: test
-          run: npm run test:quick
+          run: npm run test
     sim:
       runs-on: ubuntu-latest
       steps:
         - uses: actions/checkout@v2
         - name: Install dependencies
-          run: npm install 
+          run: npm install
         - name: simulation
           run: npm run sim
-        
+
 
 
 

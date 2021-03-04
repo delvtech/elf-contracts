@@ -194,43 +194,31 @@ describe("USDCPool-Mainnet", () => {
       // Now we try some deposits
       // Note we use less here because the second calc has some rounding error
       // In the first trade the reserve has no elf
-      let receipt = await (
-        await fixture.elf.connect(users[1].user).deposit(users[1].address, 1e11)
-      ).wait();
+      await fixture.elf.connect(users[1].user).deposit(users[1].address, 1e11);
       let userBalance = await fixture.elf.balanceOf(users[1].address);
       let elfAmount = BigNumber.from(1e11).mul(1e6).div(pricePerFullShare);
       expect(userBalance).to.be.at.least(subError(elfAmount));
-      console.log("full consumed", receipt.gasUsed.toNumber());
 
       // The second is fully fillable from the reserve's elf
-      receipt = await (
-        await fixture.elf.connect(users[2].user).deposit(users[2].address, 2e11)
-      ).wait();
+      await fixture.elf.connect(users[2].user).deposit(users[2].address, 2e11);
       userBalance = await fixture.elf.balanceOf(users[2].address);
       elfAmount = BigNumber.from(2e11).mul(1e6).div(pricePerFullShare);
       expect(userBalance).to.be.at.least(subError(elfAmount));
-      console.log("full consumed", receipt.gasUsed.toNumber());
 
       // The third consumes the remaining requiring switchover
-      receipt = await (
-        await fixture.elf.connect(users[1].user).deposit(users[1].address, 1e11)
-      ).wait();
+      await fixture.elf.connect(users[1].user).deposit(users[1].address, 1e11);
       userBalance = await fixture.elf.balanceOf(users[1].address);
       elfAmount = BigNumber.from(2e11).mul(1e6).div(pricePerFullShare);
       expect(userBalance).to.be.at.least(subError(elfAmount));
-      console.log("full consumed", receipt.gasUsed.toNumber());
 
-      receipt = await (
-        await fixture.elf.connect(users[3].user).deposit(users[3].address, 6e11)
-      ).wait();
+      await fixture.elf.connect(users[3].user).deposit(users[3].address, 6e11);
       userBalance = await fixture.elf.balanceOf(users[3].address);
       elfAmount = BigNumber.from(6e11).mul(1e6).div(pricePerFullShare);
       expect(userBalance).to.be.at.least(subError(elfAmount));
-      console.log("full consumed", receipt.gasUsed.toNumber());
 
       // Test withdraws
       const toWithdraw = ethers.BigNumber.from("1000000"); // 1 usdc
-      let user1Balance = await fixture.elf.balanceOf(users[1].address);
+      const user1Balance = await fixture.elf.balanceOf(users[1].address);
       pricePerFullShare = await fixture.yusdc.pricePerShare();
       const withdrawUsdc = toWithdraw
         .mul(pricePerFullShare)

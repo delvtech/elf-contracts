@@ -185,22 +185,4 @@ abstract contract Elf is ERC20Permit, IElf {
         require(withdrawAmount >= _minUnderlying, "Not enough underlying");
         return withdrawAmount;
     }
-
-    /// @notice This function burns enough tokens from the sender to send _amount
-    ///          of underlying to the _destination.
-    /// @param _destination the address to send the output to
-    /// @param _amount the amount of underlying to try to redeem for
-    /// @param _minUnderlying the minium underlying to receive
-    function withdrawUnderlying(
-        address _destination,
-        uint256 _amount,
-        uint256 _minUnderlying
-    ) external override returns (uint256) {
-        // First we load the number of underlying per unit of ELF token
-        uint256 underlyingPerElf = _underlying(1e18);
-        // Then we calculate the number of shares we need
-        uint256 shares = (_amount * 1e18) / underlyingPerElf;
-        // Using this we call the normal withdraw function
-        withdraw(_destination, shares, _minUnderlying);
-    }
 }

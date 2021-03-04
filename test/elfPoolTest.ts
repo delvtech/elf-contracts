@@ -2,14 +2,14 @@ import { expect } from "chai";
 import { Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
 
-import { FixtureInterface, loadFixture } from "./helpers/deployer";
+import { fixtureInterface, loadFixture } from "./helpers/deployer";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 
 const { provider } = waffle;
 
 describe("Elf", () => {
   let users: { user: Signer; address: string }[];
-  let fixture: FixtureInterface;
+  let fixture: fixtureInterface;
   before(async () => {
     // snapshot initial state
     await createSnapshot(provider);

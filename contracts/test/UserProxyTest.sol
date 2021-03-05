@@ -6,19 +6,18 @@ import "../interfaces/IWETH.sol";
 // This contract is a user proxy which works for a single
 // elf tranche pair
 contract UserProxyTest is UserProxy {
-    address public immutable tranche;
-
-    constructor(address _weth, address _tranche) UserProxy(IWETH(_weth)) {
-        tranche = _tranche;
-    }
+    constructor(
+        address _weth,
+        address _trancheFactory,
+        bytes32 _trancheBytecodeHash
+    ) UserProxy(IWETH(_weth), _trancheFactory, _trancheBytecodeHash) {}
 
     // solhint-disable-next-line private-vars-leading-underscore
     function deriveTranche(address elf, uint256 expiration)
-        internal
-        override
+        public
         view
         returns (ITranche)
     {
-        return ITranche(tranche);
+        return _deriveTranche(elf, expiration);
     }
 }

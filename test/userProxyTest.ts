@@ -4,7 +4,7 @@ import { ethers } from "hardhat";
 
 import { FixtureInterface, loadFixture } from "./helpers/deployer";
 
-describe("UserProxyTests", function () {
+describe("UserProxy", function () {
   let fixture: FixtureInterface;
   let proxy: Contract;
   let underlying: Contract;
@@ -27,7 +27,14 @@ describe("UserProxyTests", function () {
     // mint to the user 1
     await underlying.mint(signers[1].address, lots);
   });
-
+  it("Successfully derives tranche contract address", async function () {
+    const addr = await fixture.proxy.deriveTranche(
+      fixture.elf.address,
+      5000000
+    );
+    console.log(addr);
+    console.log(fixture.tranche.address);
+  });
   it("Successfully mints", async function () {
     // To avoid messing with permit we use the allowance method
     await underlying.approve(proxy.address, lots);

@@ -38,6 +38,7 @@ export interface FixtureInterface {
   tranche: Tranche;
   yc: YC;
   proxy: UserProxyTest;
+  trancheFactory: TrancheFactory;
 }
 
 export interface EthPoolMainnetInterface {
@@ -60,13 +61,6 @@ export interface TrancheTestFixture {
   elfStub: ElfStub;
   tranche: Tranche;
   yc: YC;
-}
-
-export interface TrancheFactoryFixture {
-  signer: Signer;
-  elf: YVaultAssetProxy;
-  trancheFactory: TrancheFactory;
-  bytecode: string;
 }
 
 const deployElfStub = async (signer: Signer, address: string) => {
@@ -106,29 +100,6 @@ const deployTrancheFactory = async (signer: Signer) => {
   return await deployer.deploy(ycFactory.address);
 };
 
-export async function loadTrancheFactoryFixture() {
-  const [signer] = await ethers.getSigners();
-  const signerAddress = (await signer.getAddress()) as string;
-  const usdc = await deployUsdc(signer, signerAddress);
-  const yusdc = await deployYusdc(signer, usdc.address);
-
-  const elf: YVaultAssetProxy = await deployYasset(
-    signer,
-    yusdc.address,
-    usdc.address,
-    "eyUSDC",
-    "eyUSDC"
-  );
-  const trancheFactory = await deployTrancheFactory(signer);
-  // Setup the proxy
-  const { bytecode } = data;
-  return {
-    signer,
-    elf,
-    trancheFactory,
-    bytecode,
-  };
-}
 export async function loadFixture() {
   // The mainnet weth address won't work unless mainnet deployed
   const wethAddress = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
@@ -147,7 +118,7 @@ export async function loadFixture() {
 
   // deploy and fetch tranche contract
   const trancheFactory = await deployTrancheFactory(signer);
-  await trancheFactory.deployTranche(5000000, elf.address);
+  await trancheFactory.deployTranche(1e10, elf.address);
   const eventFilter = trancheFactory.filters.TrancheCreated(null);
   const events = await trancheFactory.queryFilter(eventFilter);
   const trancheAddress = events[0] && events[0].args && events[0].args[0];
@@ -167,7 +138,6 @@ export async function loadFixture() {
     trancheFactory.address,
     bytecodehash
   );
-  const ret = data.bytecode;
   return {
     signer,
     usdc,
@@ -176,6 +146,7 @@ export async function loadFixture() {
     tranche,
     yc,
     proxy,
+    trancheFactory,
   };
 }
 
@@ -233,7 +204,7 @@ export async function loadTestTrancheFixture() {
   const elfStub: ElfStub = await deployElfStub(signer, usdc.address);
   // deploy and fetch tranche contract
   const trancheFactory = await deployTrancheFactory(signer);
-  await trancheFactory.deployTranche(5000000, elfStub.address);
+  await trancheFactory.deployTranche(1e10, elfStub.address);
   const eventFilter = trancheFactory.filters.TrancheCreated(null);
   const events = await trancheFactory.queryFilter(eventFilter);
   const trancheAddress = events[0] && events[0].args && events[0].args[0];

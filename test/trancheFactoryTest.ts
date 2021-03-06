@@ -3,21 +3,18 @@
 import { expect } from "chai";
 import { BigNumber, Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
-import {
-  loadTrancheFactoryFixture,
-  TrancheFactoryFixture,
-} from "./helpers/deployer";
+import { loadFixture, FixtureInterface } from "./helpers/deployer";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 
 const { provider } = waffle;
 
 describe("TrancheFactory", () => {
-  let fixture: TrancheFactoryFixture;
+  let fixture: FixtureInterface;
   let users: { user: Signer; address: string }[];
   before(async () => {
     // snapshot initial state
     await createSnapshot(provider);
-    fixture = await loadTrancheFactoryFixture();
+    fixture = await loadFixture();
     // begin to populate the user array by assigning each index a signer
     users = ((await ethers.getSigners()) as Signer[]).map(function (user) {
       return { user, address: "" };
@@ -35,7 +32,7 @@ describe("TrancheFactory", () => {
     // revert back to initial state after all tests pass
     await restoreSnapshot(provider);
   });
-  describe.only("deployTranche", () => {
+  describe("deployTranche", () => {
     beforeEach(async () => {
       await createSnapshot(provider);
     });
@@ -43,44 +40,14 @@ describe("TrancheFactory", () => {
       await restoreSnapshot(provider);
     });
     it("should correctly deploy a new tranche instance", async () => {
-      const tranche = await fixture.trancheFactory.deployTranche(
-        5000000,
-        fixture.elf.address
-      );
-      const eventFilter = fixture.trancheFactory.filters.TrancheCreated(null);
-      const events = await fixture.trancheFactory.queryFilter(eventFilter);
-      const address = events[0] && events[0].args && events[0].args[0];
-      console.log(address);
-
-      const finalBytecode = ethers.utils.solidityPack(
-        ["bytes", "bytes"],
-        [
-          fixture.bytecode,
-          ethers.utils.defaultAbiCoder.encode(
-            ["address", "uint256"],
-            [fixture.elf.address, 5000000]
-          ),
-        ]
-      );
-      const salt = ethers.utils.solidityKeccak256(
-        ["address", "uint256"],
-        [fixture.elf.address, 5000000]
-      );
-      const bytecodeHash = ethers.utils.solidityKeccak256(
-        ["bytes"],
-        [finalBytecode]
-      );
-      const addressbytes = ethers.utils.solidityKeccak256(
-        ["bytes1", "address", "bytes32", "bytes32"],
-        [0xff, fixture.trancheFactory.address, salt, bytecodeHash]
-      );
-      console.log(addressbytes);
+      expect(
+        await fixture.proxy.deriveTranche(fixture.elf.address, 1e10)
+      ).to.equal(fixture.tranche.address);
     });
     it("should fail to deploy to the same address ", async () => {
-      await fixture.trancheFactory.deployTranche(5000000, fixture.elf.address);
       await expect(
-        fixture.trancheFactory.deployTranche(5000000, fixture.elf.address)
-      ).to.be.revertedWith("CREATE2 failed");
+        fixture.trancheFactory.deployTranche(1e10, fixture.elf.address)
+      ).to.be.reverted;
     });
   });
 });

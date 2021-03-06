@@ -3,8 +3,7 @@ pragma solidity ^0.8.0;
 import "../UserProxy.sol";
 import "../interfaces/IWETH.sol";
 
-// This contract is a user proxy which works for a single
-// elf tranche pair
+// This contract is a user proxy which exposes deriveTranche for testing
 contract UserProxyTest is UserProxy {
     constructor(
         address _weth,

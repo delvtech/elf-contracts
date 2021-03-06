@@ -13,8 +13,7 @@ contract YCFactory {
         uint256 expiration,
         uint8 localUnderlyingDecimals
     ) public returns (YC yc) {
-        yc = new YC(msg.sender, elfSymbol, expiration, localUnderlyingDecimals);
-
-        return yc;
+        return
+            new YC(msg.sender, elfSymbol, expiration, localUnderlyingDecimals);
     }
 }

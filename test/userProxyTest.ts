@@ -28,20 +28,16 @@ describe("UserProxy", function () {
     await underlying.mint(signers[1].address, lots);
   });
   it("Successfully derives tranche contract address", async function () {
-    const addr = await fixture.proxy.deriveTranche(
-      fixture.elf.address,
-      5000000
-    );
-    console.log(addr);
-    console.log(fixture.tranche.address);
+    const addr = await fixture.proxy.deriveTranche(fixture.elf.address, 1e10);
   });
   it("Successfully mints", async function () {
     // To avoid messing with permit we use the allowance method
     await underlying.approve(proxy.address, lots);
+
     let receipt = await proxy.mint(
       ethers.utils.parseEther("1"),
       underlying.address,
-      5000,
+      1e10,
       fixture.elf.address
     );
     // Mint for the first time
@@ -50,7 +46,7 @@ describe("UserProxy", function () {
     receipt = await proxy.mint(
       ethers.utils.parseEther("1"),
       underlying.address,
-      5000,
+      1e10,
       fixture.elf.address
     );
     receipt = await receipt.wait();
@@ -62,7 +58,7 @@ describe("UserProxy", function () {
       .mint(
         ethers.utils.parseEther("1"),
         underlying.address,
-        5000,
+        1e10,
         fixture.elf.address
       );
     receipt = await receipt.wait();

@@ -5,7 +5,7 @@ import { ethers, waffle } from "hardhat";
 import { loadTestTrancheFixture, TrancheTestFixture } from "./helpers/deployer";
 import { bnFloatMultiplier } from "./helpers/math";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
-import { advanceTime } from "./helpers/time";
+import { advanceTime, getCurrentTimestamp } from "./helpers/time";
 
 const { provider } = waffle;
 
@@ -15,7 +15,7 @@ describe("Tranche", () => {
   let user2: Signer;
   let user1Address: string;
   let user2Address: string;
-  const lockDuration = 5000000; //seconds
+  let expiration: number;
   const initialBalance = ethers.BigNumber.from("2000000000"); // 2e9
 
   function subError(amount: BigNumber) {
@@ -24,6 +24,8 @@ describe("Tranche", () => {
   }
 
   before(async () => {
+    const time = await getCurrentTimestamp(provider);
+    expiration = 1e10 - time;
     // snapshot initial state
     await createSnapshot(provider);
 
@@ -53,7 +55,7 @@ describe("Tranche", () => {
       await restoreSnapshot(provider);
     });
     it("should not allow new deposits after the timeout", async () => {
-      advanceTime(provider, lockDuration);
+      advanceTime(provider, expiration);
       // Regular deposit fails
       await expect(
         fixture.tranche
@@ -141,7 +143,7 @@ describe("Tranche", () => {
         .connect(user2)
         .deposit(initialBalance, user2Address);
 
-      advanceTime(provider, lockDuration);
+      advanceTime(provider, expiration);
 
       const fytBalanceU1 = await fixture.tranche.balanceOf(user1Address);
       const fytBalanceU2 = await fixture.tranche.balanceOf(user2Address);
@@ -168,7 +170,7 @@ describe("Tranche", () => {
         .connect(user2)
         .deposit(initialBalance, user2Address);
 
-      advanceTime(provider, lockDuration);
+      advanceTime(provider, expiration);
 
       const fytBalanceU1 = await fixture.tranche.balanceOf(user1Address);
       const fytBalanceU2 = await fixture.tranche.balanceOf(user2Address);
@@ -203,7 +205,7 @@ describe("Tranche", () => {
         .connect(user2)
         .deposit(initialBalance, user2Address);
 
-      advanceTime(provider, lockDuration);
+      advanceTime(provider, expiration);
 
       const fytBalanceU1 = await fixture.tranche.balanceOf(user1Address);
       const fytBalanceU2 = await fixture.tranche.balanceOf(user2Address);
@@ -235,7 +237,7 @@ describe("Tranche", () => {
         .connect(user2)
         .deposit(initialBalance, user2Address);
 
-      advanceTime(provider, lockDuration);
+      advanceTime(provider, expiration);
 
       const ycBalanceU1 = await fixture.yc.balanceOf(user1Address);
       const ycBalanceU2 = await fixture.yc.balanceOf(user2Address);
@@ -266,7 +268,7 @@ describe("Tranche", () => {
         .connect(user2)
         .deposit(initialBalance, user2Address);
 
-      advanceTime(provider, lockDuration);
+      advanceTime(provider, expiration);
 
       const ycBalanceU1 = await fixture.yc.balanceOf(user1Address);
       const ycBalanceU2 = await fixture.yc.balanceOf(user2Address);
@@ -301,7 +303,7 @@ describe("Tranche", () => {
         .connect(user2)
         .deposit(initialBalance, user2Address);
 
-      advanceTime(provider, lockDuration);
+      advanceTime(provider, expiration);
 
       const ycBalanceU1 = await fixture.yc.balanceOf(user1Address);
       const ycBalanceU2 = await fixture.yc.balanceOf(user2Address);
@@ -336,7 +338,7 @@ describe("Tranche", () => {
         .connect(user2)
         .deposit(initialBalance, user2Address);
 
-      advanceTime(provider, lockDuration);
+      advanceTime(provider, expiration);
 
       const fytBalanceU1 = await fixture.tranche.balanceOf(user1Address);
       const fytBalanceU2 = await fixture.tranche.balanceOf(user2Address);
@@ -365,7 +367,7 @@ describe("Tranche", () => {
         .connect(user2)
         .deposit(initialBalance, user2Address);
 
-      advanceTime(provider, lockDuration);
+      advanceTime(provider, expiration);
 
       const ycBalanceU1 = await fixture.yc.balanceOf(user1Address);
       const ycBalanceU2 = await fixture.yc.balanceOf(user2Address);
@@ -409,7 +411,7 @@ describe("Tranche", () => {
         .connect(user2)
         .deposit(initialBalance, user2Address);
 
-      advanceTime(provider, lockDuration);
+      advanceTime(provider, expiration);
 
       const ycBalanceU1 = await fixture.yc.balanceOf(user1Address);
       const ycBalanceU2 = await fixture.yc.balanceOf(user2Address);
@@ -461,7 +463,7 @@ describe("Tranche", () => {
         .connect(user2)
         .deposit(initialBalance, user2Address);
 
-      advanceTime(provider, lockDuration);
+      advanceTime(provider, expiration);
 
       const ycBalanceU1 = await fixture.yc.balanceOf(user1Address);
       const ycBalanceU2 = await fixture.yc.balanceOf(user2Address);
@@ -519,7 +521,7 @@ describe("Tranche", () => {
         .connect(user2)
         .deposit(initialBalance, user2Address);
 
-      advanceTime(provider, lockDuration);
+      advanceTime(provider, expiration);
 
       const ycBalanceU1 = await fixture.yc.balanceOf(user1Address);
       const ycBalanceU2 = await fixture.yc.balanceOf(user2Address);
@@ -567,17 +569,17 @@ describe("Tranche", () => {
 
       await expect(
         fixture.tranche.connect(user1).withdrawYc(1, user1Address)
-      ).to.be.revertedWith("not expired yet");
+      ).to.be.revertedWith("not expired");
       await expect(
         fixture.tranche.connect(user1).withdrawFyt(1, user1Address)
-      ).to.be.revertedWith("not expired yet");
+      ).to.be.revertedWith("not expired");
     });
     it("should prevent withdrawal of more FYTs and YCs than the user has", async () => {
       await fixture.tranche
         .connect(user1)
         .deposit(initialBalance, user1Address);
 
-      advanceTime(provider, lockDuration);
+      advanceTime(provider, expiration);
 
       const user1FytBalance = await fixture.tranche.balanceOf(user1Address);
       await expect(

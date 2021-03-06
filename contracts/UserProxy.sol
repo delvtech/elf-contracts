@@ -22,16 +22,19 @@ contract UserProxy is Authorizable {
     IWETH public immutable weth;
     // Tranche factory address for Tranche contract address derivation
     address internal immutable trancheFactory;
-    // Tranche bytecode for Tranche contract address derivation
+    // Tranche bytecode hash for Tranche contract address derivation.
+    // This is constant as long as Tranche does not implement non-constant constructor arguments.
     bytes32 internal immutable trancheBytecodeHash;
     // A constant which represents ether
     address constant ETH_CONSTANT = address(
         0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
     );
 
-    /// @param _weth The constant weth contract address
     /// @dev Marks the msg.sender as authorized and sets them
     ///      as the owner in authorization library
+    /// @param _weth The constant weth contract address
+    /// @param _trancheFactory Address of the TrancheFactory contract
+    /// @param _trancheBytecodeHash Hash of the Tranche bytecode.
     constructor(
         IWETH _weth,
         address _trancheFactory,

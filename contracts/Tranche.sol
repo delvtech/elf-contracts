@@ -36,12 +36,11 @@ contract Tranche is ERC20Permit, ITranche {
         ERC20("Fixed Yield Token ", "FYT:")
         ERC20Permit("Fixed Yield Token ")
     {
+        // assume the caller is the Tranche factory.
         ITrancheFactory trancheFactory = ITrancheFactory(msg.sender);
         (address elfAddress, uint256 expiration, IYC ycTemp) = trancheFactory
             .getData();
         yc = ycTemp;
-        //  = trancheFactory.tempExpiration();
-        // yc = trancheFactory.tempYC();
 
         IElf elfContract = IElf(elfAddress);
         elf = elfContract;

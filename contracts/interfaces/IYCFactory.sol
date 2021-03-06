@@ -8,6 +8,6 @@ interface IYCFactory {
         address tranche,
         string memory elfSymbol,
         uint256 expiration,
-        uint8 localUnderlyingDecimals
+        uint8 underlyingDecimals
     ) external returns (YC yc);
 }

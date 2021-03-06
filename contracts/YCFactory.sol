@@ -9,11 +9,11 @@ pragma solidity ^0.8.0;
 
 contract YCFactory {
     function deployYc(
+        address tranche,
         string memory elfSymbol,
         uint256 expiration,
         uint8 localUnderlyingDecimals
     ) public returns (YC yc) {
-        return
-            new YC(msg.sender, elfSymbol, expiration, localUnderlyingDecimals);
+        return new YC(tranche, elfSymbol, expiration, localUnderlyingDecimals);
     }
 }

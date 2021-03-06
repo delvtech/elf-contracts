@@ -34,7 +34,23 @@ contract TrancheFactory {
         IERC20 localUnderlying = elfContract.token();
         uint8 localUnderlyingDecimals = localUnderlying.decimals();
 
+        address predictedAddress = address(
+            uint160(
+                uint256(
+                    keccak256(
+                        abi.encodePacked(
+                            bytes1(0xff),
+                            address(this),
+                            salt,
+                            keccak256(type(Tranche).creationCode)
+                        )
+                    )
+                )
+            )
+        );
+
         tempYC = ycFactory.deployYc(
+            predictedAddress,
             elfSymbol,
             expiration,
             localUnderlyingDecimals

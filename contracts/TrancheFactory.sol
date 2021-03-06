@@ -5,16 +5,17 @@ import "./assets/YC.sol";
 import "./interfaces/IElf.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/IYCFactory.sol";
+import "./interfaces/IYC.sol";
 
 pragma solidity ^0.8.0;
 
 contract TrancheFactory {
     event TrancheCreated(address indexed tracheAddress);
 
-    IYCFactory public ycFactory;
-    address public tempElfAddress;
-    uint256 public tempExpiration;
-    IYC public tempYC;
+    IYCFactory internal ycFactory;
+    address internal tempElfAddress;
+    uint256 internal tempExpiration;
+    IYC internal tempYC;
 
     constructor(address _ycFactory) {
         ycFactory = IYCFactory(_ycFactory);
@@ -39,23 +40,7 @@ contract TrancheFactory {
             localUnderlyingDecimals
         );
 
-        address predictedAddress = address(
-            uint160(
-                uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            bytes1(0xff),
-                            address(this),
-                            salt,
-                            keccak256(type(Tranche).creationCode)
-                        )
-                    )
-                )
-            )
-        );
-
         Tranche tranche = new Tranche{ salt: salt }();
-        require(address(tranche) == predictedAddress, "CREATE2 failed");
         emit TrancheCreated(address(tranche));
 
         // set back to 0-value for some gas savings
@@ -66,7 +51,14 @@ contract TrancheFactory {
         return tranche;
     }
 
-    // function trancheCallback() external returns (address, uint256, address) {
-    //     return (tempElfAddress, tempExpiration, address(tempYC));
-    // }
+    function getData()
+        external
+        returns (
+            address,
+            uint256,
+            IYC
+        )
+    {
+        return (tempElfAddress, tempExpiration, tempYC);
+    }
 }

@@ -5,14 +5,12 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IElf.sol";
 import "./interfaces/ITranche.sol";
 import "./interfaces/ITrancheFactory.sol";
+import "./interfaces/IYC.sol";
 
 import "./libraries/Address.sol";
 import "./libraries/SafeERC20.sol";
 import "./libraries/ERC20Permit.sol";
 import "./libraries/DateString.sol";
-
-// import "./assets/YC.sol";
-import "./interfaces/IYC.sol";
 
 contract Tranche is ERC20Permit, ITranche {
     using SafeERC20 for IERC20;
@@ -39,12 +37,14 @@ contract Tranche is ERC20Permit, ITranche {
         ERC20Permit("Fixed Yield Token ")
     {
         ITrancheFactory trancheFactory = ITrancheFactory(msg.sender);
-        address elfAddress = trancheFactory.tempElfAddress();
-        uint256 expiration = trancheFactory.tempExpiration();
-        yc = trancheFactory.tempYC();
+        (address elfAddress, uint256 expiration, IYC ycTemp) = trancheFactory
+            .getData();
+        yc = ycTemp;
+        //  = trancheFactory.tempExpiration();
+        // yc = trancheFactory.tempYC();
 
         IElf elfContract = IElf(elfAddress);
-        elf = IElf(elfContract);
+        elf = elfContract;
 
         string memory elfSymbol = elfContract.symbol();
         // Store the immutable time variables
@@ -160,7 +160,7 @@ contract Tranche is ERC20Permit, ITranche {
         returns (uint256)
     {
         // No redemptions before unlock
-        require(block.timestamp >= unlockTimestamp, "not expired yet");
+        require(block.timestamp >= unlockTimestamp, "not expired");
         // Burn from the sender
         _burn(msg.sender, _amount);
         // We normalize the FYT to the same units as the underlying
@@ -187,7 +187,7 @@ contract Tranche is ERC20Permit, ITranche {
         override
         returns (uint256)
     {
-        require(block.timestamp >= unlockTimestamp, "not expired yet");
+        require(block.timestamp >= unlockTimestamp, "not expired");
         // Burn tokens from the sender
         yc.burn(msg.sender, _amount);
         // Load the underlying value of this contract

@@ -4,9 +4,11 @@ pragma solidity ^0.8.0;
 import "../assets/YC.sol";
 
 interface ITrancheFactory {
-    function tempElfAddress() external view returns (address);
-
-    function tempYC() external view returns (YC);
-
-    function tempExpiration() external view returns (uint256);
+    function getData()
+        external
+        returns (
+            address,
+            uint256,
+            YC
+        );
 }

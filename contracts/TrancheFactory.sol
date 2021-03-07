@@ -17,6 +17,8 @@ contract TrancheFactory {
     uint256 internal tempExpiration;
     IYC internal tempYC;
 
+    /// @notice Create a new Tranche.
+    /// @param _ycFactory Address of the YC factory.
     constructor(address _ycFactory) {
         ycFactory = IYCFactory(_ycFactory);
     }

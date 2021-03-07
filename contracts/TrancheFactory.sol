@@ -10,7 +10,7 @@ import "./interfaces/IYC.sol";
 pragma solidity ^0.8.0;
 
 contract TrancheFactory {
-    event TrancheCreated(address indexed tracheAddress);
+    event TrancheCreated(address indexed trancheAddress);
 
     IYCFactory internal ycFactory;
     address internal tempElfAddress;

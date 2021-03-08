@@ -10,12 +10,19 @@ import "./interfaces/IYC.sol";
 pragma solidity ^0.8.0;
 
 contract TrancheFactory {
-    event TrancheCreated(address indexed trancheAddress);
+    event TrancheCreated(
+        address indexed trancheAddress,
+        address indexed elfAddress,
+        uint256 indexed duration
+    );
 
     IYCFactory internal ycFactory;
     address internal tempElfAddress;
     uint256 internal tempExpiration;
     IYC internal tempYC;
+    bytes32 public constant trancheCreationHash = keccak256(
+        type(Tranche).creationCode
+    );
 
     /// @notice Create a new Tranche.
     /// @param _ycFactory Address of the YC factory.
@@ -49,7 +56,7 @@ contract TrancheFactory {
                             bytes1(0xff),
                             address(this),
                             salt,
-                            keccak256(type(Tranche).creationCode)
+                            trancheCreationHash
                         )
                     )
                 )
@@ -64,7 +71,11 @@ contract TrancheFactory {
         );
 
         Tranche tranche = new Tranche{ salt: salt }();
-        emit TrancheCreated(address(tranche));
+        emit TrancheCreated(
+            address(tranche),
+            elfAddress,
+            expiration - block.timestamp
+        );
 
         require(
             address(tranche) == predictedAddress,

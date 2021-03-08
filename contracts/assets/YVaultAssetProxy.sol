@@ -67,7 +67,7 @@ contract YVaultAssetProxy is Elf {
             // If this is the first mint the tokens are exactly the supplied underlying
             mintAmount = _amount;
         } else {
-            // Otherwise we mint the propotion that this increase the value held by this contract
+            // Otherwise we mint the proportion that this increases the value held by this contract
             mintAmount = (reserveSupply * _amount) / totalValue;
         }
 

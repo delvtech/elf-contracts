@@ -119,7 +119,7 @@ export async function loadFixture() {
   // deploy and fetch tranche contract
   const trancheFactory = await deployTrancheFactory(signer);
   await trancheFactory.deployTranche(1e10, elf.address);
-  const eventFilter = trancheFactory.filters.TrancheCreated(null);
+  const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
   const events = await trancheFactory.queryFilter(eventFilter);
   const trancheAddress = events[0] && events[0].args && events[0].args[0];
   const tranche = Tranche__factory.connect(trancheAddress, signer);
@@ -205,7 +205,7 @@ export async function loadTestTrancheFixture() {
   // deploy and fetch tranche contract
   const trancheFactory = await deployTrancheFactory(signer);
   await trancheFactory.deployTranche(1e10, elfStub.address);
-  const eventFilter = trancheFactory.filters.TrancheCreated(null);
+  const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
   const events = await trancheFactory.queryFilter(eventFilter);
   const trancheAddress = events[0] && events[0].args && events[0].args[0];
   const tranche = Tranche__factory.connect(trancheAddress, signer);

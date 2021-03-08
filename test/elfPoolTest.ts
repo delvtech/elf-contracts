@@ -156,10 +156,10 @@ describe("Elf", () => {
       // NOTE - THIS CONSTANT DEPENDS ON THE PREVIOUS TEST SETTING THE DEPOSIT RATE
       expect(await fixture.elf.balanceOf(users[1].address)).to.equal(909090);
       // We then make a new reserve deposit
-      await fixture.elf.connect(users[3].user).reserveDeposit(1e6);
+      await fixture.elf.connect(users[2].user).reserveDeposit(1e6);
       expect(await fixture.elf.reserveUnderlying()).to.be.eq(1e6);
       expect(await fixture.elf.reserveElf()).to.be.eq(9090909);
-      expect(await fixture.elf.reserveBalances(users[3].address)).to.be.eq(1e6);
+      expect(await fixture.elf.reserveBalances(users[2].address)).to.be.eq(1e6);
       expect(await fixture.elf.reserveSupply()).to.be.eq(11e6);
     });
 

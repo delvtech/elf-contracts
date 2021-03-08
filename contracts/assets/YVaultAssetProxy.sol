@@ -48,7 +48,7 @@ contract YVaultAssetProxy is Elf {
 
     /// @notice This function allows a user to deposit to the reserve
     ///      Note - there's no incentive to do so you would earn some
-    ///      intrest but less intrest than yearn. All deposits use
+    ///      interest but less interest than yearn. All deposits use
     ///      the underlying token.
     /// @param _amount The amount of underlying to deposit
     function reserveDeposit(uint256 _amount) external {

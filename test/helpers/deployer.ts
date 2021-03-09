@@ -11,8 +11,8 @@ import { AYVault } from "../../typechain/AYVault";
 import { AYVault__factory } from "../../typechain/factories/AYVault__factory";
 import { YVaultAssetProxy } from "../../typechain/YVaultAssetProxy";
 import { YVaultAssetProxy__factory } from "../../typechain/factories/YVaultAssetProxy__factory";
-import { YearnVault } from "../../typechain/YearnVault";
-import { YearnVault__factory } from "../../typechain/factories/YearnVault__factory";
+import { IYearnVault } from "../../typechain/IYearnVault";
+import { IYearnVault__factory } from "../../typechain/factories/IYearnVault__factory";
 import { IWETH } from "../../typechain/IWETH";
 import { IWETH__factory } from "../../typechain/factories/IWETH__factory";
 import { IERC20 } from "../../typechain/IERC20";
@@ -44,7 +44,7 @@ export interface FixtureInterface {
 export interface EthPoolMainnetInterface {
   signer: Signer;
   weth: IWETH;
-  yweth: YearnVault;
+  yweth: IYearnVault;
   elf: YVaultAssetProxy;
   tranche: Tranche;
   proxy: UserProxyTest;
@@ -53,7 +53,7 @@ export interface EthPoolMainnetInterface {
 export interface UsdcPoolMainnetInterface {
   signer: Signer;
   usdc: IERC20;
-  yusdc: YearnVault;
+  yusdc: IYearnVault;
   elf: YVaultAssetProxy;
   tranche: Tranche;
   proxy: UserProxyTest;
@@ -160,7 +160,7 @@ export async function loadEthPoolMainnetFixture() {
   const [signer] = await ethers.getSigners();
 
   const weth = IWETH__factory.connect(wethAddress, signer);
-  const yweth = YearnVault__factory.connect(ywethAddress, signer);
+  const yweth = IYearnVault__factory.connect(ywethAddress, signer);
   const elf = await deployYasset(
     signer,
     yweth.address,
@@ -203,7 +203,7 @@ export async function loadUsdcPoolMainnetFixture() {
   const [signer] = await ethers.getSigners();
 
   const usdc = IERC20__factory.connect(usdcAddress, signer);
-  const yusdc = YearnVault__factory.connect(yusdcAddress, signer);
+  const yusdc = IYearnVault__factory.connect(yusdcAddress, signer);
   const elf = await deployYasset(
     signer,
     yusdc.address,

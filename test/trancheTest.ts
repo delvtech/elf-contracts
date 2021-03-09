@@ -3,14 +3,14 @@ import { BigNumber, Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
 
 import { bnFloatMultiplier, subError } from "./helpers/math";
-import { loadTestTrancheFixture, trancheTestFixture } from "./helpers/deployer";
+import { loadTestTrancheFixture, TrancheTestFixture } from "./helpers/deployer";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 import { advanceTime } from "./helpers/time";
 
-const provider = waffle.provider;
+const { provider } = waffle;
 
 describe("Tranche", () => {
-  let fixture: trancheTestFixture;
+  let fixture: TrancheTestFixture;
   let user1: Signer;
   let user2: Signer;
   let user1Address: string;

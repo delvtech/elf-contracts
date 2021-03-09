@@ -25,7 +25,7 @@ import { Signer } from "ethers";
 import { ethers } from "hardhat";
 import { ElfStub } from "../../typechain/ElfStub";
 
-export interface fixtureInterface {
+export interface FixtureInterface {
   signer: Signer;
   usdc: AToken;
   yusdc: AYVault;
@@ -53,7 +53,7 @@ export interface UsdcPoolMainnetInterface {
   proxy: UserProxyTest;
 }
 
-export interface trancheTestFixture {
+export interface TrancheTestFixture {
   signer: Signer;
   usdc: TestERC20;
   elfStub: ElfStub;

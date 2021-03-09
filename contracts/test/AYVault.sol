@@ -56,11 +56,11 @@ contract AYVault is ERC20, IYearnVault {
         AToken(token).mint(address(this), balance / 10);
     }
 
-    function totalSupply() public view returns (uint256) {
+    function totalSupply() public override view returns (uint256) {
         return _supply;
     }
 
-    function totalAssets() public view returns (uint256) {
+    function totalAssets() public override view returns (uint256) {
         return ERC20(token).balanceOf(address(this));
 
     function governance() external override view returns (address) {

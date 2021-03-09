@@ -46,6 +46,8 @@ export interface EthPoolMainnetInterface {
   weth: IWETH;
   yweth: YearnVault;
   elf: YVaultAssetProxy;
+  tranche: Tranche;
+  proxy: UserProxyTest;
 }
 
 export interface UsdcPoolMainnetInterface {
@@ -53,6 +55,8 @@ export interface UsdcPoolMainnetInterface {
   usdc: IERC20;
   yusdc: YearnVault;
   elf: YVaultAssetProxy;
+  tranche: Tranche;
+  proxy: UserProxyTest;
 }
 
 export interface TrancheTestFixture {
@@ -165,11 +169,31 @@ export async function loadEthPoolMainnetFixture() {
     "eyWETH"
   );
 
+  // deploy and fetch tranche contract
+  const trancheFactory = await deployTrancheFactory(signer);
+  await trancheFactory.deployTranche(1e10, elf.address);
+  const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
+  const events = await trancheFactory.queryFilter(eventFilter);
+  const trancheAddress = events[0] && events[0].args && events[0].args[0];
+  const tranche = Tranche__factory.connect(trancheAddress, signer);
+  // Setup the proxy
+  const bytecodehash = ethers.utils.solidityKeccak256(
+    ["bytes"],
+    [data.bytecode]
+  );
+  const proxyFactory = new UserProxyTest__factory(signer);
+  const proxy = await proxyFactory.deploy(
+    wethAddress,
+    trancheFactory.address,
+    bytecodehash
+  );
   return {
     signer,
     weth,
     yweth,
     elf,
+    tranche,
+    proxy,
   };
 }
 
@@ -187,17 +211,38 @@ export async function loadUsdcPoolMainnetFixture() {
     "Element Yearn USDC",
     "eyUSDC"
   );
+  // deploy and fetch tranche contract
+  const trancheFactory = await deployTrancheFactory(signer);
+  await trancheFactory.deployTranche(1e10, elf.address);
+  const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
+  const events = await trancheFactory.queryFilter(eventFilter);
+  const trancheAddress = events[0] && events[0].args && events[0].args[0];
+  const tranche = Tranche__factory.connect(trancheAddress, signer);
+  // Setup the proxy
+  const bytecodehash = ethers.utils.solidityKeccak256(
+    ["bytes"],
+    [data.bytecode]
+  );
+  const proxyFactory = new UserProxyTest__factory(signer);
+  const proxy = await proxyFactory.deploy(
+    usdcAddress,
+    trancheFactory.address,
+    bytecodehash
+  );
 
   return {
     signer,
     usdc,
     yusdc,
     elf,
+    tranche,
+    proxy,
   };
 }
 
 export async function loadTestTrancheFixture() {
   const [signer] = await ethers.getSigners();
+  const signerAddress = (await signer.getAddress()) as string;
   const testTokenDeployer = new TestERC20__factory(signer);
   const usdc = await testTokenDeployer.deploy("test token", "TEST", 18);
 

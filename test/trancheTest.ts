@@ -2,8 +2,8 @@ import { expect } from "chai";
 import { BigNumber, Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
 
+import { bnFloatMultiplier, subError } from "./helpers/math";
 import { loadTestTrancheFixture, TrancheTestFixture } from "./helpers/deployer";
-import { bnFloatMultiplier } from "./helpers/math";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 import { advanceTime, getCurrentTimestamp } from "./helpers/time";
 
@@ -17,11 +17,6 @@ describe("Tranche", () => {
   let user2Address: string;
   let expiration: number;
   const initialBalance = ethers.BigNumber.from("2000000000"); // 2e9
-
-  function subError(amount: BigNumber) {
-    // 1 tenth of a bp of error subbed
-    return amount.sub(bnFloatMultiplier(amount, 0.00001));
-  }
 
   before(async () => {
     const time = await getCurrentTimestamp(provider);

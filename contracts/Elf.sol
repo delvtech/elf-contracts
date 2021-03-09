@@ -40,7 +40,11 @@ abstract contract Elf is ERC20Permit, IElf {
 
     /// @dev Makes the actual withdraw from the 'vault'
     /// @return returns the amount produced
-    function _withdraw(uint256, address) internal virtual returns (uint256);
+    function _withdraw(
+        uint256,
+        address,
+        uint256
+    ) internal virtual returns (uint256);
 
     /// @dev Converts between an internal balance representation
     ///      and underlying tokens.
@@ -125,16 +129,7 @@ abstract contract Elf is ERC20Permit, IElf {
         uint256 _shares,
         uint256 _minUnderlying
     ) public override returns (uint256) {
-        // Burn users ELF shares
-        _burn(msg.sender, _shares);
-
-        // Withdraw that many shares from the vault
-        uint256 withdrawAmount = _withdraw(_shares, _destination);
-
-        // We revert if this call doesn't produce enough underlying
-        // This security feature is useful in some edge cases
-        require(withdrawAmount >= _minUnderlying, "Not enough underlying");
-        return withdrawAmount;
+        return _elfWithdraw(_destination, _shares, _minUnderlying, 0);
     }
 
     /// @notice This function burns enough tokens from the sender to send _amount
@@ -142,16 +137,53 @@ abstract contract Elf is ERC20Permit, IElf {
     /// @param _destination the address to send the output to
     /// @param _amount the amount of underlying to try to redeem for
     /// @param _minUnderlying the minium underlying to receive
+    /// @return the amount of underlying released
     function withdrawUnderlying(
         address _destination,
         uint256 _amount,
         uint256 _minUnderlying
     ) external override returns (uint256) {
         // First we load the number of underlying per unit of ELF token
-        uint256 underlyingPerElf = _underlying(1e18);
+        uint256 oneUnit = 10**decimals();
+        uint256 underlyingPerElf = _underlying(oneUnit);
         // Then we calculate the number of shares we need
-        uint256 shares = (_amount * 1e18) / underlyingPerElf;
+        uint256 shares = (_amount * oneUnit) / underlyingPerElf;
         // Using this we call the normal withdraw function
-        withdraw(_destination, shares, _minUnderlying);
+        return
+            _elfWithdraw(
+                _destination,
+                shares,
+                _minUnderlying,
+                underlyingPerElf
+            );
+    }
+
+    /// @notice This internal function allows the caller to provide a precomputed 'underlyingPerElf'
+    ///         so that we can avoid calling it again in the internal function
+    /// @param _destination the destination to send the output to
+    /// @param _shares the number of shares to withdraw
+    /// @param _minUnderlying the min amount of output to produce
+    /// @param _underlyingPerShare the precomputed shares per underlying
+    /// @return the amount of underlying released
+    function _elfWithdraw(
+        address _destination,
+        uint256 _shares,
+        uint256 _minUnderlying,
+        uint256 _underlyingPerShare
+    ) internal returns (uint256) {
+        // Burn users ELF shares
+        _burn(msg.sender, _shares);
+
+        // Withdraw that many shares from the vault
+        uint256 withdrawAmount = _withdraw(
+            _shares,
+            _destination,
+            _underlyingPerShare
+        );
+
+        // We revert if this call doesn't produce enough underlying
+        // This security feature is useful in some edge cases
+        require(withdrawAmount >= _minUnderlying, "Not enough underlying");
+        return withdrawAmount;
     }
 }

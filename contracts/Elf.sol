@@ -111,8 +111,6 @@ abstract contract Elf is ERC20Permit, IElf {
     {
         // Calls our internal deposit function
         (uint256 shares, uint256 usedUnderlying) = _deposit();
-        // TODO - When we roll our own custom token encoding this sstore can be collapsed
-        // into the one that's done in mint.
         uint256 balanceBefore = balanceOf(msg.sender);
         // Mint them internal ERC20 tokens coresponding to the deposit
         _mint(_destination, shares);

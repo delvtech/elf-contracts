@@ -125,7 +125,10 @@ abstract contract ERC20 is IERC20Permit {
 
         require(owner != address(0), "ERC20: invalid-address-0");
         require(owner == ecrecover(digest, v, r, s), "ERC20: invalid-permit");
-        require(deadline == 0 || block.timestamp <= deadline, "ERC20: permit-expired");
+        require(
+            deadline == 0 || block.timestamp <= deadline,
+            "ERC20: permit-expired"
+        );
         nonces[owner]++;
         allowance[owner][spender] = value;
         emit Approval(owner, spender, value);

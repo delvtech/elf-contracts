@@ -66,11 +66,7 @@ contract Tranche is ERC20, ITranche {
 
         // Write the elfSymbol and expiration time to name and symbol
         DateString.encodeAndWriteTimestamp(elfSymbol, _unlockTimestamp, name);
-        DateString.encodeAndWriteTimestamp(
-            elfSymbol,
-            _unlockTimestamp,
-            symbol
-        );
+        DateString.encodeAndWriteTimestamp(elfSymbol, _unlockTimestamp, symbol);
     }
 
     /**

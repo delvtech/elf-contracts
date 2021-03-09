@@ -160,7 +160,7 @@ contract Tranche is ERC20Permit, ITranche {
     @return The number of underlying tokens released
     @dev This method will return 1 underlying for 1 FYT except when interest
          is negative, in that case liquidity might run out and some FYT may
-         not be redeemable.
+         not be redeemable. 
          Also note: FYT redemption has the possibility of at most SLIPPAGE_BP
          numerical error on each redemption so each FYT may occasionally redeem
          for less than 1 unit of underlying. It defaults to 0.1 BP ie 0.001% loss

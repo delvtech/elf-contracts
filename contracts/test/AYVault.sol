@@ -35,7 +35,7 @@ contract AYVault is ERC20 {
     function withdraw(
         uint256 _shares,
         address destination,
-        uint256 maxLoss
+        uint256
     ) external returns (uint256) {
         uint256 _amount = (_shares * pricePerShare()) / 1e18;
         _burn(msg.sender, _shares);
@@ -57,5 +57,9 @@ contract AYVault is ERC20 {
 
     function totalSupply() public view returns (uint256) {
         return _supply;
+    }
+
+    function totalAssets() public view returns (uint256) {
+        return ERC20(token).balanceOf(address(this));
     }
 }

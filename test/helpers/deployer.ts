@@ -40,6 +40,8 @@ export interface EthPoolMainnetInterface {
   weth: IWETH;
   yweth: YearnVault;
   elf: YVaultAssetProxy;
+  tranche: Tranche;
+  proxy: UserProxyTest;
 }
 
 export interface UsdcPoolMainnetInterface {
@@ -47,6 +49,8 @@ export interface UsdcPoolMainnetInterface {
   usdc: IERC20;
   yusdc: YearnVault;
   elf: YVaultAssetProxy;
+  tranche: Tranche;
+  proxy: UserProxyTest;
 }
 
 export interface TrancheTestFixture {
@@ -141,11 +145,19 @@ export async function loadEthPoolMainnetFixture() {
     "eyWETH"
   );
 
+  const tranche = await deployTranche(signer, elf.address, 5000000);
+
+  // Setup the proxy
+  const proxyFactory = new UserProxyTest__factory(signer);
+  const proxy = await proxyFactory.deploy(wethAddress, tranche.address);
+
   return {
     signer,
     weth,
     yweth,
     elf,
+    tranche,
+    proxy,
   };
 }
 
@@ -163,17 +175,25 @@ export async function loadUsdcPoolMainnetFixture() {
     "Element Yearn USDC",
     "eyUSDC"
   );
+  const tranche = await deployTranche(signer, elf.address, 5000000);
+
+  // Setup the proxy
+  const proxyFactory = new UserProxyTest__factory(signer);
+  const proxy = await proxyFactory.deploy(usdcAddress, tranche.address);
 
   return {
     signer,
     usdc,
     yusdc,
     elf,
+    tranche,
+    proxy,
   };
 }
 
 export async function loadTestTrancheFixture() {
   const [signer] = await ethers.getSigners();
+  const signerAddress = (await signer.getAddress()) as string;
   const testTokenDeployer = new TestERC20__factory(signer);
   const usdc = await testTokenDeployer.deploy("test token", "TEST", 18);
 

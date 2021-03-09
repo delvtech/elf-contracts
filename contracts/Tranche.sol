@@ -4,13 +4,13 @@ pragma solidity ^0.8.0;
 import "./interfaces/IERC20.sol";
 import "./interfaces/IElf.sol";
 import "./interfaces/ITranche.sol";
+import "./interfaces/ITrancheFactory.sol";
+import "./interfaces/IYC.sol";
 
 import "./libraries/Address.sol";
 import "./libraries/SafeERC20.sol";
 import "./libraries/ERC20Permit.sol";
 import "./libraries/DateString.sol";
-
-import "./assets/YC.sol";
 
 contract Tranche is ERC20Permit, ITranche {
     using SafeERC20 for IERC20;
@@ -32,46 +32,35 @@ contract Tranche is ERC20Permit, ITranche {
     // The amount of slippage allowed on the FYT redemption [0.1 basis points]
     uint256 constant SLIPPAGE_BP = 1e13;
 
-    // The lock duration (seconds)
-    uint256 public immutable lockDuration;
-
-    /**
-    @param _elfContract The Elf contract to use.
-    @param _lockDuration The lock duration (seconds).
-     */
-    constructor(IElf _elfContract, uint256 _lockDuration)
+    /// @notice Constructs this contract
+    constructor()
         ERC20("Fixed Yield Token ", "FYT:")
         ERC20Permit("Fixed Yield Token ")
     {
-        elf = IElf(_elfContract);
-        string memory elfSymbol = _elfContract.symbol();
-        uint256 _unlockTimestamp = block.timestamp + _lockDuration;
+        // assume the caller is the Tranche factory.
+        ITrancheFactory trancheFactory = ITrancheFactory(msg.sender);
+        (address elfAddress, uint256 expiration, IYC ycTemp) = trancheFactory
+            .getData();
+        yc = ycTemp;
+
+        IElf elfContract = IElf(elfAddress);
+        elf = elfContract;
+
+        string memory elfSymbol = elfContract.symbol();
         // Store the immutable time variables
-        unlockTimestamp = _unlockTimestamp;
-        lockDuration = _lockDuration;
+        unlockTimestamp = expiration;
         // We use local because immutables are not readable in construction
-        IERC20 localUnderlying = _elfContract.token();
-        underlying = _elfContract.token();
+        IERC20 localUnderlying = elfContract.token();
+        underlying = elfContract.token();
         // We load and store the underlying decimals
         uint8 localUnderlyingDecimals = localUnderlying.decimals();
         underlyingDecimals = localUnderlyingDecimals;
         // And set this contract to have the same
         _setupDecimals(localUnderlyingDecimals);
-        // Deploy a new YC
-        yc = new YC(
-            address(this),
-            elfSymbol,
-            _unlockTimestamp,
-            localUnderlyingDecimals
-        );
 
         // Write the elfSymbol and expiration time to name and symbol
-        DateString.encodeAndWriteTimestamp(elfSymbol, _unlockTimestamp, _name);
-        DateString.encodeAndWriteTimestamp(
-            elfSymbol,
-            _unlockTimestamp,
-            _symbol
-        );
+        DateString.encodeAndWriteTimestamp(elfSymbol, expiration, _name);
+        DateString.encodeAndWriteTimestamp(elfSymbol, expiration, _symbol);
     }
 
     /**
@@ -171,7 +160,7 @@ contract Tranche is ERC20Permit, ITranche {
         returns (uint256)
     {
         // No redemptions before unlock
-        require(block.timestamp >= unlockTimestamp, "not expired yet");
+        require(block.timestamp >= unlockTimestamp, "not expired");
         // Burn from the sender
         _burn(msg.sender, _amount);
         // We normalize the FYT to the same units as the underlying
@@ -198,7 +187,7 @@ contract Tranche is ERC20Permit, ITranche {
         override
         returns (uint256)
     {
-        require(block.timestamp >= unlockTimestamp, "not expired yet");
+        require(block.timestamp >= unlockTimestamp, "not expired");
         // Burn tokens from the sender
         yc.burn(msg.sender, _amount);
         // Load the underlying value of this contract

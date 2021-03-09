@@ -1,3 +1,4 @@
+import { expect } from "chai";
 import { ethers } from "hardhat";
 import {
   loadUsdcPoolMainnetFixture,
@@ -9,18 +10,15 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 describe("UserProxyTests", function () {
   let fixture: UsdcPoolMainnetInterface;
-  let tranche: Contract;
   let proxy: Contract;
   let underlying: Contract;
   let signers: SignerWithAddress[];
-  const fakeAddress = "0x7109709ECfa91a80626fF3989D68f67F5b1DD12D";
   const lots = ethers.utils.parseUnits("1000000", 6);
   const usdcWhaleAddress = "0xAe2D4617c862309A3d75A0fFB358c7a5009c673F";
 
   before(async function () {
     // Get the setup contracts
     fixture = await loadUsdcPoolMainnetFixture();
-    tranche = fixture.tranche;
     proxy = fixture.proxy;
 
     underlying = await ethers.getContractAt(
@@ -49,14 +47,18 @@ describe("UserProxyTests", function () {
       .approve(fixture.elf.address, twohundred.mul(2));
     await fixture.elf.connect(usdcWhale).reserveDeposit(twohundred);
   });
-
+  it("Successfully derives tranche contract address", async function () {
+    const addr = await fixture.proxy.deriveTranche(fixture.elf.address, 1e10);
+    expect(addr).to.equal(fixture.tranche.address);
+  });
   it("Successfully mints", async function () {
     // To avoid messing with permit we use the allowance method
     await underlying.approve(proxy.address, lots);
+
     let receipt = await proxy.mint(
       ethers.utils.parseUnits("1", 6),
       underlying.address,
-      5000,
+      1e10,
       fixture.elf.address
     );
     // Mint for the first time
@@ -65,7 +67,7 @@ describe("UserProxyTests", function () {
     receipt = await proxy.mint(
       ethers.utils.parseUnits("1", 6),
       underlying.address,
-      5000,
+      1e10,
       fixture.elf.address
     );
     receipt = await receipt.wait();
@@ -77,7 +79,7 @@ describe("UserProxyTests", function () {
       .mint(
         ethers.utils.parseUnits("1", 6),
         underlying.address,
-        5000,
+        1e10,
         fixture.elf.address
       );
     receipt = await receipt.wait();

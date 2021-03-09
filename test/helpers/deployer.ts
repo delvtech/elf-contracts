@@ -21,6 +21,11 @@ import { TestERC20 } from "../../typechain/TestERC20";
 import { TestERC20__factory } from "../../typechain/factories/TestERC20__factory";
 import { UserProxyTest } from "../../typechain/UserProxyTest";
 import { UserProxyTest__factory } from "../../typechain/factories/UserProxyTest__factory";
+import { TrancheFactory } from "../../typechain/TrancheFactory";
+import { TrancheFactory__factory } from "../../typechain/factories/TrancheFactory__factory";
+import { YCFactory } from "../../typechain/YCFactory";
+import { YCFactory__factory } from "../../typechain/factories/YCFactory__factory";
+import data from "../../artifacts/contracts/Tranche.sol/Tranche.json";
 import { Signer } from "ethers";
 import { ethers } from "hardhat";
 import { ElfStub } from "../../typechain/ElfStub";
@@ -33,6 +38,7 @@ export interface FixtureInterface {
   tranche: Tranche;
   yc: YC;
   proxy: UserProxyTest;
+  trancheFactory: TrancheFactory;
 }
 
 export interface EthPoolMainnetInterface {
@@ -66,15 +72,6 @@ const deployElfStub = async (signer: Signer, address: string) => {
   return await deployer.deploy(address);
 };
 
-const deployTranche = async (
-  signer: Signer,
-  elfAddress: string,
-  lockDuration: number
-) => {
-  const deployer = new Tranche__factory(signer);
-  return await deployer.deploy(elfAddress, lockDuration);
-};
-
 const deployUsdc = async (signer: Signer, owner: string) => {
   const deployer = new AToken__factory(signer);
   return await deployer.deploy(owner);
@@ -96,6 +93,17 @@ const deployYasset = async (
   return await yVaultDeployer.deploy(yUnderlying, underlying, name, symbol);
 };
 
+const deployYCFactory = async (signer: Signer) => {
+  const deployer = new YCFactory__factory(signer);
+  return await deployer.deploy();
+};
+
+const deployTrancheFactory = async (signer: Signer) => {
+  const ycFactory = await deployYCFactory(signer);
+  const deployer = new TrancheFactory__factory(signer);
+  return await deployer.deploy(ycFactory.address);
+};
+
 export async function loadFixture() {
   // The mainnet weth address won't work unless mainnet deployed
   const wethAddress = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
@@ -111,14 +119,29 @@ export async function loadFixture() {
     "eyUSDC",
     "eyUSDC"
   );
-  const tranche = await deployTranche(signer, elf.address, 5000000);
+
+  // deploy and fetch tranche contract
+  const trancheFactory = await deployTrancheFactory(signer);
+  await trancheFactory.deployTranche(1e10, elf.address);
+  const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
+  const events = await trancheFactory.queryFilter(eventFilter);
+  const trancheAddress = events[0] && events[0].args && events[0].args[0];
+  const tranche = Tranche__factory.connect(trancheAddress, signer);
+
   const ycAddress = await tranche.yc();
   const yc = YC__factory.connect(ycAddress, signer);
 
   // Setup the proxy
+  const bytecodehash = ethers.utils.solidityKeccak256(
+    ["bytes"],
+    [data.bytecode]
+  );
   const proxyFactory = new UserProxyTest__factory(signer);
-  const proxy = await proxyFactory.deploy(wethAddress, tranche.address);
-
+  const proxy = await proxyFactory.deploy(
+    wethAddress,
+    trancheFactory.address,
+    bytecodehash
+  );
   return {
     signer,
     usdc,
@@ -127,6 +150,7 @@ export async function loadFixture() {
     tranche,
     yc,
     proxy,
+    trancheFactory,
   };
 }
 
@@ -145,12 +169,24 @@ export async function loadEthPoolMainnetFixture() {
     "eyWETH"
   );
 
-  const tranche = await deployTranche(signer, elf.address, 5000000);
-
+  // deploy and fetch tranche contract
+  const trancheFactory = await deployTrancheFactory(signer);
+  await trancheFactory.deployTranche(1e10, elf.address);
+  const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
+  const events = await trancheFactory.queryFilter(eventFilter);
+  const trancheAddress = events[0] && events[0].args && events[0].args[0];
+  const tranche = Tranche__factory.connect(trancheAddress, signer);
   // Setup the proxy
+  const bytecodehash = ethers.utils.solidityKeccak256(
+    ["bytes"],
+    [data.bytecode]
+  );
   const proxyFactory = new UserProxyTest__factory(signer);
-  const proxy = await proxyFactory.deploy(wethAddress, tranche.address);
-
+  const proxy = await proxyFactory.deploy(
+    wethAddress,
+    trancheFactory.address,
+    bytecodehash
+  );
   return {
     signer,
     weth,
@@ -175,11 +211,24 @@ export async function loadUsdcPoolMainnetFixture() {
     "Element Yearn USDC",
     "eyUSDC"
   );
-  const tranche = await deployTranche(signer, elf.address, 5000000);
-
+  // deploy and fetch tranche contract
+  const trancheFactory = await deployTrancheFactory(signer);
+  await trancheFactory.deployTranche(1e10, elf.address);
+  const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
+  const events = await trancheFactory.queryFilter(eventFilter);
+  const trancheAddress = events[0] && events[0].args && events[0].args[0];
+  const tranche = Tranche__factory.connect(trancheAddress, signer);
   // Setup the proxy
+  const bytecodehash = ethers.utils.solidityKeccak256(
+    ["bytes"],
+    [data.bytecode]
+  );
   const proxyFactory = new UserProxyTest__factory(signer);
-  const proxy = await proxyFactory.deploy(usdcAddress, tranche.address);
+  const proxy = await proxyFactory.deploy(
+    usdcAddress,
+    trancheFactory.address,
+    bytecodehash
+  );
 
   return {
     signer,
@@ -198,8 +247,14 @@ export async function loadTestTrancheFixture() {
   const usdc = await testTokenDeployer.deploy("test token", "TEST", 18);
 
   const elfStub: ElfStub = await deployElfStub(signer, usdc.address);
+  // deploy and fetch tranche contract
+  const trancheFactory = await deployTrancheFactory(signer);
+  await trancheFactory.deployTranche(1e10, elfStub.address);
+  const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
+  const events = await trancheFactory.queryFilter(eventFilter);
+  const trancheAddress = events[0] && events[0].args && events[0].args[0];
+  const tranche = Tranche__factory.connect(trancheAddress, signer);
 
-  const tranche = await deployTranche(signer, elfStub.address, 5000000);
   const ycAddress = await tranche.yc();
   const yc = YC__factory.connect(ycAddress, signer);
 

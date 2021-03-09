@@ -68,7 +68,7 @@ contract YVaultAssetProxy is Elf {
             mintAmount = amount;
         } else {
             // Otherwise we mint the proportion that this increases the value held by this contract
-            mintAmount = (reserveSupply * amount) / totalValue;
+            mintAmount = (localReserveSupply * amount) / totalValue;
         }
 
         // This hack means that the contract will never have zero balance of underlying
@@ -81,7 +81,7 @@ contract YVaultAssetProxy is Elf {
         _setReserves(localUnderlying + amount, localElf);
         // Note that the sender has deposited and increase reserveSupply
         reserveBalances[msg.sender] += mintAmount;
-        reserveSupply += mintAmount;
+        reserveSupply = localReserveSupply + mintAmount;
     }
 
     /// @notice This function allows a holder of reserve balance to withdraw their share
@@ -105,7 +105,7 @@ contract YVaultAssetProxy is Elf {
         // We then store the updated reserve amounts
         _setReserves(localUnderlying - userUnderlying, localElf - userElf);
         // We note a reduction in local supply
-        reserveSupply -= amount;
+        reserveSupply = localReserveSupply - amount;
     }
 
     /// @notice Makes the actual deposit into the yearn vault

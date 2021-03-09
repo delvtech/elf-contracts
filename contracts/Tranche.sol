@@ -32,6 +32,7 @@ contract Tranche is ERC20Permit, ITranche {
     // The amount of slippage allowed on the FYT redemption [0.1 basis points]
     uint256 constant SLIPPAGE_BP = 1e13;
 
+    /// @notice Constructs this contract
     constructor()
         ERC20("Fixed Yield Token ", "FYT:")
         ERC20Permit("Fixed Yield Token ")

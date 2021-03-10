@@ -4,7 +4,7 @@ import {
   loadUsdcPoolMainnetFixture,
   UsdcPoolMainnetInterface,
 } from "./helpers/deployer";
-import { impersonate, stopImpersonating } from "./helpers/impersonate";
+import { impersonate } from "./helpers/impersonate";
 import { Contract } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
@@ -19,11 +19,11 @@ describe("UserProxyTests", function () {
   before(async function () {
     // Get the setup contracts
     fixture = await loadUsdcPoolMainnetFixture();
-    proxy = fixture.proxy;
+    ({ proxy } = fixture);
 
     underlying = await ethers.getContractAt(
       "contracts/libraries/ERC20.sol:ERC20",
-      await fixture.elf.token()
+      await fixture.position.token()
     );
     impersonate(usdcWhaleAddress);
     const usdcWhale = await ethers.provider.getSigner(usdcWhaleAddress);
@@ -44,11 +44,14 @@ describe("UserProxyTests", function () {
     const twohundred = ethers.utils.parseUnits("200", 6);
     await fixture.usdc
       .connect(usdcWhale)
-      .approve(fixture.elf.address, twohundred.mul(2));
-    await fixture.elf.connect(usdcWhale).reserveDeposit(twohundred);
+      .approve(fixture.position.address, twohundred.mul(2));
+    await fixture.position.connect(usdcWhale).reserveDeposit(twohundred);
   });
   it("Successfully derives tranche contract address", async function () {
-    const addr = await fixture.proxy.deriveTranche(fixture.elf.address, 1e10);
+    const addr = await fixture.proxy.deriveTranche(
+      fixture.position.address,
+      1e10
+    );
     expect(addr).to.equal(fixture.tranche.address);
   });
   it("Successfully mints", async function () {
@@ -59,7 +62,7 @@ describe("UserProxyTests", function () {
       ethers.utils.parseUnits("1", 6),
       underlying.address,
       1e10,
-      fixture.elf.address
+      fixture.position.address
     );
     // Mint for the first time
     receipt = await receipt.wait();
@@ -68,7 +71,7 @@ describe("UserProxyTests", function () {
       ethers.utils.parseUnits("1", 6),
       underlying.address,
       1e10,
-      fixture.elf.address
+      fixture.position.address
     );
     receipt = await receipt.wait();
     console.log("Repeat Mint", receipt.gasUsed.toNumber());
@@ -80,7 +83,7 @@ describe("UserProxyTests", function () {
         ethers.utils.parseUnits("1", 6),
         underlying.address,
         1e10,
-        fixture.elf.address
+        fixture.position.address
       );
     receipt = await receipt.wait();
     console.log("New User First mint", receipt.gasUsed.toNumber());

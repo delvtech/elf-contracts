@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/IERC20.sol";
-import "./interfaces/IElf.sol";
+import "./interfaces/IWrappedPosition.sol";
 import "./interfaces/ITranche.sol";
 import "./interfaces/ITrancheFactory.sol";
 import "./interfaces/IYC.sol";
@@ -17,7 +17,7 @@ contract Tranche is ERC20, ITranche {
     using Address for address;
 
     IYC public immutable override yc;
-    IElf public immutable elf;
+    IWrappedPosition public immutable position;
     IERC20 public immutable underlying;
     uint8 immutable underlyingDecimals;
 
@@ -36,35 +36,35 @@ contract Tranche is ERC20, ITranche {
     constructor() ERC20("Fixed Yield Token ", "FYT:") {
         // assume the caller is the Tranche factory.
         ITrancheFactory trancheFactory = ITrancheFactory(msg.sender);
-        (address elfAddress, uint256 expiration, IYC ycTemp) = trancheFactory
+        (address wpAddress, uint256 expiration, IYC ycTemp) = trancheFactory
             .getData();
         yc = ycTemp;
 
-        IElf elfContract = IElf(elfAddress);
-        elf = elfContract;
+        IWrappedPosition wpContract = IWrappedPosition(wpAddress);
+        position = wpContract;
 
-        string memory elfSymbol = elfContract.symbol();
+        string memory strategySymbol = wpContract.symbol();
         // Store the immutable time variables
         unlockTimestamp = expiration;
         // We use local because immutables are not readable in construction
-        IERC20 localUnderlying = elfContract.token();
-        underlying = elfContract.token();
+        IERC20 localUnderlying = wpContract.token();
+        underlying = wpContract.token();
         // We load and store the underlying decimals
         uint8 localUnderlyingDecimals = localUnderlying.decimals();
         underlyingDecimals = localUnderlyingDecimals;
         // And set this contract to have the same
         _setupDecimals(localUnderlyingDecimals);
 
-        // Write the elfSymbol and expiration time to name and symbol
-        DateString.encodeAndWriteTimestamp(elfSymbol, expiration, name);
-        DateString.encodeAndWriteTimestamp(elfSymbol, expiration, symbol);
+        // Write the strategySymbol  and expiration time to name and symbol
+        DateString.encodeAndWriteTimestamp(strategySymbol, expiration, name);
+        DateString.encodeAndWriteTimestamp(strategySymbol, expiration, symbol);
     }
 
     /**
-    @notice Deposit ELF tokens and receive FYT and YC ERC20 tokens.
-            If interest has already been accrued by the
-            ELF tokens held in this contract, the number
-            of FYT tokens minted is reduced in order to pay for the accrued interest.
+    @notice Deposit wrapped position tokens and receive FYT and YC ERC20 tokens.
+            If interest has already been accrued by the wrapped position
+            tokens held in this contract, the number of FYT tokens minted is
+            reduced in order to pay for the accrued interest.
     @param _amount The amount of underlying to deposit
     @param _destination The address to mint to
     @return The amount of FYT tokens minted after earned interest discount
@@ -74,17 +74,17 @@ contract Tranche is ERC20, ITranche {
         override
         returns (uint256)
     {
-        // Tranfer the underlying into ELF
-        underlying.transferFrom(msg.sender, address(elf), _amount);
+        // Tranfer the underlying to be wrapped into the position
+        underlying.transferFrom(msg.sender, address(position), _amount);
         // Now that we have funded the deposit we can call
         // the prefunded deposit
         return prefundedDeposit(_destination);
     }
 
     /// @notice This function calls the prefunded deposit method to
-    ///         create ELF token held by the contract. It should
+    ///         create wrapped position tokens held by the contract. It should
     ///         only be called when a transfer has already been made to
-    ///         the ELF of the underlying
+    ///         the wrapped position contract of the underlying
     /// @param _destination The address to mint too
     function prefundedDeposit(address _destination)
         public
@@ -93,13 +93,16 @@ contract Tranche is ERC20, ITranche {
     {
         // We check that this it is possible to deposit
         require(block.timestamp < unlockTimestamp, "expired");
-        // Since the ELF holds a balance we use the prefunded deposit method
-        (uint256 shares, uint256 usedUnderlying, uint256 balanceBefore) = elf
-            .prefundedDeposit(address(this));
+        // Since the wrapped position contract holds a balance we use the prefunded deposit method
+        (
+            uint256 shares,
+            uint256 usedUnderlying,
+            uint256 balanceBefore
+        ) = position.prefundedDeposit(address(this));
         // The implied current value of the holding of this contract in underlying
         // is the balanceBefore*(usedUnderlying/shares) since (usedUnderlying/shares)
         // is underlying per share and balanceBefore is the balance of this contract
-        // in ELF token before this deposit.
+        // in position tokens before this deposit.
         uint256 holdingsValue = (balanceBefore * usedUnderlying) / shares;
         // This formula is inputUnderlying - inputUnderlying*interestPerUnderlying
         // Accumulated interest has its value in the YC so we have to mint less FYT
@@ -168,11 +171,15 @@ contract Tranche is ERC20, ITranche {
             (amountUnderlying * SLIPPAGE_BP) /
             1e18;
         return
-            elf.withdrawUnderlying(_destination, amountUnderlying, minOutput);
+            position.withdrawUnderlying(
+                _destination,
+                amountUnderlying,
+                minOutput
+            );
     }
 
     /**
-    @notice Burn YC tokens to withdraw ELF tokens.
+    @notice Burn YC tokens to withdraw underlying tokens.
     @param _amount The number of YC tokens to burn.
     @param _destination The address to send the result to
     @return The number of underlying token released
@@ -188,7 +195,9 @@ contract Tranche is ERC20, ITranche {
         // Burn tokens from the sender
         yc.burn(msg.sender, _amount);
         // Load the underlying value of this contract
-        uint256 underlyingValueLocked = elf.balanceOfUnderlying(address(this));
+        uint256 underlyingValueLocked = position.balanceOfUnderlying(
+            address(this)
+        );
         // Load a stack variable to avoid future sloads
         (uint256 _valueSupplied, uint256 _ycSupply) = (
             uint256(valueSupplied),
@@ -205,9 +214,9 @@ contract Tranche is ERC20, ITranche {
             1e18;
         // Store that we reduced the supply
         ycSupply = uint128(_ycSupply - _amount);
-        // Redeem elf tokens for underlying
+        // Redeem position tokens for underlying
         return
-            elf.withdrawUnderlying(
+            position.withdrawUnderlying(
                 _destination,
                 redemptionAmount,
                 minRedemption

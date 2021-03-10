@@ -11,7 +11,7 @@ contract YC is ERC20, IYC {
 
     /// @dev Initializes the ERC20 and writes the correct names
     /// @param _tranche The tranche contract address
-    /// @param strategySymbol The symbol of the associated ELF contract
+    /// @param strategySymbol The symbol of the associated WrappedPosition contract
     /// @param timestamp The unlock time on the tranche
     constructor(
         address _tranche,
@@ -21,7 +21,7 @@ contract YC is ERC20, IYC {
     ) ERC20("Yield Coupon ", "YC:") {
         tranche = _tranche;
         _setupDecimals(_decimals);
-        // Write the elfSymbol and expiration time to name and symbol
+        // Write the strategySymbol and expiration time to name and symbol
         DateString.encodeAndWriteTimestamp(strategySymbol, timestamp, name);
         DateString.encodeAndWriteTimestamp(strategySymbol, timestamp, symbol);
     }

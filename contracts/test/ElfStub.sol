@@ -1,13 +1,15 @@
 pragma solidity ^0.8.0;
 
-import "../Elf.sol";
+import "../WrappedPosition.sol";
 import "./TestERC20.sol";
 
-contract ElfStub is Elf {
+contract WrappedPositionStub is WrappedPosition {
     uint256 public underlyingUnitValue = 100;
 
     // solhint-disable-next-line no-empty-blocks
-    constructor(IERC20 _token) Elf(_token, "ELement Finance", "TestELF") {}
+    constructor(IERC20 _token)
+        WrappedPosition(_token, "ELement Finance", "TestWrappedPosition")
+    {}
 
     function _deposit() internal override returns (uint256, uint256) {
         // Check how much was deposited

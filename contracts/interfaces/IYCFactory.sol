@@ -6,7 +6,7 @@ import "../assets/YC.sol";
 interface IYCFactory {
     function deployYc(
         address tranche,
-        string memory elfSymbol,
+        string memory strategySymbol,
         uint256 expiration,
         uint8 underlyingDecimals
     ) external returns (YC yc);

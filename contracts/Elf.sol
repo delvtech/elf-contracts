@@ -5,13 +5,13 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IWETH.sol";
 import "./interfaces/IElf.sol";
 
-import "./libraries/ERC20Permit.sol";
+import "./libraries/ERC20.sol";
 import "./libraries/Address.sol";
 import "./libraries/SafeERC20.sol";
 
 /// @author Element Finance
 /// @title Elf Core
-abstract contract Elf is ERC20Permit, IElf {
+abstract contract Elf is ERC20, IElf {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -25,7 +25,7 @@ abstract contract Elf is ERC20Permit, IElf {
         IERC20 _token,
         string memory _name,
         string memory _symbol
-    ) ERC20(_name, _symbol) ERC20Permit(_name) {
+    ) ERC20(_name, _symbol) {
         token = _token;
         // We set our decimals to be the same as the underlying
         _setupDecimals(_token.decimals());
@@ -60,7 +60,7 @@ abstract contract Elf is ERC20Permit, IElf {
         view
         returns (uint256)
     {
-        return _underlying(balanceOf(_who));
+        return _underlying(balanceOf[_who]);
     }
 
     /// @notice Returns the amount of the underlying asset a certain amount of shares is worth
@@ -111,7 +111,9 @@ abstract contract Elf is ERC20Permit, IElf {
     {
         // Calls our internal deposit function
         (uint256 shares, uint256 usedUnderlying) = _deposit();
-        uint256 balanceBefore = balanceOf(msg.sender);
+
+        uint256 balanceBefore = balanceOf[msg.sender];
+
         // Mint them internal ERC20 tokens coresponding to the deposit
         _mint(_destination, shares);
         return (shares, usedUnderlying, balanceBefore);
@@ -142,7 +144,7 @@ abstract contract Elf is ERC20Permit, IElf {
         uint256 _minUnderlying
     ) external override returns (uint256) {
         // First we load the number of underlying per unit of ELF token
-        uint256 oneUnit = 10**decimals();
+        uint256 oneUnit = 10**decimals;
         uint256 underlyingPerElf = _underlying(oneUnit);
         // Then we calculate the number of shares we need
         uint256 shares = (_amount * oneUnit) / underlyingPerElf;

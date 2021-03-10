@@ -9,10 +9,10 @@ import "./interfaces/IYC.sol";
 
 import "./libraries/Address.sol";
 import "./libraries/SafeERC20.sol";
-import "./libraries/ERC20Permit.sol";
+import "./libraries/ERC20.sol";
 import "./libraries/DateString.sol";
 
-contract Tranche is ERC20Permit, ITranche {
+contract Tranche is ERC20, ITranche {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -33,10 +33,7 @@ contract Tranche is ERC20Permit, ITranche {
     uint256 constant SLIPPAGE_BP = 1e13;
 
     /// @notice Constructs this contract
-    constructor()
-        ERC20("Fixed Yield Token ", "FYT:")
-        ERC20Permit("Fixed Yield Token ")
-    {
+    constructor() ERC20("Fixed Yield Token ", "FYT:") {
         // assume the caller is the Tranche factory.
         ITrancheFactory trancheFactory = ITrancheFactory(msg.sender);
         (address elfAddress, uint256 expiration, IYC ycTemp) = trancheFactory
@@ -59,8 +56,8 @@ contract Tranche is ERC20Permit, ITranche {
         _setupDecimals(localUnderlyingDecimals);
 
         // Write the elfSymbol and expiration time to name and symbol
-        DateString.encodeAndWriteTimestamp(elfSymbol, expiration, _name);
-        DateString.encodeAndWriteTimestamp(elfSymbol, expiration, _symbol);
+        DateString.encodeAndWriteTimestamp(elfSymbol, expiration, name);
+        DateString.encodeAndWriteTimestamp(elfSymbol, expiration, symbol);
     }
 
     /**

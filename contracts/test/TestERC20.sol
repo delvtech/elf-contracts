@@ -15,12 +15,12 @@ contract TestERC20 is ERC20 {
     }
 
     function setBalance(address destination, uint256 amount) external {
-        _balances[destination] = amount;
+        balanceOf[destination] = amount;
         emit Transfer(address(0), destination, amount);
     }
 
     function uncheckedTransfer(address destination, uint256 amount) external {
-        _balances[destination] += amount;
+        balanceOf[destination] += amount;
         emit Transfer(address(0), destination, amount);
     }
 }

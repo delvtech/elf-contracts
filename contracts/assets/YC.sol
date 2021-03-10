@@ -1,12 +1,11 @@
 pragma solidity ^0.8.0;
 
 import "../libraries/ERC20.sol";
-import "../libraries/ERC20Permit.sol";
 import "../libraries/DateString.sol";
 
 import "../interfaces/IYC.sol";
 
-contract YC is ERC20Permit, IYC {
+contract YC is ERC20, IYC {
     // The tranche address which controls the minting
     address public immutable tranche;
 
@@ -19,12 +18,12 @@ contract YC is ERC20Permit, IYC {
         string memory strategySymbol,
         uint256 timestamp,
         uint8 _decimals
-    ) ERC20("Yield Coupon ", "YC:") ERC20Permit("Yield Coupon") {
+    ) ERC20("Yield Coupon ", "YC:") {
         tranche = _tranche;
         _setupDecimals(_decimals);
         // Write the elfSymbol and expiration time to name and symbol
-        DateString.encodeAndWriteTimestamp(strategySymbol, timestamp, _name);
-        DateString.encodeAndWriteTimestamp(strategySymbol, timestamp, _symbol);
+        DateString.encodeAndWriteTimestamp(strategySymbol, timestamp, name);
+        DateString.encodeAndWriteTimestamp(strategySymbol, timestamp, symbol);
     }
 
     /// @dev Prevents execution if the caller isn't the tranche

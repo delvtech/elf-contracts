@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.0;
 
-import "../assets/YC.sol";
+import "../assets/InterestToken.sol";
 
-interface IYCFactory {
-    function deployYc(
+interface IInterestTokenFactory {
+    function deployInterestToken(
         address tranche,
         string memory strategySymbol,
         uint256 expiration,
         uint8 underlyingDecimals
-    ) external returns (YC yc);
+    ) external returns (InterestToken interestToken);
 }

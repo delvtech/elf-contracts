@@ -9,11 +9,10 @@ import "./libraries/Authorizable.sol";
 
 contract UserProxy is Authorizable {
     // This contract is a convenience library to consolidate
-    // the actions needed to create FYT/YC to one call.
-    // It will hold user allowances, and can be disabled
-    // by an owner for security.
-    // If frozen users still control their own tokens
-    // so can manually redeem them.
+    // the actions needed to create interest or principal tokens to one call.
+    // It will hold user allowances, and can be disabled by authorized addresses
+    // for security.
+    // If frozen users still control their own tokens so can manually redeem them.
 
     // Store the accessibility state of the contract
     bool public isFrozen = false;
@@ -57,10 +56,10 @@ contract UserProxy is Authorizable {
         isFrozen = newState;
     }
 
-    /// @dev Mints a FYT/YC token pair from either underlying token or Eth
-    ///      then returns the FYT YC to the caller. This function assumes
+    /// @dev Mints a principal/interest token pair from either underlying token or Eth
+    ///      then returns the tokens to the caller. This function assumes
     ///      that it already has an allowance for the token in question.
-    /// @param amount The amount of underlying to turn into FYT/YC
+    /// @param amount The amount of underlying to turn into tokens
     /// @param underlying Either (1) The underlying ERC20 token contract
     ///                   or (2) the ETH_CONSTANT to indicate the user has sent eth.
     /// @param expiration The expiration time of the Tranche contract
@@ -91,11 +90,11 @@ contract UserProxy is Authorizable {
         }
     }
 
-    /// @dev Mints a FYT/YC token pair from a underlying token which supports
+    /// @dev Mints a principal/Interest token pair from a underlying token which supports
     ///      the permit method. This call sets the allowance on this contract
     ///      for the underlying ERC20 token to be unlimited and expects the
     ///      signature to have an expiration time of uint256.max
-    /// @param amount The amount of underlying to turn into FYT/YC
+    /// @param amount The amount of underlying to turn into tokens
     /// @param underlying The underlying ERC20 token contract
     /// @param expiration The expiration time of the Tranche contract
     /// @param position The contract which manages pooled positions

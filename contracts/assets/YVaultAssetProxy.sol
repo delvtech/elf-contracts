@@ -25,7 +25,8 @@ contract YVaultAssetProxy is WrappedPosition {
 
     /// @notice Constructs this contract and stores needed data
     /// @param vault_ the yearn v2 vault
-    /// @param _token the underlying token
+    /// @param _token The underlying token.
+    ///               This token should revert in the event of a transfer failure.
     /// @param _name the name of the token created
     /// @param _symbol the symbol of the token created
     constructor(

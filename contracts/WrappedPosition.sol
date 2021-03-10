@@ -13,7 +13,8 @@ abstract contract WrappedPosition is ERC20, IWrappedPosition {
     IERC20 public immutable override token;
 
     /// @notice Constucts this contract
-    /// @param _token The underlying token
+    /// @param _token The underlying token.
+    ///               This token should revert in the event of a transfer failure.
     /// @param _name the name of this contract
     /// @param _symbol the symbol for this contract
     constructor(

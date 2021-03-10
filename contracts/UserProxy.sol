@@ -63,6 +63,7 @@ contract UserProxy is Authorizable {
     /// @param amount The amount of underlying to turn into FYT/YC
     /// @param underlying Either (1) The underlying ERC20 token contract
     ///                   or (2) the ETH_CONSTANT to indicate the user has sent eth.
+    ///                   This token should revert in the event of a transfer failure.
     /// @param expiration The expiration time of the Tranche contract
     /// @param position The contract which manages pooled deposits
     function mint(

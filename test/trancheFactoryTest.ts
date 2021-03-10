@@ -20,7 +20,7 @@ describe("TrancheFactory", () => {
       return { user, address: "" };
     });
     // finish populating the user array by assigning each index a signer address
-    // and approve 6e6 usdc to the elf contract for each address
+    // and approve 6e6 usdc to the position contract for each address
     await Promise.all(
       users.map(async (userInfo) => {
         const { user } = userInfo;
@@ -41,12 +41,12 @@ describe("TrancheFactory", () => {
     });
     it("should correctly deploy a new tranche instance", async () => {
       expect(
-        await fixture.proxy.deriveTranche(fixture.elf.address, 1e10)
+        await fixture.proxy.deriveTranche(fixture.position.address, 1e10)
       ).to.equal(fixture.tranche.address);
     });
     it("should fail to deploy to the same address ", async () => {
       await expect(
-        fixture.trancheFactory.deployTranche(1e10, fixture.elf.address)
+        fixture.trancheFactory.deployTranche(1e10, fixture.position.address)
       ).to.be.reverted;
     });
   });

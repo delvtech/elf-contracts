@@ -4,10 +4,10 @@ import { Signer } from "ethers";
 import { ethers } from "hardhat";
 import { AToken } from "typechain/AToken";
 import { AYVault } from "typechain/AYVault";
-import { ElfStub } from "typechain/ElfStub";
+import { WrappedPositionStub } from "typechain/WrappedPositionStub";
 import { AToken__factory } from "typechain/factories/AToken__factory";
 import { AYVault__factory } from "typechain/factories/AYVault__factory";
-import { ElfStub__factory } from "typechain/factories/ElfStub__factory";
+import { WrappedPositionStub__factory } from "typechain/factories/WrappedPositionStub__factory";
 import { IERC20__factory } from "typechain/factories/IERC20__factory";
 import { IWETH__factory } from "typechain/factories/IWETH__factory";
 import { IYearnVault__factory } from "typechain/factories/IYearnVault__factory";
@@ -34,7 +34,7 @@ export interface FixtureInterface {
   signer: Signer;
   usdc: AToken;
   yusdc: AYVault;
-  elf: YVaultAssetProxy;
+  position: YVaultAssetProxy;
   tranche: Tranche;
   yc: YC;
   proxy: UserProxyTest;
@@ -45,7 +45,7 @@ export interface EthPoolMainnetInterface {
   signer: Signer;
   weth: IWETH;
   yweth: IYearnVault;
-  elf: YVaultAssetProxy;
+  position: YVaultAssetProxy;
   tranche: Tranche;
   proxy: UserProxyTest;
 }
@@ -54,7 +54,7 @@ export interface UsdcPoolMainnetInterface {
   signer: Signer;
   usdc: IERC20;
   yusdc: IYearnVault;
-  elf: YVaultAssetProxy;
+  position: YVaultAssetProxy;
   tranche: Tranche;
   proxy: UserProxyTest;
 }
@@ -62,13 +62,13 @@ export interface UsdcPoolMainnetInterface {
 export interface TrancheTestFixture {
   signer: Signer;
   usdc: TestERC20;
-  elfStub: ElfStub;
+  positionStub: WrappedPositionStub;
   tranche: Tranche;
   yc: YC;
 }
 
-const deployElfStub = async (signer: Signer, address: string) => {
-  const deployer = new ElfStub__factory(signer);
+const deployWrappedPositionStub = async (signer: Signer, address: string) => {
+  const deployer = new WrappedPositionStub__factory(signer);
   return await deployer.deploy(address);
 };
 
@@ -112,7 +112,7 @@ export async function loadFixture() {
   const usdc = await deployUsdc(signer, signerAddress);
   const yusdc = await deployYusdc(signer, usdc.address);
 
-  const elf: YVaultAssetProxy = await deployYasset(
+  const position: YVaultAssetProxy = await deployYasset(
     signer,
     yusdc.address,
     usdc.address,
@@ -122,7 +122,7 @@ export async function loadFixture() {
 
   // deploy and fetch tranche contract
   const trancheFactory = await deployTrancheFactory(signer);
-  await trancheFactory.deployTranche(1e10, elf.address);
+  await trancheFactory.deployTranche(1e10, position.address);
   const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
   const events = await trancheFactory.queryFilter(eventFilter);
   const trancheAddress = events[0] && events[0].args && events[0].args[0];
@@ -146,7 +146,7 @@ export async function loadFixture() {
     signer,
     usdc,
     yusdc,
-    elf,
+    position,
     tranche,
     yc,
     proxy,
@@ -161,7 +161,7 @@ export async function loadEthPoolMainnetFixture() {
 
   const weth = IWETH__factory.connect(wethAddress, signer);
   const yweth = IYearnVault__factory.connect(ywethAddress, signer);
-  const elf = await deployYasset(
+  const position = await deployYasset(
     signer,
     yweth.address,
     weth.address,
@@ -171,7 +171,7 @@ export async function loadEthPoolMainnetFixture() {
 
   // deploy and fetch tranche contract
   const trancheFactory = await deployTrancheFactory(signer);
-  await trancheFactory.deployTranche(1e10, elf.address);
+  await trancheFactory.deployTranche(1e10, position.address);
   const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
   const events = await trancheFactory.queryFilter(eventFilter);
   const trancheAddress = events[0] && events[0].args && events[0].args[0];
@@ -191,7 +191,7 @@ export async function loadEthPoolMainnetFixture() {
     signer,
     weth,
     yweth,
-    elf,
+    position,
     tranche,
     proxy,
   };
@@ -204,7 +204,7 @@ export async function loadUsdcPoolMainnetFixture() {
 
   const usdc = IERC20__factory.connect(usdcAddress, signer);
   const yusdc = IYearnVault__factory.connect(yusdcAddress, signer);
-  const elf = await deployYasset(
+  const position = await deployYasset(
     signer,
     yusdc.address,
     usdc.address,
@@ -213,7 +213,7 @@ export async function loadUsdcPoolMainnetFixture() {
   );
   // deploy and fetch tranche contract
   const trancheFactory = await deployTrancheFactory(signer);
-  await trancheFactory.deployTranche(1e10, elf.address);
+  await trancheFactory.deployTranche(1e10, position.address);
   const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
   const events = await trancheFactory.queryFilter(eventFilter);
   const trancheAddress = events[0] && events[0].args && events[0].args[0];
@@ -234,7 +234,7 @@ export async function loadUsdcPoolMainnetFixture() {
     signer,
     usdc,
     yusdc,
-    elf,
+    position,
     tranche,
     proxy,
   };
@@ -245,10 +245,13 @@ export async function loadTestTrancheFixture() {
   const testTokenDeployer = new TestERC20__factory(signer);
   const usdc = await testTokenDeployer.deploy("test token", "TEST", 18);
 
-  const elfStub: ElfStub = await deployElfStub(signer, usdc.address);
+  const positionStub: WrappedPositionStub = await deployWrappedPositionStub(
+    signer,
+    usdc.address
+  );
   // deploy and fetch tranche contract
   const trancheFactory = await deployTrancheFactory(signer);
-  await trancheFactory.deployTranche(1e10, elfStub.address);
+  await trancheFactory.deployTranche(1e10, positionStub.address);
   const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
   const events = await trancheFactory.queryFilter(eventFilter);
   const trancheAddress = events[0] && events[0].args && events[0].args[0];
@@ -260,7 +263,7 @@ export async function loadTestTrancheFixture() {
   return {
     signer,
     usdc,
-    elfStub,
+    positionStub,
     tranche,
     yc,
   };

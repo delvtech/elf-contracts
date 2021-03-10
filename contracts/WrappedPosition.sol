@@ -3,14 +3,14 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/IERC20.sol";
 import "./interfaces/IWETH.sol";
-import "./interfaces/IElf.sol";
+import "./interfaces/IWrappedPosition.sol";
 
 import "./libraries/ERC20.sol";
 import "./libraries/SafeERC20.sol";
 
 /// @author Element Finance
-/// @title Elf Core
-abstract contract Elf is ERC20, IElf {
+/// @title Wrapped Position Core
+abstract contract WrappedPosition is ERC20, IWrappedPosition {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable override token;
@@ -73,12 +73,12 @@ abstract contract Elf is ERC20, IElf {
         return _underlying(_shares);
     }
 
-    /// @notice Entry point to deposit tokens into the Elf contract
+    /// @notice Entry point to deposit tokens into the Wrapped Position contract
     ///         Transfers tokens on behalf of caller so the caller must set
     ///         allowance on the contract prior to call.
     /// @param _amount the amount of underlying tokens to deposit
     /// @param _destination the address to mint too
-    /// @return Returns the number of ELF tokens minted
+    /// @return Returns the number of Wrapped Position tokens minted
     function deposit(address _destination, uint256 _amount)
         external
         override
@@ -93,11 +93,11 @@ abstract contract Elf is ERC20, IElf {
         return shares;
     }
 
-    /// @notice Entry point to deposit tokens into the Elf contract
+    /// @notice Entry point to deposit tokens into the Wrapped Position contract
     ///         Assumes the tokens were transferred before this was called
     /// @param _destination the destination of this deposit
-    /// @return Returns (elf tokens minted, used underlying,
-    ///                  senders ELF balance before mint,
+    /// @return Returns (WP tokens minted, used underlying,
+    ///                  senders WP balance before mint)
     function prefundedDeposit(address _destination)
         external
         override
@@ -117,7 +117,7 @@ abstract contract Elf is ERC20, IElf {
         return (shares, usedUnderlying, balanceBefore);
     }
 
-    /// @notice Exit point to withdraw tokens from the Elf contract
+    /// @notice Exit point to withdraw tokens from the Wrapped Position contract
     /// @param _destination the address which is credited with tokens
     /// @param _shares the amount of shares the user is burning to withdraw underlying
     /// @param _minUnderlying a param which is the min output the caller expects
@@ -127,7 +127,7 @@ abstract contract Elf is ERC20, IElf {
         uint256 _shares,
         uint256 _minUnderlying
     ) public override returns (uint256) {
-        return _elfWithdraw(_destination, _shares, _minUnderlying, 0);
+        return _positionWithdraw(_destination, _shares, _minUnderlying, 0);
     }
 
     /// @notice This function burns enough tokens from the sender to send _amount
@@ -141,35 +141,35 @@ abstract contract Elf is ERC20, IElf {
         uint256 _amount,
         uint256 _minUnderlying
     ) external override returns (uint256) {
-        // First we load the number of underlying per unit of ELF token
+        // First we load the number of underlying per unit of Wrapped Position token
         uint256 oneUnit = 10**decimals;
-        uint256 underlyingPerElf = _underlying(oneUnit);
+        uint256 underlyingPerShare = _underlying(oneUnit);
         // Then we calculate the number of shares we need
-        uint256 shares = (_amount * oneUnit) / underlyingPerElf;
+        uint256 shares = (_amount * oneUnit) / underlyingPerShare;
         // Using this we call the normal withdraw function
         return
-            _elfWithdraw(
+            _positionWithdraw(
                 _destination,
                 shares,
                 _minUnderlying,
-                underlyingPerElf
+                underlyingPerShare
             );
     }
 
-    /// @notice This internal function allows the caller to provide a precomputed 'underlyingPerElf'
+    /// @notice This internal function allows the caller to provide a precomputed 'underlyingPerShare'
     ///         so that we can avoid calling it again in the internal function
     /// @param _destination the destination to send the output to
     /// @param _shares the number of shares to withdraw
     /// @param _minUnderlying the min amount of output to produce
     /// @param _underlyingPerShare the precomputed shares per underlying
     /// @return the amount of underlying released
-    function _elfWithdraw(
+    function _positionWithdraw(
         address _destination,
         uint256 _shares,
         uint256 _minUnderlying,
         uint256 _underlyingPerShare
     ) internal returns (uint256) {
-        // Burn users ELF shares
+        // Burn users shares
         _burn(msg.sender, _shares);
 
         // Withdraw that many shares from the vault

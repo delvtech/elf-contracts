@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/IERC20.sol";
 import "./interfaces/IERC20Permit.sol";
-import "./interfaces/IElf.sol";
 import "./interfaces/ITranche.sol";
 import "./interfaces/IWETH.sol";
 import "./libraries/Authorizable.sol";
@@ -65,12 +64,12 @@ contract UserProxy is Authorizable {
     /// @param underlying Either (1) The underlying ERC20 token contract
     ///                   or (2) the ETH_CONSTANT to indicate the user has sent eth.
     /// @param expiration The expiration time of the Tranche contract
-    /// @param elf The contract which manages pooled deposits
+    /// @param position The contract which manages pooled deposits
     function mint(
         uint256 amount,
         IERC20 underlying,
         uint256 expiration,
-        address elf
+        address position
     ) external payable notFrozen() {
         // If the underlying token matches this predefined 'ETH token'
         // then we create weth for the user and go from there
@@ -81,14 +80,14 @@ contract UserProxy is Authorizable {
             // NOTE - This can be made slightly cheaper by depositing 1 wei into this
             //        contract address on weth.
             weth.deposit{ value: msg.value }();
-            weth.transfer(address(elf), amount);
+            weth.transfer(address(position), amount);
             // Proceed to internal minting steps
-            _mint(expiration, elf);
+            _mint(expiration, position);
         } else {
-            // Move the user's funds to the elf contract
-            underlying.transferFrom(msg.sender, address(elf), amount);
+            // Move the user's funds to the wrapped position contract
+            underlying.transferFrom(msg.sender, address(position), amount);
             // Proceed to internal minting steps
-            _mint(expiration, elf);
+            _mint(expiration, position);
         }
     }
 
@@ -99,7 +98,7 @@ contract UserProxy is Authorizable {
     /// @param amount The amount of underlying to turn into FYT/YC
     /// @param underlying The underlying ERC20 token contract
     /// @param expiration The expiration time of the Tranche contract
-    /// @param elf The contract which manages pooled positions
+    /// @param position The contract which manages pooled positions
     /// @param v The bit indicator which allows address recover from signature
     /// @param r The r component of the signature.
     /// @param s The s component of the signature.
@@ -107,7 +106,7 @@ contract UserProxy is Authorizable {
         uint256 amount,
         IERC20Permit underlying,
         uint256 expiration,
-        address elf,
+        address position,
         uint8 v,
         bytes32 r,
         bytes32 s
@@ -123,36 +122,36 @@ contract UserProxy is Authorizable {
             r,
             s
         );
-        // Move the user's funds to the elf contract
-        underlying.transferFrom(msg.sender, address(elf), amount);
+        // Move the user's funds to the wrapped position contract
+        underlying.transferFrom(msg.sender, address(position), amount);
         // Pass call to internal function which works once approved
-        _mint(expiration, elf);
+        _mint(expiration, position);
     }
 
     /// @dev This internal mint function preforms the core minting logic after
-    ///      the contract has already transferred to ELF
+    ///      the contract has already transferred to WrappedPosition contract
     /// @param expiration The tranche expiration time
-    /// @param elf The contract which interacts with the yield bering strategy
-    function _mint(uint256 expiration, address elf) internal {
+    /// @param position The contract which interacts with the yield bering strategy
+    function _mint(uint256 expiration, address position) internal {
         // Use create2 to derive the tranche contract
-        ITranche tranche = _deriveTranche(address(elf), expiration);
+        ITranche tranche = _deriveTranche(address(position), expiration);
         // Move funds into the Tranche contract
         // it will credit the msg.sender with the new tokens
         tranche.prefundedDeposit(msg.sender);
     }
 
     /// @dev This internal function produces the deterministic create2
-    ///      address of the Tranche contract from an elf contract and expiration
-    /// @param elf The ELF contract address
+    ///      address of the Tranche contract from an wrapped position contract and expiration
+    /// @param position The wrapped position contract address
     /// @param expiration The expiration time of the tranche
     /// @return The derived Tranche contract
-    function _deriveTranche(address elf, uint256 expiration)
+    function _deriveTranche(address position, uint256 expiration)
         internal
         virtual
         view
         returns (ITranche)
     {
-        bytes32 salt = keccak256(abi.encodePacked(elf, expiration));
+        bytes32 salt = keccak256(abi.encodePacked(position, expiration));
         bytes32 addressBytes = keccak256(
             abi.encodePacked(
                 bytes1(0xff),

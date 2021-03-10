@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./IERC20Permit.sol";
 import "./IERC20.sol";
 
-interface IElf is IERC20Permit {
+interface IWrappedPosition is IERC20Permit {
     function token() external view returns (IERC20);
 
     function balanceOfUnderlying(address who) external view returns (uint256);

@@ -12,11 +12,11 @@ contract UserProxyTest is UserProxy {
     ) UserProxy(IWETH(_weth), _trancheFactory, _trancheBytecodeHash) {}
 
     // solhint-disable-next-line private-vars-leading-underscore
-    function deriveTranche(address elf, uint256 expiration)
+    function deriveTranche(address position, uint256 expiration)
         public
         view
         returns (ITranche)
     {
-        return _deriveTranche(elf, expiration);
+        return _deriveTranche(position, expiration);
     }
 }

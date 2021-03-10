@@ -72,7 +72,7 @@ contract Tranche is ERC20, ITranche {
         override
         returns (uint256)
     {
-        // Tranfer the underlying to be wrapped into the position
+        // Transfer the underlying to be wrapped into the position
         underlying.transferFrom(msg.sender, address(position), _amount);
         // Now that we have funded the deposit we can call
         // the prefunded deposit

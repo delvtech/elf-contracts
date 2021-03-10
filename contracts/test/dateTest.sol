@@ -6,7 +6,7 @@ import "../libraries/DateString.sol";
 contract DateTest {
     string public testString = "Tester";
 
-    // This function will try encoding a timestamp and outputing what happens
+    // This function will try encoding a timestamp and output-ing what happens
     function encodeTimestamp(uint256 timestamp)
         external
         returns (string memory)

@@ -1,9 +1,9 @@
 pragma solidity ^0.8.0;
 
-import "../libraries/ERC20.sol";
-import "../libraries/DateString.sol";
+import "./libraries/ERC20.sol";
+import "./libraries/DateString.sol";
 
-import "../interfaces/IInterestToken.sol";
+import "./interfaces/IInterestToken.sol";
 
 contract InterestToken is ERC20, IInterestToken {
     // The tranche address which controls the minting

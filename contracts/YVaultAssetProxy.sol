@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.0;
 
-import "../interfaces/IERC20.sol";
-import "../interfaces/IYearnVaultV2.sol";
-import "../WrappedPosition.sol";
+import "./interfaces/IERC20.sol";
+import "./interfaces/IYearnVaultV2.sol";
+import "./WrappedPosition.sol";
 
 /// @author Element Finance
 /// @title Yearn Vault v1 Asset Proxy

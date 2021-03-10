@@ -59,17 +59,9 @@ abstract contract ERC20 is IERC20Permit {
         uint256 balance = balanceOf[spender];
         uint256 allowed = allowance[spender][msg.sender];
         require(balance >= amount, "ERC20: insufficient-balance");
-        if (
-            spender != msg.sender &&
-            allowed != type(uint256).max
-        ) {
-            require(
-                allowed >= amount,
-                "ERC20: insufficient-allowance"
-            );
-            allowance[spender][msg.sender] =
-                allowed -
-                amount;
+        if (spender != msg.sender && allowed != type(uint256).max) {
+            require(allowed >= amount, "ERC20: insufficient-allowance");
+            allowance[spender][msg.sender] = allowed - amount;
         }
         balanceOf[spender] = balance - amount;
         balanceOf[recipient] = balanceOf[recipient] + amount;

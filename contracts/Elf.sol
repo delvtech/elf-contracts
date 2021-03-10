@@ -144,7 +144,7 @@ abstract contract Elf is ERC20, IElf {
         uint256 _minUnderlying
     ) external override returns (uint256) {
         // First we load the number of underlying per unit of ELF token
-        uint256 oneUnit = 10**decimals();
+        uint256 oneUnit = 10**decimals;
         uint256 underlyingPerElf = _underlying(oneUnit);
         // Then we calculate the number of shares we need
         uint256 shares = (_amount * oneUnit) / underlyingPerElf;

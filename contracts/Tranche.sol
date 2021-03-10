@@ -33,9 +33,7 @@ contract Tranche is ERC20, ITranche {
     uint256 constant SLIPPAGE_BP = 1e13;
 
     /// @notice Constructs this contract
-    constructor()
-        ERC20("Fixed Yield Token ", "FYT:")
-    {
+    constructor() ERC20("Fixed Yield Token ", "FYT:") {
         // assume the caller is the Tranche factory.
         ITrancheFactory trancheFactory = ITrancheFactory(msg.sender);
         (address elfAddress, uint256 expiration, IYC ycTemp) = trancheFactory
@@ -58,8 +56,8 @@ contract Tranche is ERC20, ITranche {
         _setupDecimals(localUnderlyingDecimals);
 
         // Write the elfSymbol and expiration time to name and symbol
-        DateString.encodeAndWriteTimestamp(elfSymbol, _unlockTimestamp, name);
-        DateString.encodeAndWriteTimestamp(elfSymbol, _unlockTimestamp, symbol);
+        DateString.encodeAndWriteTimestamp(elfSymbol, expiration, name);
+        DateString.encodeAndWriteTimestamp(elfSymbol, expiration, symbol);
     }
 
     /**

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/IERC20.sol";
-import "../interfaces/YearnVaultV2.sol";
+import "../interfaces/IYearnVaultV2.sol";
 
 import "../libraries/ERC20.sol";
 import "../libraries/Address.sol";
@@ -10,7 +10,7 @@ import "../libraries/SafeERC20.sol";
 
 import "./AToken.sol";
 
-contract AYVault is ERC20 {
+contract AYVault is ERC20, IYearnVault {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -23,6 +23,7 @@ contract AYVault is ERC20 {
 
     function deposit(uint256 _amount, address destination)
         external
+        override
         returns (uint256)
     {
         uint256 _shares = (_amount * 1e18) / pricePerShare(); // calculate shares
@@ -36,7 +37,7 @@ contract AYVault is ERC20 {
         uint256 _shares,
         address destination,
         uint256
-    ) external returns (uint256) {
+    ) external override returns (uint256) {
         uint256 _amount = (_shares * pricePerShare()) / 1e18;
         _burn(msg.sender, _shares);
         _supply -= _shares;
@@ -44,7 +45,7 @@ contract AYVault is ERC20 {
         return _amount;
     }
 
-    function pricePerShare() public view returns (uint256) {
+    function pricePerShare() public override view returns (uint256) {
         uint256 balance = ERC20(token).balanceOf(address(this));
         if (balance == 0) return 1e18;
         return (balance * 1e18) / totalSupply();
@@ -55,11 +56,19 @@ contract AYVault is ERC20 {
         AToken(token).mint(address(this), balance / 10);
     }
 
-    function totalSupply() public view returns (uint256) {
+    function totalSupply() public override view returns (uint256) {
         return _supply;
     }
 
-    function totalAssets() public view returns (uint256) {
+    function totalAssets() public override view returns (uint256) {
         return ERC20(token).balanceOf(address(this));
+    }
+
+    function governance() external override pure returns (address) {
+        revert("Unimplemented");
+    }
+
+    function setDepositLimit(uint256) external override pure {
+        revert("Unimplemented");
     }
 }

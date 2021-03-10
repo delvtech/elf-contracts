@@ -2,8 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/IERC20.sol";
-import "../interfaces/YearnVaultV2.sol";
-import "../interfaces/IBPool.sol";
+import "../interfaces/IYearnVaultV2.sol";
 import "../Elf.sol";
 
 import "../libraries/Address.sol";
@@ -15,7 +14,7 @@ contract YVaultAssetProxy is Elf {
     using SafeERC20 for IERC20;
     using Address for address;
 
-    YearnVault public immutable vault;
+    IYearnVault public immutable vault;
     uint8 public immutable vaultDecimals;
 
     // This contract allows deposits to a reserve which can
@@ -41,7 +40,7 @@ contract YVaultAssetProxy is Elf {
         string memory _name,
         string memory _symbol
     ) Elf(_token, _name, _symbol) {
-        vault = YearnVault(vault_);
+        vault = IYearnVault(vault_);
         _token.approve(vault_, type(uint256).max);
         vaultDecimals = IERC20(vault_).decimals();
     }

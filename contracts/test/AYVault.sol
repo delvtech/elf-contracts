@@ -5,13 +5,10 @@ import "../interfaces/IERC20.sol";
 import "../interfaces/IYearnVaultV2.sol";
 
 import "../libraries/ERC20WithSupply.sol";
-import "../libraries/SafeERC20.sol";
 
 import "./AToken.sol";
 
 contract AYVault is ERC20WithSupply {
-    using SafeERC20 for IERC20;
-
     address public token;
 
     constructor(address _token) ERC20("a ytoken", "yToken") {
@@ -23,7 +20,7 @@ contract AYVault is ERC20WithSupply {
         returns (uint256)
     {
         uint256 _shares = (_amount * 1e18) / pricePerShare(); // calculate shares
-        IERC20(token).safeTransferFrom(msg.sender, address(this), _amount); // pull deposit from sender
+        IERC20(token).transferFrom(msg.sender, address(this), _amount); // pull deposit from sender
         _mint(destination, _shares); // mint shares for sender
         return _shares;
     }
@@ -35,7 +32,7 @@ contract AYVault is ERC20WithSupply {
     ) external returns (uint256) {
         uint256 _amount = (_shares * pricePerShare()) / 1e18;
         _burn(msg.sender, _shares);
-        IERC20(token).safeTransfer(destination, _amount);
+        IERC20(token).transfer(destination, _amount);
         return _amount;
     }
 

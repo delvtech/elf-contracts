@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import "./Tranche.sol";
-import "./assets/YC.sol";
 import "./interfaces/IWrappedPosition.sol";
 import "./interfaces/IERC20.sol";
-import "./interfaces/IYCFactory.sol";
-import "./interfaces/IYC.sol";
+import "./interfaces/IInterestTokenFactory.sol";
+import "./interfaces/IInterestToken.sol";
 
 pragma solidity ^0.8.0;
 
@@ -16,18 +15,18 @@ contract TrancheFactory {
         uint256 indexed duration
     );
 
-    IYCFactory internal ycFactory;
+    IInterestTokenFactory internal interestTokenFactory;
     address internal tempWpAddress;
     uint256 internal tempExpiration;
-    IYC internal tempYC;
+    IInterestToken internal tempInterestToken;
     bytes32 public constant trancheCreationHash = keccak256(
         type(Tranche).creationCode
     );
 
     /// @notice Create a new Tranche.
-    /// @param _ycFactory Address of the YC factory.
-    constructor(address _ycFactory) {
-        ycFactory = IYCFactory(_ycFactory);
+    /// @param _factory Address of the interest token factory.
+    constructor(address _factory) {
+        interestTokenFactory = IInterestTokenFactory(_factory);
     }
 
     /// @notice Deploy a new Tranche contract.
@@ -63,7 +62,7 @@ contract TrancheFactory {
             )
         );
 
-        tempYC = ycFactory.deployYc(
+        tempInterestToken = interestTokenFactory.deployInterestToken(
             predictedAddress,
             wpSymbol,
             expiration,
@@ -85,7 +84,7 @@ contract TrancheFactory {
         // set back to 0-value for some gas savings
         delete tempWpAddress;
         delete tempExpiration;
-        delete tempYC;
+        delete tempInterestToken;
 
         return tranche;
     }
@@ -95,15 +94,15 @@ contract TrancheFactory {
     /// The return data is used for Tranche initialization. Using this, the Tranche avoids
     /// constructor arguments which can make the Tranche bytecode needed for create2 address
     /// derivation non-constant.
-    /// @return Wrapped Position contract address, expiration timestamp, and YC contract
+    /// @return Wrapped Position contract address, expiration timestamp, and interest token contract
     function getData()
         external
         returns (
             address,
             uint256,
-            IYC
+            IInterestToken
         )
     {
-        return (tempWpAddress, tempExpiration, tempYC);
+        return (tempWpAddress, tempExpiration, tempInterestToken);
     }
 }

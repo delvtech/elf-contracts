@@ -5,35 +5,38 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IWrappedPosition.sol";
 import "./interfaces/ITranche.sol";
 import "./interfaces/ITrancheFactory.sol";
-import "./interfaces/IYC.sol";
+import "./interfaces/IInterestToken.sol";
 
 import "./libraries/ERC20.sol";
 import "./libraries/DateString.sol";
 
 contract Tranche is ERC20, ITranche {
-    IYC public immutable override yc;
+    IInterestToken public immutable override interestToken;
     IWrappedPosition public immutable position;
     IERC20 public immutable underlying;
     uint8 immutable underlyingDecimals;
 
     // The outstanding amount of underlying which
-    // can be redeemed from the contract from FYTs
+    // can be redeemed from the contract from Principal Tokens
     // NOTE - we use smaller sizes so that they can be one storage slot
     uint128 public valueSupplied;
-    // The total supply of YCs
-    uint128 public ycSupply;
-    // The timestamp when FYTs and YCs can be redeemed.
+    // The total supply of interest tokens
+    uint128 public interestSupply;
+    // The timestamp when tokens can be redeemed.
     uint256 public immutable unlockTimestamp;
-    // The amount of slippage allowed on the FYT redemption [0.1 basis points]
+    // The amount of slippage allowed on the Principal token redemption [0.1 basis points]
     uint256 constant SLIPPAGE_BP = 1e13;
 
     /// @notice Constructs this contract
-    constructor() ERC20("Fixed Yield Token ", "FYT:") {
+    constructor() ERC20("Element Principal Token", "ELF:") {
         // assume the caller is the Tranche factory.
         ITrancheFactory trancheFactory = ITrancheFactory(msg.sender);
-        (address wpAddress, uint256 expiration, IYC ycTemp) = trancheFactory
-            .getData();
-        yc = ycTemp;
+        (
+            address wpAddress,
+            uint256 expiration,
+            IInterestToken interestTokenTemp
+        ) = trancheFactory.getData();
+        interestToken = interestTokenTemp;
 
         IWrappedPosition wpContract = IWrappedPosition(wpAddress);
         position = wpContract;
@@ -56,20 +59,20 @@ contract Tranche is ERC20, ITranche {
     }
 
     /**
-    @notice Deposit wrapped position tokens and receive FYT and YC ERC20 tokens.
+    @notice Deposit wrapped position tokens and receive interest and Principal ERC20 tokens.
             If interest has already been accrued by the wrapped position
-            tokens held in this contract, the number of FYT tokens minted is
+            tokens held in this contract, the number of Principal tokens minted is
             reduced in order to pay for the accrued interest.
     @param _amount The amount of underlying to deposit
     @param _destination The address to mint to
-    @return The amount of FYT tokens minted after earned interest discount
+    @return The amount of principal tokens minted after earned interest discount
      */
     function deposit(uint256 _amount, address _destination)
         external
         override
         returns (uint256)
     {
-        // Tranfer the underlying to be wrapped into the position
+        // Transfer the underlying to be wrapped into the position
         underlying.transferFrom(msg.sender, address(position), _amount);
         // Now that we have funded the deposit we can call
         // the prefunded deposit
@@ -100,13 +103,13 @@ contract Tranche is ERC20, ITranche {
         // in position tokens before this deposit.
         uint256 holdingsValue = (balanceBefore * usedUnderlying) / shares;
         // This formula is inputUnderlying - inputUnderlying*interestPerUnderlying
-        // Accumulated interest has its value in the YC so we have to mint less FYT
-        // to account for that.
+        // Accumulated interest has its value in the interest tokens so we have to mint less
+        // principal tokens to account for that.
         // NOTE - If a pool has more than 100% interest in the period this will revert on underflow
-        //        The user cannot discount the FYT enough to pay for the outstanding interest accrued.
-        (uint256 _valueSupplied, uint256 _ycSupply) = (
+        //        The user cannot discount the principal token enough to pay for the outstanding interest accrued.
+        (uint256 _valueSupplied, uint256 _interestSupply) = (
             uint256(valueSupplied),
-            uint256(ycSupply)
+            uint256(interestSupply)
         );
         uint256 adjustedAmount;
         // Have to split on the initialization case
@@ -125,31 +128,31 @@ contract Tranche is ERC20, ITranche {
             adjustedAmount = usedUnderlying;
         }
         // We record the new input of reclaimable underlying
-        (valueSupplied, ycSupply) = (
+        (valueSupplied, interestSupply) = (
             uint128(_valueSupplied + adjustedAmount),
-            uint128(_ycSupply + usedUnderlying)
+            uint128(_interestSupply + usedUnderlying)
         );
-        // We mint YC for each underlying provided
-        yc.mint(_destination, usedUnderlying);
-        // We mint FYT discounted by the accumulated interest.
+        // We mint interest token for each underlying provided
+        interestToken.mint(_destination, usedUnderlying);
+        // We mint principal token discounted by the accumulated interest.
         _mint(_destination, adjustedAmount);
-        // We return the number of FYT because it may be useful.
+        // We return the number of principal token because it may be useful.
         return adjustedAmount;
     }
 
     /**
-    @notice Burn FYT tokens to withdraw underlying tokens.
-    @param _amount The number of FYT tokens to burn.
+    @notice Burn principal tokens to withdraw underlying tokens.
+    @param _amount The number of tokens to burn.
     @param _destination The address to send the underlying too
     @return The number of underlying tokens released
-    @dev This method will return 1 underlying for 1 FYT except when interest
-         is negative, in that case liquidity might run out and some FYT may
+    @dev This method will return 1 underlying for 1 principal except when interest
+         is negative, in that case liquidity might run out and some principal token may
          not be redeemable. 
-         Also note: FYT redemption has the possibility of at most SLIPPAGE_BP
-         numerical error on each redemption so each FYT may occasionally redeem
-         for less than 1 unit of underlying. It defaults to 0.1 BP ie 0.001% loss
+         Also note: Redemption has the possibility of at most SLIPPAGE_BP
+         numerical error on each redemption so each principal token may occasionally redeem
+         for less than 1 unit of underlying. Max loss defaults to 0.1 BP ie 0.001% loss
      */
-    function withdrawFyt(uint256 _amount, address _destination)
+    function withdrawPrincipal(uint256 _amount, address _destination)
         external
         override
         returns (uint256)
@@ -158,57 +161,48 @@ contract Tranche is ERC20, ITranche {
         require(block.timestamp >= unlockTimestamp, "not expired");
         // Burn from the sender
         _burn(msg.sender, _amount);
-        // We normalize the FYT to the same units as the underlying
-        uint256 amountUnderlying = (_amount * 10**underlyingDecimals) / 1e18;
-        // Remove these FYT from the interest calculations for future YC redemptions
-        valueSupplied -= uint128(amountUnderlying);
-        uint256 minOutput = amountUnderlying -
-            (amountUnderlying * SLIPPAGE_BP) /
-            1e18;
-        return
-            position.withdrawUnderlying(
-                _destination,
-                amountUnderlying,
-                minOutput
-            );
+        // Remove these principal token from the interest calculations for future interest redemptions
+        valueSupplied -= uint128(_amount);
+        uint256 minOutput = _amount - (_amount * SLIPPAGE_BP) / 1e18;
+        return position.withdrawUnderlying(_destination, _amount, minOutput);
     }
 
     /**
-    @notice Burn YC tokens to withdraw underlying tokens.
-    @param _amount The number of YC tokens to burn.
+    @notice Burn interest tokens to withdraw underlying tokens.
+    @param _amount The number of interest tokens to burn.
     @param _destination The address to send the result to
     @return The number of underlying token released
     @dev Due to slippage the redemption may receive up to SLIPPAGE_BP less
          in output compared to the floating rate.
      */
-    function withdrawYc(uint256 _amount, address _destination)
+    function withdrawInterest(uint256 _amount, address _destination)
         external
         override
         returns (uint256)
     {
         require(block.timestamp >= unlockTimestamp, "not expired");
         // Burn tokens from the sender
-        yc.burn(msg.sender, _amount);
+        interestToken.burn(msg.sender, _amount);
         // Load the underlying value of this contract
         uint256 underlyingValueLocked = position.balanceOfUnderlying(
             address(this)
         );
         // Load a stack variable to avoid future sloads
-        (uint256 _valueSupplied, uint256 _ycSupply) = (
+        (uint256 _valueSupplied, uint256 _interestSupply) = (
             uint256(valueSupplied),
-            uint256(ycSupply)
+            uint256(interestSupply)
         );
         // Interest is value locked minus current value
         uint256 interest = underlyingValueLocked > _valueSupplied
             ? underlyingValueLocked - _valueSupplied
             : 0;
-        // The redemption amount is the interest per YC times the amount
-        uint256 redemptionAmount = (interest * _amount) / _ycSupply;
+        // The redemption amount is the interest per token times the amount
+        uint256 redemptionAmount = (interest * _amount) / _interestSupply;
         uint256 minRedemption = redemptionAmount -
             (redemptionAmount * SLIPPAGE_BP) /
             1e18;
         // Store that we reduced the supply
-        ycSupply = uint128(_ycSupply - _amount);
+        interestSupply = uint128(_interestSupply - _amount);
         // Redeem position tokens for underlying
         return
             position.withdrawUnderlying(

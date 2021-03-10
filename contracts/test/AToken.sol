@@ -4,10 +4,8 @@ pragma solidity ^0.8.0;
 import "../interfaces/IERC20.sol";
 
 import "../libraries/ERC20.sol";
-import "../libraries/SafeERC20.sol";
 
 contract AToken is ERC20 {
-    using SafeERC20 for IERC20;
 
     constructor(address sender) ERC20("a token", "TOKEN") {
         mint(sender, 1e39);

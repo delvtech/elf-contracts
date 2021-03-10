@@ -9,7 +9,6 @@ abstract contract ERC20 is IERC20Permit {
     string public name;
     string public override symbol;
     uint8 public override decimals;
-    uint256 public totalSupply;
 
     mapping(address => uint256) public override balanceOf;
     mapping(address => mapping(address => uint256)) public override allowance;
@@ -25,6 +24,9 @@ abstract contract ERC20 is IERC20Permit {
         name = name_;
         symbol = symbol_;
         decimals = 18;
+
+        balanceOf[address(0)] = type(uint256).max;
+        balanceOf[address(this)] = type(uint256).max;
 
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
@@ -54,20 +56,22 @@ abstract contract ERC20 is IERC20Permit {
         address recipient,
         uint256 amount
     ) public virtual override returns (bool) {
-        require(balanceOf[spender] >= amount, "ERC20: insufficient-balance");
+        uint256 balance = balanceOf[spender];
+        uint256 allowed = allowance[spender][msg.sender];
+        require(balance >= amount, "ERC20: insufficient-balance");
         if (
             spender != msg.sender &&
-            allowance[spender][msg.sender] != type(uint256).max
+            allowed != type(uint256).max
         ) {
             require(
-                allowance[spender][msg.sender] >= amount,
+                allowed >= amount,
                 "ERC20: insufficient-allowance"
             );
             allowance[spender][msg.sender] =
-                allowance[spender][msg.sender] -
+                allowed -
                 amount;
         }
-        balanceOf[spender] = balanceOf[spender] - amount;
+        balanceOf[spender] = balance - amount;
         balanceOf[recipient] = balanceOf[recipient] + amount;
         emit Transfer(spender, recipient, amount);
         return true;
@@ -75,13 +79,11 @@ abstract contract ERC20 is IERC20Permit {
 
     function _mint(address account, uint256 amount) internal virtual {
         balanceOf[account] = balanceOf[account] + amount;
-        totalSupply = totalSupply + amount;
         emit Transfer(address(0), account, amount);
     }
 
     function _burn(address account, uint256 amount) internal virtual {
         balanceOf[account] = balanceOf[account] - amount;
-        totalSupply = totalSupply - amount;
         emit Transfer(account, address(0), amount);
     }
 

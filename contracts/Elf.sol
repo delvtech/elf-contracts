@@ -49,15 +49,15 @@ abstract contract Elf is ERC20Permit, IElf {
     /// @dev Converts between an internal balance representation
     ///      and underlying tokens.
     /// @return returns the amount of underlying the input is worth
-    function _underlying(uint256) internal view virtual returns (uint256);
+    function _underlying(uint256) internal virtual view returns (uint256);
 
     /// @notice Get the underlying balance of an address
     /// @param _who The address to query
     /// @return The underlying token balance of the address
     function balanceOfUnderlying(address _who)
         external
-        view
         override
+        view
         returns (uint256)
     {
         return _underlying(balanceOf(_who));
@@ -68,8 +68,8 @@ abstract contract Elf is ERC20Permit, IElf {
     /// @return the value of underlying assets for the given shares
     function getSharesToUnderlying(uint256 _shares)
         external
-        view
         override
+        view
         returns (uint256)
     {
         return _underlying(_shares);
@@ -173,8 +173,11 @@ abstract contract Elf is ERC20Permit, IElf {
         _burn(msg.sender, _shares);
 
         // Withdraw that many shares from the vault
-        uint256 withdrawAmount =
-            _withdraw(_shares, _destination, _underlyingPerShare);
+        uint256 withdrawAmount = _withdraw(
+            _shares,
+            _destination,
+            _underlyingPerShare
+        );
 
         // We revert if this call doesn't produce enough underlying
         // This security feature is useful in some edge cases

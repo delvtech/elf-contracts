@@ -62,12 +62,13 @@ contract AYVault is ERC20, IYearnVault {
 
     function totalAssets() public override view returns (uint256) {
         return ERC20(token).balanceOf(address(this));
+    }
 
-    function governance() external override view returns (address) {
+    function governance() external override pure returns (address) {
         revert("Unimplemented");
     }
 
-    function setDepositLimit(uint256) external override {
+    function setDepositLimit(uint256) external override pure {
         revert("Unimplemented");
     }
 }

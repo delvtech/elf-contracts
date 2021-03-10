@@ -6,17 +6,15 @@ import "./interfaces/IWETH.sol";
 import "./interfaces/IWrappedPosition.sol";
 
 import "./libraries/ERC20.sol";
-import "./libraries/SafeERC20.sol";
 
 /// @author Element Finance
 /// @title Wrapped Position Core
 abstract contract WrappedPosition is ERC20, IWrappedPosition {
-    using SafeERC20 for IERC20;
-
     IERC20 public immutable override token;
 
     /// @notice Constucts this contract
-    /// @param _token The underlying token
+    /// @param _token The underlying token.
+    ///               This token should revert in the event of a transfer failure.
     /// @param _name the name of this contract
     /// @param _symbol the symbol for this contract
     constructor(
@@ -85,7 +83,7 @@ abstract contract WrappedPosition is ERC20, IWrappedPosition {
         returns (uint256)
     {
         // Send tokens to the proxy
-        token.safeTransferFrom(msg.sender, address(this), _amount);
+        token.transferFrom(msg.sender, address(this), _amount);
         // Calls our internal deposit function
         (uint256 shares, ) = _deposit();
         // Mint them internal ERC20 tokens coresponding to the deposit

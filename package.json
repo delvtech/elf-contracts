@@ -19,11 +19,11 @@
   },
   "lint-staged": {
     "contracts/**/*.sol": [
-      "prettier --write"
+      "npx prettier --write"
     ],
     "./**/*.{js,ts,json,md}": [
       "eslint --fix",
-      "prettier --write"
+      "npx prettier --write"
     ]
   },
   "author": "",

@@ -4,3 +4,4 @@
 *.yaml
 lib/
 contracts/balancer-core-v2/
+typechain/

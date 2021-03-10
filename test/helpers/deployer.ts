@@ -1,8 +1,8 @@
+import "module-alias/register";
+
 import { Tranche } from "../../typechain/Tranche";
 import { Tranche__factory } from "../../typechain/factories/Tranche__factory";
-
 import { ElfStub__factory } from "../../typechain/factories/ElfStub__factory";
-
 import { YC } from "../../typechain/YC";
 import { YC__factory } from "../../typechain/factories/YC__factory";
 import { AToken } from "../../typechain/AToken";

@@ -7,14 +7,12 @@ import "./interfaces/ITranche.sol";
 import "./interfaces/ITrancheFactory.sol";
 import "./interfaces/IYC.sol";
 
-import "./libraries/Address.sol";
 import "./libraries/SafeERC20.sol";
 import "./libraries/ERC20.sol";
 import "./libraries/DateString.sol";
 
 contract Tranche is ERC20, ITranche {
     using SafeERC20 for IERC20;
-    using Address for address;
 
     IYC public immutable override yc;
     IElf public immutable elf;

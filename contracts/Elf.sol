@@ -6,14 +6,12 @@ import "./interfaces/IWETH.sol";
 import "./interfaces/IElf.sol";
 
 import "./libraries/ERC20.sol";
-import "./libraries/Address.sol";
 import "./libraries/SafeERC20.sol";
 
 /// @author Element Finance
 /// @title Elf Core
 abstract contract Elf is ERC20, IElf {
     using SafeERC20 for IERC20;
-    using Address for address;
 
     IERC20 public immutable override token;
 

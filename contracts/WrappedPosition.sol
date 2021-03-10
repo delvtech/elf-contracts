@@ -6,14 +6,12 @@ import "./interfaces/IWETH.sol";
 import "./interfaces/IWrappedPosition.sol";
 
 import "./libraries/ERC20.sol";
-import "./libraries/Address.sol";
 import "./libraries/SafeERC20.sol";
 
 /// @author Element Finance
 /// @title Wrapped Position Core
 abstract contract WrappedPosition is ERC20, IWrappedPosition {
     using SafeERC20 for IERC20;
-    using Address for address;
 
     IERC20 public immutable override token;
 

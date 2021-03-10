@@ -5,14 +5,12 @@ import "../interfaces/IERC20.sol";
 import "../interfaces/IYearnVaultV2.sol";
 import "../WrappedPosition.sol";
 
-import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
 
 /// @author Element Finance
 /// @title Yearn Vault v1 Asset Proxy
 contract YVaultAssetProxy is WrappedPosition {
     using SafeERC20 for IERC20;
-    using Address for address;
 
     IYearnVault public immutable vault;
     uint8 public immutable vaultDecimals;

@@ -5,14 +5,12 @@ import "../interfaces/IERC20.sol";
 import "../interfaces/IYearnVaultV2.sol";
 
 import "../libraries/ERC20WithSupply.sol";
-import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
 
 import "./AToken.sol";
 
 contract AYVault is ERC20WithSupply {
     using SafeERC20 for IERC20;
-    using Address for address;
 
     address public token;
 

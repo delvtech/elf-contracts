@@ -23,7 +23,6 @@ import { UserProxyTest } from "../../typechain/UserProxyTest";
 import { UserProxyTest__factory } from "../../typechain/factories/UserProxyTest__factory";
 import { TrancheFactory } from "../../typechain/TrancheFactory";
 import { TrancheFactory__factory } from "../../typechain/factories/TrancheFactory__factory";
-import { YCFactory } from "../../typechain/YCFactory";
 import { YCFactory__factory } from "../../typechain/factories/YCFactory__factory";
 import data from "../../artifacts/contracts/Tranche.sol/Tranche.json";
 import { Signer } from "ethers";
@@ -242,7 +241,6 @@ export async function loadUsdcPoolMainnetFixture() {
 
 export async function loadTestTrancheFixture() {
   const [signer] = await ethers.getSigners();
-  const signerAddress = (await signer.getAddress()) as string;
   const testTokenDeployer = new TestERC20__factory(signer);
   const usdc = await testTokenDeployer.deploy("test token", "TEST", 18);
 

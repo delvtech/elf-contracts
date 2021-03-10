@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { expect } from "chai";
-import { BigNumber, Signer } from "ethers";
+import { Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
 import { loadFixture, FixtureInterface } from "./helpers/deployer";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";

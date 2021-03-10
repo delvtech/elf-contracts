@@ -9,7 +9,6 @@ import "../libraries/ERC20WithSupply.sol";
 import "./AToken.sol";
 
 contract AYVault is ERC20WithSupply {
-
     address public token;
 
     constructor(address _token) ERC20("a ytoken", "yToken") {

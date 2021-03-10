@@ -11,7 +11,6 @@ import "./libraries/ERC20.sol";
 import "./libraries/DateString.sol";
 
 contract Tranche is ERC20, ITranche {
-
     IYC public immutable override yc;
     IWrappedPosition public immutable position;
     IERC20 public immutable underlying;

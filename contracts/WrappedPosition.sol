@@ -10,7 +10,6 @@ import "./libraries/ERC20.sol";
 /// @author Element Finance
 /// @title Wrapped Position Core
 abstract contract WrappedPosition is ERC20, IWrappedPosition {
-
     IERC20 public immutable override token;
 
     /// @notice Constucts this contract

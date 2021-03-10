@@ -8,7 +8,6 @@ import "../WrappedPosition.sol";
 /// @author Element Finance
 /// @title Yearn Vault v1 Asset Proxy
 contract YVaultAssetProxy is WrappedPosition {
-
     IYearnVault public immutable vault;
     uint8 public immutable vaultDecimals;
 

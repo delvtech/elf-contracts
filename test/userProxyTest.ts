@@ -4,7 +4,7 @@ import {
   loadUsdcPoolMainnetFixture,
   UsdcPoolMainnetInterface,
 } from "./helpers/deployer";
-import { impersonate, stopImpersonating } from "./helpers/impersonate";
+import { impersonate } from "./helpers/impersonate";
 import { Contract } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
@@ -19,7 +19,7 @@ describe("UserProxyTests", function () {
   before(async function () {
     // Get the setup contracts
     fixture = await loadUsdcPoolMainnetFixture();
-    proxy = fixture.proxy;
+    ({ proxy } = fixture);
 
     underlying = await ethers.getContractAt(
       "contracts/libraries/ERC20.sol:ERC20",

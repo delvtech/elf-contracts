@@ -5,11 +5,18 @@
       "strict": true,
       "esModuleInterop": true,
       "outDir": "dist",
-      "resolveJsonModule": true
+      "resolveJsonModule": true,
+      "paths": {
+        "test": ["./test"],
+        "test/*": ["./test/*"],
+        "typechain": ["./typechain"],
+        "typechain/*": ["./typechain/*"],
+      },
     },
     "include": [
       "./scripts",
-      "./test"
+      "./test",
+      "./typechain"
     ],
     "files": ["./hardhat.config.ts"]
   }

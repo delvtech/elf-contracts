@@ -2,8 +2,8 @@ import { expect } from "chai";
 import { Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
 
-import { bnFloatMultiplier, subError } from "./helpers/math";
 import { loadTestTrancheFixture, TrancheTestFixture } from "./helpers/deployer";
+import { bnFloatMultiplier, subError } from "./helpers/math";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 import { advanceTime, getCurrentTimestamp } from "./helpers/time";
 

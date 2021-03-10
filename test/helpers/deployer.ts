@@ -1,33 +1,34 @@
-import { Tranche } from "../../typechain/Tranche";
-import { Tranche__factory } from "../../typechain/factories/Tranche__factory";
+import "module-alias/register";
 
-import { WrappedPositionStub__factory } from "../../typechain/factories/WrappedPositionStub__factory";
-
-import { YC } from "../../typechain/YC";
-import { YC__factory } from "../../typechain/factories/YC__factory";
-import { AToken } from "../../typechain/AToken";
-import { AToken__factory } from "../../typechain/factories/AToken__factory";
-import { AYVault } from "../../typechain/AYVault";
-import { AYVault__factory } from "../../typechain/factories/AYVault__factory";
-import { YVaultAssetProxy } from "../../typechain/YVaultAssetProxy";
-import { YVaultAssetProxy__factory } from "../../typechain/factories/YVaultAssetProxy__factory";
-import { IYearnVault } from "../../typechain/IYearnVault";
-import { IYearnVault__factory } from "../../typechain/factories/IYearnVault__factory";
-import { IWETH } from "../../typechain/IWETH";
-import { IWETH__factory } from "../../typechain/factories/IWETH__factory";
-import { IERC20 } from "../../typechain/IERC20";
-import { IERC20__factory } from "../../typechain/factories/IERC20__factory";
-import { TestERC20 } from "../../typechain/TestERC20";
-import { TestERC20__factory } from "../../typechain/factories/TestERC20__factory";
-import { UserProxyTest } from "../../typechain/UserProxyTest";
-import { UserProxyTest__factory } from "../../typechain/factories/UserProxyTest__factory";
-import { TrancheFactory } from "../../typechain/TrancheFactory";
-import { TrancheFactory__factory } from "../../typechain/factories/TrancheFactory__factory";
-import { YCFactory__factory } from "../../typechain/factories/YCFactory__factory";
-import data from "../../artifacts/contracts/Tranche.sol/Tranche.json";
 import { Signer } from "ethers";
 import { ethers } from "hardhat";
-import { WrappedPositionStub } from "../../typechain/WrappedPositionStub";
+import { AToken } from "typechain/AToken";
+import { AYVault } from "typechain/AYVault";
+import { WrappedPositionStub } from "typechain/WrappedPositionStub";
+import { AToken__factory } from "typechain/factories/AToken__factory";
+import { AYVault__factory } from "typechain/factories/AYVault__factory";
+import { WrappedPositionStub__factory } from "typechain/factories/WrappedPositionStub__factory";
+import { IERC20__factory } from "typechain/factories/IERC20__factory";
+import { IWETH__factory } from "typechain/factories/IWETH__factory";
+import { IYearnVault__factory } from "typechain/factories/IYearnVault__factory";
+import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
+import { Tranche__factory } from "typechain/factories/Tranche__factory";
+import { TrancheFactory__factory } from "typechain/factories/TrancheFactory__factory";
+import { UserProxyTest__factory } from "typechain/factories/UserProxyTest__factory";
+import { YC__factory } from "typechain/factories/YC__factory";
+import { YCFactory__factory } from "typechain/factories/YCFactory__factory";
+import { YVaultAssetProxy__factory } from "typechain/factories/YVaultAssetProxy__factory";
+import { IERC20 } from "typechain/IERC20";
+import { IWETH } from "typechain/IWETH";
+import { IYearnVault } from "typechain/IYearnVault";
+import { TestERC20 } from "typechain/TestERC20";
+import { Tranche } from "typechain/Tranche";
+import { TrancheFactory } from "typechain/TrancheFactory";
+import { UserProxyTest } from "typechain/UserProxyTest";
+import { YC } from "typechain/YC";
+import { YVaultAssetProxy } from "typechain/YVaultAssetProxy";
+
+import data from "../../artifacts/contracts/Tranche.sol/Tranche.json";
 
 export interface FixtureInterface {
   signer: Signer;

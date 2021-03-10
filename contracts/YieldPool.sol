@@ -355,7 +355,6 @@ contract YieldCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         // Note that this call is to FixedPoint Div so works as intended
         yAfter = yAfter.pow(uint256(FixedPoint.ONE).div(a));
         // The amount of Y token to send is (reserveY_before - reserveY_after)
-        // TODO - Consider adding a small edge to account for numerical error
         return out ? reserveY.sub(yAfter) : yAfter.sub(reserveY);
     }
 
@@ -553,8 +552,6 @@ contract YieldCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         );
         require(localFeeBond >= (feesUsedBond).div(percentFee), "Underflow");
         // Store the remaining fees should only be one sstore
-        // TODO - Check on gas limit handling to see if storing 1 will reduce the
-        // the estimates for this function and the trade.
         (feesUnderlying, feesBond) = (
             uint128(localFeeUnderlying - (feesUsedUnderlying).div(percentFee)),
             uint128(localFeeBond - (feesUsedBond).div(percentFee))

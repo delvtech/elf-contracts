@@ -2,13 +2,14 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/IERC20.sol";
-import "../interfaces/YearnVaultV2.sol";
+import "../interfaces/IYearnVaultV2.sol";
 
 import "../libraries/ERC20WithSupply.sol";
 import "../libraries/Address.sol";
 import "../libraries/SafeERC20.sol";
 
 import "./AToken.sol";
+
 
 contract AYVault is ERC20WithSupply {
     using SafeERC20 for IERC20;
@@ -22,6 +23,7 @@ contract AYVault is ERC20WithSupply {
 
     function deposit(uint256 _amount, address destination)
         external
+        override
         returns (uint256)
     {
         uint256 _shares = (_amount * 1e18) / pricePerShare(); // calculate shares
@@ -33,15 +35,15 @@ contract AYVault is ERC20WithSupply {
     function withdraw(
         uint256 _shares,
         address destination,
-        uint256 maxLoss
-    ) external returns (uint256) {
+        uint256
+    ) external override returns (uint256) {
         uint256 _amount = (_shares * pricePerShare()) / 1e18;
         _burn(msg.sender, _shares);
         IERC20(token).safeTransfer(destination, _amount);
         return _amount;
     }
 
-    function pricePerShare() public view returns (uint256) {
+    function pricePerShare() public override view returns (uint256) {
         uint256 balance = ERC20(token).balanceOf(address(this));
         if (balance == 0) return 1e18;
         return (balance * 1e18) / totalSupply;
@@ -50,5 +52,17 @@ contract AYVault is ERC20WithSupply {
     function updateShares() external {
         uint256 balance = ERC20(token).balanceOf(address(this));
         AToken(token).mint(address(this), balance / 10);
+    }
+
+    function totalAssets() public override view returns (uint256) {
+        return ERC20(token).balanceOf(address(this));
+    }
+
+    function governance() external override pure returns (address) {
+        revert("Unimplemented");
+    }
+
+    function setDepositLimit(uint256) external override pure {
+        revert("Unimplemented");
     }
 }

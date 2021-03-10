@@ -20,11 +20,11 @@ contract ElfStub is Elf {
 
     // This withdraw just uses the set balance function in test erc20
     // to set the output location correctly
-    function _withdraw(uint256 amount, address destination)
-        internal
-        override
-        returns (uint256)
-    {
+    function _withdraw(
+        uint256 amount,
+        address destination,
+        uint256
+    ) internal override returns (uint256) {
         // Send the requested amount converted to underlying
         TestERC20(address(token)).uncheckedTransfer(
             destination,

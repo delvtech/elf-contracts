@@ -29,7 +29,7 @@ contract Authorizable {
     /// @dev Returns true if an address is authorized
     /// @param who the address to check
     /// @return true if authorized false if not
-    function isAuthorized(address who) public returns (bool) {
+    function isAuthorized(address who) public view returns (bool) {
         return authorized[who];
     }
 

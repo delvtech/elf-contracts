@@ -50,7 +50,12 @@
         "withdrawweth",
         "ytoken",
         "yusdc",
-        "yweth"
+        "yweth",
+        "Numberish",
+        "nomiclabs",
+        "aypool",
+        "destinatary",
+        "Yasset"
     ],
     "enabledLanguageIds": [
         "asciidoc",

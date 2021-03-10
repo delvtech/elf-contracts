@@ -20,17 +20,30 @@ contract UserProxy is Authorizable {
     bool public isFrozen = false;
     // Constant wrapped ether address
     IWETH public immutable weth;
+    // Tranche factory address for Tranche contract address derivation
+    address internal immutable trancheFactory;
+    // Tranche bytecode hash for Tranche contract address derivation.
+    // This is constant as long as Tranche does not implement non-constant constructor arguments.
+    bytes32 internal immutable trancheBytecodeHash;
     // A constant which represents ether
     address constant ETH_CONSTANT = address(
         0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
     );
 
-    /// @param _weth The constant weth contract address
     /// @dev Marks the msg.sender as authorized and sets them
     ///      as the owner in authorization library
-    constructor(IWETH _weth) Authorizable() {
+    /// @param _weth The constant weth contract address
+    /// @param _trancheFactory Address of the TrancheFactory contract
+    /// @param _trancheBytecodeHash Hash of the Tranche bytecode.
+    constructor(
+        IWETH _weth,
+        address _trancheFactory,
+        bytes32 _trancheBytecodeHash
+    ) Authorizable() {
         _authorize(msg.sender);
         weth = _weth;
+        trancheFactory = _trancheFactory;
+        trancheBytecodeHash = _trancheBytecodeHash;
     }
 
     /// @dev Requires that the contract is not frozen
@@ -122,7 +135,7 @@ contract UserProxy is Authorizable {
     /// @param elf The contract which interacts with the yield bering strategy
     function _mint(uint256 expiration, address elf) internal {
         // Use create2 to derive the tranche contract
-        ITranche tranche = deriveTranche(address(elf), expiration);
+        ITranche tranche = _deriveTranche(address(elf), expiration);
         // Move funds into the Tranche contract
         // it will credit the msg.sender with the new tokens
         tranche.prefundedDeposit(msg.sender);
@@ -133,12 +146,21 @@ contract UserProxy is Authorizable {
     /// @param elf The ELF contract address
     /// @param expiration The expiration time of the tranche
     /// @return The derived Tranche contract
-    function deriveTranche(address elf, uint256 expiration)
+    function _deriveTranche(address elf, uint256 expiration)
         internal
         virtual
         view
         returns (ITranche)
     {
-        return ITranche(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
+        bytes32 salt = keccak256(abi.encodePacked(elf, expiration));
+        bytes32 addressBytes = keccak256(
+            abi.encodePacked(
+                bytes1(0xff),
+                trancheFactory,
+                salt,
+                trancheBytecodeHash
+            )
+        );
+        return ITranche(address(uint160(uint256(addressBytes))));
     }
 }

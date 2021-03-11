@@ -3,7 +3,7 @@ import "module-alias/register";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { BigNumber, providers } from "ethers";
-import { ethers, network } from "hardhat";
+import hre, { ethers, network } from "hardhat";
 import { deployBalancerVault } from "test/helpers/deployBalancerVault";
 import { deployConvergentCurvePool } from "test/helpers/deployConvergentCurvePool";
 import { ConvergentCurvePoolTest } from "typechain/ConvergentCurvePoolTest";
@@ -72,7 +72,11 @@ describe("ConvergentCurvePool", function () {
     ));
   }
 
+  after(function () {
+    hre.config.networks.hardhat.allowUnlimitedContractSize = true;
+  });
   before(async function () {
+    hre.config.networks.hardhat.allowUnlimitedContractSize = true;
     startTimestamp = await getTimestamp();
     expirationTime = startTimestamp + SECONDS_IN_YEAR;
 
@@ -106,71 +110,6 @@ describe("ConvergentCurvePool", function () {
         expiration: expirationTime,
       }
     ));
-  });
-
-  function getRandomInt(max: number) {
-    return Math.floor(Math.random() * Math.floor(max));
-  }
-
-  it("Converts token units to decimal units", async function () {
-    // Check that a random bond unit is correctly decimal encoded
-    const tokenAmount = getRandomInt(1000);
-    let normalized = await poolContract.tokenToFixed(
-      ethers.utils.parseUnits(tokenAmount.toString(), BOND_DECIMALS),
-      bondAssetContract.address
-    );
-    expect(normalized).to.be.eq(
-      ethers.utils.parseUnits(tokenAmount.toString(), 18)
-    );
-    // Check that the underlying token normalizes correctly
-    normalized = await poolContract.tokenToFixed(
-      ethers.utils.parseUnits(tokenAmount.toString(), BASE_DECIMALS),
-      baseAssetContract.address
-    );
-    expect(normalized).to.be.eq(
-      ethers.utils.parseUnits(tokenAmount.toString(), 18)
-    );
-  });
-
-  it("Converts token units to decimal units", async function () {
-    // Check that a random bond unit is correctly decimal encoded
-    const tokenAmount = getRandomInt(1000);
-    let normalized = await poolContract.tokenToFixed(
-      ethers.utils.parseUnits(tokenAmount.toString(), BOND_DECIMALS),
-      bondAssetContract.address
-    );
-    expect(normalized).to.be.eq(
-      ethers.utils.parseUnits(tokenAmount.toString(), 18)
-    );
-    // Check that the underlying token normalizes correctly
-    normalized = await poolContract.tokenToFixed(
-      ethers.utils.parseUnits(tokenAmount.toString(), BASE_DECIMALS),
-      baseAssetContract.address
-    );
-    expect(normalized).to.be.eq(
-      ethers.utils.parseUnits(tokenAmount.toString(), 18)
-    );
-  });
-
-  it("Converts token units to decimal units", async function () {
-    // Check that a random bond unit is correctly decimal encoded
-    const randAmount = getRandomInt(1000);
-    const normalized = ethers.utils.parseUnits(randAmount.toString(), 18);
-    let tokenAmount = await poolContract.fixedToToken(
-      normalized,
-      bondAssetContract.address
-    );
-    expect(tokenAmount).to.be.eq(
-      ethers.utils.parseUnits(randAmount.toString(), BOND_DECIMALS)
-    );
-    // Check that the underlying token normalizes correctly
-    tokenAmount = await poolContract.fixedToToken(
-      normalized,
-      baseAssetContract.address
-    );
-    expect(tokenAmount).to.be.eq(
-      ethers.utils.parseUnits(randAmount.toString(), BASE_DECIMALS)
-    );
   });
 
   it("Returns the correct fractional time", async function () {

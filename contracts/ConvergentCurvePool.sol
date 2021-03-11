@@ -112,10 +112,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         uint256 currentBalanceTokenOut
     ) public override returns (uint256) {
         // Tokens amounts are passed to us in decimal form of the tokens
-        uint256 amountTokenIn = _tokenToFixed(
-            request.amountIn,
-            request.tokenIn
-        );
+        uint256 amountTokenIn = request.amountIn;
 
         // We apply the trick which is used in the paper and
         // double count the reserves because the curve provisions liquidity
@@ -152,10 +149,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     ) public override returns (uint256) {
         // Tokens amounts are passed to us in decimal form of the tokens
         // However we want them to be in 18 decimal fixed point form
-        uint256 amountTokenOut = _tokenToFixed(
-            request.amountOut,
-            request.tokenOut
-        );
+        uint256 amountTokenOut = request.amountOut;
         // We apply the trick which is used in the paper and
         // double count the reserves because the curve provisions liquidity
         // for prices above one underlying per bond, which we don't want to be accessible
@@ -366,9 +360,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountOut.sub(amountIn)
                 );
                 // we record that fee collected from the underlying
-                feesUnderlying += uint128(
-                    _fixedToToken(impliedYieldFee, underlying)
-                );
+                feesUnderlying += uint128(impliedYieldFee);
                 // and return the adjusted input quote
                 return amountIn.add(impliedYieldFee);
             } else {
@@ -377,7 +369,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountIn.sub(amountOut)
                 );
                 // we record that collected fee from the input bond
-                feesBond += uint128(_fixedToToken(impliedYieldFee, bond));
+                feesBond += uint128(impliedYieldFee);
                 // and return the updated input quote
                 return amountIn.add(impliedYieldFee);
             }
@@ -388,7 +380,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountOut.sub(amountIn)
                 );
                 // we record that fee collected from the bond output
-                feesBond += uint128(_fixedToToken(impliedYieldFee, bond));
+                feesBond += uint128(impliedYieldFee);
                 // and then return the updated output
                 return amountOut.sub(impliedYieldFee);
             } else {
@@ -397,9 +389,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountIn.sub(amountOut)
                 );
                 // we record the collected underlying fee
-                feesUnderlying += uint128(
-                    _fixedToToken(impliedYieldFee, underlying)
-                );
+                feesUnderlying += uint128(impliedYieldFee);
                 // and then return the updated output quote
                 return amountOut.sub(impliedYieldFee);
             }

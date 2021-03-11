@@ -56,7 +56,7 @@ contract UserProxy is Authorizable {
         isFrozen = newState;
     }
 
-    /// @dev Mints a principal/interest token pair from either underlying token or Eth
+    /// @dev Mints a Principal/Interest token pair from either underlying token or Eth
     ///      then returns the tokens to the caller. This function assumes
     ///      that it already has an allowance for the token in question.
     /// @param amount The amount of underlying to turn into tokens
@@ -91,7 +91,7 @@ contract UserProxy is Authorizable {
         }
     }
 
-    /// @dev Mints a principal/Interest token pair from a underlying token which supports
+    /// @dev Mints a Principal/Interest token pair from a underlying token which supports
     ///      the permit method. This call sets the allowance on this contract
     ///      for the underlying ERC20 token to be unlimited and expects the
     ///      signature to have an expiration time of uint256.max
@@ -128,10 +128,10 @@ contract UserProxy is Authorizable {
         _mint(expiration, position);
     }
 
-    /// @dev This internal mint function preforms the core minting logic after
+    /// @dev This internal mint function performs the core minting logic after
     ///      the contract has already transferred to WrappedPosition contract
     /// @param expiration The tranche expiration time
-    /// @param position The contract which interacts with the yield bering strategy
+    /// @param position The contract which interacts with the yield bearing strategy
     function _mint(uint256 expiration, address position) internal {
         // Use create2 to derive the tranche contract
         ITranche tranche = _deriveTranche(address(position), expiration);
@@ -141,7 +141,7 @@ contract UserProxy is Authorizable {
     }
 
     /// @dev This internal function produces the deterministic create2
-    ///      address of the Tranche contract from an wrapped position contract and expiration
+    ///      address of the Tranche contract from a wrapped position contract and expiration
     /// @param position The wrapped position contract address
     /// @param expiration The expiration time of the tranche
     /// @return The derived Tranche contract

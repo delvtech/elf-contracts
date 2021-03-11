@@ -7,10 +7,10 @@
     "style-check": "npx prettier --check .",
     "prettier": "npx prettier --write .",
     "build": "npx hardhat compile",
-    "test": "npx hardhat test ./test/*.ts",
-    "sim": "npx hardhat test ./test/simulation/*.ts",
+    "test": "npx hardhat test --config hardhat.config.test.ts ./test/*.ts",
+    "sim": "npx hardhat test --config hardhat.config.test.ts ./test/simulation/*.ts",
     "coverage": "npx hardhat coverage --solcoverjs \".solcover.js\" --testfiles \"./test/*.ts\"",
-    "test:quick": "npx hardhat test ./test/*.ts --no-compile"
+    "test:quick": "npx hardhat test --config hardhat.config.test.ts ./test/*.ts --no-compile"
   },
   "_moduleAliases": {
     "test": "./test",

@@ -116,14 +116,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             request.amountIn,
             request.tokenIn
         );
-        currentBalanceTokenIn = _tokenToFixed(
-            currentBalanceTokenIn,
-            request.tokenIn
-        );
-        currentBalanceTokenOut = _tokenToFixed(
-            currentBalanceTokenOut,
-            request.tokenOut
-        );
+
         // We apply the trick which is used in the paper and
         // double count the reserves because the curve provisions liquidity
         // for prices above one underlying per bond, which we don't want to be accessible
@@ -164,14 +157,6 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             request.amountOut,
             request.tokenOut
         );
-        currentBalanceTokenIn = _tokenToFixed(
-            currentBalanceTokenIn,
-            request.tokenIn
-        );
-        currentBalanceTokenOut = _tokenToFixed(
-            currentBalanceTokenOut,
-            request.tokenOut
-        );
         // We apply the trick which is used in the paper and
         // double count the reserves because the curve provisions liquidity
         // for prices above one underlying per bond, which we don't want to be accessible
@@ -209,8 +194,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     /// @return amountsIn The actual amounts of token the vault should move to this pool
     /// @return dueProtocolFeeAmounts The amounts of each token to pay as protocol fees
     function onJoinPool(
-        bytes32 poolId,
-        address sender,
+        bytes32, // poolId
+        address, // sender
         address recipient,
         uint256[] calldata currentBalances,
         uint256,
@@ -569,7 +554,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         timeTillExpiry *= 1e18;
         // timeTillExpiry now contains the a fixed point of the years remaining
         timeTillExpiry = timeTillExpiry.div(unitSeconds * 1e18);
-        return uint256(FixedPoint.ONE).sub(timeTillExpiry);
+        uint256 result = uint256(FixedPoint.ONE).sub(timeTillExpiry);
+        return result;
     }
 
     /// @dev Applies the reserve adjustment from the paper and returns the reserves

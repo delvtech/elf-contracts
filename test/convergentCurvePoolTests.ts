@@ -10,6 +10,7 @@ import { ConvergentCurvePoolTest } from "typechain/ConvergentCurvePoolTest";
 import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
 import { TestERC20 } from "typechain/TestERC20";
 import { Vault } from "typechain/Vault";
+import { formatEther } from "ethers/lib/utils";
 
 describe("ConvergentCurvePool", function () {
   const BOND_DECIMALS = 17;
@@ -462,9 +463,8 @@ describe("ConvergentCurvePool", function () {
       reserveUnderlying,
       reserveBond
     );
-    expect(quote).to.be.eq(
-      ethers.utils.parseUnits("108.57207702019185228", BOND_DECIMALS)
-    );
+    console.log("quote", formatEther(quote));
+    expect(quote).to.be.eq(ethers.utils.parseUnits("108.572076454026339518"));
   });
 
   it("Quotes a sell output trade correctly", async function () {
@@ -487,7 +487,8 @@ describe("ConvergentCurvePool", function () {
       reserveBond,
       reserveUnderlying
     );
-    expect(quote).to.be.eq(ethers.utils.parseUnits("90.434755", BASE_DECIMALS));
+    console.log("quote", formatEther(quote));
+    expect(quote).to.be.eq(ethers.utils.parseUnits("90.434755941585224376"));
   });
 
   it("Quotes a buy input trade correctly", async function () {
@@ -510,9 +511,8 @@ describe("ConvergentCurvePool", function () {
       reserveUnderlying,
       reserveBond
     );
-    expect(quote).to.be.eq(
-      ethers.utils.parseUnits("184.972607", BASE_DECIMALS)
-    );
+    console.log("quote", formatEther(quote));
+    expect(quote).to.be.eq(ethers.utils.parseUnits("184.972608299922486264"));
   });
 
   it("Quotes a sell input trade correctly", async function () {
@@ -535,8 +535,7 @@ describe("ConvergentCurvePool", function () {
       reserveBond,
       reserveUnderlying
     );
-    expect(quote).to.be.eq(
-      ethers.utils.parseUnits("166.27957189013109567", BOND_DECIMALS)
-    );
+    console.log("quote", formatEther(quote));
+    expect(quote).to.be.eq(ethers.utils.parseUnits("166.279570802359854161"));
   });
 });

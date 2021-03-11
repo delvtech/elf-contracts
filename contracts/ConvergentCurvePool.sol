@@ -136,8 +136,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
 
         // Assign trade fees
         quote = _assignTradeFee(amountTokenIn, quote, request.tokenOut, false);
-        // Return the quote to token form
-        return _fixedToToken(quote, request.tokenOut);
+        return quote;
     }
 
     /// @dev Returns the amount of 'tokenIn' need to receive a specified amount
@@ -175,8 +174,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         );
         // Assign trade fees
         quote = _assignTradeFee(quote, amountTokenOut, request.tokenOut, true);
-        // Return the quote in input token decimals
-        return _fixedToToken(quote, request.tokenIn);
+        return quote;
     }
 
     // Liquidity provider functionality

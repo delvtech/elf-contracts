@@ -17,7 +17,7 @@ jobs:
         - name: Coverage
           run: npm run build && npm run coverage
         - name: Edit lcov.info
-          run: cat coverage/lcov.info | sed '/.*\/balancer-core-v2\/.*/,/TN:/d' | sed '/.*\/interfaces\/.*/,/TN:/d' > coverage/lcov2.info && mv coverage/lcov2.info coverage/lcov.info
+          run: cat coverage/lcov.info | sed '/.*\/balancer-core-v2\/.*/,/TN:/d' | sed '/.*\/interfaces\/.*/,/TN:/d' | tee coverage/lcov.info
         - name: Coveralls
           uses: coverallsapp/github-action@v1.1.2
           with:

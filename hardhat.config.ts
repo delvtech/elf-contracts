@@ -28,6 +28,17 @@ const config: HardhatUserConfig = {
         },
       },
     ],
+    overrides: {
+      "contracts/vault/Vault.sol": {
+        version: "0.7.0",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 400,
+          },
+        },
+      },
+    },
   },
   mocha: { timeout: 0 },
   networks: {

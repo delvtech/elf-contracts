@@ -31,7 +31,7 @@ abstract contract WrappedPosition is ERC20, IWrappedPosition {
     /// which inherits from this contract
 
     /// @dev Makes the actual deposit into the 'vault'
-    /// @return (the shares minted, amount underlying used)
+    /// @return Tuple (shares minted, amount underlying used)
     function _deposit() internal virtual returns (uint256, uint256);
 
     /// @dev Makes the actual withdraw from the 'vault'
@@ -44,7 +44,7 @@ abstract contract WrappedPosition is ERC20, IWrappedPosition {
 
     /// @dev Converts between an internal balance representation
     ///      and underlying tokens.
-    /// @return returns the amount of underlying the input is worth
+    /// @return The amount of underlying the input is worth
     function _underlying(uint256) internal virtual view returns (uint256);
 
     /// @notice Get the underlying balance of an address
@@ -60,8 +60,8 @@ abstract contract WrappedPosition is ERC20, IWrappedPosition {
     }
 
     /// @notice Returns the amount of the underlying asset a certain amount of shares is worth
-    /// @param _shares to calculate underlying value for
-    /// @return the value of underlying assets for the given shares
+    /// @param _shares Shares to calculate underlying value for
+    /// @return The value of underlying assets for the given shares
     function getSharesToUnderlying(uint256 _shares)
         external
         override
@@ -74,8 +74,8 @@ abstract contract WrappedPosition is ERC20, IWrappedPosition {
     /// @notice Entry point to deposit tokens into the Wrapped Position contract
     ///         Transfers tokens on behalf of caller so the caller must set
     ///         allowance on the contract prior to call.
-    /// @param _amount the amount of underlying tokens to deposit
-    /// @param _destination the address to mint too
+    /// @param _amount The amount of underlying tokens to deposit
+    /// @param _destination The address to mint to
     /// @return Returns the number of Wrapped Position tokens minted
     function deposit(address _destination, uint256 _amount)
         external
@@ -116,9 +116,9 @@ abstract contract WrappedPosition is ERC20, IWrappedPosition {
     }
 
     /// @notice Exit point to withdraw tokens from the Wrapped Position contract
-    /// @param _destination the address which is credited with tokens
-    /// @param _shares the amount of shares the user is burning to withdraw underlying
-    /// @param _minUnderlying a param which is the min output the caller expects
+    /// @param _destination The address which is credited with tokens
+    /// @param _shares The amount of shares the user is burning to withdraw underlying
+    /// @param _minUnderlying The min output the caller expects
     /// @return The amount of underlying transferred to the destination
     function withdraw(
         address _destination,
@@ -130,10 +130,10 @@ abstract contract WrappedPosition is ERC20, IWrappedPosition {
 
     /// @notice This function burns enough tokens from the sender to send _amount
     ///          of underlying to the _destination.
-    /// @param _destination the address to send the output to
-    /// @param _amount the amount of underlying to try to redeem for
-    /// @param _minUnderlying the minium underlying to receive
-    /// @return the amount of underlying released
+    /// @param _destination The address to send the output to
+    /// @param _amount The amount of underlying to try to redeem for
+    /// @param _minUnderlying The minium underlying to receive
+    /// @return The amount of underlying released
     function withdrawUnderlying(
         address _destination,
         uint256 _amount,
@@ -156,11 +156,11 @@ abstract contract WrappedPosition is ERC20, IWrappedPosition {
 
     /// @notice This internal function allows the caller to provide a precomputed 'underlyingPerShare'
     ///         so that we can avoid calling it again in the internal function
-    /// @param _destination the destination to send the output to
-    /// @param _shares the number of shares to withdraw
-    /// @param _minUnderlying the min amount of output to produce
-    /// @param _underlyingPerShare the precomputed shares per underlying
-    /// @return the amount of underlying released
+    /// @param _destination The destination to send the output to
+    /// @param _shares The number of shares to withdraw
+    /// @param _minUnderlying The min amount of output to produce
+    /// @param _underlyingPerShare The precomputed shares per underlying
+    /// @return The amount of underlying released
     function _positionWithdraw(
         address _destination,
         uint256 _shares,

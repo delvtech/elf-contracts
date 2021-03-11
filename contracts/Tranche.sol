@@ -10,6 +10,8 @@ import "./interfaces/IInterestToken.sol";
 import "./libraries/ERC20.sol";
 import "./libraries/DateString.sol";
 
+/// @author Element Finance
+/// @title Tranche
 contract Tranche is ERC20, ITranche {
     IInterestToken public immutable override interestToken;
     IWrappedPosition public immutable position;
@@ -29,7 +31,7 @@ contract Tranche is ERC20, ITranche {
 
     /// @notice Constructs this contract
     constructor() ERC20("Element Principal Token", "ELF:") {
-        // assume the caller is the Tranche factory.
+        // Assume the caller is the Tranche factory.
         ITrancheFactory trancheFactory = ITrancheFactory(msg.sender);
         (
             address wpAddress,
@@ -83,7 +85,7 @@ contract Tranche is ERC20, ITranche {
     ///         create wrapped position tokens held by the contract. It should
     ///         only be called when a transfer has already been made to
     ///         the wrapped position contract of the underlying
-    /// @param _destination The address to mint too
+    /// @param _destination The address to mint to
     function prefundedDeposit(address _destination)
         public
         override

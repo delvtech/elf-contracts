@@ -24,11 +24,11 @@ contract YVaultAssetProxy is WrappedPosition {
     uint256 public reserveSupply;
 
     /// @notice Constructs this contract and stores needed data
-    /// @param vault_ the yearn v2 vault
+    /// @param vault_ The yearn v2 vault
     /// @param _token The underlying token.
     ///               This token should revert in the event of a transfer failure.
-    /// @param _name the name of the token created
-    /// @param _symbol the symbol of the token created
+    /// @param _name The name of the token created
+    /// @param _symbol The symbol of the token created
     constructor(
         address vault_,
         IERC20 _token,
@@ -41,14 +41,14 @@ contract YVaultAssetProxy is WrappedPosition {
     }
 
     /// @notice This function allows a user to deposit to the reserve
-    ///      Note - there's no incentive to do so you would earn some
+    ///      Note - there's no incentive to do so. You could earn some
     ///      interest but less interest than yearn. All deposits use
     ///      the underlying token.
-    /// @param amount The amount of underlying to deposit
-    function reserveDeposit(uint256 amount) external {
+    /// @param _amount The amount of underlying to deposit
+    function reserveDeposit(uint256 _amount) external {
         // Transfer from user, note variable 'token' is the immutable
         // inherited from the abstract WrappedPosition contract.
-        token.transferFrom(msg.sender, address(this), amount);
+        token.transferFrom(msg.sender, address(this), _amount);
         // Load the reserves
         (uint256 localUnderlying, uint256 localShares) = _getReserves();
         // Calculate the total reserve value
@@ -59,39 +59,39 @@ contract YVaultAssetProxy is WrappedPosition {
         uint256 mintAmount;
         if (localReserveSupply == 0) {
             // If this is the first mint the tokens are exactly the supplied underlying
-            mintAmount = amount;
+            mintAmount = _amount;
         } else {
             // Otherwise we mint the proportion that this increases the value held by this contract
-            mintAmount = (localReserveSupply * amount) / totalValue;
+            mintAmount = (localReserveSupply * _amount) / totalValue;
         }
 
         // This hack means that the contract will never have zero balance of underlying
         // which levels the gas expenditure of the transfer to this contract. Permanently locks
         // the smallest possible unit of the underlying.
         if (localUnderlying == 0 && localShares == 0) {
-            amount -= 1;
+            _amount -= 1;
         }
         // Set the reserves that this contract has more underlying
-        _setReserves(localUnderlying + amount, localShares);
+        _setReserves(localUnderlying + _amount, localShares);
         // Note that the sender has deposited and increase reserveSupply
         reserveBalances[msg.sender] += mintAmount;
         reserveSupply = localReserveSupply + mintAmount;
     }
 
     /// @notice This function allows a holder of reserve balance to withdraw their share
-    /// @param amount The number of reserve shares to withdraw
-    function reserveWithdraw(uint256 amount) external {
+    /// @param _amount The number of reserve shares to withdraw
+    function reserveWithdraw(uint256 _amount) external {
         // Remove 'amount' from the balances of the sender. Because this is 8.0 it will revert on underflow
-        reserveBalances[msg.sender] -= amount;
+        reserveBalances[msg.sender] -= _amount;
         // We load the reserves
         (uint256 localUnderlying, uint256 localShares) = _getReserves();
         uint256 localReserveSupply = reserveSupply;
         // Then we calculate the proportion of the shares to redeem
-        uint256 userShares = (localShares * amount) / localReserveSupply;
+        uint256 userShares = (localShares * _amount) / localReserveSupply;
         // First we withdraw the proportion of shares tokens belonging to the caller
         uint256 freedUnderlying = vault.withdraw(userShares, address(this), 0);
         // We calculate the amount of underlying to send
-        uint256 userUnderlying = (localUnderlying * amount) /
+        uint256 userUnderlying = (localUnderlying * _amount) /
             localReserveSupply;
         // We send the redemption underlying to the caller
         // Note 'token' is an immutable from shares
@@ -102,12 +102,12 @@ contract YVaultAssetProxy is WrappedPosition {
             localShares - userShares
         );
         // We note a reduction in local supply
-        reserveSupply = localReserveSupply - amount;
+        reserveSupply = localReserveSupply - _amount;
     }
 
     /// @notice Makes the actual deposit into the yearn vault
     ///         Tries to use the local balances before depositing
-    /// @return (the shares minted, amount underlying used)
+    /// @return Tuple (the shares minted, amount underlying used)
     function _deposit() internal override returns (uint256, uint256) {
         //Load reserves
         (uint256 localUnderlying, uint256 localShares) = _getReserves();
@@ -138,10 +138,10 @@ contract YVaultAssetProxy is WrappedPosition {
         return (neededShares, amount);
     }
 
-    /// @notice withdraw the number of shares and will short circuit if it can
-    /// @param _shares the number of shares to withdraw
-    /// @param _destination the address to send the output funds
-    /// @param _underlyingPerShare the possibly precomputed underlying per share
+    /// @notice Withdraw the number of shares and will short circuit if it can
+    /// @param _shares The number of shares to withdraw
+    /// @param _destination The address to send the output funds
+    /// @param _underlyingPerShare The possibly precomputed underlying per share
     function _withdraw(
         uint256 _shares,
         address _destination,
@@ -178,10 +178,10 @@ contract YVaultAssetProxy is WrappedPosition {
         return needed;
     }
 
-    /// @notice get the underlying amount of tokens per shares given
-    /// @param amount the amount of shares you want to know the value of
-    /// @return value of shares in underlying token
-    function _underlying(uint256 amount)
+    /// @notice Get the underlying amount of tokens per shares given
+    /// @param _amount The amount of shares you want to know the value of
+    /// @return Value of shares in underlying token
+    function _underlying(uint256 _amount)
         internal
         override
         view
@@ -189,7 +189,7 @@ contract YVaultAssetProxy is WrappedPosition {
     {
         uint256 yearnTotalSupply = vault.totalSupply();
         uint256 yearnTotalAssets = vault.totalAssets();
-        return (yearnTotalAssets * amount) / yearnTotalSupply;
+        return (yearnTotalAssets * _amount) / yearnTotalSupply;
     }
 
     /// @notice Get the price per share in the vault
@@ -205,19 +205,19 @@ contract YVaultAssetProxy is WrappedPosition {
     }
 
     /// @notice Helper to get the reserves with one sload
-    /// @return (reserve underlying, reserve shares)
+    /// @return Tuple (reserve underlying, reserve shares)
     function _getReserves() internal view returns (uint256, uint256) {
         return (uint256(reserveUnderlying), uint256(reserveShares));
     }
 
-    /// @notice helper to set reserves using one sstore
-    /// @param newReserveUnderlying the new reserve of underlying
-    /// @param newReserveShares the new reserve of wrapped position shares
+    /// @notice Helper to set reserves using one sstore
+    /// @param _newReserveUnderlying The new reserve of underlying
+    /// @param _newReserveShares The new reserve of wrapped position shares
     function _setReserves(
-        uint256 newReserveUnderlying,
-        uint256 newReserveShares
+        uint256 _newReserveUnderlying,
+        uint256 _newReserveShares
     ) internal {
-        reserveUnderlying = uint128(newReserveUnderlying);
-        reserveShares = uint128(newReserveShares);
+        reserveUnderlying = uint128(_newReserveUnderlying);
+        reserveShares = uint128(_newReserveShares);
     }
 }

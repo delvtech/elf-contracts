@@ -1,8 +1,8 @@
 import { Signer } from "ethers";
 import { parseEther } from "ethers/lib/utils";
 import { THIRTY_DAYS_IN_SECONDS } from "test/helpers/time";
-import { ERC20 } from "typechain/ERC20";
-import { ConvergentCurvePool__factory } from "typechain/factories/ConvergentCurvePool__factory";
+import { ConvergentCurvePoolTest__factory } from "typechain/factories/ConvergentCurvePoolTest__factory";
+import { TestERC20 } from "typechain/TestERC20";
 import { Vault } from "typechain/Vault";
 
 const defaultOptions = {
@@ -13,23 +13,28 @@ const defaultOptions = {
 export async function deployConvergentCurvePool(
   signer: Signer,
   vaultContract: Vault,
-  baseAssetContract: ERC20,
-  yieldAssetContract: ERC20,
+  baseAssetContract: TestERC20,
+  yieldAssetContract: TestERC20,
   options?: {
     swapFee: string;
+    expiration: number;
     durationInSeconds: number;
   }
 ) {
-  const { swapFee, durationInSeconds } = { ...defaultOptions, ...options };
+  const { expiration: providedExpiration, swapFee, durationInSeconds } = {
+    ...defaultOptions,
+    ...options,
+  };
   const elementAddress = await signer.getAddress();
   const baseAssetSymbol = await baseAssetContract.symbol();
-  const curcePoolDeployer = new ConvergentCurvePool__factory(signer);
+  const curvePoolDeployer = new ConvergentCurvePoolTest__factory(signer);
 
   const dateInMilliseconds = Date.now();
   const dateInSeconds = dateInMilliseconds / 1000;
-  const expiration = Math.round(dateInSeconds + durationInSeconds);
+  const defaultExpiration = Math.round(dateInSeconds + durationInSeconds);
+  const expiration = providedExpiration ?? defaultExpiration;
 
-  const poolContract = await curcePoolDeployer.deploy(
+  const poolContract = await curvePoolDeployer.deploy(
     baseAssetContract.address,
     yieldAssetContract.address,
     expiration,

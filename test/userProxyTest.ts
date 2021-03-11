@@ -7,6 +7,8 @@ import {
 import { impersonate } from "./helpers/impersonate";
 import { Contract } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { CodeSizeChecker } from "typechain/CodeSizeChecker";
+import { CodeSizeChecker__factory } from "typechain/factories/CodeSizeChecker__factory";
 
 describe("UserProxyTests", function () {
   let fixture: UsdcPoolMainnetInterface;
@@ -87,5 +89,20 @@ describe("UserProxyTests", function () {
       );
     receipt = await receipt.wait();
     console.log("New User First mint", receipt.gasUsed.toNumber());
+  });
+  describe("Deprecation function", async () => {
+    it("Blocks deprecation by non owners", async () => {
+      const tx = proxy.connect(signers[1]).deprecate();
+      expect(tx).to.be.revertedWith("Sender not owner");
+    });
+    it("Allows deprecation by the owner", async () => {
+      const deployer = new CodeSizeChecker__factory(signers[0]);
+      const sizeChecker = await deployer.deploy();
+      const sizeBefore = sizeChecker.codeSize(proxy.address);
+      expect(sizeBefore).to.not.be.eq(0);
+      await proxy.deprecate();
+      const sizeAfter = await sizeChecker.codeSize(proxy.address);
+      expect(sizeAfter).to.be.eq(0);
+    });
   });
 });

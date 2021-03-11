@@ -69,7 +69,8 @@
         "Multicall",
         "typechain",
         "bytecodehash",
-        "twohundred"
+        "twohundred",
+        "selfdestruct"
     ],
     "enabledLanguageIds": [
         "asciidoc",

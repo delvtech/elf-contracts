@@ -1,21 +1,33 @@
+import "module-alias/register";
+
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
-import { BigNumber, Contract, providers } from "ethers";
+import { BigNumber, providers } from "ethers";
 import { ethers, network } from "hardhat";
-
-import { ConvergentCurvePool } from "../typechain/ConvergentCurvePool";
+import { deployBalancerVault } from "test/helpers/deployBalancerVault";
+import { deployConvergentCurvePool } from "test/helpers/deployConvergentCurvePool";
+import { ConvergentCurvePoolTest } from "typechain/ConvergentCurvePoolTest";
+import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
+import { TestERC20 } from "typechain/TestERC20";
+import { Vault } from "typechain/Vault";
 
 describe("ConvergentCurvePool", function () {
   const BOND_DECIMALS = 17;
   const BASE_DECIMALS = 6;
   const SECONDS_IN_YEAR = 31536000;
+
   const fakeAddress = "0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c";
   let accounts: SignerWithAddress[];
-  let pool: ConvergentCurvePool;
+  let balancerSigner: SignerWithAddress;
+  let elementSigner: SignerWithAddress;
+  let elementAddress: string;
+  let tokenSigner: SignerWithAddress;
+  let poolContract: ConvergentCurvePoolTest;
   let startTimestamp: number;
-  let erc20_base: Contract;
-  let erc20_bond: Contract;
-  let vault: Contract;
+  let expirationTime: number;
+  let baseAssetContract: TestERC20;
+  let bondAssetContract: TestERC20;
+  let balancerVaultContract: Vault;
 
   async function getTimestamp() {
     return (await ethers.provider.getBlock("latest")).timestamp;
@@ -47,56 +59,65 @@ describe("ConvergentCurvePool", function () {
   }
 
   async function resetPool() {
-    const Pool = await ethers.getContractFactory("ConvergentCurvePoolTest");
-    pool = (await Pool.deploy(
-      erc20_base.address.toString(),
-      erc20_bond.address.toString(),
-      startTimestamp + SECONDS_IN_YEAR,
-      SECONDS_IN_YEAR,
-      vault.address.toString(),
-      ethers.utils.parseEther("0.05"),
-      fakeAddress,
-      "ConvergentCurveBPT",
-      "BPT"
-    )) as ConvergentCurvePool;
+    ({ poolContract } = await deployConvergentCurvePool(
+      elementSigner,
+      balancerVaultContract,
+      baseAssetContract,
+      bondAssetContract,
+      {
+        swapFee: "0.05",
+        durationInSeconds: SECONDS_IN_YEAR,
+        expiration: expirationTime,
+      }
+    ));
   }
 
   before(async function () {
     startTimestamp = await getTimestamp();
-
-    const ERC20 = await ethers.getContractFactory("TestERC20");
-    erc20_bond = await ERC20.deploy("Bond", "EL1Y", BOND_DECIMALS);
-    erc20_base = await ERC20.deploy("Stablecoin", "USDC", BASE_DECIMALS);
-
-    const Vault = await ethers.getContractFactory("TestVault");
-    vault = await Vault.deploy();
-
-    const Pool = await ethers.getContractFactory("ConvergentCurvePoolTest");
-    pool = (await Pool.deploy(
-      erc20_base.address.toString(),
-      erc20_bond.address.toString(),
-      startTimestamp + SECONDS_IN_YEAR,
-      SECONDS_IN_YEAR,
-      vault.address.toString(),
-      ethers.utils.parseEther("0.05"),
-      fakeAddress,
-      "ConvergentCurveBPT",
-      "BPT"
-    )) as ConvergentCurvePool;
+    expirationTime = startTimestamp + SECONDS_IN_YEAR;
 
     accounts = await ethers.getSigners();
+    [balancerSigner, elementSigner, tokenSigner] = accounts;
+    const ERC20Deployer = new TestERC20__factory(tokenSigner);
+    bondAssetContract = await ERC20Deployer.deploy(
+      "Bond",
+      "EL1Y",
+      BOND_DECIMALS
+    );
+    baseAssetContract = await ERC20Deployer.deploy(
+      "Stablecoin",
+      "USDC",
+      BASE_DECIMALS
+    );
+
+    elementAddress = await elementSigner.getAddress();
+
+    balancerVaultContract = await deployBalancerVault(balancerSigner);
+    await balancerVaultContract.changeRelayerAllowance(elementAddress, true);
+
+    ({ poolContract } = await deployConvergentCurvePool(
+      elementSigner,
+      balancerVaultContract,
+      baseAssetContract,
+      bondAssetContract,
+      {
+        swapFee: "0.05",
+        durationInSeconds: SECONDS_IN_YEAR,
+        expiration: expirationTime,
+      }
+    ));
   });
 
   it("Normalize tokens correctly", async function () {
     const one = ethers.utils.parseUnits("1", 18);
     // We check that the same decimals is a no opp
-    const no_opp = await pool.normalize(one, 18, 18);
+    const no_opp = await poolContract.normalize(one, 18, 18);
     expect(no_opp).to.be.eq(one);
     // We check that it reduces decimals correctly
-    const bp = await pool.normalize(one, 18, 14);
+    const bp = await poolContract.normalize(one, 18, 14);
     expect(bp).to.be.eq(ethers.utils.parseUnits("1", 14));
     // We check that it increases decimals  correctly
-    const x100 = await pool.normalize(one, 18, 20);
+    const x100 = await poolContract.normalize(one, 18, 20);
     expect(x100).to.be.eq(ethers.utils.parseUnits("1", 20));
   });
 
@@ -107,17 +128,17 @@ describe("ConvergentCurvePool", function () {
   it("Converts token units to decimal units", async function () {
     // Check that a random bond unit is correctly decimal encoded
     const tokenAmount = getRandomInt(1000);
-    let normalized = await pool.tokenToFixed(
+    let normalized = await poolContract.tokenToFixed(
       ethers.utils.parseUnits(tokenAmount.toString(), BOND_DECIMALS),
-      erc20_bond.address
+      bondAssetContract.address
     );
     expect(normalized).to.be.eq(
       ethers.utils.parseUnits(tokenAmount.toString(), 18)
     );
     // Check that the underlying token normalizes correctly
-    normalized = await pool.tokenToFixed(
+    normalized = await poolContract.tokenToFixed(
       ethers.utils.parseUnits(tokenAmount.toString(), BASE_DECIMALS),
-      erc20_base.address
+      baseAssetContract.address
     );
     expect(normalized).to.be.eq(
       ethers.utils.parseUnits(tokenAmount.toString(), 18)
@@ -127,17 +148,17 @@ describe("ConvergentCurvePool", function () {
   it("Converts token units to decimal units", async function () {
     // Check that a random bond unit is correctly decimal encoded
     const tokenAmount = getRandomInt(1000);
-    let normalized = await pool.tokenToFixed(
+    let normalized = await poolContract.tokenToFixed(
       ethers.utils.parseUnits(tokenAmount.toString(), BOND_DECIMALS),
-      erc20_bond.address
+      bondAssetContract.address
     );
     expect(normalized).to.be.eq(
       ethers.utils.parseUnits(tokenAmount.toString(), 18)
     );
     // Check that the underlying token normalizes correctly
-    normalized = await pool.tokenToFixed(
+    normalized = await poolContract.tokenToFixed(
       ethers.utils.parseUnits(tokenAmount.toString(), BASE_DECIMALS),
-      erc20_base.address
+      baseAssetContract.address
     );
     expect(normalized).to.be.eq(
       ethers.utils.parseUnits(tokenAmount.toString(), 18)
@@ -148,12 +169,18 @@ describe("ConvergentCurvePool", function () {
     // Check that a random bond unit is correctly decimal encoded
     const randAmount = getRandomInt(1000);
     const normalized = ethers.utils.parseUnits(randAmount.toString(), 18);
-    let tokenAmount = await pool.fixedToToken(normalized, erc20_bond.address);
+    let tokenAmount = await poolContract.fixedToToken(
+      normalized,
+      bondAssetContract.address
+    );
     expect(tokenAmount).to.be.eq(
       ethers.utils.parseUnits(randAmount.toString(), BOND_DECIMALS)
     );
     // Check that the underlying token normalizes correctly
-    tokenAmount = await pool.fixedToToken(normalized, erc20_base.address);
+    tokenAmount = await poolContract.fixedToToken(
+      normalized,
+      baseAssetContract.address
+    );
     expect(tokenAmount).to.be.eq(
       ethers.utils.parseUnits(randAmount.toString(), BASE_DECIMALS)
     );
@@ -165,16 +192,18 @@ describe("ConvergentCurvePool", function () {
       startTimestamp + SECONDS_IN_YEAR / 2,
     ]);
     await network.provider.send("evm_mine");
+
     // We now call the function which returns 1 - t, which should be 0.5
-    const exponent = await pool.getYieldExponent();
+    const exponent = await poolContract.getYieldExponent();
     expect(exponent).to.be.eq(ethers.utils.parseUnits("0.5", 18));
   });
 
   it("Mints LP in empty pool correctly", async function () {
+    await resetPool();
     // We use the mintLP function in tes
     const oneThousand = ethers.utils.parseUnits("1000", 18);
     const result = await mineTx(
-      pool.mintLP(oneThousand, oneThousand, [0, 0], accounts[0].address)
+      poolContract.mintLP(oneThousand, oneThousand, [0, 0], accounts[0].address)
     );
     // Check that it returns the right data using the event hack
     const returned = result.events.filter(
@@ -183,7 +212,7 @@ describe("ConvergentCurvePool", function () {
     expect(returned[0].data).to.be.eq(oneThousand);
     expect(returned[1].data).to.be.eq(newBigNumber(0));
     // Check the LP balance
-    const balance = await pool.balanceOf(accounts[0].address);
+    const balance = await poolContract.balanceOf(accounts[0].address);
     expect(balance).to.be.eq(oneThousand);
   });
 
@@ -193,11 +222,11 @@ describe("ConvergentCurvePool", function () {
     await resetPool();
     const oneThousand = ethers.utils.parseUnits("1000", 18);
     // Set the current total supply to 1000 lp tokens
-    await mineTx(pool.setLPBalance(accounts[1].address, oneThousand));
+    await mineTx(poolContract.setLPBalance(accounts[1].address, oneThousand));
     // We use the mintLP function in tes
     const fiveHundred = ethers.utils.parseUnits("500", 18);
     const result = await mineTx(
-      pool.mintLP(
+      poolContract.mintLP(
         oneThousand,
         oneThousand,
         [oneThousand, fiveHundred],
@@ -211,9 +240,9 @@ describe("ConvergentCurvePool", function () {
     expect(returned[0].data).to.be.eq(oneThousand);
     expect(returned[1].data).to.be.eq(fiveHundred);
     // Check the LP balance
-    const balance = await pool.balanceOf(accounts[0].address);
+    const balance = await poolContract.balanceOf(accounts[0].address);
     expect(balance).to.be.eq(oneThousand);
-    const totalSupply = await pool.totalSupply();
+    const totalSupply = await poolContract.totalSupply();
     expect(totalSupply).to.be.eq(ethers.utils.parseUnits("2000", 18));
   });
 
@@ -223,12 +252,12 @@ describe("ConvergentCurvePool", function () {
     const twoThousand = ethers.utils.parseUnits("2000", 18);
     const oneThousand = twoThousand.div(2);
     // Set the current total supply to 1000 lp tokens
-    await mineTx(pool.setLPBalance(accounts[1].address, oneThousand));
+    await mineTx(poolContract.setLPBalance(accounts[1].address, oneThousand));
     // We use the mintLP function in tes
     const fiveHundred = ethers.utils.parseUnits("500", 18);
     const eightHundred = ethers.utils.parseUnits("800", 18);
     const result = await mineTx(
-      pool.mintLP(
+      poolContract.mintLP(
         twoThousand,
         eightHundred,
         [oneThousand, fiveHundred],
@@ -243,30 +272,34 @@ describe("ConvergentCurvePool", function () {
     expect(returned[0].data).to.be.eq(sixteenHundred);
     expect(returned[1].data).to.be.eq(eightHundred);
     // Check the LP balance
-    const balance = await pool.balanceOf(accounts[0].address);
+    const balance = await poolContract.balanceOf(accounts[0].address);
     expect(balance).to.be.eq(sixteenHundred);
-    const totalSupply = await pool.totalSupply();
+    const totalSupply = await poolContract.totalSupply();
     expect(totalSupply).to.be.eq(oneThousand.add(sixteenHundred));
   });
 
   it("Internally Mints LP correctly for Governance", async function () {
     await resetPool();
+    let govBalanceStart = await poolContract.balanceOf(elementAddress);
     const ten = ethers.utils.parseUnits("10", 18);
     const five = ethers.utils.parseUnits("5", 18);
     // We set the accumulated fees
-    await mineTx(pool.setFees(ten, five));
+    await mineTx(poolContract.setFees(ten, five));
     // Set the current total supply to 100 lp tokens
-    await mineTx(pool.setLPBalance(accounts[1].address, ten.mul(ten)));
+    await mineTx(poolContract.setLPBalance(elementAddress, ten.mul(ten)));
+    govBalanceStart = await poolContract.balanceOf(elementAddress);
     // Mint governance lp
-    await mineTx(pool.mintGovLP([ten.mul(ten), five.mul(ten)]));
+    await mineTx(poolContract.mintGovLP([ten.mul(ten), five.mul(ten)]));
     // We now check that all of the fees were consume
-    const feesUnderlying = await pool.feesUnderlying();
-    const feesBond = await pool.feesBond();
+    const feesUnderlying = await poolContract.feesUnderlying();
+    const feesBond = await poolContract.feesBond();
     expect(newBigNumber(0)).to.be.eq(feesUnderlying);
     expect(newBigNumber(0)).to.be.eq(feesBond);
     // We check that the governance address got ten lp tokens
-    const govBalance = await pool.balanceOf(fakeAddress);
-    expect(ethers.utils.parseUnits("0.5", 18)).to.be.eq(govBalance);
+    const govBalanceNew = await poolContract.balanceOf(elementAddress);
+    expect(ethers.utils.parseUnits("0.5", 18).add(govBalanceStart)).to.be.eq(
+      govBalanceNew
+    );
   });
 
   // We test the mint functionality where the bond should be fully consumed
@@ -274,11 +307,11 @@ describe("ConvergentCurvePool", function () {
     await resetPool();
     const oneThousand = ethers.utils.parseUnits("1000", 18);
     // Set the current total supply to 1000 lp tokens
-    await mineTx(pool.setLPBalance(accounts[0].address, oneThousand));
+    await mineTx(poolContract.setLPBalance(accounts[0].address, oneThousand));
     // We want a min of 500 underlying and 100 bond
     const fiveHundred = ethers.utils.parseUnits("500", 18);
     const result = await mineTx(
-      pool.burnLP(
+      poolContract.burnLP(
         fiveHundred,
         fiveHundred.div(5),
         [oneThousand, fiveHundred],
@@ -292,9 +325,9 @@ describe("ConvergentCurvePool", function () {
     expect(returned[0].data).to.be.eq(fiveHundred);
     expect(returned[1].data).to.be.eq(fiveHundred.div(2));
     // The call should have burned 50% of the LP tokens to produce this
-    const balance = await pool.balanceOf(accounts[0].address);
+    const balance = await poolContract.balanceOf(accounts[0].address);
     expect(balance).to.be.eq(fiveHundred);
-    const totalSupply = await pool.totalSupply();
+    const totalSupply = await poolContract.totalSupply();
     expect(totalSupply).to.be.eq(fiveHundred);
   });
 
@@ -303,12 +336,12 @@ describe("ConvergentCurvePool", function () {
     await resetPool();
     const oneThousand = ethers.utils.parseUnits("1000", 18);
     // Set the current total supply to 1000 lp tokens
-    await mineTx(pool.setLPBalance(accounts[0].address, oneThousand));
+    await mineTx(poolContract.setLPBalance(accounts[0].address, oneThousand));
     // We want a min of 250 underlying and 250 bond
     const fiveHundred = ethers.utils.parseUnits("500", 18);
     const twoFifty = fiveHundred.div(2);
     const result = await mineTx(
-      pool.burnLP(
+      poolContract.burnLP(
         twoFifty,
         twoFifty,
         [oneThousand, fiveHundred],
@@ -322,9 +355,9 @@ describe("ConvergentCurvePool", function () {
     expect(returned[0].data).to.be.eq(fiveHundred);
     expect(returned[1].data).to.be.eq(twoFifty);
     // The call should have burned 50% of the LP tokens to produce this
-    const balance = await pool.balanceOf(accounts[0].address);
+    const balance = await poolContract.balanceOf(accounts[0].address);
     expect(balance).to.be.eq(fiveHundred);
-    const totalSupply = await pool.totalSupply();
+    const totalSupply = await poolContract.totalSupply();
     expect(totalSupply).to.be.eq(fiveHundred);
   });
 
@@ -336,22 +369,32 @@ describe("ConvergentCurvePool", function () {
 
     // Check the case when this is an output trade
     let result = await mineTx(
-      pool.assignTradeFee(inputUnderlying, amount, erc20_bond.address, false)
+      poolContract.assignTradeFee(
+        inputUnderlying,
+        amount,
+        bondAssetContract.address,
+        false
+      )
     );
     let returned = result.events.filter((event) => event.event == "UIntReturn");
     expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("10950", 18));
     // Check the stored fees
-    const feeBond = await pool.feesBond();
+    const feeBond = await poolContract.feesBond();
     expect(feeBond).to.be.eq(ethers.utils.parseUnits("50", BOND_DECIMALS));
 
     // Check the case when this is an input trade
     result = await mineTx(
-      pool.assignTradeFee(inputUnderlying, amount, erc20_bond.address, true)
+      poolContract.assignTradeFee(
+        inputUnderlying,
+        amount,
+        bondAssetContract.address,
+        true
+      )
     );
     returned = result.events.filter((event) => event.event == "UIntReturn");
     expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("10050", 18));
     // Check the stored fees
-    const feeUnderlying = await pool.feesUnderlying();
+    const feeUnderlying = await poolContract.feesUnderlying();
     expect(feeUnderlying).to.be.eq(
       ethers.utils.parseUnits("50", BASE_DECIMALS)
     );
@@ -365,24 +408,34 @@ describe("ConvergentCurvePool", function () {
 
     // Check the case when this is an output trade
     let result = await mineTx(
-      pool.assignTradeFee(inputBond, amount, erc20_base.address, false)
+      poolContract.assignTradeFee(
+        inputBond,
+        amount,
+        baseAssetContract.address,
+        false
+      )
     );
     let returned = result.events.filter((event) => event.event == "UIntReturn");
     expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("9950", 18));
     // Check the stored fees
-    const feeUnderlying = await pool.feesUnderlying();
+    const feeUnderlying = await poolContract.feesUnderlying();
     expect(feeUnderlying).to.be.eq(
       ethers.utils.parseUnits("50", BASE_DECIMALS)
     );
 
     // Check the case when this is an input trade
     result = await mineTx(
-      pool.assignTradeFee(inputBond, amount, erc20_base.address, true)
+      poolContract.assignTradeFee(
+        inputBond,
+        amount,
+        baseAssetContract.address,
+        true
+      )
     );
     returned = result.events.filter((event) => event.event == "UIntReturn");
     expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("11050", 18));
     // Check the stored fees
-    const feesBond = await pool.feesBond();
+    const feesBond = await poolContract.feesBond();
     expect(feesBond).to.be.eq(ethers.utils.parseUnits("50", BOND_DECIMALS));
   });
 
@@ -390,13 +443,13 @@ describe("ConvergentCurvePool", function () {
 
   it("Quotes a buy output trade correctly", async function () {
     await resetPool();
-    const reserveBond = ethers.utils.parseUnits("12000", BOND_DECIMALS);
-    const reserveUnderlying = ethers.utils.parseUnits("10000", BASE_DECIMALS);
+    const reserveBond = ethers.utils.parseEther("12000");
+    const reserveUnderlying = ethers.utils.parseEther("10000");
 
-    const quote = await pool.callStatic.onSwapGivenIn(
+    const quote = await poolContract.callStatic.onSwapGivenIn(
       {
-        tokenIn: erc20_base.address,
-        tokenOut: erc20_bond.address,
+        tokenIn: baseAssetContract.address,
+        tokenOut: bondAssetContract.address,
         amountIn: ethers.utils.parseUnits("100", BASE_DECIMALS),
         // Misc data
         poolId:
@@ -415,13 +468,13 @@ describe("ConvergentCurvePool", function () {
   });
 
   it("Quotes a sell output trade correctly", async function () {
-    const reserveBond = ethers.utils.parseUnits("12000", BOND_DECIMALS);
-    const reserveUnderlying = ethers.utils.parseUnits("10000", BASE_DECIMALS);
+    const reserveBond = ethers.utils.parseEther("12000");
+    const reserveUnderlying = ethers.utils.parseEther("10000");
 
-    const quote = await pool.callStatic.onSwapGivenIn(
+    const quote = await poolContract.callStatic.onSwapGivenIn(
       {
-        tokenIn: erc20_bond.address,
-        tokenOut: erc20_base.address,
+        tokenIn: bondAssetContract.address,
+        tokenOut: baseAssetContract.address,
         amountIn: ethers.utils.parseUnits("100", BOND_DECIMALS),
         // Misc data
         poolId:
@@ -438,13 +491,13 @@ describe("ConvergentCurvePool", function () {
   });
 
   it("Quotes a buy input trade correctly", async function () {
-    const reserveBond = ethers.utils.parseUnits("12000", BOND_DECIMALS);
-    const reserveUnderlying = ethers.utils.parseUnits("10000", BASE_DECIMALS);
+    const reserveBond = ethers.utils.parseEther("12000");
+    const reserveUnderlying = ethers.utils.parseEther("10000");
 
-    const quote = await pool.callStatic.onSwapGivenOut(
+    const quote = await poolContract.callStatic.onSwapGivenOut(
       {
-        tokenIn: erc20_base.address,
-        tokenOut: erc20_bond.address,
+        tokenIn: baseAssetContract.address,
+        tokenOut: bondAssetContract.address,
         amountOut: ethers.utils.parseUnits("200", BOND_DECIMALS),
         // Misc data
         poolId:
@@ -463,13 +516,13 @@ describe("ConvergentCurvePool", function () {
   });
 
   it("Quotes a sell input trade correctly", async function () {
-    const reserveBond = ethers.utils.parseUnits("12000", BOND_DECIMALS);
-    const reserveUnderlying = ethers.utils.parseUnits("10000", BASE_DECIMALS);
+    const reserveBond = ethers.utils.parseEther("12000");
+    const reserveUnderlying = ethers.utils.parseEther("10000");
 
-    const quote = await pool.callStatic.onSwapGivenOut(
+    const quote = await poolContract.callStatic.onSwapGivenOut(
       {
-        tokenIn: erc20_bond.address,
-        tokenOut: erc20_base.address,
+        tokenIn: bondAssetContract.address,
+        tokenOut: baseAssetContract.address,
         amountOut: ethers.utils.parseUnits("150", BASE_DECIMALS),
         // Misc data
         poolId:

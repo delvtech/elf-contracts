@@ -1,0 +1,24 @@
+name: Code Coverage
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+jobs:
+    coverage:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v2
+        - name: Install dependencies
+          run: npm install
+        - name: Coverage
+          run: npm run build && npm run coverage
+        - name: Edit lcov.info
+          run: cat coverage/lcov.info | sed '/.*\/balancer-core-v2\/.*/,/TN:/d' | sed '/.*\/interfaces\/.*/,/TN:/d' | sed '/.*\/test\/.*/,/TN:/d' | tee coverage/lcov.info
+        - name: Coveralls
+          uses: coverallsapp/github-action@v1.1.2
+          with:
+            github-token: ${{ secrets.GITHUB_TOKEN }}

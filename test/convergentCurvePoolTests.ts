@@ -10,7 +10,6 @@ import { ConvergentCurvePoolTest } from "typechain/ConvergentCurvePoolTest";
 import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
 import { TestERC20 } from "typechain/TestERC20";
 import { Vault } from "typechain/Vault";
-import { formatEther } from "ethers/lib/utils";
 
 describe("ConvergentCurvePool", function () {
   const BOND_DECIMALS = 17;
@@ -463,7 +462,6 @@ describe("ConvergentCurvePool", function () {
       reserveUnderlying,
       reserveBond
     );
-    console.log("quote", formatEther(quote));
     expect(quote).to.be.eq(ethers.utils.parseUnits("108.572076454026339518"));
   });
 
@@ -487,7 +485,6 @@ describe("ConvergentCurvePool", function () {
       reserveBond,
       reserveUnderlying
     );
-    console.log("quote", formatEther(quote));
     expect(quote).to.be.eq(ethers.utils.parseUnits("90.434755941585224376"));
   });
 
@@ -511,7 +508,6 @@ describe("ConvergentCurvePool", function () {
       reserveUnderlying,
       reserveBond
     );
-    console.log("quote", formatEther(quote));
     expect(quote).to.be.eq(ethers.utils.parseUnits("184.972608299922486264"));
   });
 
@@ -535,7 +531,6 @@ describe("ConvergentCurvePool", function () {
       reserveBond,
       reserveUnderlying
     );
-    console.log("quote", formatEther(quote));
     expect(quote).to.be.eq(ethers.utils.parseUnits("166.279570802359854161"));
   });
 });

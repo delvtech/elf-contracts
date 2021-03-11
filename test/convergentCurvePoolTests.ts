@@ -3,15 +3,15 @@ import { expect } from "chai";
 import { BigNumber, Contract, providers } from "ethers";
 import { ethers, network } from "hardhat";
 
-import { YieldCurvePool } from "../typechain/YieldCurvePool";
+import { ConvergentCurvePool } from "../typechain/ConvergentCurvePool";
 
-describe("YieldPool", function () {
+describe("ConvergentCurvePool", function () {
   const BOND_DECIMALS = 17;
   const BASE_DECIMALS = 6;
   const SECONDS_IN_YEAR = 31536000;
   const fakeAddress = "0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c";
   let accounts: SignerWithAddress[];
-  let pool: YieldCurvePool;
+  let pool: ConvergentCurvePool;
   let startTimestamp: number;
   let erc20_base: Contract;
   let erc20_bond: Contract;
@@ -47,7 +47,7 @@ describe("YieldPool", function () {
   }
 
   async function resetPool() {
-    const Pool = await ethers.getContractFactory("YieldPoolTest");
+    const Pool = await ethers.getContractFactory("ConvergentCurvePoolTest");
     pool = (await Pool.deploy(
       erc20_base.address.toString(),
       erc20_bond.address.toString(),
@@ -56,9 +56,9 @@ describe("YieldPool", function () {
       vault.address.toString(),
       ethers.utils.parseEther("0.05"),
       fakeAddress,
-      "YieldBPT",
+      "ConvergentCurveBPT",
       "BPT"
-    )) as YieldCurvePool;
+    )) as ConvergentCurvePool;
   }
 
   before(async function () {
@@ -71,7 +71,7 @@ describe("YieldPool", function () {
     const Vault = await ethers.getContractFactory("TestVault");
     vault = await Vault.deploy();
 
-    const Pool = await ethers.getContractFactory("YieldPoolTest");
+    const Pool = await ethers.getContractFactory("ConvergentCurvePoolTest");
     pool = (await Pool.deploy(
       erc20_base.address.toString(),
       erc20_bond.address.toString(),
@@ -80,9 +80,9 @@ describe("YieldPool", function () {
       vault.address.toString(),
       ethers.utils.parseEther("0.05"),
       fakeAddress,
-      "YieldBPT",
+      "ConvergentCurveBPT",
       "BPT"
-    )) as YieldCurvePool;
+    )) as ConvergentCurvePool;
 
     accounts = await ethers.getSigners();
   });
@@ -178,7 +178,7 @@ describe("YieldPool", function () {
     );
     // Check that it returns the right data using the event hack
     const returned = result.events.filter(
-      (event) => event.event == "uintReturn"
+      (event) => event.event == "UIntReturn"
     );
     expect(returned[0].data).to.be.eq(oneThousand);
     expect(returned[1].data).to.be.eq(newBigNumber(0));
@@ -206,7 +206,7 @@ describe("YieldPool", function () {
     );
     // Check that it returns the right data using the event hack
     const returned = result.events.filter(
-      (event) => event.event == "uintReturn"
+      (event) => event.event == "UIntReturn"
     );
     expect(returned[0].data).to.be.eq(oneThousand);
     expect(returned[1].data).to.be.eq(fiveHundred);
@@ -237,7 +237,7 @@ describe("YieldPool", function () {
     );
     // Check that it returns the right data using the event hack
     const returned = result.events.filter(
-      (event) => event.event == "uintReturn"
+      (event) => event.event == "UIntReturn"
     );
     const sixteenHundred = ethers.utils.parseUnits("1600", 18);
     expect(returned[0].data).to.be.eq(sixteenHundred);
@@ -287,7 +287,7 @@ describe("YieldPool", function () {
     );
     // The call should have released 500 underlying and 250 bond
     const returned = result.events.filter(
-      (event) => event.event == "uintReturn"
+      (event) => event.event == "UIntReturn"
     );
     expect(returned[0].data).to.be.eq(fiveHundred);
     expect(returned[1].data).to.be.eq(fiveHundred.div(2));
@@ -317,7 +317,7 @@ describe("YieldPool", function () {
     );
     // The call should have released 500 underlying and 250 bond
     const returned = result.events.filter(
-      (event) => event.event == "uintReturn"
+      (event) => event.event == "UIntReturn"
     );
     expect(returned[0].data).to.be.eq(fiveHundred);
     expect(returned[1].data).to.be.eq(twoFifty);
@@ -338,7 +338,7 @@ describe("YieldPool", function () {
     let result = await mineTx(
       pool.assignTradeFee(inputUnderlying, amount, erc20_bond.address, false)
     );
-    let returned = result.events.filter((event) => event.event == "uintReturn");
+    let returned = result.events.filter((event) => event.event == "UIntReturn");
     expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("10950", 18));
     // Check the stored fees
     const feeBond = await pool.feesBond();
@@ -348,7 +348,7 @@ describe("YieldPool", function () {
     result = await mineTx(
       pool.assignTradeFee(inputUnderlying, amount, erc20_bond.address, true)
     );
-    returned = result.events.filter((event) => event.event == "uintReturn");
+    returned = result.events.filter((event) => event.event == "UIntReturn");
     expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("10050", 18));
     // Check the stored fees
     const feeUnderlying = await pool.feesUnderlying();
@@ -367,7 +367,7 @@ describe("YieldPool", function () {
     let result = await mineTx(
       pool.assignTradeFee(inputBond, amount, erc20_base.address, false)
     );
-    let returned = result.events.filter((event) => event.event == "uintReturn");
+    let returned = result.events.filter((event) => event.event == "UIntReturn");
     expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("9950", 18));
     // Check the stored fees
     const feeUnderlying = await pool.feesUnderlying();
@@ -379,7 +379,7 @@ describe("YieldPool", function () {
     result = await mineTx(
       pool.assignTradeFee(inputBond, amount, erc20_base.address, true)
     );
-    returned = result.events.filter((event) => event.event == "uintReturn");
+    returned = result.events.filter((event) => event.event == "UIntReturn");
     expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("11050", 18));
     // Check the stored fees
     const feesBond = await pool.feesBond();

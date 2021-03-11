@@ -3,37 +3,37 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../YieldPool.sol";
+import "../ConvergentCurvePool.sol";
 import "../balancer-core-v2/lib/math/FixedPoint.sol";
 
-contract YieldPoolTest is YieldCurvePool {
+contract ConvergentCurvePoolTest is ConvergentCurvePool {
     using FixedPoint for uint256;
 
     constructor(
         IERC20 _underlying,
         IERC20 _bond,
         uint256 _expiration,
-        uint256 _unit_seconds,
+        uint256 _unitSeconds,
         IVault vault,
         uint256 _percentFee,
         address _governance,
         string memory name,
         string memory symbol
     )
-        YieldCurvePool(
+        ConvergentCurvePool(
             _underlying,
             _bond,
             _expiration,
-            _unit_seconds,
+            _unitSeconds,
             vault,
             _percentFee,
             _governance,
             name,
             symbol
         )
-    {}
+    {} // solhint-disable-line no-empty-blocks
 
-    event uintReturn(uint256 data);
+    event UIntReturn(uint256 data);
 
     // Allows tests to burn LP tokens directly
     function burnLP(
@@ -49,8 +49,8 @@ contract YieldPoolTest is YieldCurvePool {
             source
         );
         // We use this to return because returndata from state changing tx isn't easily accessible.
-        emit uintReturn(releasedUnderlying);
-        emit uintReturn(releasedBond);
+        emit UIntReturn(releasedUnderlying);
+        emit UIntReturn(releasedBond);
     }
 
     // Allows tests to mint LP tokens directly
@@ -67,8 +67,8 @@ contract YieldPoolTest is YieldCurvePool {
             recipient
         );
         // We use this to return because returndata from state changing tx isn't easily accessible.
-        emit uintReturn(usedUnderlying);
-        emit uintReturn(usedBond);
+        emit UIntReturn(usedUnderlying);
+        emit UIntReturn(usedBond);
     }
 
     // Allows tests to access mint gov LP
@@ -89,7 +89,7 @@ contract YieldPoolTest is YieldCurvePool {
             outputToken,
             isInputTrade
         );
-        emit uintReturn(newQuote);
+        emit UIntReturn(newQuote);
     }
 
     // Allows tests to specify fees without making trades

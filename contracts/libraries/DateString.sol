@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "hardhat/console.sol";
-
 library DateString {
     uint256 public constant SECONDS_PER_DAY = 24 * 60 * 60;
     uint256 public constant SECONDS_PER_HOUR = 60 * 60;

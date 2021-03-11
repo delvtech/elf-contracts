@@ -364,8 +364,8 @@ describe("ConvergentCurvePool", function () {
   // We test the assigned trade fee when buying a bond
   it("Calculates fees correctly for a buy", async function () {
     await resetPool();
-    const amount = ethers.utils.parseUnits("11000", 18);
-    const inputUnderlying = ethers.utils.parseUnits("10000", 18);
+    const amount = ethers.utils.parseUnits("11000");
+    const inputUnderlying = ethers.utils.parseUnits("10000");
 
     // Check the case when this is an output trade
     let result = await mineTx(
@@ -377,10 +377,10 @@ describe("ConvergentCurvePool", function () {
       )
     );
     let returned = result.events.filter((event) => event.event == "UIntReturn");
-    expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("10950", 18));
+    expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("10950"));
     // Check the stored fees
     const feeBond = await poolContract.feesBond();
-    expect(feeBond).to.be.eq(ethers.utils.parseUnits("50", BOND_DECIMALS));
+    expect(feeBond).to.be.eq(ethers.utils.parseUnits("50"));
 
     // Check the case when this is an input trade
     result = await mineTx(
@@ -392,19 +392,17 @@ describe("ConvergentCurvePool", function () {
       )
     );
     returned = result.events.filter((event) => event.event == "UIntReturn");
-    expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("10050", 18));
+    expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("10050"));
     // Check the stored fees
     const feeUnderlying = await poolContract.feesUnderlying();
-    expect(feeUnderlying).to.be.eq(
-      ethers.utils.parseUnits("50", BASE_DECIMALS)
-    );
+    expect(feeUnderlying).to.be.eq(ethers.utils.parseUnits("50"));
   });
 
   // We test the assigned trade fee when selling a bond
   it("Calculates fees correctly for a sell", async function () {
     await resetPool();
-    const inputBond = ethers.utils.parseUnits("11000", 18);
-    const amount = ethers.utils.parseUnits("10000", 18);
+    const inputBond = ethers.utils.parseUnits("11000");
+    const amount = ethers.utils.parseUnits("10000");
 
     // Check the case when this is an output trade
     let result = await mineTx(
@@ -416,12 +414,10 @@ describe("ConvergentCurvePool", function () {
       )
     );
     let returned = result.events.filter((event) => event.event == "UIntReturn");
-    expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("9950", 18));
+    expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("9950"));
     // Check the stored fees
     const feeUnderlying = await poolContract.feesUnderlying();
-    expect(feeUnderlying).to.be.eq(
-      ethers.utils.parseUnits("50", BASE_DECIMALS)
-    );
+    expect(feeUnderlying).to.be.eq(ethers.utils.parseUnits("50"));
 
     // Check the case when this is an input trade
     result = await mineTx(
@@ -433,10 +429,10 @@ describe("ConvergentCurvePool", function () {
       )
     );
     returned = result.events.filter((event) => event.event == "UIntReturn");
-    expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("11050", 18));
+    expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("11050"));
     // Check the stored fees
     const feesBond = await poolContract.feesBond();
-    expect(feesBond).to.be.eq(ethers.utils.parseUnits("50", BOND_DECIMALS));
+    expect(feesBond).to.be.eq(ethers.utils.parseUnits("50"));
   });
 
   // We get a series of quotes for specifically checked trades
@@ -450,7 +446,7 @@ describe("ConvergentCurvePool", function () {
       {
         tokenIn: baseAssetContract.address,
         tokenOut: bondAssetContract.address,
-        amountIn: ethers.utils.parseUnits("100", BASE_DECIMALS),
+        amountIn: ethers.utils.parseUnits("100"),
         // Misc data
         poolId:
           "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
@@ -473,7 +469,7 @@ describe("ConvergentCurvePool", function () {
       {
         tokenIn: bondAssetContract.address,
         tokenOut: baseAssetContract.address,
-        amountIn: ethers.utils.parseUnits("100", BOND_DECIMALS),
+        amountIn: ethers.utils.parseUnits("100"),
         // Misc data
         poolId:
           "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
@@ -496,7 +492,7 @@ describe("ConvergentCurvePool", function () {
       {
         tokenIn: baseAssetContract.address,
         tokenOut: bondAssetContract.address,
-        amountOut: ethers.utils.parseUnits("200", BOND_DECIMALS),
+        amountOut: ethers.utils.parseUnits("200"),
         // Misc data
         poolId:
           "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
@@ -519,7 +515,7 @@ describe("ConvergentCurvePool", function () {
       {
         tokenIn: bondAssetContract.address,
         tokenOut: baseAssetContract.address,
-        amountOut: ethers.utils.parseUnits("150", BASE_DECIMALS),
+        amountOut: ethers.utils.parseUnits("150"),
         // Misc data
         poolId:
           "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",

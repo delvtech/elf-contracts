@@ -3,15 +3,15 @@ import { expect } from "chai";
 import { BigNumber, Contract, providers } from "ethers";
 import { ethers, network } from "hardhat";
 
-import { YieldCurvePool } from "../typechain/YieldCurvePool";
+import { ConvergentCurvePool } from "../typechain/ConvergentCurvePool";
 
-describe("YieldPool", function () {
+describe("ConvergentCurvePool", function () {
   const BOND_DECIMALS = 17;
   const BASE_DECIMALS = 6;
   const SECONDS_IN_YEAR = 31536000;
   const fakeAddress = "0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c";
   let accounts: SignerWithAddress[];
-  let pool: YieldCurvePool;
+  let pool: ConvergentCurvePool;
   let startTimestamp: number;
   let erc20_base: Contract;
   let erc20_bond: Contract;
@@ -47,7 +47,7 @@ describe("YieldPool", function () {
   }
 
   async function resetPool() {
-    const Pool = await ethers.getContractFactory("YieldPoolTest");
+    const Pool = await ethers.getContractFactory("ConvergentCurvePoolTest");
     pool = (await Pool.deploy(
       erc20_base.address.toString(),
       erc20_bond.address.toString(),
@@ -56,9 +56,9 @@ describe("YieldPool", function () {
       vault.address.toString(),
       ethers.utils.parseEther("0.05"),
       fakeAddress,
-      "YieldBPT",
+      "ConvergentCurveBPT",
       "BPT"
-    )) as YieldCurvePool;
+    )) as ConvergentCurvePool;
   }
 
   before(async function () {
@@ -71,7 +71,7 @@ describe("YieldPool", function () {
     const Vault = await ethers.getContractFactory("TestVault");
     vault = await Vault.deploy();
 
-    const Pool = await ethers.getContractFactory("YieldPoolTest");
+    const Pool = await ethers.getContractFactory("ConvergentCurvePoolTest");
     pool = (await Pool.deploy(
       erc20_base.address.toString(),
       erc20_bond.address.toString(),
@@ -80,9 +80,9 @@ describe("YieldPool", function () {
       vault.address.toString(),
       ethers.utils.parseEther("0.05"),
       fakeAddress,
-      "YieldBPT",
+      "ConvergentCurveBPT",
       "BPT"
-    )) as YieldCurvePool;
+    )) as ConvergentCurvePool;
 
     accounts = await ethers.getSigners();
   });

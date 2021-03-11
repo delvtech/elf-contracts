@@ -3,10 +3,10 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../YieldPool.sol";
+import "../ConvergentCurvePool.sol";
 import "../balancer-core-v2/lib/math/FixedPoint.sol";
 
-contract YieldPoolTest is YieldCurvePool {
+contract ConvergentCurvePoolTest is ConvergentCurvePool {
     using FixedPoint for uint256;
 
     constructor(
@@ -20,7 +20,7 @@ contract YieldPoolTest is YieldCurvePool {
         string memory name,
         string memory symbol
     )
-        YieldCurvePool(
+        ConvergentCurvePool(
             _underlying,
             _bond,
             _expiration,

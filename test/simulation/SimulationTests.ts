@@ -6,7 +6,7 @@ import testTrades from "./testTrades.json";
 
 // This simulation loads the data from ./testTrades.json and makes sure that
 // our quotes are with-in 10^9 of the quotes from the python script
-describe("YieldPoolErrSim", function () {
+describe("ConvergentCurvePoolErrSim", function () {
   const BOND_DECIMALS = 18;
   const BASE_DECIMALS = 18;
 
@@ -50,7 +50,7 @@ describe("YieldPoolErrSim", function () {
     const Vault = await ethers.getContractFactory("TestVault");
     vault = await Vault.deploy();
 
-    const Pool = await ethers.getContractFactory("YieldPoolTest");
+    const Pool = await ethers.getContractFactory("ConvergentCurvePoolTest");
     pool = await Pool.deploy(
       erc20_base.address.toString(),
       erc20_bond.address.toString(),
@@ -59,7 +59,7 @@ describe("YieldPoolErrSim", function () {
       vault.address.toString(),
       ethers.utils.parseEther(testTrades.init.percent_fee.toString()),
       fakeAddress,
-      "YieldBPT",
+      "ConvergentCurveBPT",
       "BPT"
     );
   });

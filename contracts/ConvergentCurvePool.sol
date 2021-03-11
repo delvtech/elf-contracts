@@ -61,7 +61,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     ) BalancerPoolToken(name, symbol) {
         // Initialization on the vault
         bytes32 poolId = vault.registerPool(
-            IVault.PoolSpecialization.MINIMAL_SWAP_INFO
+            IVault.PoolSpecialization.TWO_TOKEN
         );
 
         // Pass in zero addresses for Asset Managers

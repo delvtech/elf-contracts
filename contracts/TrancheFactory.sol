@@ -8,6 +8,8 @@ import "./interfaces/IInterestToken.sol";
 
 pragma solidity ^0.8.0;
 
+/// @author Element Finance
+/// @title Tranche Factory
 contract TrancheFactory {
     event TrancheCreated(
         address indexed trancheAddress,
@@ -30,18 +32,18 @@ contract TrancheFactory {
     }
 
     /// @notice Deploy a new Tranche contract.
-    /// @param expiration The expiration timestamp for the tranche.
-    /// @param wpAddress Address of the Wrapped Position contract the tranche will use.
+    /// @param _expiration The expiration timestamp for the tranche.
+    /// @param _wpAddress Address of the Wrapped Position contract the tranche will use.
     /// @return The deployed Tranche contract.
-    function deployTranche(uint256 expiration, address wpAddress)
+    function deployTranche(uint256 _expiration, address _wpAddress)
         public
         returns (Tranche)
     {
-        tempWpAddress = wpAddress;
-        tempExpiration = expiration;
+        tempWpAddress = _wpAddress;
+        tempExpiration = _expiration;
 
-        IWrappedPosition wpContract = IWrappedPosition(wpAddress);
-        bytes32 salt = keccak256(abi.encodePacked(wpAddress, expiration));
+        IWrappedPosition wpContract = IWrappedPosition(_wpAddress);
+        bytes32 salt = keccak256(abi.encodePacked(_wpAddress, _expiration));
         string memory wpSymbol = wpContract.symbol();
         IERC20 underlying = wpContract.token();
         uint8 underlyingDecimals = underlying.decimals();
@@ -65,15 +67,15 @@ contract TrancheFactory {
         tempInterestToken = interestTokenFactory.deployInterestToken(
             predictedAddress,
             wpSymbol,
-            expiration,
+            _expiration,
             underlyingDecimals
         );
 
         Tranche tranche = new Tranche{ salt: salt }();
         emit TrancheCreated(
             address(tranche),
-            wpAddress,
-            expiration - block.timestamp
+            _wpAddress,
+            _expiration - block.timestamp
         );
 
         require(

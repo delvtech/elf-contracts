@@ -47,7 +47,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     /// @param _percentFee The percent of assigned fees which go to governance
     /// @param _governance The address which gets minted reward lp
     /// @param name The balancer pool token name
-    /// @param symbol the balancer pool token symbol
+    /// @param symbol The balancer pool token symbol
     constructor(
         IERC20 _underlying,
         IERC20 _bond,
@@ -88,13 +88,13 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     // Balancer Interface required Getters
 
     /// @dev Returns the vault for this pool
-    /// @return the vault for this pool
+    /// @return The vault for this pool
     function getVault() external override view returns (IVault) {
         return _vault;
     }
 
     /// @dev Returns the poolId for this pool
-    /// @return the poolId for this pool
+    /// @return The poolId for this pool
     function getPoolId() external override view returns (bytes32) {
         return _poolId;
     }
@@ -102,9 +102,9 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     // Trade Functionality
 
     /// @dev Returns the amount of 'tokenOut' to give for an input of 'tokenIn'
-    /// @param request balancer encoded structure with request details
-    /// @param currentBalanceTokenIn the reserve of the input token
-    /// @param currentBalanceTokenOut the reserve of the output token
+    /// @param request Balancer encoded structure with request details
+    /// @param currentBalanceTokenIn The reserve of the input token
+    /// @param currentBalanceTokenOut The reserve of the output token
     /// @return The amount of output token to send for the input token
     function onSwapGivenIn(
         IPoolSwapStructs.SwapRequestGivenIn calldata request,
@@ -112,7 +112,6 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         uint256 currentBalanceTokenOut
     ) public override returns (uint256) {
         // Tokens amounts are passed to us in decimal form of the tokens
-        // However we
         uint256 amountTokenIn = _tokenToFixed(
             request.amountIn,
             request.tokenIn
@@ -150,9 +149,9 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
 
     /// @dev Returns the amount of 'tokenIn' need to receive a specified amount
     ///      of 'tokenOut'
-    /// @param request balancer encoded structure with request details
-    /// @param currentBalanceTokenIn the reserve of the input token
-    /// @param currentBalanceTokenOut the reserve of the output token
+    /// @param request Balancer encoded structure with request details
+    /// @param currentBalanceTokenIn The reserve of the input token
+    /// @param currentBalanceTokenOut The reserve of the output token
     /// @return The amount of input token to receive the requested output
     function onSwapGivenOut(
         IPoolSwapStructs.SwapRequestGivenOut calldata request,
@@ -327,10 +326,10 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     ///      Assumes all inputs are in 18 point fixed compatible with the balancer fixed math lib.
     ///      Since solving for an input is almost exactly the same as an output you can indicate
     ///      if this is an input or output calculation in the call.
-    /// @param amountX the amount of token x sent in normalized to have 18 decimals
-    /// @param reserveX the amount of the token x currently held by the pool normalized to 18 decimals
-    /// @param reserveY the amount of the token y currently held by the pool normalized to 18 decimals
-    /// @param out is true if the pool will receive amountX and false if it is expected to produce it.
+    /// @param amountX The amount of token x sent in normalized to have 18 decimals
+    /// @param reserveX The amount of the token x currently held by the pool normalized to 18 decimals
+    /// @param reserveY The amount of the token y currently held by the pool normalized to 18 decimals
+    /// @param out Is true if the pool will receive amountX and false if it is expected to produce it.
     /// @return Either if 'out' is true the amount of Y token to send to the user or
     ///         if 'out' is false the amount of Y Token to take from the user
     function solveTradeInvariant(
@@ -429,8 +428,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     /// @param inputUnderlying The max underlying to deposit
     /// @param inputBond The max bond to deposit
     /// @param currentBalances The current balances encoded in a memory array
-    /// @param recipient the person who receives the lp funds
-    /// @return the actual amounts of token deposited layed out as (underlying, bond)
+    /// @param recipient The person who receives the lp funds
+    /// @return The actual amounts of token deposited layed out as (underlying, bond)
     function _mintLP(
         uint256 inputUnderlying,
         uint256 inputBond,
@@ -487,7 +486,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     /// @param minOutputBond The minimum output in the bond
     /// @param currentBalances The current balances encoded in a memory array
     /// @param source The address to burn from.
-    /// @return returns (output in underlying, output in bond)
+    /// @return Tuple (output in underlying, output in bond)
     function _burnLP(
         uint256 minOutputUnderlying,
         uint256 minOutputBond,
@@ -574,10 +573,10 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     }
 
     /// @dev Applies the reserve adjustment from the paper and returns the reserves
-    /// @param reserveTokenIn the reserve of the input token
-    /// @param tokenIn the address of the input token
-    /// @param reserveTokenOut the reserve of the output token
-    /// @return returns (adjustedReserveIn, adjustedReserveOut)
+    /// @param reserveTokenIn The reserve of the input token
+    /// @param tokenIn The address of the input token
+    /// @param reserveTokenOut The reserve of the output token
+    /// @return Returns (adjustedReserveIn, adjustedReserveOut)
     function _adjustedReserve(
         uint256 reserveTokenIn,
         IERC20 tokenIn,
@@ -598,8 +597,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     }
 
     /// @dev Turns a token which is either 'bond' or 'underlying' into 18 point decimal
-    /// @param amount the amount of the token in native decimal encoding
-    /// @param token the address of the token
+    /// @param amount The amount of the token in native decimal encoding
+    /// @param token The address of the token
     /// @return The amount of token encoded into 18 point fixed point
     function _tokenToFixed(uint256 amount, IERC20 token)
         internal
@@ -618,8 +617,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
 
     /// @dev Turns an 18 fixed point amount into a token amount
     ///       Token must be either 'bond' or 'underlying'
-    /// @param amount the amount of the token in 18 point fixed point
-    /// @param token the address of the token
+    /// @param amount The amount of the token in 18 decimal fixed point
+    /// @param token The address of the token
     /// @return The amount of token encoded in native decimal point
     function _fixedToToken(uint256 amount, IERC20 token)
         internal
@@ -639,9 +638,9 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
 
     /// @dev Takes an 'amount' encoded with 'decimalsBefore' decimals and
     ///      re encodes it with 'decimalsAfter' decimals
-    /// @param amount the amount to normalize
-    /// @param decimalsBefore the decimal encoding before
-    /// @param decimalsAfter the decimal encoding after
+    /// @param amount The amount to normalize
+    /// @param decimalsBefore The decimal encoding before
+    /// @param decimalsAfter The decimal encoding after
     function _normalize(
         uint256 amount,
         uint8 decimalsBefore,

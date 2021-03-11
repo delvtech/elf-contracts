@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "hardhat/console.sol";
-
 library DateString {
     uint256 public constant SECONDS_PER_DAY = 24 * 60 * 60;
     uint256 public constant SECONDS_PER_HOUR = 60 * 60;
@@ -57,20 +55,20 @@ library DateString {
 
     /// @dev Writes a prefix and an timestamp encoding to an output storage location
     ///      This function is designed to only work with ASCII encoded strings. No emojis please.
-    /// @param prefix The string to write before the timestamp
-    /// @param timestamp the timestamp to encode and store
-    /// @param output the storage location of the output string
+    /// @param _prefix The string to write before the timestamp
+    /// @param _timestamp the timestamp to encode and store
+    /// @param _output the storage location of the output string
     /// NOTE - Current cost ~90k if gas is problem revisit and use assembly to remove the extra
     ///        sstore s.
     function encodeAndWriteTimestamp(
-        string memory prefix,
-        uint256 timestamp,
-        string storage output
+        string memory _prefix,
+        uint256 _timestamp,
+        string storage _output
     ) internal {
         // Cast the prefix string to a byte array
-        bytes memory bytePrefix = bytes(prefix);
+        bytes memory bytePrefix = bytes(_prefix);
         // Cast the output string to a byte array
-        bytes storage bytesOutput = bytes(output);
+        bytes storage bytesOutput = bytes(_output);
         // Copy the bytes from the prefix onto the byte array
         // NOTE - IF PREFIX CONTAINS NON-ASCII CHARS THIS WILL CAUSE AN INCORRECT STRING LENGTH
         for (uint256 i = 0; i < bytePrefix.length; i++) {
@@ -79,22 +77,22 @@ library DateString {
         // Add a ':' to the string to separate the prefix from the the date
         bytesOutput.push(bytes1(":"));
         // Add the date string
-        timestampToDateString(timestamp, output);
+        timestampToDateString(_timestamp, _output);
     }
 
     /// @dev Converts a unix second encoded timestamp to a date format (year, month, day)
     ///      then writes the string encoding of that to the output pointer.
-    /// @param timestamp the unix seconds timestamp
-    /// @param outputPointer the storage pointer to change.
+    /// @param _timestamp the unix seconds timestamp
+    /// @param _outputPointer the storage pointer to change.
     function timestampToDateString(
-        uint256 timestamp,
-        string storage outputPointer
+        uint256 _timestamp,
+        string storage _outputPointer
     ) internal {
         // We pretend the string is a 'bytes' only push UTF8 encodings to it
-        bytes storage output = bytes(outputPointer);
+        bytes storage output = bytes(_outputPointer);
         // First we get the day month and year
         (uint256 year, uint256 month, uint256 day) = _daysToDate(
-            timestamp / SECONDS_PER_DAY
+            _timestamp / SECONDS_PER_DAY
         );
         // First we add encoded day to the string
         {

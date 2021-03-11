@@ -1,8 +1,2 @@
-src/interfaces/ERC20.sol
-src/interfaces/WETH.sol
-src/interfaces/Context.sol
-src/libraries/Address.sol
-src/libraries/SafeERC20.sol
-src/test
 contracts/balancer-core-v2
 contracts/libraries

@@ -12,7 +12,7 @@ import "./libraries/ERC20.sol";
 abstract contract WrappedPosition is ERC20, IWrappedPosition {
     IERC20 public immutable override token;
 
-    /// @notice Constucts this contract
+    /// @notice Constructs this contract
     /// @param _token The underlying token.
     ///               This token should revert in the event of a transfer failure.
     /// @param _name the name of this contract
@@ -86,7 +86,7 @@ abstract contract WrappedPosition is ERC20, IWrappedPosition {
         token.transferFrom(msg.sender, address(this), _amount);
         // Calls our internal deposit function
         (uint256 shares, ) = _deposit();
-        // Mint them internal ERC20 tokens coresponding to the deposit
+        // Mint them internal ERC20 tokens corresponding to the deposit
         _mint(_destination, shares);
         return shares;
     }
@@ -110,7 +110,7 @@ abstract contract WrappedPosition is ERC20, IWrappedPosition {
 
         uint256 balanceBefore = balanceOf[msg.sender];
 
-        // Mint them internal ERC20 tokens coresponding to the deposit
+        // Mint them internal ERC20 tokens corresponding to the deposit
         _mint(_destination, shares);
         return (shares, usedUnderlying, balanceBefore);
     }

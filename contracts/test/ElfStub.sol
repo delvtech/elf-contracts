@@ -6,10 +6,9 @@ import "./TestERC20.sol";
 contract WrappedPositionStub is WrappedPosition {
     uint256 public underlyingUnitValue = 100;
 
-    // solhint-disable-next-line no-empty-blocks
     constructor(IERC20 _token)
         WrappedPosition(_token, "ELement Finance", "TestWrappedPosition")
-    {}
+    {} // solhint-disable-line no-empty-blocks
 
     function _deposit() internal override returns (uint256, uint256) {
         // Check how much was deposited

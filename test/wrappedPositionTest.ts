@@ -62,7 +62,7 @@ describe("Wrapped Position", () => {
       ).to.equal(1e6);
     });
   });
-  // WARNING: Tests from now on do not use snapshots. They are interdependant!
+  // WARNING: Tests from now on do not use snapshots. They are interdependent!
   describe("deposit", () => {
     it("should correctly track deposits", async () => {
       await fixture.position
@@ -140,13 +140,13 @@ describe("Wrapped Position", () => {
         .withdraw(users[3].address, shareBalanceUser2, 0);
       expect(await fixture.position.balanceOf(users[3].address)).to.equal(0);
 
-      const usdcBalaceUser0 = await fixture.usdc.balanceOf(users[1].address);
-      const usdcBalaceUser1 = await fixture.usdc.balanceOf(users[2].address);
-      const usdcBalaceUser2 = await fixture.usdc.balanceOf(users[3].address);
+      const usdcBalanceUser0 = await fixture.usdc.balanceOf(users[1].address);
+      const usdcBalanceUser1 = await fixture.usdc.balanceOf(users[2].address);
+      const usdcBalanceUser2 = await fixture.usdc.balanceOf(users[3].address);
 
-      const totalUsdcBalance = usdcBalaceUser0
-        .add(usdcBalaceUser1)
-        .add(usdcBalaceUser2);
+      const totalUsdcBalance = usdcBalanceUser0
+        .add(usdcBalanceUser1)
+        .add(usdcBalanceUser2);
       expect(totalUsdcBalance).to.equal(ethers.BigNumber.from("19000000"));
     });
   });
@@ -161,7 +161,7 @@ describe("Wrapped Position", () => {
     it("Successfully deposits", async () => {
       // Create some underlying
       await fixture.usdc.mint(users[0].address, 100e6);
-      // Aprrove the wrapped position reserve
+      // Approve the wrapped position reserve
       await fixture.usdc.approve(fixture.position.address, 100e6);
       // deposit to the reserves
       await fixture.position.reserveDeposit(10e6);
@@ -192,7 +192,7 @@ describe("Wrapped Position", () => {
     it("Successfully withdraws", async () => {
       // Create some underlying
       await fixture.usdc.mint(users[0].address, 10e6);
-      // Aprrove the position reserve
+      // Approve the position reserve
       await fixture.usdc.approve(fixture.position.address, 100e6);
       // deposit to the reserve
       await fixture.position.reserveDeposit(10e6);

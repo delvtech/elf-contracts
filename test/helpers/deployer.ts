@@ -15,8 +15,8 @@ import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
 import { Tranche__factory } from "typechain/factories/Tranche__factory";
 import { TrancheFactory__factory } from "typechain/factories/TrancheFactory__factory";
 import { UserProxyTest__factory } from "typechain/factories/UserProxyTest__factory";
-import { YC__factory } from "typechain/factories/YC__factory";
-import { YCFactory__factory } from "typechain/factories/YCFactory__factory";
+import { InterestToken__factory } from "typechain/factories/InterestToken__factory";
+import { InterestTokenFactory__factory } from "typechain/factories/InterestTokenFactory__factory";
 import { YVaultAssetProxy__factory } from "typechain/factories/YVaultAssetProxy__factory";
 import { IERC20 } from "typechain/IERC20";
 import { IWETH } from "typechain/IWETH";
@@ -25,7 +25,7 @@ import { TestERC20 } from "typechain/TestERC20";
 import { Tranche } from "typechain/Tranche";
 import { TrancheFactory } from "typechain/TrancheFactory";
 import { UserProxyTest } from "typechain/UserProxyTest";
-import { YC } from "typechain/YC";
+import { InterestToken } from "typechain/InterestToken";
 import { YVaultAssetProxy } from "typechain/YVaultAssetProxy";
 
 import data from "../../artifacts/contracts/Tranche.sol/Tranche.json";
@@ -36,7 +36,7 @@ export interface FixtureInterface {
   yusdc: AYVault;
   position: YVaultAssetProxy;
   tranche: Tranche;
-  yc: YC;
+  interestToken: InterestToken;
   proxy: UserProxyTest;
   trancheFactory: TrancheFactory;
 }
@@ -64,7 +64,7 @@ export interface TrancheTestFixture {
   usdc: TestERC20;
   positionStub: WrappedPositionStub;
   tranche: Tranche;
-  yc: YC;
+  interestToken: InterestToken;
 }
 
 const deployWrappedPositionStub = async (signer: Signer, address: string) => {
@@ -93,15 +93,15 @@ const deployYasset = async (
   return await yVaultDeployer.deploy(yUnderlying, underlying, name, symbol);
 };
 
-const deployYCFactory = async (signer: Signer) => {
-  const deployer = new YCFactory__factory(signer);
+const deployInterestTokenFactory = async (signer: Signer) => {
+  const deployer = new InterestTokenFactory__factory(signer);
   return await deployer.deploy();
 };
 
 const deployTrancheFactory = async (signer: Signer) => {
-  const ycFactory = await deployYCFactory(signer);
+  const interestTokenFactory = await deployInterestTokenFactory(signer);
   const deployer = new TrancheFactory__factory(signer);
-  return await deployer.deploy(ycFactory.address);
+  return await deployer.deploy(interestTokenFactory.address);
 };
 
 export async function loadFixture() {
@@ -128,8 +128,11 @@ export async function loadFixture() {
   const trancheAddress = events[0] && events[0].args && events[0].args[0];
   const tranche = Tranche__factory.connect(trancheAddress, signer);
 
-  const ycAddress = await tranche.yc();
-  const yc = YC__factory.connect(ycAddress, signer);
+  const interestTokenAddress = await tranche.interestToken();
+  const interestToken = InterestToken__factory.connect(
+    interestTokenAddress,
+    signer
+  );
 
   // Setup the proxy
   const bytecodehash = ethers.utils.solidityKeccak256(
@@ -148,7 +151,7 @@ export async function loadFixture() {
     yusdc,
     position,
     tranche,
-    yc,
+    interestToken,
     proxy,
     trancheFactory,
   };
@@ -257,14 +260,17 @@ export async function loadTestTrancheFixture() {
   const trancheAddress = events[0] && events[0].args && events[0].args[0];
   const tranche = Tranche__factory.connect(trancheAddress, signer);
 
-  const ycAddress = await tranche.yc();
-  const yc = YC__factory.connect(ycAddress, signer);
+  const interestTokenAddress = await tranche.interestToken();
+  const interestToken = InterestToken__factory.connect(
+    interestTokenAddress,
+    signer
+  );
 
   return {
     signer,
     usdc,
     positionStub,
     tranche,
-    yc,
+    interestToken,
   };
 }

@@ -9,11 +9,10 @@ import "./libraries/Authorizable.sol";
 
 contract UserProxy is Authorizable {
     // This contract is a convenience library to consolidate
-    // the actions needed to create FYT/YC to one call.
-    // It will hold user allowances, and can be disabled
-    // by an owner for security.
-    // If frozen users still control their own tokens
-    // so can manually redeem them.
+    // the actions needed to create interest or principal tokens to one call.
+    // It will hold user allowances, and can be disabled by authorized addresses
+    // for security.
+    // If frozen users still control their own tokens so can manually redeem them.
 
     // Store the accessibility state of the contract
     bool public isFrozen = false;
@@ -57,10 +56,10 @@ contract UserProxy is Authorizable {
         isFrozen = newState;
     }
 
-    /// @dev Mints a FYT/YC token pair from either underlying token or Eth
-    ///      then returns the FYT YC to the caller. This function assumes
+    /// @dev Mints a Principal/Interest token pair from either underlying token or Eth
+    ///      then returns the tokens to the caller. This function assumes
     ///      that it already has an allowance for the token in question.
-    /// @param amount The amount of underlying to turn into FYT/YC
+    /// @param amount The amount of underlying to turn into tokens
     /// @param underlying Either (1) The underlying ERC20 token contract
     ///                   or (2) the ETH_CONSTANT to indicate the user has sent eth.
     ///                   This token should revert in the event of a transfer failure.
@@ -92,11 +91,11 @@ contract UserProxy is Authorizable {
         }
     }
 
-    /// @dev Mints a FYT/YC token pair from a underlying token which supports
+    /// @dev Mints a Principal/Interest token pair from a underlying token which supports
     ///      the permit method. This call sets the allowance on this contract
     ///      for the underlying ERC20 token to be unlimited and expects the
     ///      signature to have an expiration time of uint256.max
-    /// @param amount The amount of underlying to turn into FYT/YC
+    /// @param amount The amount of underlying to turn into tokens
     /// @param underlying The underlying ERC20 token contract
     /// @param expiration The expiration time of the Tranche contract
     /// @param position The contract which manages pooled positions
@@ -129,10 +128,10 @@ contract UserProxy is Authorizable {
         _mint(expiration, position);
     }
 
-    /// @dev This internal mint function preforms the core minting logic after
+    /// @dev This internal mint function performs the core minting logic after
     ///      the contract has already transferred to WrappedPosition contract
     /// @param expiration The tranche expiration time
-    /// @param position The contract which interacts with the yield bering strategy
+    /// @param position The contract which interacts with the yield bearing strategy
     function _mint(uint256 expiration, address position) internal {
         // Use create2 to derive the tranche contract
         ITranche tranche = _deriveTranche(address(position), expiration);
@@ -142,7 +141,7 @@ contract UserProxy is Authorizable {
     }
 
     /// @dev This internal function produces the deterministic create2
-    ///      address of the Tranche contract from an wrapped position contract and expiration
+    ///      address of the Tranche contract from a wrapped position contract and expiration
     /// @param position The wrapped position contract address
     /// @param expiration The expiration time of the tranche
     /// @return The derived Tranche contract

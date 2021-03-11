@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.0;
 
-import "../interfaces/IERC20.sol";
-import "../interfaces/IYearnVaultV2.sol";
-import "../WrappedPosition.sol";
+import "./interfaces/IERC20.sol";
+import "./interfaces/IYearnVaultV2.sol";
+import "./WrappedPosition.sol";
 
 /// @author Element Finance
 /// @title Yearn Vault v1 Asset Proxy
@@ -12,7 +12,7 @@ contract YVaultAssetProxy is WrappedPosition {
     uint8 public immutable vaultDecimals;
 
     // This contract allows deposits to a reserve which can
-    // be used to short circut the deposit process and save gas
+    // be used to short circuit the deposit process and save gas
 
     // The following mapping tracks those non-transferable deposits
     mapping(address => uint256) public reserveBalances;
@@ -47,7 +47,7 @@ contract YVaultAssetProxy is WrappedPosition {
     /// @param amount The amount of underlying to deposit
     function reserveDeposit(uint256 amount) external {
         // Transfer from user, note variable 'token' is the immutable
-        // inheritied from the abstract WrappedPosition contract.
+        // inherited from the abstract WrappedPosition contract.
         token.transferFrom(msg.sender, address(this), amount);
         // Load the reserves
         (uint256 localUnderlying, uint256 localShares) = _getReserves();
@@ -127,7 +127,7 @@ contract YVaultAssetProxy is WrappedPosition {
         if (localShares > neededShares) {
             // We set the reserves
             _setReserves(localUnderlying + amount, localShares - neededShares);
-            // And then we short circut execution and return
+            // And then we short circuit execution and return
             return (neededShares, amount);
         }
         // Deposit and get the shares that were minted to this
@@ -138,7 +138,7 @@ contract YVaultAssetProxy is WrappedPosition {
         return (neededShares, amount);
     }
 
-    /// @notice withdraw the number of shares and will short circut if it can
+    /// @notice withdraw the number of shares and will short circuit if it can
     /// @param _shares the number of shares to withdraw
     /// @param _destination the address to send the output funds
     /// @param _underlyingPerShare the possibly precomputed underlying per share
@@ -161,7 +161,7 @@ contract YVaultAssetProxy is WrappedPosition {
             // Then transfer needed underlying to the destination
             // 'token' is an immutable in WrappedPosition
             token.transfer(_destination, needed);
-            // Short circut and return
+            // Short circuit and return
             return (needed);
         }
         // If we don't have enough local reserves we do the actual withdraw
@@ -212,12 +212,12 @@ contract YVaultAssetProxy is WrappedPosition {
 
     /// @notice helper to set reserves using one sstore
     /// @param newReserveUnderlying the new reserve of underlying
-    /// @param newreserveShares the new reserve of wrapped position shares
+    /// @param newReserveShares the new reserve of wrapped position shares
     function _setReserves(
         uint256 newReserveUnderlying,
-        uint256 newreserveShares
+        uint256 newReserveShares
     ) internal {
         reserveUnderlying = uint128(newReserveUnderlying);
-        reserveShares = uint128(newreserveShares);
+        reserveShares = uint128(newReserveShares);
     }
 }

@@ -10,7 +10,7 @@ import "./balancer-core-v2/vault/interfaces/IMinimalSwapInfoPool.sol";
 import "./balancer-core-v2/vault/interfaces/IVault.sol";
 import "./balancer-core-v2/pools/BalancerPoolToken.sol";
 
-contract YieldCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
+contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     using LogExpMath for uint256;
     using FixedPoint for uint256;
 

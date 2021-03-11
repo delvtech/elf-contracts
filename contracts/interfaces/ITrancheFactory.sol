@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.0;
 
-import "../assets/YC.sol";
+import "../InterestToken.sol";
 
 interface ITrancheFactory {
     function getData()
@@ -9,6 +9,6 @@ interface ITrancheFactory {
         returns (
             address,
             uint256,
-            YC
+            InterestToken
         );
 }

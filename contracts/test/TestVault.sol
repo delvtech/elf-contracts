@@ -15,7 +15,9 @@ contract TestVault {
     }
 
     // This fallback allows us to make an arbitrary call with this vault as the msg.sender
+    // solhint-disable-next-line payable-fallback
     fallback() external {
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             calldatacopy(0, 0, calldatasize())
             let succeeded := call(

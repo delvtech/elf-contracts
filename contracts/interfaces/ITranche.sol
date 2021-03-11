@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./IERC20Permit.sol";
-import "./IYC.sol";
+import "./IInterestToken.sol";
 
 interface ITranche is IERC20Permit {
     function deposit(uint256 _shares, address destination)
@@ -11,13 +11,13 @@ interface ITranche is IERC20Permit {
 
     function prefundedDeposit(address _destination) external returns (uint256);
 
-    function withdrawFyt(uint256 _amount, address _destination)
+    function withdrawPrincipal(uint256 _amount, address _destination)
         external
         returns (uint256);
 
-    function withdrawYc(uint256 _amount, address _destination)
+    function withdrawInterest(uint256 _amount, address _destination)
         external
         returns (uint256);
 
-    function yc() external view returns (IYC);
+    function interestToken() external view returns (IInterestToken);
 }

@@ -108,19 +108,6 @@ describe("ConvergentCurvePool", function () {
     ));
   });
 
-  it("Normalize tokens correctly", async function () {
-    const one = ethers.utils.parseUnits("1", 18);
-    // We check that the same decimals is a no opp
-    const no_opp = await poolContract.normalize(one, 18, 18);
-    expect(no_opp).to.be.eq(one);
-    // We check that it reduces decimals correctly
-    const bp = await poolContract.normalize(one, 18, 14);
-    expect(bp).to.be.eq(ethers.utils.parseUnits("1", 14));
-    // We check that it increases decimals  correctly
-    const x100 = await poolContract.normalize(one, 18, 20);
-    expect(x100).to.be.eq(ethers.utils.parseUnits("1", 20));
-  });
-
   function getRandomInt(max: number) {
     return Math.floor(Math.random() * Math.floor(max));
   }

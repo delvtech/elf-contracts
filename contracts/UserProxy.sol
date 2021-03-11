@@ -163,7 +163,7 @@ contract UserProxy is Authorizable {
         return ITranche(address(uint160(uint256(addressBytes))));
     }
 
-    /// @dev This contract holds a number of allowances for addresses so if is depreciated
+    /// @dev This contract holds a number of allowances for addresses so if it is deprecated
     ///      it should be removed so that users do not have to remove allowances.
     ///      Note - onlyOwner is a stronger check than onlyAuthorized, many addresses can be
     ///      authorized to freeze or unfreeze the contract but only the owner address can kill

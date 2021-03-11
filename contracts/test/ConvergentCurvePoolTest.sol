@@ -13,7 +13,7 @@ contract ConvergentCurvePoolTest is ConvergentCurvePool {
         IERC20 _underlying,
         IERC20 _bond,
         uint256 _expiration,
-        uint256 _unit_seconds,
+        uint256 _unitSeconds,
         IVault vault,
         uint256 _percentFee,
         address _governance,
@@ -24,16 +24,16 @@ contract ConvergentCurvePoolTest is ConvergentCurvePool {
             _underlying,
             _bond,
             _expiration,
-            _unit_seconds,
+            _unitSeconds,
             vault,
             _percentFee,
             _governance,
             name,
             symbol
         )
-    {}
+    {} // solhint-disable-line no-empty-blocks
 
-    event uintReturn(uint256 data);
+    event UIntReturn(uint256 data);
 
     // Allows tests to burn LP tokens directly
     function burnLP(
@@ -49,8 +49,8 @@ contract ConvergentCurvePoolTest is ConvergentCurvePool {
             source
         );
         // We use this to return because returndata from state changing tx isn't easily accessible.
-        emit uintReturn(releasedUnderlying);
-        emit uintReturn(releasedBond);
+        emit UIntReturn(releasedUnderlying);
+        emit UIntReturn(releasedBond);
     }
 
     // Allows tests to mint LP tokens directly
@@ -67,8 +67,8 @@ contract ConvergentCurvePoolTest is ConvergentCurvePool {
             recipient
         );
         // We use this to return because returndata from state changing tx isn't easily accessible.
-        emit uintReturn(usedUnderlying);
-        emit uintReturn(usedBond);
+        emit UIntReturn(usedUnderlying);
+        emit UIntReturn(usedBond);
     }
 
     // Allows tests to access mint gov LP
@@ -89,7 +89,7 @@ contract ConvergentCurvePoolTest is ConvergentCurvePool {
             outputToken,
             isInputTrade
         );
-        emit uintReturn(newQuote);
+        emit UIntReturn(newQuote);
     }
 
     // Allows tests to specify fees without making trades

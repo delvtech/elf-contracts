@@ -9,7 +9,7 @@ contract UserProxyTest is UserProxy {
         address _weth,
         address _trancheFactory,
         bytes32 _trancheBytecodeHash
-    ) UserProxy(IWETH(_weth), _trancheFactory, _trancheBytecodeHash) {}
+    ) UserProxy(IWETH(_weth), _trancheFactory, _trancheBytecodeHash) {} // solhint-disable-line no-empty-blocks
 
     // solhint-disable-next-line private-vars-leading-underscore
     function deriveTranche(address position, uint256 expiration)

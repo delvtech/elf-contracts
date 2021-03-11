@@ -178,7 +178,7 @@ describe("ConvergentCurvePool", function () {
     );
     // Check that it returns the right data using the event hack
     const returned = result.events.filter(
-      (event) => event.event == "uintReturn"
+      (event) => event.event == "UIntReturn"
     );
     expect(returned[0].data).to.be.eq(oneThousand);
     expect(returned[1].data).to.be.eq(newBigNumber(0));
@@ -206,7 +206,7 @@ describe("ConvergentCurvePool", function () {
     );
     // Check that it returns the right data using the event hack
     const returned = result.events.filter(
-      (event) => event.event == "uintReturn"
+      (event) => event.event == "UIntReturn"
     );
     expect(returned[0].data).to.be.eq(oneThousand);
     expect(returned[1].data).to.be.eq(fiveHundred);
@@ -237,7 +237,7 @@ describe("ConvergentCurvePool", function () {
     );
     // Check that it returns the right data using the event hack
     const returned = result.events.filter(
-      (event) => event.event == "uintReturn"
+      (event) => event.event == "UIntReturn"
     );
     const sixteenHundred = ethers.utils.parseUnits("1600", 18);
     expect(returned[0].data).to.be.eq(sixteenHundred);
@@ -287,7 +287,7 @@ describe("ConvergentCurvePool", function () {
     );
     // The call should have released 500 underlying and 250 bond
     const returned = result.events.filter(
-      (event) => event.event == "uintReturn"
+      (event) => event.event == "UIntReturn"
     );
     expect(returned[0].data).to.be.eq(fiveHundred);
     expect(returned[1].data).to.be.eq(fiveHundred.div(2));
@@ -317,7 +317,7 @@ describe("ConvergentCurvePool", function () {
     );
     // The call should have released 500 underlying and 250 bond
     const returned = result.events.filter(
-      (event) => event.event == "uintReturn"
+      (event) => event.event == "UIntReturn"
     );
     expect(returned[0].data).to.be.eq(fiveHundred);
     expect(returned[1].data).to.be.eq(twoFifty);
@@ -338,7 +338,7 @@ describe("ConvergentCurvePool", function () {
     let result = await mineTx(
       pool.assignTradeFee(inputUnderlying, amount, erc20_bond.address, false)
     );
-    let returned = result.events.filter((event) => event.event == "uintReturn");
+    let returned = result.events.filter((event) => event.event == "UIntReturn");
     expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("10950", 18));
     // Check the stored fees
     const feeBond = await pool.feesBond();
@@ -348,7 +348,7 @@ describe("ConvergentCurvePool", function () {
     result = await mineTx(
       pool.assignTradeFee(inputUnderlying, amount, erc20_bond.address, true)
     );
-    returned = result.events.filter((event) => event.event == "uintReturn");
+    returned = result.events.filter((event) => event.event == "UIntReturn");
     expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("10050", 18));
     // Check the stored fees
     const feeUnderlying = await pool.feesUnderlying();
@@ -367,7 +367,7 @@ describe("ConvergentCurvePool", function () {
     let result = await mineTx(
       pool.assignTradeFee(inputBond, amount, erc20_base.address, false)
     );
-    let returned = result.events.filter((event) => event.event == "uintReturn");
+    let returned = result.events.filter((event) => event.event == "UIntReturn");
     expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("9950", 18));
     // Check the stored fees
     const feeUnderlying = await pool.feesUnderlying();
@@ -379,7 +379,7 @@ describe("ConvergentCurvePool", function () {
     result = await mineTx(
       pool.assignTradeFee(inputBond, amount, erc20_base.address, true)
     );
-    returned = result.events.filter((event) => event.event == "uintReturn");
+    returned = result.events.filter((event) => event.event == "UIntReturn");
     expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("11050", 18));
     // Check the stored fees
     const feesBond = await pool.feesBond();

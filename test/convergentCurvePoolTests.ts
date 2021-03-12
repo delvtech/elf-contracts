@@ -80,11 +80,7 @@ describe("ConvergentCurvePool", function () {
     ));
   }
 
-  after(function () {
-    hre.config.networks.hardhat.allowUnlimitedContractSize = true;
-  });
   before(async function () {
-    hre.config.networks.hardhat.allowUnlimitedContractSize = true;
     startTimestamp = await getTimestamp();
     expirationTime = startTimestamp + SECONDS_IN_YEAR;
 

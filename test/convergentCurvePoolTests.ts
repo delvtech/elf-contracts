@@ -15,9 +15,9 @@ import { formatEther } from "ethers/lib/utils";
 
 // we need to use almost for the onSwap tests since `hardhat coverage` compiles the contracts
 // slightly differently which causes slightly different fixedpoint logic.
-const DEFAULT_CHAI_ALMOST_TOLERANCE = 10e-6;
-const tolerance = process.env.COVERAGE ? DEFAULT_CHAI_ALMOST_TOLERANCE : 0;
-chai.use(chaiAlmost(tolerance));
+// const DEFAULT_CHAI_ALMOST_TOLERANCE = 10e-4;
+// const tolerance = process.env.COVERAGE ? DEFAULT_CHAI_ALMOST_TOLERANCE : 0;
+chai.use(chaiAlmost(10e-4));
 
 describe("ConvergentCurvePool", function () {
   const BOND_DECIMALS = 17;

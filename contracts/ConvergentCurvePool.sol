@@ -346,18 +346,18 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         // Gets 1 - t
         uint256 a = _getYieldExponent();
         // calculate x before ^ a
-        uint256 xBeforePowA = reserveX.pow(a);
+        uint256 xBeforePowA = LogExpMath.pow(reserveX, a);
         // calculate y before ^ a
-        uint256 yBeforePowA = reserveY.pow(a);
+        uint256 yBeforePowA = LogExpMath.pow(reserveY, a);
         // calculate x after ^ a
         uint256 xAfterPowA = out
-            ? (reserveX + amountX).pow(a)
-            : (reserveX.sub(amountX)).pow(a);
+            ? LogExpMath.pow(reserveX + amountX, a)
+            : LogExpMath.pow(reserveX.sub(amountX), a);
         // Calculate y_after = ( x_before ^a + y_ before ^a -  x_after^a)^(1/a)
         // Will revert with underflow here if the liquidity isn't enough for the trade
         uint256 yAfter = (xBeforePowA + yBeforePowA).sub(xAfterPowA);
         // Note that this call is to FixedPoint Div so works as intended
-        yAfter = yAfter.pow(uint256(FixedPoint.ONE).div(a));
+        yAfter = LogExpMath.pow(yAfter, uint256(FixedPoint.ONE).div(a));
         // The amount of Y token to send is (reserveY_before - reserveY_after)
         return out ? reserveY.sub(yAfter) : yAfter.sub(reserveY);
     }

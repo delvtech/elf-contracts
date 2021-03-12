@@ -17,10 +17,10 @@ contract TrancheFactory {
         uint256 indexed duration
     );
 
-    IInterestTokenFactory internal interestTokenFactory;
-    address internal tempWpAddress;
-    uint256 internal tempExpiration;
-    IInterestToken internal tempInterestToken;
+    IInterestTokenFactory internal _interestTokenFactory;
+    address internal _tempWpAddress;
+    uint256 internal _tempExpiration;
+    IInterestToken internal _tempInterestToken;
     bytes32 public constant trancheCreationHash = keccak256(
         type(Tranche).creationCode
     );
@@ -28,7 +28,7 @@ contract TrancheFactory {
     /// @notice Create a new Tranche.
     /// @param _factory Address of the interest token factory.
     constructor(address _factory) {
-        interestTokenFactory = IInterestTokenFactory(_factory);
+        _interestTokenFactory = IInterestTokenFactory(_factory);
     }
 
     /// @notice Deploy a new Tranche contract.
@@ -39,8 +39,8 @@ contract TrancheFactory {
         public
         returns (Tranche)
     {
-        tempWpAddress = _wpAddress;
-        tempExpiration = _expiration;
+        _tempWpAddress = _wpAddress;
+        _tempExpiration = _expiration;
 
         IWrappedPosition wpContract = IWrappedPosition(_wpAddress);
         bytes32 salt = keccak256(abi.encodePacked(_wpAddress, _expiration));
@@ -64,7 +64,7 @@ contract TrancheFactory {
             )
         );
 
-        tempInterestToken = interestTokenFactory.deployInterestToken(
+        _tempInterestToken = _interestTokenFactory.deployInterestToken(
             predictedAddress,
             wpSymbol,
             _expiration,
@@ -84,9 +84,9 @@ contract TrancheFactory {
         );
 
         // set back to 0-value for some gas savings
-        delete tempWpAddress;
-        delete tempExpiration;
-        delete tempInterestToken;
+        delete _tempWpAddress;
+        delete _tempExpiration;
+        delete _tempInterestToken;
 
         return tranche;
     }
@@ -105,6 +105,6 @@ contract TrancheFactory {
             IInterestToken
         )
     {
-        return (tempWpAddress, tempExpiration, tempInterestToken);
+        return (_tempWpAddress, _tempExpiration, _tempInterestToken);
     }
 }

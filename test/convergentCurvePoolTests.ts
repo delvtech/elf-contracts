@@ -4,7 +4,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import chai, { expect } from "chai";
 import chaiAlmost from "chai-almost";
 import { BigNumber, providers } from "ethers";
-import hre, { ethers, network } from "hardhat";
+import { ethers, network } from "hardhat";
 import { deployBalancerVault } from "test/helpers/deployBalancerVault";
 import { deployConvergentCurvePool } from "test/helpers/deployConvergentCurvePool";
 import { ConvergentCurvePoolTest } from "typechain/ConvergentCurvePoolTest";

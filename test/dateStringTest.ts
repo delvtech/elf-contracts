@@ -6,7 +6,7 @@ describe("DateString", () => {
   let dateTester: Contract;
 
   before(async () => {
-    const dateTesterFactory = await ethers.getContractFactory("DateTest");
+    const dateTesterFactory = await ethers.getContractFactory("TestDate");
     dateTester = await dateTesterFactory.deploy();
   });
 

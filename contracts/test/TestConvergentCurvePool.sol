@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../ConvergentCurvePool.sol";
 import "../balancer-core-v2/lib/math/FixedPoint.sol";
 
-contract ConvergentCurvePoolTest is ConvergentCurvePool {
+contract TestConvergentCurvePool is ConvergentCurvePool {
     using FixedPoint for uint256;
 
     constructor(

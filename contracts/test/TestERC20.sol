@@ -23,4 +23,8 @@ contract TestERC20 is ERC20 {
         balanceOf[destination] += amount;
         emit Transfer(address(0), destination, amount);
     }
+
+    function mint(address account, uint256 amount) public {
+        _mint(account, amount);
+    }
 }

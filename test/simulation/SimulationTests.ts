@@ -50,7 +50,7 @@ describe("ConvergentCurvePoolErrSim", function () {
     const Vault = await ethers.getContractFactory("TestVault");
     vault = await Vault.deploy();
 
-    const Pool = await ethers.getContractFactory("ConvergentCurvePoolTest");
+    const Pool = await ethers.getContractFactory("TestConvergentCurvePool");
     pool = await Pool.deploy(
       erc20_base.address.toString(),
       erc20_bond.address.toString(),

@@ -2,29 +2,27 @@ import "module-alias/register";
 
 import { Signer } from "ethers";
 import { ethers } from "hardhat";
-import { AToken } from "typechain/AToken";
-import { AYVault } from "typechain/AYVault";
-import { WrappedPositionStub } from "typechain/WrappedPositionStub";
-import { AToken__factory } from "typechain/factories/AToken__factory";
-import { AYVault__factory } from "typechain/factories/AYVault__factory";
-import { WrappedPositionStub__factory } from "typechain/factories/WrappedPositionStub__factory";
+import { TestERC20 } from "typechain/TestERC20";
+import { TestYVault } from "typechain/TestYVault";
+import { TestWrappedPosition } from "typechain/TestWrappedPosition";
+import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
+import { TestYVault__factory } from "typechain/factories/TestYVault__factory";
+import { TestWrappedPosition__factory } from "typechain/factories/TestWrappedPosition__factory";
 import { IERC20__factory } from "typechain/factories/IERC20__factory";
 import { IWETH__factory } from "typechain/factories/IWETH__factory";
 import { IYearnVault__factory } from "typechain/factories/IYearnVault__factory";
-import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
 import { Tranche__factory } from "typechain/factories/Tranche__factory";
 import { TrancheFactory__factory } from "typechain/factories/TrancheFactory__factory";
-import { UserProxyTest__factory } from "typechain/factories/UserProxyTest__factory";
+import { TestUserProxy__factory } from "typechain/factories/TestUserProxy__factory";
 import { InterestToken__factory } from "typechain/factories/InterestToken__factory";
 import { InterestTokenFactory__factory } from "typechain/factories/InterestTokenFactory__factory";
 import { YVaultAssetProxy__factory } from "typechain/factories/YVaultAssetProxy__factory";
 import { IERC20 } from "typechain/IERC20";
 import { IWETH } from "typechain/IWETH";
 import { IYearnVault } from "typechain/IYearnVault";
-import { TestERC20 } from "typechain/TestERC20";
 import { Tranche } from "typechain/Tranche";
 import { TrancheFactory } from "typechain/TrancheFactory";
-import { UserProxyTest } from "typechain/UserProxyTest";
+import { TestUserProxy } from "typechain/TestUserProxy";
 import { InterestToken } from "typechain/InterestToken";
 import { YVaultAssetProxy } from "typechain/YVaultAssetProxy";
 
@@ -32,12 +30,12 @@ import data from "../../artifacts/contracts/Tranche.sol/Tranche.json";
 
 export interface FixtureInterface {
   signer: Signer;
-  usdc: AToken;
-  yusdc: AYVault;
+  usdc: TestERC20;
+  yusdc: TestYVault;
   position: YVaultAssetProxy;
   tranche: Tranche;
   interestToken: InterestToken;
-  proxy: UserProxyTest;
+  proxy: TestUserProxy;
   trancheFactory: TrancheFactory;
 }
 
@@ -47,7 +45,7 @@ export interface EthPoolMainnetInterface {
   yweth: IYearnVault;
   position: YVaultAssetProxy;
   tranche: Tranche;
-  proxy: UserProxyTest;
+  proxy: TestUserProxy;
 }
 
 export interface UsdcPoolMainnetInterface {
@@ -56,29 +54,29 @@ export interface UsdcPoolMainnetInterface {
   yusdc: IYearnVault;
   position: YVaultAssetProxy;
   tranche: Tranche;
-  proxy: UserProxyTest;
+  proxy: TestUserProxy;
 }
 
 export interface TrancheTestFixture {
   signer: Signer;
   usdc: TestERC20;
-  positionStub: WrappedPositionStub;
+  positionStub: TestWrappedPosition;
   tranche: Tranche;
   interestToken: InterestToken;
 }
 
-const deployWrappedPositionStub = async (signer: Signer, address: string) => {
-  const deployer = new WrappedPositionStub__factory(signer);
+const deployTestWrappedPosition = async (signer: Signer, address: string) => {
+  const deployer = new TestWrappedPosition__factory(signer);
   return await deployer.deploy(address);
 };
 
 const deployUsdc = async (signer: Signer, owner: string) => {
-  const deployer = new AToken__factory(signer);
-  return await deployer.deploy(owner);
+  const deployer = new TestERC20__factory(signer);
+  return await deployer.deploy(owner, "tUSDC", 6);
 };
 
 const deployYusdc = async (signer: Signer, usdcAddress: string) => {
-  const deployer = new AYVault__factory(signer);
+  const deployer = new TestYVault__factory(signer);
   return await deployer.deploy(usdcAddress);
 };
 
@@ -139,7 +137,7 @@ export async function loadFixture() {
     ["bytes"],
     [data.bytecode]
   );
-  const proxyFactory = new UserProxyTest__factory(signer);
+  const proxyFactory = new TestUserProxy__factory(signer);
   const proxy = await proxyFactory.deploy(
     wethAddress,
     trancheFactory.address,
@@ -184,7 +182,7 @@ export async function loadEthPoolMainnetFixture() {
     ["bytes"],
     [data.bytecode]
   );
-  const proxyFactory = new UserProxyTest__factory(signer);
+  const proxyFactory = new TestUserProxy__factory(signer);
   const proxy = await proxyFactory.deploy(
     wethAddress,
     trancheFactory.address,
@@ -226,7 +224,7 @@ export async function loadUsdcPoolMainnetFixture() {
     ["bytes"],
     [data.bytecode]
   );
-  const proxyFactory = new UserProxyTest__factory(signer);
+  const proxyFactory = new TestUserProxy__factory(signer);
   const proxy = await proxyFactory.deploy(
     usdcAddress,
     trancheFactory.address,
@@ -248,7 +246,7 @@ export async function loadTestTrancheFixture() {
   const testTokenDeployer = new TestERC20__factory(signer);
   const usdc = await testTokenDeployer.deploy("test token", "TEST", 18);
 
-  const positionStub: WrappedPositionStub = await deployWrappedPositionStub(
+  const positionStub: TestWrappedPosition = await deployTestWrappedPosition(
     signer,
     usdc.address
   );

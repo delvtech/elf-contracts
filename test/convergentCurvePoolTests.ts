@@ -7,7 +7,7 @@ import { BigNumber, providers } from "ethers";
 import { ethers, network } from "hardhat";
 import { deployBalancerVault } from "test/helpers/deployBalancerVault";
 import { deployConvergentCurvePool } from "test/helpers/deployConvergentCurvePool";
-import { ConvergentCurvePoolTest } from "typechain/ConvergentCurvePoolTest";
+import { TestConvergentCurvePool } from "typechain/TestConvergentCurvePool";
 import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
 import { TestERC20 } from "typechain/TestERC20";
 import { Vault } from "typechain/Vault";
@@ -32,7 +32,7 @@ describe("ConvergentCurvePool", function () {
   let elementSigner: SignerWithAddress;
   let elementAddress: string;
   let tokenSigner: SignerWithAddress;
-  let poolContract: ConvergentCurvePoolTest;
+  let poolContract: TestConvergentCurvePool;
   let startTimestamp: number;
   let expirationTime: number;
   let baseAssetContract: TestERC20;

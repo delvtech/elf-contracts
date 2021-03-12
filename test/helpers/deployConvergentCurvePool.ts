@@ -1,7 +1,7 @@
 import { Signer } from "ethers";
 import { parseEther } from "ethers/lib/utils";
 import { THIRTY_DAYS_IN_SECONDS } from "test/helpers/time";
-import { ConvergentCurvePoolTest__factory } from "typechain/factories/ConvergentCurvePoolTest__factory";
+import { TestConvergentCurvePool__factory } from "typechain/factories/TestConvergentCurvePool__factory";
 import { TestERC20 } from "typechain/TestERC20";
 import { Vault } from "typechain/Vault";
 
@@ -27,7 +27,7 @@ export async function deployConvergentCurvePool(
   };
   const elementAddress = await signer.getAddress();
   const baseAssetSymbol = await baseAssetContract.symbol();
-  const curvePoolDeployer = new ConvergentCurvePoolTest__factory(signer);
+  const curvePoolDeployer = new TestConvergentCurvePool__factory(signer);
 
   const dateInMilliseconds = Date.now();
   const dateInSeconds = dateInMilliseconds / 1000;

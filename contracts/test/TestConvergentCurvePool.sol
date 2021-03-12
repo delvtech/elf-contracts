@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../ConvergentCurvePool.sol";
 import "../balancer-core-v2/lib/math/FixedPoint.sol";
 
-contract ConvergentCurvePoolTest is ConvergentCurvePool {
+contract TestConvergentCurvePool is ConvergentCurvePool {
     using FixedPoint for uint256;
 
     constructor(
@@ -111,33 +111,6 @@ contract ConvergentCurvePoolTest is ConvergentCurvePool {
     // Public interface to test '_getYieldExponent'
     function getYieldExponent() public view returns (uint256) {
         return _getYieldExponent();
-    }
-
-    // Public interface to test '_tokenToFixed'
-    function tokenToFixed(uint256 amount, IERC20 token)
-        public
-        view
-        returns (uint256)
-    {
-        return _tokenToFixed(amount, token);
-    }
-
-    // Public interface to test '_fixedToToken'
-    function fixedToToken(uint256 amount, IERC20 token)
-        public
-        view
-        returns (uint256)
-    {
-        return _fixedToToken(amount, token);
-    }
-
-    // Public interface to test '_normalize'
-    function normalize(
-        uint256 amount,
-        uint8 decimalsBefore,
-        uint8 decimalsAfter
-    ) public view returns (uint256) {
-        return _normalize(amount, decimalsBefore, decimalsAfter);
     }
 
     // Trade estimator which also takes and stores a time override variable

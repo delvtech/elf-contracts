@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../libraries/DateString.sol";
 
-contract DateTest {
+contract TestDate {
     string public testString = "Tester";
 
     // This function will try encoding a timestamp and output-ing what happens

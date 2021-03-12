@@ -65,7 +65,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     ) BalancerPoolToken(name, symbol) {
         // Initialization on the vault
         bytes32 poolId = vault.registerPool(
-            IVault.PoolSpecialization.MINIMAL_SWAP_INFO
+            IVault.PoolSpecialization.TWO_TOKEN
         );
 
         // Pass in zero addresses for Asset Managers
@@ -117,18 +117,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         uint256 currentBalanceTokenOut
     ) public override returns (uint256) {
         // Tokens amounts are passed to us in decimal form of the tokens
-        uint256 amountTokenIn = _tokenToFixed(
-            request.amountIn,
-            request.tokenIn
-        );
-        currentBalanceTokenIn = _tokenToFixed(
-            currentBalanceTokenIn,
-            request.tokenIn
-        );
-        currentBalanceTokenOut = _tokenToFixed(
-            currentBalanceTokenOut,
-            request.tokenOut
-        );
+        uint256 amountTokenIn = request.amountIn;
+
         // We apply the trick which is used in the paper and
         // double count the reserves because the curve provisions liquidity
         // for prices above one underlying per bond, which we don't want to be accessible
@@ -148,8 +138,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
 
         // Assign trade fees
         quote = _assignTradeFee(amountTokenIn, quote, request.tokenOut, false);
-        // Return the quote to token form
-        return _fixedToToken(quote, request.tokenOut);
+        return quote;
     }
 
     /// @dev Returns the amount of 'tokenIn' need to receive a specified amount
@@ -165,18 +154,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     ) public override returns (uint256) {
         // Tokens amounts are passed to us in decimal form of the tokens
         // However we want them to be in 18 decimal fixed point form
-        uint256 amountTokenOut = _tokenToFixed(
-            request.amountOut,
-            request.tokenOut
-        );
-        currentBalanceTokenIn = _tokenToFixed(
-            currentBalanceTokenIn,
-            request.tokenIn
-        );
-        currentBalanceTokenOut = _tokenToFixed(
-            currentBalanceTokenOut,
-            request.tokenOut
-        );
+        uint256 amountTokenOut = request.amountOut;
         // We apply the trick which is used in the paper and
         // double count the reserves because the curve provisions liquidity
         // for prices above one underlying per bond, which we don't want to be accessible
@@ -195,8 +173,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         );
         // Assign trade fees
         quote = _assignTradeFee(quote, amountTokenOut, request.tokenOut, true);
-        // Return the quote in input token decimals
-        return _fixedToToken(quote, request.tokenIn);
+        return quote;
     }
 
     // Liquidity provider functionality
@@ -214,8 +191,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     /// @return amountsIn The actual amounts of token the vault should move to this pool
     /// @return dueProtocolFeeAmounts The amounts of each token to pay as protocol fees
     function onJoinPool(
-        bytes32 poolId,
-        address sender,
+        bytes32, // poolId
+        address, // sender
         address recipient,
         uint256[] calldata currentBalances,
         uint256,
@@ -388,9 +365,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountOut.sub(amountIn)
                 );
                 // we record that fee collected from the underlying
-                feesUnderlying += uint128(
-                    _fixedToToken(impliedYieldFee, underlying)
-                );
+                feesUnderlying += uint128(impliedYieldFee);
                 // and return the adjusted input quote
                 return amountIn.add(impliedYieldFee);
             } else {
@@ -399,7 +374,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountIn.sub(amountOut)
                 );
                 // we record that collected fee from the input bond
-                feesBond += uint128(_fixedToToken(impliedYieldFee, bond));
+                feesBond += uint128(impliedYieldFee);
                 // and return the updated input quote
                 return amountIn.add(impliedYieldFee);
             }
@@ -410,7 +385,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountOut.sub(amountIn)
                 );
                 // we record that fee collected from the bond output
-                feesBond += uint128(_fixedToToken(impliedYieldFee, bond));
+                feesBond += uint128(impliedYieldFee);
                 // and then return the updated output
                 return amountOut.sub(impliedYieldFee);
             } else {
@@ -419,9 +394,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountIn.sub(amountOut)
                 );
                 // we record the collected underlying fee
-                feesUnderlying += uint128(
-                    _fixedToToken(impliedYieldFee, underlying)
-                );
+                feesUnderlying += uint128(impliedYieldFee);
                 // and then return the updated output quote
                 return amountOut.sub(impliedYieldFee);
             }
@@ -574,7 +547,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         timeTillExpiry *= 1e18;
         // timeTillExpiry now contains the a fixed point of the years remaining
         timeTillExpiry = timeTillExpiry.div(unitSeconds * 1e18);
-        return uint256(FixedPoint.ONE).sub(timeTillExpiry);
+        uint256 result = uint256(FixedPoint.ONE).sub(timeTillExpiry);
+        return result;
     }
 
     /// @dev Applies the reserve adjustment from the paper and returns the reserves
@@ -599,68 +573,5 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         }
         // This should never be hit
         revert("Token request doesn't match stored");
-    }
-
-    /// @dev Turns a token which is either 'bond' or 'underlying' into 18 point decimal
-    /// @param amount The amount of the token in native decimal encoding
-    /// @param token The address of the token
-    /// @return The amount of token encoded into 18 point fixed point
-    function _tokenToFixed(uint256 amount, IERC20 token)
-        internal
-        view
-        returns (uint256)
-    {
-        // In both cases we are targeting 18 point
-        if (token == underlying) {
-            return _normalize(amount, underlyingDecimals, 18);
-        } else if (token == bond) {
-            return _normalize(amount, bondDecimals, 18);
-        }
-        // Should never happen
-        revert("Called with non pool token");
-    }
-
-    /// @dev Turns an 18 fixed point amount into a token amount
-    ///       Token must be either 'bond' or 'underlying'
-    /// @param amount The amount of the token in 18 decimal fixed point
-    /// @param token The address of the token
-    /// @return The amount of token encoded in native decimal point
-    function _fixedToToken(uint256 amount, IERC20 token)
-        internal
-        view
-        returns (uint256)
-    {
-        if (token == underlying) {
-            // Recodes to 'underlyingDecimals' decimals
-            return _normalize(amount, 18, underlyingDecimals);
-        } else if (token == bond) {
-            // Recodes to 'bondDecimals' decimals
-            return _normalize(amount, 18, bondDecimals);
-        }
-        // Should never happen
-        revert("Called with non pool token");
-    }
-
-    /// @dev Takes an 'amount' encoded with 'decimalsBefore' decimals and
-    ///      re encodes it with 'decimalsAfter' decimals
-    /// @param amount The amount to normalize
-    /// @param decimalsBefore The decimal encoding before
-    /// @param decimalsAfter The decimal encoding after
-    function _normalize(
-        uint256 amount,
-        uint8 decimalsBefore,
-        uint8 decimalsAfter
-    ) internal view returns (uint256) {
-        // If we need to increase the decimals
-        if (decimalsBefore > decimalsAfter) {
-            // Then we shift right the amount by the number of decimals
-            amount = amount / 10**(decimalsBefore - decimalsAfter);
-            // If we need to decrease the number
-        } else if (decimalsBefore < decimalsAfter) {
-            // then we shift left by the difference
-            amount = amount * 10**(decimalsAfter - decimalsBefore);
-        }
-        // If nothing changed this is a no-op
-        return amount;
     }
 }

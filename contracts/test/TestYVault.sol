@@ -6,12 +6,12 @@ import "../interfaces/IYearnVaultV2.sol";
 
 import "../libraries/ERC20WithSupply.sol";
 
-import "./AToken.sol";
+import "./TestERC20.sol";
 
-contract AYVault is ERC20WithSupply {
+contract TestYVault is ERC20WithSupply {
     address public token;
 
-    constructor(address _token) ERC20("a ytoken", "yToken") {
+    constructor(address _token) ERC20("test ytoken", "yToken") {
         token = _token;
     }
 
@@ -44,7 +44,7 @@ contract AYVault is ERC20WithSupply {
 
     function updateShares() external {
         uint256 balance = ERC20(token).balanceOf(address(this));
-        AToken(token).mint(address(this), balance / 10);
+        TestERC20(token).mint(address(this), balance / 10);
     }
 
     function totalAssets() public view returns (uint256) {

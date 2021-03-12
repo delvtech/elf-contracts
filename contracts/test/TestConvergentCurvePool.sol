@@ -112,33 +112,6 @@ contract TestConvergentCurvePool is ConvergentCurvePool {
         return _getYieldExponent();
     }
 
-    // Public interface to test '_tokenToFixed'
-    function tokenToFixed(uint256 amount, IERC20 token)
-        public
-        view
-        returns (uint256)
-    {
-        return _tokenToFixed(amount, token);
-    }
-
-    // Public interface to test '_fixedToToken'
-    function fixedToToken(uint256 amount, IERC20 token)
-        public
-        view
-        returns (uint256)
-    {
-        return _fixedToToken(amount, token);
-    }
-
-    // Public interface to test '_normalize'
-    function normalize(
-        uint256 amount,
-        uint8 decimalsBefore,
-        uint8 decimalsAfter
-    ) public view returns (uint256) {
-        return _normalize(amount, decimalsBefore, decimalsAfter);
-    }
-
     // Trade estimator which also takes and stores a time override variable
     // if expectedPrice is nonzero it returns the delta in price instead of
     // the quote

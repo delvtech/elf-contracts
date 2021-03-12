@@ -1,7 +1,8 @@
 import "module-alias/register";
 
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
-import { expect } from "chai";
+import chai, { expect } from "chai";
+import chaiAlmost from "chai-almost";
 import { BigNumber, providers } from "ethers";
 import hre, { ethers, network } from "hardhat";
 import { deployBalancerVault } from "test/helpers/deployBalancerVault";
@@ -10,6 +11,13 @@ import { ConvergentCurvePoolTest } from "typechain/ConvergentCurvePoolTest";
 import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
 import { TestERC20 } from "typechain/TestERC20";
 import { Vault } from "typechain/Vault";
+import { formatEther } from "ethers/lib/utils";
+
+// we need to use almost for the onSwap tests since `hardhat coverage` compiles the contracts
+// slightly differently which causes slightly different fixedpoint logic.
+const DEFAULT_CHAI_ALMOST_TOLERANCE = 10e-6;
+const tolerance = process.env.COVERAGE ? DEFAULT_CHAI_ALMOST_TOLERANCE : 0;
+chai.use(chaiAlmost(tolerance));
 
 describe("ConvergentCurvePool", function () {
   const BOND_DECIMALS = 17;
@@ -384,7 +392,9 @@ describe("ConvergentCurvePool", function () {
       reserveUnderlying,
       reserveBond
     );
-    expect(quote).to.be.eq(ethers.utils.parseUnits("108.572076454026339518"));
+    const result = Number(formatEther(quote));
+    const expectedValue = 108.572076454026339518;
+    expect(result).to.be.almost(expectedValue);
   });
 
   it("Quotes a sell output trade correctly", async function () {
@@ -407,7 +417,9 @@ describe("ConvergentCurvePool", function () {
       reserveBond,
       reserveUnderlying
     );
-    expect(quote).to.be.eq(ethers.utils.parseUnits("90.434755941585224376"));
+    const result = Number(formatEther(quote));
+    const expectedValue = 90.434755941585224376;
+    expect(result).to.be.almost(expectedValue);
   });
 
   it("Quotes a buy input trade correctly", async function () {
@@ -430,7 +442,9 @@ describe("ConvergentCurvePool", function () {
       reserveUnderlying,
       reserveBond
     );
-    expect(quote).to.be.eq(ethers.utils.parseUnits("184.972608299922486264"));
+    const result = Number(formatEther(quote));
+    const expectedValue = 184.972608299922486264;
+    expect(result).to.be.almost(expectedValue);
   });
 
   it("Quotes a sell input trade correctly", async function () {
@@ -453,6 +467,8 @@ describe("ConvergentCurvePool", function () {
       reserveBond,
       reserveUnderlying
     );
-    expect(quote).to.be.eq(ethers.utils.parseUnits("166.279570802359854161"));
+    const result = Number(formatEther(quote));
+    const expectedValue = 166.279570802359854161;
+    expect(result).to.be.almost(expectedValue);
   });
 });

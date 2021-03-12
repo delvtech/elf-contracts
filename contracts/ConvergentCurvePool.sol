@@ -34,8 +34,10 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     uint128 public feesBond;
     // Stored records of governance tokens
     address public governance;
-    // The percent of accumulated fees to pay to the vault.
+    // The percent of each trade's implied yield to collect as LP fee
     uint256 public immutable percentFee;
+    // The percent of LP fees that is payed to governance
+    uint256 public immutable percentFeeGov;
 
     /// @dev We need need to set the immutables on contract creation
     ///      Note - We expect both 'bond' and 'underlying' to have 'decimals()'
@@ -44,7 +46,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     /// @param _expiration The time in unix seconds when the bond asset should equal the underlying asset
     /// @param _unitSeconds The number of seconds in a unit of time, for example 1 year in seconds
     /// @param vault The balancer vault
-    /// @param _percentFee The percent of assigned fees which go to governance
+    /// @param _percentFee The percent each trade's yield to collect as fees
+    /// @param _percentFeeGov The percent of collected that go to governance
     /// @param _governance The address which gets minted reward lp
     /// @param name The balancer pool token name
     /// @param symbol The balancer pool token symbol
@@ -55,6 +58,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         uint256 _unitSeconds,
         IVault vault,
         uint256 _percentFee,
+        uint256 _percentFeeGov,
         address _governance,
         string memory name,
         string memory symbol
@@ -76,6 +80,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         _vault = vault;
         _poolId = poolId;
         percentFee = _percentFee;
+        percentFeeGov = _percentFeeGov;
         underlying = _underlying;
         underlyingDecimals = IERC20Decimals(address(_underlying)).decimals();
         bond = _bond;
@@ -379,7 +384,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             // Then it splits again on which token is the bond
             if (outputToken == bond) {
                 // If the output is bond the implied yield is out - in
-                uint256 impliedYieldFee = percentFee.mul(
+                uint256 impliedYieldFee = percentFeeGov.mul(
                     amountOut.sub(amountIn)
                 );
                 // we record that fee collected from the underlying
@@ -390,7 +395,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                 return amountIn.add(impliedYieldFee);
             } else {
                 // If the input token is bond the implied yield is in - out
-                uint256 impliedYieldFee = percentFee.mul(
+                uint256 impliedYieldFee = percentFeeGov.mul(
                     amountIn.sub(amountOut)
                 );
                 // we record that collected fee from the input bond
@@ -401,7 +406,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         } else {
             if (outputToken == bond) {
                 // If the output is bond the implied yield is out - in
-                uint256 impliedYieldFee = percentFee.mul(
+                uint256 impliedYieldFee = percentFeeGov.mul(
                     amountOut.sub(amountIn)
                 );
                 // we record that fee collected from the bond output
@@ -410,7 +415,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                 return amountOut.sub(impliedYieldFee);
             } else {
                 // If the output is underlying the implied yield is in - out
-                uint256 impliedYieldFee = percentFee.mul(
+                uint256 impliedYieldFee = percentFeeGov.mul(
                     amountIn.sub(amountOut)
                 );
                 // we record the collected underlying fee

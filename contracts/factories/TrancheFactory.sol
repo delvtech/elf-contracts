@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import "./Tranche.sol";
-import "./interfaces/IWrappedPosition.sol";
-import "./interfaces/IERC20.sol";
-import "./interfaces/IInterestTokenFactory.sol";
-import "./interfaces/IInterestToken.sol";
+import "../Tranche.sol";
+import "../interfaces/IWrappedPosition.sol";
+import "../interfaces/IERC20.sol";
+import "../interfaces/IInterestTokenFactory.sol";
+import "../interfaces/IInterestToken.sol";
 
 pragma solidity ^0.8.0;
 

@@ -27,6 +27,7 @@ contract TestConvergentCurvePool is ConvergentCurvePool {
             _unitSeconds,
             vault,
             _percentFee,
+            _percentFee,
             _governance,
             name,
             symbol

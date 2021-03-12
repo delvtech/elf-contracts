@@ -34,8 +34,10 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     uint128 public feesBond;
     // Stored records of governance tokens
     address public governance;
-    // The percent of accumulated fees to pay to the vault.
+    // The percent of each trade's implied yield to collect as LP fee
     uint256 public immutable percentFee;
+    // The percent of LP fees that is payed to governance
+    uint256 public immutable percentFeeGov;
 
     /// @dev We need need to set the immutables on contract creation
     ///      Note - We expect both 'bond' and 'underlying' to have 'decimals()'
@@ -44,7 +46,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     /// @param _expiration The time in unix seconds when the bond asset should equal the underlying asset
     /// @param _unitSeconds The number of seconds in a unit of time, for example 1 year in seconds
     /// @param vault The balancer vault
-    /// @param _percentFee The percent of assigned fees which go to governance
+    /// @param _percentFee The percent each trade's yield to collect as fees
+    /// @param _percentFeeGov The percent of collected that go to governance
     /// @param _governance The address which gets minted reward lp
     /// @param name The balancer pool token name
     /// @param symbol The balancer pool token symbol
@@ -55,6 +58,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         uint256 _unitSeconds,
         IVault vault,
         uint256 _percentFee,
+        uint256 _percentFeeGov,
         address _governance,
         string memory name,
         string memory symbol
@@ -76,6 +80,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         _vault = vault;
         _poolId = poolId;
         percentFee = _percentFee;
+        percentFeeGov = _percentFeeGov;
         underlying = _underlying;
         underlyingDecimals = IERC20Decimals(address(_underlying)).decimals();
         bond = _bond;
@@ -318,18 +323,18 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         // Gets 1 - t
         uint256 a = _getYieldExponent();
         // calculate x before ^ a
-        uint256 xBeforePowA = reserveX.pow(a);
+        uint256 xBeforePowA = LogExpMath.pow(reserveX, a);
         // calculate y before ^ a
-        uint256 yBeforePowA = reserveY.pow(a);
+        uint256 yBeforePowA = LogExpMath.pow(reserveY, a);
         // calculate x after ^ a
         uint256 xAfterPowA = out
-            ? (reserveX + amountX).pow(a)
-            : (reserveX.sub(amountX)).pow(a);
+            ? LogExpMath.pow(reserveX + amountX, a)
+            : LogExpMath.pow(reserveX.sub(amountX), a);
         // Calculate y_after = ( x_before ^a + y_ before ^a -  x_after^a)^(1/a)
         // Will revert with underflow here if the liquidity isn't enough for the trade
         uint256 yAfter = (xBeforePowA + yBeforePowA).sub(xAfterPowA);
         // Note that this call is to FixedPoint Div so works as intended
-        yAfter = yAfter.pow(uint256(FixedPoint.ONE).div(a));
+        yAfter = LogExpMath.pow(yAfter, uint256(FixedPoint.ONE).div(a));
         // The amount of Y token to send is (reserveY_before - reserveY_after)
         return out ? reserveY.sub(yAfter) : yAfter.sub(reserveY);
     }
@@ -512,21 +517,23 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         uint256 localFeeUnderlying = uint256(feesUnderlying);
         uint256 localFeeBond = uint256(feesBond);
         (uint256 feesUsedUnderlying, uint256 feesUsedBond) = _mintLP(
-            localFeeUnderlying.mul(percentFee),
-            localFeeBond.mul(percentFee),
+            localFeeUnderlying.mul(percentFeeGov),
+            localFeeBond.mul(percentFeeGov),
             currentBalances,
             governance
         );
         // Safe math sanity checks
         require(
-            localFeeUnderlying >= (feesUsedUnderlying).div(percentFee),
+            localFeeUnderlying >= (feesUsedUnderlying).div(percentFeeGov),
             "Underflow"
         );
-        require(localFeeBond >= (feesUsedBond).div(percentFee), "Underflow");
+        require(localFeeBond >= (feesUsedBond).div(percentFeeGov), "Underflow");
         // Store the remaining fees should only be one sstore
         (feesUnderlying, feesBond) = (
-            uint128(localFeeUnderlying - (feesUsedUnderlying).div(percentFee)),
-            uint128(localFeeBond - (feesUsedBond).div(percentFee))
+            uint128(
+                localFeeUnderlying - (feesUsedUnderlying).div(percentFeeGov)
+            ),
+            uint128(localFeeBond - (feesUsedBond).div(percentFeeGov))
         );
         // We return the sload-ed values so that they do not need to be loaded again.
         return (localFeeUnderlying, localFeeBond);

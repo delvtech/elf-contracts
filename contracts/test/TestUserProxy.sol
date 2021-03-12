@@ -4,7 +4,7 @@ import "../UserProxy.sol";
 import "../interfaces/IWETH.sol";
 
 // This contract is a user proxy which exposes deriveTranche for testing
-contract UserProxyTest is UserProxy {
+contract TestUserProxy is UserProxy {
     constructor(
         address _weth,
         address _trancheFactory,

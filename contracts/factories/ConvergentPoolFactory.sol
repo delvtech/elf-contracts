@@ -16,13 +16,14 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
 
     /// @notice This function constructs the pool
     /// @param _vault The balancer v2 vault
+    /// @param _governance The governance address
     constructor(IVault _vault, address _governance)
         BasePoolFactory(_vault)
         Authorizable()
     {
         // Sets the governance address as owner and authorized
-        setOwner(governance);
-        _authorize(governance);
+        _authorize(_governance);
+        setOwner(_governance);
         governance = _governance;
     }
 
@@ -32,16 +33,15 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
     /// @param _expiration The time at which convergence finishes
     /// @param _unitSeconds The unit seconds multiplier for time
     /// @param _percentFee The fee percent of each trades implied yield paid to gov.
-    /// @param _vault The balancer v2 vault
     /// @param _name The name of the balancer v2 lp token for this pool
     /// @param _symbol The symbol of the balancer v2 lp token for this pool
+    /// @return The new pool address
     function create(
         address _underlying,
         address _bond,
         uint256 _expiration,
         uint256 _unitSeconds,
         uint256 _percentFee,
-        IVault _vault,
         string memory _name,
         string memory _symbol
     ) external returns (address) {
@@ -54,7 +54,7 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
                         _bond,
                         _expiration,
                         _unitSeconds,
-                        _vault,
+                        vault,
                         _percentFee,
                         percentFeeGov,
                         governance,
@@ -70,5 +70,11 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
     function setGovFee(uint256 newFee) external onlyAuthorized() {
         require(newFee < 3e17, "New fee higher than 30%");
         percentFeeGov = newFee;
+    }
+
+    /// @notice Allows the owner to change the governance minting address
+    /// @param newGov The new address to receive rewards in pools
+    function setGov(address newGov) external onlyOwner() {
+        governance = newGov;
     }
 }

@@ -361,7 +361,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             // Then it splits again on which token is the bond
             if (outputToken == bond) {
                 // If the output is bond the implied yield is out - in
-                uint256 impliedYieldFee = percentFeeGov.mul(
+                uint256 impliedYieldFee = percentFee.mul(
                     amountOut.sub(amountIn)
                 );
                 // we record that fee collected from the underlying
@@ -370,7 +370,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                 return amountIn.add(impliedYieldFee);
             } else {
                 // If the input token is bond the implied yield is in - out
-                uint256 impliedYieldFee = percentFeeGov.mul(
+                uint256 impliedYieldFee = percentFee.mul(
                     amountIn.sub(amountOut)
                 );
                 // we record that collected fee from the input bond
@@ -381,7 +381,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         } else {
             if (outputToken == bond) {
                 // If the output is bond the implied yield is out - in
-                uint256 impliedYieldFee = percentFeeGov.mul(
+                uint256 impliedYieldFee = percentFee.mul(
                     amountOut.sub(amountIn)
                 );
                 // we record that fee collected from the bond output
@@ -390,7 +390,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                 return amountOut.sub(impliedYieldFee);
             } else {
                 // If the output is underlying the implied yield is in - out
-                uint256 impliedYieldFee = percentFeeGov.mul(
+                uint256 impliedYieldFee = percentFee.mul(
                     amountIn.sub(amountOut)
                 );
                 // we record the collected underlying fee
@@ -517,21 +517,23 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         uint256 localFeeUnderlying = uint256(feesUnderlying);
         uint256 localFeeBond = uint256(feesBond);
         (uint256 feesUsedUnderlying, uint256 feesUsedBond) = _mintLP(
-            localFeeUnderlying.mul(percentFee),
-            localFeeBond.mul(percentFee),
+            localFeeUnderlying.mul(percentFeeGov),
+            localFeeBond.mul(percentFeeGov),
             currentBalances,
             governance
         );
         // Safe math sanity checks
         require(
-            localFeeUnderlying >= (feesUsedUnderlying).div(percentFee),
+            localFeeUnderlying >= (feesUsedUnderlying).div(percentFeeGov),
             "Underflow"
         );
-        require(localFeeBond >= (feesUsedBond).div(percentFee), "Underflow");
+        require(localFeeBond >= (feesUsedBond).div(percentFeeGov), "Underflow");
         // Store the remaining fees should only be one sstore
         (feesUnderlying, feesBond) = (
-            uint128(localFeeUnderlying - (feesUsedUnderlying).div(percentFee)),
-            uint128(localFeeBond - (feesUsedBond).div(percentFee))
+            uint128(
+                localFeeUnderlying - (feesUsedUnderlying).div(percentFeeGov)
+            ),
+            uint128(localFeeBond - (feesUsedBond).div(percentFeeGov))
         );
         // We return the sload-ed values so that they do not need to be loaded again.
         return (localFeeUnderlying, localFeeBond);

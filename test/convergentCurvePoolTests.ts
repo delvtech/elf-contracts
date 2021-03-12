@@ -12,6 +12,8 @@ import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
 import { TestERC20 } from "typechain/TestERC20";
 import { Vault } from "typechain/Vault";
 import { formatEther } from "ethers/lib/utils";
+import { ConvergentPoolFactory__factory } from "typechain/factories/ConvergentPoolFactory__factory";
+import { ConvergentPoolFactory } from "typechain/ConvergentPoolFactory";
 
 // we need to use almost for the onSwap tests since `hardhat coverage` compiles the contracts
 // slightly differently which causes slightly different fixedpoint logic.
@@ -468,5 +470,50 @@ describe("ConvergentCurvePool", function () {
     const result = Number(formatEther(quote));
     const expectedValue = 166.279570802359854161;
     expect(result).to.be.almost(expectedValue);
+  });
+
+  describe("Pool Factory works", async () => {
+    let poolFactory: ConvergentPoolFactory;
+    const twentyPercent = ethers.utils.parseEther("0.2");
+
+    before(async () => {
+      const testVault = await poolContract.getVault();
+      const poolFactoryFactory = new ConvergentPoolFactory__factory(
+        accounts[0]
+      );
+      poolFactory = await poolFactoryFactory.deploy(
+        testVault,
+        accounts[0].address
+      );
+    });
+
+    it("Deploys pools", async () => {
+      await poolFactory.create(
+        baseAssetContract.address,
+        bondAssetContract.address,
+        1000,
+        1000,
+        1,
+        "fake pool",
+        "FP"
+      );
+    });
+    it("Allows changing fees", async () => {
+      await poolFactory.setGovFee(twentyPercent);
+    });
+    it("Blocks invalid fee changes", async () => {
+      let tx = poolFactory.setGovFee(ethers.utils.parseEther("0.3").add(1));
+      await expect(tx).to.be.revertedWith("New fee higher than 30%");
+      tx = poolFactory.connect(accounts[1]).setGovFee(twentyPercent);
+      await expect(tx).to.be.revertedWith("Sender not Authorized");
+    });
+    it("Allows changing governance address", async () => {
+      await poolFactory.setGov(accounts[1].address);
+      expect(await poolFactory.governance()).to.be.eq(accounts[1].address);
+    });
+    it("Blocks non owner changes to governance address", async () => {
+      const tx = poolFactory.connect(accounts[1]).setGov(fakeAddress);
+      await expect(tx).to.be.revertedWith("Sender not owner");
+    });
   });
 });

@@ -16,7 +16,7 @@ contract Tranche is ERC20, ITranche {
     IInterestToken public immutable override interestToken;
     IWrappedPosition public immutable position;
     IERC20 public immutable underlying;
-    uint8 immutable underlyingDecimals;
+    uint8 internal immutable _underlyingDecimals;
 
     // The outstanding amount of underlying which
     // can be redeemed from the contract from Principal Tokens
@@ -27,7 +27,7 @@ contract Tranche is ERC20, ITranche {
     // The timestamp when tokens can be redeemed.
     uint256 public immutable unlockTimestamp;
     // The amount of slippage allowed on the Principal token redemption [0.1 basis points]
-    uint256 constant SLIPPAGE_BP = 1e13;
+    uint256 internal constant _SLIPPAGE_BP = 1e13;
 
     /// @notice Constructs this contract
     constructor() ERC20("Element Principal Token", "ELF:") {
@@ -51,7 +51,7 @@ contract Tranche is ERC20, ITranche {
         underlying = wpContract.token();
         // We load and store the underlying decimals
         uint8 localUnderlyingDecimals = localUnderlying.decimals();
-        underlyingDecimals = localUnderlyingDecimals;
+        _underlyingDecimals = localUnderlyingDecimals;
         // And set this contract to have the same
         _setupDecimals(localUnderlyingDecimals);
 
@@ -150,7 +150,7 @@ contract Tranche is ERC20, ITranche {
     @dev This method will return 1 underlying for 1 principal except when interest
          is negative, in that case liquidity might run out and some principal token may
          not be redeemable. 
-         Also note: Redemption has the possibility of at most SLIPPAGE_BP
+         Also note: Redemption has the possibility of at most _SLIPPAGE_BP
          numerical error on each redemption so each principal token may occasionally redeem
          for less than 1 unit of underlying. Max loss defaults to 0.1 BP ie 0.001% loss
      */
@@ -165,7 +165,7 @@ contract Tranche is ERC20, ITranche {
         _burn(msg.sender, _amount);
         // Remove these principal token from the interest calculations for future interest redemptions
         valueSupplied -= uint128(_amount);
-        uint256 minOutput = _amount - (_amount * SLIPPAGE_BP) / 1e18;
+        uint256 minOutput = _amount - (_amount * _SLIPPAGE_BP) / 1e18;
         return position.withdrawUnderlying(_destination, _amount, minOutput);
     }
 
@@ -174,7 +174,7 @@ contract Tranche is ERC20, ITranche {
     @param _amount The number of interest tokens to burn.
     @param _destination The address to send the result to
     @return The number of underlying token released
-    @dev Due to slippage the redemption may receive up to SLIPPAGE_BP less
+    @dev Due to slippage the redemption may receive up to _SLIPPAGE_BP less
          in output compared to the floating rate.
      */
     function withdrawInterest(uint256 _amount, address _destination)
@@ -201,7 +201,7 @@ contract Tranche is ERC20, ITranche {
         // The redemption amount is the interest per token times the amount
         uint256 redemptionAmount = (interest * _amount) / _interestSupply;
         uint256 minRedemption = redemptionAmount -
-            (redemptionAmount * SLIPPAGE_BP) /
+            (redemptionAmount * _SLIPPAGE_BP) /
             1e18;
         // Store that we reduced the supply
         interestSupply = uint128(_interestSupply - _amount);

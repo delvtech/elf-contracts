@@ -191,13 +191,25 @@ describe("UserProxyTests", function () {
         domainSeparator,
         users[1].address,
         permitFixture.proxy.address,
-        utils.parseEther("1"),
+        ethers.BigNumber.from(
+          "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        ),
         nonce,
         ethers.BigNumber.from(
           "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
         )
       );
-      const joinedSig = await users[1].user.signMessage(digest);
+      impersonate(users[1].address);
+      const user1 = await ethers.provider.getSigner(users[1].address);
+      //const joinedSig = await users[1].user.signMessage(digest);
+
+      const types = {
+        digest: [{ name: "digest", type: "string" }],
+      };
+      const value = {
+        digest: digest,
+      };
+      const joinedSig = await user1._signTypedData({}, types, value);
       const splitSig = ethers.utils.splitSignature(joinedSig);
 
       await permitFixture.proxy

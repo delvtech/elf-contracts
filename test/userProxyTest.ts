@@ -3,15 +3,21 @@ import { ethers } from "hardhat";
 import {
   loadUsdcPoolMainnetFixture,
   UsdcPoolMainnetInterface,
+  EthPoolMainnetInterface,
+  loadEthPoolMainnetFixture,
+  loadPermitTokenPoolMainnetFixture,
+  PermitTokenPoolMainnetInterface,
 } from "./helpers/deployer";
-import { impersonate } from "./helpers/impersonate";
+import { impersonate, stopImpersonating } from "./helpers/impersonate";
+import { getDigest } from "./helpers/signatures";
 import { Contract } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
-import { CodeSizeChecker } from "typechain/CodeSizeChecker";
 import { CodeSizeChecker__factory } from "typechain/factories/CodeSizeChecker__factory";
+import { Signer, utils } from "ethers";
 
 describe("UserProxyTests", function () {
-  let fixture: UsdcPoolMainnetInterface;
+  let usdcFixture: UsdcPoolMainnetInterface;
+
   let proxy: Contract;
   let underlying: Contract;
   let signers: SignerWithAddress[];
@@ -20,12 +26,12 @@ describe("UserProxyTests", function () {
 
   before(async function () {
     // Get the setup contracts
-    fixture = await loadUsdcPoolMainnetFixture();
-    ({ proxy } = fixture);
+    usdcFixture = await loadUsdcPoolMainnetFixture();
+    ({ proxy } = usdcFixture);
 
     underlying = await ethers.getContractAt(
       "contracts/libraries/ERC20.sol:ERC20",
-      await fixture.position.token()
+      await usdcFixture.position.token()
     );
     impersonate(usdcWhaleAddress);
     const usdcWhale = await ethers.provider.getSigner(usdcWhaleAddress);
@@ -38,23 +44,23 @@ describe("UserProxyTests", function () {
 
     // Make an initial deposit in the aypool contract
     // This prevents a div by zero reversion in several cases
-    await fixture.usdc.connect(usdcWhale).transfer(signers[0].address, 100);
-    await fixture.usdc.approve(fixture.yusdc.address, 100);
-    await fixture.yusdc.deposit(100, signers[0].address);
+    await usdcFixture.usdc.connect(usdcWhale).transfer(signers[0].address, 100);
+    await usdcFixture.usdc.approve(usdcFixture.yusdc.address, 100);
+    await usdcFixture.yusdc.deposit(100, signers[0].address);
 
     // Make a gas reserve deposit to test that logic
     const twohundred = ethers.utils.parseUnits("200", 6);
-    await fixture.usdc
+    await usdcFixture.usdc
       .connect(usdcWhale)
-      .approve(fixture.position.address, twohundred.mul(2));
-    await fixture.position.connect(usdcWhale).reserveDeposit(twohundred);
+      .approve(usdcFixture.position.address, twohundred.mul(2));
+    await usdcFixture.position.connect(usdcWhale).reserveDeposit(twohundred);
   });
   it("Successfully derives tranche contract address", async function () {
-    const addr = await fixture.proxy.deriveTranche(
-      fixture.position.address,
+    const addr = await usdcFixture.proxy.deriveTranche(
+      usdcFixture.position.address,
       1e10
     );
-    expect(addr).to.equal(fixture.tranche.address);
+    expect(addr).to.equal(usdcFixture.tranche.address);
   });
   it("Successfully mints", async function () {
     // To avoid messing with permit we use the allowance method
@@ -64,7 +70,7 @@ describe("UserProxyTests", function () {
       ethers.utils.parseUnits("1", 6),
       underlying.address,
       1e10,
-      fixture.position.address
+      usdcFixture.position.address
     );
     // Mint for the first time
     receipt = await receipt.wait();
@@ -73,7 +79,7 @@ describe("UserProxyTests", function () {
       ethers.utils.parseUnits("1", 6),
       underlying.address,
       1e10,
-      fixture.position.address
+      usdcFixture.position.address
     );
     receipt = await receipt.wait();
     console.log("Repeat Mint", receipt.gasUsed.toNumber());
@@ -85,7 +91,7 @@ describe("UserProxyTests", function () {
         ethers.utils.parseUnits("1", 6),
         underlying.address,
         1e10,
-        fixture.position.address
+        usdcFixture.position.address
       );
     receipt = await receipt.wait();
     console.log("New User First mint", receipt.gasUsed.toNumber());
@@ -103,6 +109,108 @@ describe("UserProxyTests", function () {
       await proxy.deprecate();
       const sizeAfter = await sizeChecker.codeSize(proxy.address);
       expect(sizeAfter).to.be.eq(0);
+    });
+  });
+  describe("WETH mint", async () => {
+    let wethFixture: EthPoolMainnetInterface;
+    let users: { user: Signer; address: string }[];
+
+    before(async function () {
+      wethFixture = await loadEthPoolMainnetFixture();
+      users = ((await ethers.getSigners()) as Signer[]).map(function (user) {
+        return { user, address: "" };
+      });
+      await Promise.all(
+        users.map(async (userInfo) => {
+          const { user } = userInfo;
+          userInfo.address = await user.getAddress();
+        })
+      );
+    });
+    it("Reverts with value mismatch", async () => {
+      await expect(
+        wethFixture.proxy
+          .connect(users[1].user)
+          .mint(
+            ethers.utils.parseUnits("1", 18),
+            "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+            1e10,
+            wethFixture.position.address,
+            { value: utils.parseEther("2") }
+          )
+      ).to.be.revertedWith("Incorrect amount provided");
+    });
+    it("Correctly mints with WETH", async () => {
+      await wethFixture.proxy
+        .connect(users[1].user)
+        .mint(
+          ethers.utils.parseUnits("1", 18),
+          "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+          1e10,
+          wethFixture.position.address,
+          { value: utils.parseEther("1") }
+        );
+      const trancheValue = await wethFixture.tranche.balanceOf(
+        users[1].address
+      );
+      expect(trancheValue).to.be.eq(
+        ethers.BigNumber.from(utils.parseEther("1"))
+      );
+    });
+  });
+
+  describe.only("erc20 Permit mint", async () => {
+    let permitFixture: PermitTokenPoolMainnetInterface;
+    let users: { user: Signer; address: string }[];
+    const tokenHolderAddress = "0x2cc86980e2064d347d878d895ab3f46a8219fcc1";
+    before(async function () {
+      permitFixture = await loadPermitTokenPoolMainnetFixture();
+      users = ((await ethers.getSigners()) as Signer[]).map(function (user) {
+        return { user, address: "" };
+      });
+      await Promise.all(
+        users.map(async (userInfo) => {
+          const { user } = userInfo;
+          userInfo.address = await user.getAddress();
+        })
+      );
+      impersonate(tokenHolderAddress);
+      const tokenHolder = await ethers.provider.getSigner(tokenHolderAddress);
+      await permitFixture.permitToken
+        .connect(tokenHolder)
+        .transfer(users[1].address, utils.parseEther("1"));
+      underlying = await ethers.getContractAt(
+        "contracts/libraries/ERC20.sol:ERC20",
+        await permitFixture.position.token()
+      );
+    });
+    it("Correctly transfers with permit", async () => {
+      const domainSeparator = await permitFixture.permitToken.DOMAIN_SEPARATOR();
+      const nonce = await permitFixture.permitToken.nonces(users[1].address);
+      const digest = getDigest(
+        domainSeparator,
+        users[1].address,
+        permitFixture.proxy.address,
+        utils.parseEther("1"),
+        nonce,
+        ethers.BigNumber.from(
+          "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        )
+      );
+      const joinedSig = await users[1].user.signMessage(digest);
+      const splitSig = ethers.utils.splitSignature(joinedSig);
+
+      await permitFixture.proxy
+        .connect(users[1].user)
+        .mintPermit(
+          utils.parseEther("1"),
+          underlying.address,
+          0,
+          permitFixture.position.address,
+          splitSig.v,
+          splitSig.r,
+          splitSig.s
+        );
     });
   });
 });

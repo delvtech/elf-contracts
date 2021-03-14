@@ -36,8 +36,9 @@ library DateString {
         )
     {
         int256 __days = int256(_days);
-
+        // solhint-disable-next-line var-name-mixedcase
         int256 L = __days + 68569 + OFFSET19700101;
+        // solhint-disable-next-line var-name-mixedcase
         int256 N = (4 * L) / 146097;
         L = L - (146097 * N + 3) / 4;
         int256 _year = (4000 * (L + 1)) / 1461001;

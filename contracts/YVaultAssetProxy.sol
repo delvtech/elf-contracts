@@ -102,6 +102,7 @@ contract YVaultAssetProxy is WrappedPosition {
             localShares - userShares
         );
         // We note a reduction in local supply
+        // solhint-disable-next-line reentrancy
         reserveSupply = localReserveSupply - _amount;
     }
 

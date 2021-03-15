@@ -18,7 +18,6 @@ import { InterestToken__factory } from "typechain/factories/InterestToken__facto
 import { InterestTokenFactory__factory } from "typechain/factories/InterestTokenFactory__factory";
 import { YVaultAssetProxy__factory } from "typechain/factories/YVaultAssetProxy__factory";
 import { IERC20 } from "typechain/IERC20";
-import { IERC20Permit } from "typechain/IERC20Permit";
 import { IWETH } from "typechain/IWETH";
 import { IYearnVault } from "typechain/IYearnVault";
 import { Tranche } from "typechain/Tranche";

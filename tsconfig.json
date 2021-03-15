@@ -18,5 +18,5 @@
       "./test",
       "./typechain"
     ],
-    "files": ["./hardhat.config.ts"]
+    "files": ["./hardhat.config.ts", "./hardhat.config.test.ts"]
   }

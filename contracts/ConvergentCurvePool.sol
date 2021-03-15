@@ -34,8 +34,10 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     uint128 public feesBond;
     // Stored records of governance tokens
     address public governance;
-    // The percent of accumulated fees to pay to the vault.
+    // The percent of each trade's implied yield to collect as LP fee
     uint256 public immutable percentFee;
+    // The percent of LP fees that is payed to governance
+    uint256 public immutable percentFeeGov;
 
     /// @dev We need need to set the immutables on contract creation
     ///      Note - We expect both 'bond' and 'underlying' to have 'decimals()'
@@ -44,7 +46,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     /// @param _expiration The time in unix seconds when the bond asset should equal the underlying asset
     /// @param _unitSeconds The number of seconds in a unit of time, for example 1 year in seconds
     /// @param vault The balancer vault
-    /// @param _percentFee The percent of assigned fees which go to governance
+    /// @param _percentFee The percent each trade's yield to collect as fees
+    /// @param _percentFeeGov The percent of collected that go to governance
     /// @param _governance The address which gets minted reward lp
     /// @param name The balancer pool token name
     /// @param symbol The balancer pool token symbol
@@ -55,13 +58,14 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         uint256 _unitSeconds,
         IVault vault,
         uint256 _percentFee,
+        uint256 _percentFeeGov,
         address _governance,
         string memory name,
         string memory symbol
     ) BalancerPoolToken(name, symbol) {
         // Initialization on the vault
         bytes32 poolId = vault.registerPool(
-            IVault.PoolSpecialization.MINIMAL_SWAP_INFO
+            IVault.PoolSpecialization.TWO_TOKEN
         );
 
         // Pass in zero addresses for Asset Managers
@@ -76,6 +80,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         _vault = vault;
         _poolId = poolId;
         percentFee = _percentFee;
+        percentFeeGov = _percentFeeGov;
         underlying = _underlying;
         underlyingDecimals = IERC20Decimals(address(_underlying)).decimals();
         bond = _bond;
@@ -112,18 +117,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         uint256 currentBalanceTokenOut
     ) public override returns (uint256) {
         // Tokens amounts are passed to us in decimal form of the tokens
-        uint256 amountTokenIn = _tokenToFixed(
-            request.amountIn,
-            request.tokenIn
-        );
-        currentBalanceTokenIn = _tokenToFixed(
-            currentBalanceTokenIn,
-            request.tokenIn
-        );
-        currentBalanceTokenOut = _tokenToFixed(
-            currentBalanceTokenOut,
-            request.tokenOut
-        );
+        uint256 amountTokenIn = request.amountIn;
+
         // We apply the trick which is used in the paper and
         // double count the reserves because the curve provisions liquidity
         // for prices above one underlying per bond, which we don't want to be accessible
@@ -143,8 +138,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
 
         // Assign trade fees
         quote = _assignTradeFee(amountTokenIn, quote, request.tokenOut, false);
-        // Return the quote to token form
-        return _fixedToToken(quote, request.tokenOut);
+        return quote;
     }
 
     /// @dev Returns the amount of 'tokenIn' need to receive a specified amount
@@ -160,18 +154,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     ) public override returns (uint256) {
         // Tokens amounts are passed to us in decimal form of the tokens
         // However we want them to be in 18 decimal fixed point form
-        uint256 amountTokenOut = _tokenToFixed(
-            request.amountOut,
-            request.tokenOut
-        );
-        currentBalanceTokenIn = _tokenToFixed(
-            currentBalanceTokenIn,
-            request.tokenIn
-        );
-        currentBalanceTokenOut = _tokenToFixed(
-            currentBalanceTokenOut,
-            request.tokenOut
-        );
+        uint256 amountTokenOut = request.amountOut;
         // We apply the trick which is used in the paper and
         // double count the reserves because the curve provisions liquidity
         // for prices above one underlying per bond, which we don't want to be accessible
@@ -190,8 +173,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         );
         // Assign trade fees
         quote = _assignTradeFee(quote, amountTokenOut, request.tokenOut, true);
-        // Return the quote in input token decimals
-        return _fixedToToken(quote, request.tokenIn);
+        return quote;
     }
 
     // Liquidity provider functionality
@@ -209,8 +191,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     /// @return amountsIn The actual amounts of token the vault should move to this pool
     /// @return dueProtocolFeeAmounts The amounts of each token to pay as protocol fees
     function onJoinPool(
-        bytes32 poolId,
-        address sender,
+        bytes32, // poolId
+        address, // sender
         address recipient,
         uint256[] calldata currentBalances,
         uint256,
@@ -341,18 +323,18 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         // Gets 1 - t
         uint256 a = _getYieldExponent();
         // calculate x before ^ a
-        uint256 xBeforePowA = reserveX.pow(a);
+        uint256 xBeforePowA = LogExpMath.pow(reserveX, a);
         // calculate y before ^ a
-        uint256 yBeforePowA = reserveY.pow(a);
+        uint256 yBeforePowA = LogExpMath.pow(reserveY, a);
         // calculate x after ^ a
         uint256 xAfterPowA = out
-            ? (reserveX + amountX).pow(a)
-            : (reserveX.sub(amountX)).pow(a);
+            ? LogExpMath.pow(reserveX + amountX, a)
+            : LogExpMath.pow(reserveX.sub(amountX), a);
         // Calculate y_after = ( x_before ^a + y_ before ^a -  x_after^a)^(1/a)
         // Will revert with underflow here if the liquidity isn't enough for the trade
         uint256 yAfter = (xBeforePowA + yBeforePowA).sub(xAfterPowA);
         // Note that this call is to FixedPoint Div so works as intended
-        yAfter = yAfter.pow(uint256(FixedPoint.ONE).div(a));
+        yAfter = LogExpMath.pow(yAfter, uint256(FixedPoint.ONE).div(a));
         // The amount of Y token to send is (reserveY_before - reserveY_after)
         return out ? reserveY.sub(yAfter) : yAfter.sub(reserveY);
     }
@@ -383,9 +365,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountOut.sub(amountIn)
                 );
                 // we record that fee collected from the underlying
-                feesUnderlying += uint128(
-                    _fixedToToken(impliedYieldFee, underlying)
-                );
+                feesUnderlying += uint128(impliedYieldFee);
                 // and return the adjusted input quote
                 return amountIn.add(impliedYieldFee);
             } else {
@@ -394,7 +374,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountIn.sub(amountOut)
                 );
                 // we record that collected fee from the input bond
-                feesBond += uint128(_fixedToToken(impliedYieldFee, bond));
+                feesBond += uint128(impliedYieldFee);
                 // and return the updated input quote
                 return amountIn.add(impliedYieldFee);
             }
@@ -405,7 +385,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountOut.sub(amountIn)
                 );
                 // we record that fee collected from the bond output
-                feesBond += uint128(_fixedToToken(impliedYieldFee, bond));
+                feesBond += uint128(impliedYieldFee);
                 // and then return the updated output
                 return amountOut.sub(impliedYieldFee);
             } else {
@@ -414,9 +394,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountIn.sub(amountOut)
                 );
                 // we record the collected underlying fee
-                feesUnderlying += uint128(
-                    _fixedToToken(impliedYieldFee, underlying)
-                );
+                feesUnderlying += uint128(impliedYieldFee);
                 // and then return the updated output quote
                 return amountOut.sub(impliedYieldFee);
             }
@@ -539,21 +517,23 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         uint256 localFeeUnderlying = uint256(feesUnderlying);
         uint256 localFeeBond = uint256(feesBond);
         (uint256 feesUsedUnderlying, uint256 feesUsedBond) = _mintLP(
-            localFeeUnderlying.mul(percentFee),
-            localFeeBond.mul(percentFee),
+            localFeeUnderlying.mul(percentFeeGov),
+            localFeeBond.mul(percentFeeGov),
             currentBalances,
             governance
         );
         // Safe math sanity checks
         require(
-            localFeeUnderlying >= (feesUsedUnderlying).div(percentFee),
+            localFeeUnderlying >= (feesUsedUnderlying).div(percentFeeGov),
             "Underflow"
         );
-        require(localFeeBond >= (feesUsedBond).div(percentFee), "Underflow");
+        require(localFeeBond >= (feesUsedBond).div(percentFeeGov), "Underflow");
         // Store the remaining fees should only be one sstore
         (feesUnderlying, feesBond) = (
-            uint128(localFeeUnderlying - (feesUsedUnderlying).div(percentFee)),
-            uint128(localFeeBond - (feesUsedBond).div(percentFee))
+            uint128(
+                localFeeUnderlying - (feesUsedUnderlying).div(percentFeeGov)
+            ),
+            uint128(localFeeBond - (feesUsedBond).div(percentFeeGov))
         );
         // We return the sload-ed values so that they do not need to be loaded again.
         return (localFeeUnderlying, localFeeBond);
@@ -569,7 +549,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         timeTillExpiry *= 1e18;
         // timeTillExpiry now contains the a fixed point of the years remaining
         timeTillExpiry = timeTillExpiry.div(unitSeconds * 1e18);
-        return uint256(FixedPoint.ONE).sub(timeTillExpiry);
+        uint256 result = uint256(FixedPoint.ONE).sub(timeTillExpiry);
+        return result;
     }
 
     /// @dev Applies the reserve adjustment from the paper and returns the reserves
@@ -594,68 +575,5 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         }
         // This should never be hit
         revert("Token request doesn't match stored");
-    }
-
-    /// @dev Turns a token which is either 'bond' or 'underlying' into 18 point decimal
-    /// @param amount The amount of the token in native decimal encoding
-    /// @param token The address of the token
-    /// @return The amount of token encoded into 18 point fixed point
-    function _tokenToFixed(uint256 amount, IERC20 token)
-        internal
-        view
-        returns (uint256)
-    {
-        // In both cases we are targeting 18 point
-        if (token == underlying) {
-            return _normalize(amount, underlyingDecimals, 18);
-        } else if (token == bond) {
-            return _normalize(amount, bondDecimals, 18);
-        }
-        // Should never happen
-        revert("Called with non pool token");
-    }
-
-    /// @dev Turns an 18 fixed point amount into a token amount
-    ///       Token must be either 'bond' or 'underlying'
-    /// @param amount The amount of the token in 18 decimal fixed point
-    /// @param token The address of the token
-    /// @return The amount of token encoded in native decimal point
-    function _fixedToToken(uint256 amount, IERC20 token)
-        internal
-        view
-        returns (uint256)
-    {
-        if (token == underlying) {
-            // Recodes to 'underlyingDecimals' decimals
-            return _normalize(amount, 18, underlyingDecimals);
-        } else if (token == bond) {
-            // Recodes to 'bondDecimals' decimals
-            return _normalize(amount, 18, bondDecimals);
-        }
-        // Should never happen
-        revert("Called with non pool token");
-    }
-
-    /// @dev Takes an 'amount' encoded with 'decimalsBefore' decimals and
-    ///      re encodes it with 'decimalsAfter' decimals
-    /// @param amount The amount to normalize
-    /// @param decimalsBefore The decimal encoding before
-    /// @param decimalsAfter The decimal encoding after
-    function _normalize(
-        uint256 amount,
-        uint8 decimalsBefore,
-        uint8 decimalsAfter
-    ) internal view returns (uint256) {
-        // If we need to increase the decimals
-        if (decimalsBefore > decimalsAfter) {
-            // Then we shift right the amount by the number of decimals
-            amount = amount / 10**(decimalsBefore - decimalsAfter);
-            // If we need to decrease the number
-        } else if (decimalsBefore < decimalsAfter) {
-            // then we shift left by the difference
-            amount = amount * 10**(decimalsAfter - decimalsBefore);
-        }
-        // If nothing changed this is a no-op
-        return amount;
     }
 }

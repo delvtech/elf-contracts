@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 import "../WrappedPosition.sol";
 import "./TestERC20.sol";
 
-contract WrappedPositionStub is WrappedPosition {
+contract TestWrappedPosition is WrappedPosition {
     uint256 public underlyingUnitValue = 100;
 
     constructor(IERC20 _token)

@@ -93,9 +93,7 @@ contract YVaultAssetProxy is WrappedPosition {
         // We calculate the amount of underlying to send
         uint256 userUnderlying = (localUnderlying * _amount) /
             localReserveSupply;
-        // We send the redemption underlying to the caller
-        // Note 'token' is an immutable from shares
-        token.transfer(msg.sender, freedUnderlying + userUnderlying);
+
         // We then store the updated reserve amounts
         _setReserves(
             localUnderlying - userUnderlying,
@@ -103,6 +101,10 @@ contract YVaultAssetProxy is WrappedPosition {
         );
         // We note a reduction in local supply
         reserveSupply = localReserveSupply - _amount;
+
+        // We send the redemption underlying to the caller
+        // Note 'token' is an immutable from shares
+        token.transfer(msg.sender, freedUnderlying + userUnderlying);
     }
 
     /// @notice Makes the actual deposit into the yearn vault

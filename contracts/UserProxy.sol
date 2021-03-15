@@ -21,29 +21,29 @@ contract UserProxy is Authorizable {
     // Constant wrapped ether address
     IWETH public immutable weth;
     // Tranche factory address for Tranche contract address derivation
-    address internal immutable trancheFactory;
+    address internal immutable _trancheFactory;
     // Tranche bytecode hash for Tranche contract address derivation.
     // This is constant as long as Tranche does not implement non-constant constructor arguments.
-    bytes32 internal immutable trancheBytecodeHash;
+    bytes32 internal immutable _trancheBytecodeHash;
     // A constant which represents ether
-    address constant ETH_CONSTANT = address(
+    address internal constant _ETH_CONSTANT = address(
         0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
     );
 
     /// @dev Marks the msg.sender as authorized and sets them
     ///      as the owner in authorization library
     /// @param _weth The constant weth contract address
-    /// @param _trancheFactory Address of the TrancheFactory contract
-    /// @param _trancheBytecodeHash Hash of the Tranche bytecode.
+    /// @param __trancheFactory Address of the TrancheFactory contract
+    /// @param __trancheBytecodeHash Hash of the Tranche bytecode.
     constructor(
         IWETH _weth,
-        address _trancheFactory,
-        bytes32 _trancheBytecodeHash
+        address __trancheFactory,
+        bytes32 __trancheBytecodeHash
     ) Authorizable() {
         _authorize(msg.sender);
         weth = _weth;
-        trancheFactory = _trancheFactory;
-        trancheBytecodeHash = _trancheBytecodeHash;
+        _trancheFactory = __trancheFactory;
+        _trancheBytecodeHash = __trancheBytecodeHash;
     }
 
     /// @dev Requires that the contract is not frozen
@@ -63,7 +63,7 @@ contract UserProxy is Authorizable {
     /// @dev This function assumes that it already has an allowance for the token in question.
     /// @param _amount The amount of underlying to turn into tokens
     /// @param _underlying Either (1) The underlying ERC20 token contract
-    ///                   or (2) the ETH_CONSTANT to indicate the user has sent eth.
+    ///                   or (2) the _ETH_CONSTANT to indicate the user has sent eth.
     ///                   This token should revert in the event of a transfer failure.
     /// @param _expiration The expiration time of the Tranche contract
     /// @param _position The contract which manages pooled deposits
@@ -75,7 +75,7 @@ contract UserProxy is Authorizable {
     ) external payable notFrozen() {
         // If the underlying token matches this predefined 'ETH token'
         // then we create weth for the user and go from there
-        if (address(_underlying) == ETH_CONSTANT) {
+        if (address(_underlying) == _ETH_CONSTANT) {
             // Check that the amount matches the amount provided
             require(msg.value == _amount, "Incorrect amount provided");
             // Create weth from the provided eth
@@ -158,9 +158,9 @@ contract UserProxy is Authorizable {
         bytes32 addressBytes = keccak256(
             abi.encodePacked(
                 bytes1(0xff),
-                trancheFactory,
+                _trancheFactory,
                 salt,
-                trancheBytecodeHash
+                _trancheBytecodeHash
             )
         );
         return ITranche(address(uint160(uint256(addressBytes))));

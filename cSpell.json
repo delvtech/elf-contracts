@@ -12,6 +12,7 @@
         "deauthorize",
         "delegatecall",
         "destinatary",
+        "ecsign",
         "EIP",
         "ERC",
         "exitswap",

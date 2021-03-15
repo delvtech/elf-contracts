@@ -65,6 +65,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^3.4.0",
+    "ethereumjs-util": "^7.0.9",
     "module-alias": "^2.2.2"
   }
 }

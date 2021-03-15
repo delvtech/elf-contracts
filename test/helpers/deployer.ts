@@ -9,7 +9,6 @@ import { AToken__factory } from "typechain/factories/AToken__factory";
 import { AYVault__factory } from "typechain/factories/AYVault__factory";
 import { WrappedPositionStub__factory } from "typechain/factories/WrappedPositionStub__factory";
 import { IERC20__factory } from "typechain/factories/IERC20__factory";
-import { IERC20Permit__factory } from "typechain/factories/IERC20Permit__factory";
 import { IWETH__factory } from "typechain/factories/IWETH__factory";
 import { IYearnVault__factory } from "typechain/factories/IYearnVault__factory";
 import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
@@ -60,14 +59,7 @@ export interface UsdcPoolMainnetInterface {
   tranche: Tranche;
   proxy: UserProxyTest;
 }
-export interface PermitTokenPoolMainnetInterface {
-  signer: Signer;
-  permitToken: IERC20Permit;
-  permitVault: IYearnVault;
-  position: YVaultAssetProxy;
-  tranche: Tranche;
-  proxy: UserProxyTest;
-}
+
 export interface TrancheTestFixture {
   signer: Signer;
   usdc: TestERC20;
@@ -246,53 +238,6 @@ export async function loadUsdcPoolMainnetFixture() {
     signer,
     usdc,
     yusdc,
-    position,
-    tranche,
-    proxy,
-  };
-}
-export async function loadPermitTokenPoolMainnetFixture() {
-  const permitTokenAddress = "0x111111111117dc0aa78b770fa6a738034120c302";
-  const permitVaultAddress = "0xB8C3B7A2A618C552C23B1E4701109a9E756Bab67";
-  const [signer] = await ethers.getSigners();
-  const permitToken = IERC20Permit__factory.connect(permitTokenAddress, signer);
-  const permitVault = IYearnVault__factory.connect(permitVaultAddress, signer);
-
-  const position = await deployYasset(
-    signer,
-    permitVault.address,
-    permitToken.address,
-    "Element Yearn USDC",
-    "eyUSDC"
-  );
-
-  // deploy and fetch tranche contract
-  const trancheFactory = await deployTrancheFactory(signer);
-
-  await trancheFactory.deployTranche(1e10, position.address);
-
-  const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
-  const events = await trancheFactory.queryFilter(eventFilter);
-  const trancheAddress = events[0] && events[0].args && events[0].args[0];
-
-  const tranche = Tranche__factory.connect(trancheAddress, signer);
-  // Setup the proxy
-  const bytecodehash = ethers.utils.solidityKeccak256(
-    ["bytes"],
-    [data.bytecode]
-  );
-
-  const proxyFactory = new UserProxyTest__factory(signer);
-  const proxy = await proxyFactory.deploy(
-    permitTokenAddress,
-    trancheFactory.address,
-    bytecodehash
-  );
-
-  return {
-    signer,
-    permitToken,
-    permitVault,
     position,
     tranche,
     proxy,

@@ -5,8 +5,17 @@ import {
   solidityPack,
 } from "ethers/lib/utils";
 import { BigNumberish } from "ethers";
+
+const PERMIT_TYPEHASH = keccak256(
+  toUtf8Bytes(
+    "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+  )
+);
+
 export function getDigest(
+  tokenName: string,
   domainSeparator: string,
+  tokenAddress: string,
   owner: string,
   spender: string,
   value: BigNumberish,
@@ -23,14 +32,7 @@ export function getDigest(
         keccak256(
           defaultAbiCoder.encode(
             ["bytes32", "address", "address", "uint256", "uint256", "uint256"],
-            [
-              "0xea2aa0a1be11a07ed86d755c93467f4f82362b452371d1ba94d1715123511acb",
-              owner,
-              spender,
-              value,
-              nonce,
-              deadline,
-            ]
+            [PERMIT_TYPEHASH, owner, spender, value, nonce, deadline]
           )
         ),
       ]

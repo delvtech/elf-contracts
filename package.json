@@ -34,7 +34,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@nomiclabs/hardhat-ethers": "^2.0.1",
+    "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@typechain/ethers-v5": "^5.0.0",
     "@types/chai-almost": "^1.0.1",
@@ -49,8 +49,8 @@
     "eslint": "^7.20.0",
     "eslint-config-prettier": "^8.1.0",
     "ethereum-waffle": "^3.2.2",
-    "ethers": "^5.0.29",
-    "hardhat": "^2.0.8",
+    "ethers": "^5.0.32",
+    "hardhat": "^2.1.1",
     "hardhat-gas-reporter": "^1.0.4",
     "hardhat-typechain": "^0.3.4",
     "husky": "^4.3.0",
@@ -67,6 +67,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^3.4.0",
+    "ethereumjs-util": "^7.0.9",
     "module-alias": "^2.2.2"
   }
 }

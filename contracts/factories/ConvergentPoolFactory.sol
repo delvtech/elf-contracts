@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.7.0;
 
 import "../balancer-core-v2/pools/BasePoolFactory.sol";
@@ -45,24 +46,22 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
         string memory _name,
         string memory _symbol
     ) external returns (address) {
-        return
-            _create(
-                abi.encodePacked(
-                    type(ConvergentCurvePool).creationCode,
-                    abi.encode(
-                        _underlying,
-                        _bond,
-                        _expiration,
-                        _unitSeconds,
-                        vault,
-                        _percentFee,
-                        percentFeeGov,
-                        governance,
-                        _name,
-                        _symbol
-                    )
-                )
-            );
+        address pool = address(
+            new ConvergentCurvePool(
+                IERC20(_underlying),
+                IERC20(_bond),
+                _expiration,
+                _unitSeconds,
+                vault,
+                _percentFee,
+                percentFeeGov,
+                governance,
+                _name,
+                _symbol
+            )
+        );
+        _register(pool);
+        return pool;
     }
 
     /// @notice Allows governance to set the new percent fee for governance

@@ -13,26 +13,15 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
 
-import "../vault/interfaces/IVault.sol";
+import "../../lib/helpers/EmergencyPeriod.sol";
 
-import "../pools/BasePoolFactory.sol";
+contract EmergencyPeriodMock is EmergencyPeriod {
+    constructor (uint256 emergencyPeriod, uint256 emergencyPeriodCheckExtension)
+        EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension)
+    {}
 
-contract MockFactoryCreatedPool {
-    function getPoolId() external view returns (bytes32) {
-        return bytes32(uint256(address(this)));
-    }
-}
-
-contract MockPoolFactory is BasePoolFactory {
-    constructor(IVault _vault) BasePoolFactory(_vault) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
-    function create() external returns (address) {
-        address pool = address(new MockFactoryCreatedPool());
-        _register(pool);
-        return pool;
+    function setEmergencyPeriod(bool active) external {
+        _setEmergencyPeriod(active);
     }
 }

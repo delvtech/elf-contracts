@@ -512,6 +512,10 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         internal
         returns (uint256, uint256)
     {
+        if (percentFeeGov == 0) {
+            return (feesUnderlying, feesBond);
+        }
+
         // Load and cast the stored fees
         // Note - Because of sizes should only be one sload
         uint256 localFeeUnderlying = uint256(feesUnderlying);

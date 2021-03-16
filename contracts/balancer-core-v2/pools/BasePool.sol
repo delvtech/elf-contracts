@@ -21,8 +21,10 @@ import "../lib/math/FixedPoint.sol";
 import "../lib/helpers/InputHelpers.sol";
 
 import "./BalancerPoolToken.sol";
+import "./BasePoolAuthorization.sol";
 import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IBasePool.sol";
+import "../lib/helpers/EmergencyPeriod.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
@@ -35,19 +37,21 @@ import "../vault/interfaces/IBasePool.sol";
  * Because this contract doesn't implement the swap hooks, derived contracts should likely inherit from BaseGeneralPool
  * or BaseMinimalSwapInfoPool instead.
  */
-abstract contract BasePool is IBasePool, BalancerPoolToken {
+abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, EmergencyPeriod {
     using FixedPoint for uint256;
 
     uint256 private constant _MIN_TOKENS = 2;
     uint256 private constant _MAX_TOKENS = 16;
 
-    uint256 private constant _MAX_SWAP_FEE = 10 * (10**16); // 10%
+    // 1e16 = 1%, 1e18 = 100%
+    uint256 private constant _MAX_SWAP_FEE = 10e16;
 
     uint256 private constant _MINIMUM_BPT = 10**3;
 
+    uint256 internal _swapFee;
+
     IVault internal immutable _vault;
     bytes32 internal immutable _poolId;
-    uint256 internal immutable _swapFee;
     uint256 internal immutable _totalTokens;
 
     IERC20 internal immutable _token0;
@@ -91,17 +95,26 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256 swapFee
-    ) BalancerPoolToken(name, symbol) {
+        uint256 swapFee,
+        uint256 emergencyPeriod,
+        uint256 emergencyPeriodCheckExtension
+    )
+        BasePoolAuthorization()
+        BalancerPoolToken(name, symbol)
+        EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension)
+    {
         require(tokens.length >= _MIN_TOKENS, "MIN_TOKENS");
         require(tokens.length <= _MAX_TOKENS, "MAX_TOKENS");
 
-        require(swapFee <= _MAX_SWAP_FEE, "MAX_SWAP_FEE");
-
-        // Because these Pools will register tokens only once, if the tokens array is sorted, then the Pool tokens will
-        // have this same order. We rely on this property to make Pools simpler to write, as it lets us assume that the
+        // The Vault only requires the token list to be ordered for the Two Token Pools specialization. However,
+        // to make the developer experience consistent, we are requiring this condition for all the native pools.
+        // Also, since these Pools will register tokens only once, we can ensure the Pool tokens will follow the same
+        // order. We rely on this property to make Pools simpler to write, as it lets us assume that the
         // order of token-specific parameters (such as token weights) will not change.
         InputHelpers.ensureArrayIsSorted(tokens);
+
+        require(swapFee <= _MAX_SWAP_FEE, "MAX_SWAP_FEE");
+
         bytes32 poolId = vault.registerPool(specialization);
 
         // Pass in zero addresses for Asset Managers
@@ -151,7 +164,7 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
         _scalingFactor15 = tokens.length > 15 ? _computeScalingFactor(tokens[15]) : 0;
     }
 
-    // Getters
+    // Getters / Setters
 
     function getVault() external view override returns (IVault) {
         return _vault;
@@ -163,6 +176,15 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
 
     function getSwapFee() external view returns (uint256) {
         return _swapFee;
+    }
+
+    function setSwapFee(uint256 swapFee) external authenticate {
+        require(swapFee <= _MAX_SWAP_FEE, "MAX_SWAP_FEE");
+        _swapFee = swapFee;
+    }
+
+    function setEmergencyPeriod(bool active) external authenticate {
+        _setEmergencyPeriod(active);
     }
 
     // Join / Exit Hooks
@@ -191,7 +213,7 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
             // On initialization, we lock _MINIMUM_BPT by minting it for the zero address. This BPT acts as a minimum
             // as it will never be burned, which reduces potential issues with rounding, and also prevents the Pool from
             // ever being fully drained.
-            require(bptAmountOut >= _MINIMUM_BPT, "MINUMUM_BPT");
+            require(bptAmountOut >= _MINIMUM_BPT, "MINIMUM_BPT");
             _mintPoolTokens(address(0), _MINIMUM_BPT);
             _mintPoolTokens(recipient, bptAmountOut - _MINIMUM_BPT);
 
@@ -295,7 +317,7 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
 
     function _addSwapFee(uint256 amount) internal view returns (uint256) {
         // This returns amount + fees, so we round up (favoring fees).
-        return amount.divUp(FixedPoint.ONE.sub(_swapFee));
+        return amount.divUp(_swapFee.complement());
     }
 
     function _subtractSwapFee(uint256 amount) internal view returns (uint256) {
@@ -394,5 +416,9 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
         for (uint256 i = 0; i < _totalTokens; ++i) {
             amount[i] = Math.divUp(amount[i], scalingFactors[i]);
         }
+    }
+
+    function _getAuthorizer() internal view override returns (IAuthorizer) {
+        return _vault.getAuthorizer();
     }
 }

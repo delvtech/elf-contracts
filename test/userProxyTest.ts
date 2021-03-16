@@ -1,14 +1,14 @@
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
+import { Contract } from "ethers";
 import { ethers } from "hardhat";
+import { CodeSizeChecker__factory } from "typechain/factories/CodeSizeChecker__factory";
+
 import {
   loadUsdcPoolMainnetFixture,
   UsdcPoolMainnetInterface,
 } from "./helpers/deployer";
 import { impersonate } from "./helpers/impersonate";
-import { Contract } from "ethers";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
-import { CodeSizeChecker } from "typechain/CodeSizeChecker";
-import { CodeSizeChecker__factory } from "typechain/factories/CodeSizeChecker__factory";
 
 describe("UserProxyTests", function () {
   let fixture: UsdcPoolMainnetInterface;

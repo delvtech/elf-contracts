@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
+pragma solidity ^0.8.0;
 
 import "../Tranche.sol";
 import "../InterestToken.sol";
 import "../interfaces/IERC20.sol";
-
-pragma solidity ^0.8.0;
 
 contract InterestTokenFactory {
     /// @notice Deploy a new interest token contract

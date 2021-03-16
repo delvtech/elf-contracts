@@ -182,18 +182,21 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         return quote;
     }
 
-    // Liquidity provider functionality
+    /// @dev Returns the balances so that they'll be in the order [underlying, bond].
+    /// @param currentBalances balances sorted low to high of address value.
+    function _getSortedBalances(uint256[] memory currentBalances)
+        internal
+        returns (uint256 underlyingBalance, uint256 bondBalance)
+    {
+        if (underlying < bond) {
+            underlyingBalance = currentBalances[0];
+            bondBalance = currentBalances[1];
+        } else {
+            underlyingBalance = currentBalances[1];
+            bondBalance = currentBalances[0];
+        }
+    }
 
-    /// @dev Hook for joining the pool that must be called from the vault.
-    ///      It mints a proportional number of new tokens compared to current LP pool
-    // @param poolId Unused by this pool but in interface
-    // @param sender Unused by this pool but in interface
-    /// @param recipient The address which will receive lp tokens.
-    /// @param currentBalances The current pool balances, will be length 2
-    // @param latestBlockNumberUsed Last block number, but not used in this pool
-    /// @param protocolSwapFee The percent of pool fees to be paid to the Balancer Protocol
-    /// @param userData Abi encoded fixed length 2 uint array containing:
-    ///                 [max amount of underlying in, max amount of bond in]
     /// @return amountsIn The actual amounts of token the vault should move to this pool
     /// @return dueProtocolFeeAmounts The amounts of each token to pay as protocol fees
     function onJoinPool(
@@ -219,6 +222,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             currentBalances.length == 2 && maxAmountsIn.length == 2,
             "Invalid format"
         );
+
         // Mint LP to the governance address.
         // The {} zoning here helps solidity figure out the stack
         {
@@ -251,7 +255,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     // @param poolId Unused by this pool but in interface
     // @param sender Unused by this pool but in interface
     /// @param recipient The address which will receive lp tokens.
-    /// @param currentBalances The current pool balances, will be length 2
+    /// @param currentBalances The current pool balances, sorted by address low to high.  length 2
     // @param latestBlockNumberUsed last block number unused in this pool
     /// @param protocolSwapFee The percent of pool fees to be paid to the Balancer Protocol
     /// @param userData Abi encoded fixed length 2 array containing
@@ -281,6 +285,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             currentBalances.length == 2 && minAmountsOut.length == 2,
             "Invalid format"
         );
+
         // Mint LP to the governance address.
         // {} zones to help solidity figure out the stack
         {
@@ -411,7 +416,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     /// @dev Mints the maximum possible LP given a set of max inputs
     /// @param inputUnderlying The max underlying to deposit
     /// @param inputBond The max bond to deposit
-    /// @param currentBalances The current balances encoded in a memory array
+    /// @param currentBalances The current pool balances, sorted by address low to high.  length 2
     /// @param recipient The person who receives the lp funds
     /// @return The actual amounts of token deposited layed out as (underlying, bond)
     function _mintLP(
@@ -421,8 +426,11 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         address recipient
     ) internal returns (uint256, uint256) {
         // Passing in in memory array helps stack but we use locals for better names
-        uint256 reserveUnderlying = currentBalances[0];
-        uint256 reserveBond = currentBalances[1];
+
+        (uint256 reserveUnderlying, uint256 reserveBond) = _getSortedBalances(
+            currentBalances
+        );
+
         uint256 localTotalSupply = totalSupply();
         // Check if the pool is initialized
         if (localTotalSupply == 0) {
@@ -468,7 +476,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     ///      as set of minium outputs.
     /// @param minOutputUnderlying The minimum output in underlying
     /// @param minOutputBond The minimum output in the bond
-    /// @param currentBalances The current balances encoded in a memory array
+    /// @param currentBalances The current pool balances, sorted by address low to high.  length 2
     /// @param source The address to burn from.
     /// @return Tuple (output in underlying, output in bond)
     function _burnLP(
@@ -477,9 +485,10 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         uint256[] memory currentBalances,
         address source
     ) internal returns (uint256, uint256) {
-        // Passing in in memory array helps stack but we use locals for better names
-        uint256 reserveUnderlying = currentBalances[0];
-        uint256 reserveBond = currentBalances[1];
+        (uint256 reserveUnderlying, uint256 reserveBond) = _getSortedBalances(
+            currentBalances
+        );
+
         uint256 localTotalSupply = totalSupply();
         // Calculate the ratio of the minOutputUnderlying to reserve
         uint256 underlyingPerBond = reserveUnderlying.div(reserveBond);
@@ -512,7 +521,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     }
 
     /// @dev Mints LP tokens from a percentage of the stored fees and then updates them
-    /// @param currentBalances The reserve balances as [underlyingBalance, bondBalance]
+    /// @param currentBalances The current pool balances, sorted by address low to high.  length 2
     /// @return Returns the fee amounts as (feeUnderlying, feeBond) to avoid other sloads
     function _mintGovernanceLP(uint256[] memory currentBalances)
         internal

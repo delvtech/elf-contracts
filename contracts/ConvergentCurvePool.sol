@@ -68,12 +68,18 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             IVault.PoolSpecialization.TWO_TOKEN
         );
 
+        IERC20[] memory tokens = new IERC20[](2);
+        if (_underlying < _bond) {
+            tokens[0] = _underlying;
+            tokens[1] = _bond;
+        } else {
+            tokens[0] = _bond;
+            tokens[1] = _underlying;
+        }
+
         // Pass in zero addresses for Asset Managers
         // Solidity really needs inline declaration of dynamic arrays
         // Note - functions below assume this token order
-        IERC20[] memory tokens = new IERC20[](2);
-        tokens[0] = _underlying;
-        tokens[1] = _bond;
         vault.registerTokens(poolId, tokens, new address[](2));
 
         // Set immutable state variables

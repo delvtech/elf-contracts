@@ -21,7 +21,7 @@ contract TrancheFactory {
     address internal _tempWpAddress;
     uint256 internal _tempExpiration;
     IInterestToken internal _tempInterestToken;
-    bytes32 public constant trancheCreationHash = keccak256(
+    bytes32 public constant TRANCHE_CREATION_HASH = keccak256(
         type(Tranche).creationCode
     );
 
@@ -57,7 +57,7 @@ contract TrancheFactory {
                             bytes1(0xff),
                             address(this),
                             salt,
-                            trancheCreationHash
+                            TRANCHE_CREATION_HASH
                         )
                     )
                 )

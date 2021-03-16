@@ -15,6 +15,7 @@ abstract contract ERC20 is IERC20Permit {
     mapping(address => uint256) public override nonces;
 
     // --- EIP712 niceties ---
+    // solhint-disable-next-line var-name-mixedcase
     bytes32 public override DOMAIN_SEPARATOR;
     // bytes32 public constant PERMIT_TYPEHASH = keccak256("Permit(address holder,address spender,uint256 nonce,uint256 expiry,bool allowed)");
     bytes32

@@ -186,6 +186,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     /// @param currentBalances balances sorted low to high of address value.
     function _getSortedBalances(uint256[] memory currentBalances)
         internal
+        view
         returns (uint256 underlyingBalance, uint256 bondBalance)
     {
         if (underlying < bond) {
@@ -410,7 +411,6 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                 return amountOut.sub(impliedYieldFee);
             }
         }
-        revert("Called with non pool token");
     }
 
     /// @dev Mints the maximum possible LP given a set of max inputs

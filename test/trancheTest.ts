@@ -161,6 +161,24 @@ describe("Tranche", () => {
         initialBalance
       );
     });
+    it("Correctly deposits at 3 times", async () => {
+      const initialUnderlying = await fixture.positionStub.underlyingUnitValue();
+
+      await fixture.tranche.deposit(1e8, user1Address);
+      expect(await fixture.tranche.balanceOf(user1Address)).to.be.eq(1e8);
+      await fixture.positionStub.setSharesToUnderlying(
+        bnFloatMultiplier(initialUnderlying, 1.5)
+      );
+      await fixture.tranche.connect(user2).deposit(1e8, user2Address);
+      expect(await fixture.tranche.balanceOf(user2Address)).to.be.eq(49999850);
+      await fixture.positionStub.setSharesToUnderlying(
+        bnFloatMultiplier(initialUnderlying, 1.8)
+      );
+      await fixture.tranche.deposit(1e8, user1Address);
+      expect(await fixture.tranche.balanceOf(user1Address)).to.be.eq(
+        1e8 + 24999835
+      );
+    });
   });
   describe("withdraw", () => {
     beforeEach(async () => {

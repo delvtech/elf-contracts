@@ -114,19 +114,13 @@ contract Tranche is ERC20, ITranche {
             uint256(interestSupply)
         );
         uint256 adjustedAmount;
-        // Have to split on the initialization case
-        if (_valueSupplied > 0) {
+        // Have to split on the initialization case and negative interest case
+        if (_valueSupplied > 0 && holdingsValue > _valueSupplied) {
             adjustedAmount =
-                2 *
                 usedUnderlying -
-                (usedUnderlying * holdingsValue) /
-                _valueSupplied;
+                ((holdingsValue - _valueSupplied) * usedUnderlying) /
+                _interestSupply;
         } else {
-            adjustedAmount = usedUnderlying;
-        }
-        // If negative interest has been accumulated we don't want to
-        // give a bonus so we reset the amount to be exactly what was provided
-        if (adjustedAmount > usedUnderlying) {
             adjustedAmount = usedUnderlying;
         }
         // We record the new input of reclaimable underlying

@@ -240,7 +240,6 @@ export async function loadUsdcPoolMainnetFixture() {
     proxy,
   };
 }
-
 export async function loadTestTrancheFixture() {
   const [signer] = await ethers.getSigners();
   const testTokenDeployer = new TestERC20__factory(signer);

@@ -6,7 +6,7 @@ import {
   EthPoolMainnetInterface,
   loadEthPoolMainnetFixture,
 } from "./helpers/deployer";
-import { impersonate, stopImpersonating } from "./helpers/impersonate";
+import { impersonate } from "./helpers/impersonate";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 import { getDigest } from "./helpers/signatures";
 import { Contract } from "ethers";

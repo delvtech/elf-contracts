@@ -232,8 +232,19 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                 uint256 localFeeBond
             ) = _mintGovernanceLP(currentBalances);
             dueProtocolFeeAmounts = new uint256[](2);
-            dueProtocolFeeAmounts[0] = localFeeUnderlying.mul(protocolSwapFee);
-            dueProtocolFeeAmounts[1] = localFeeBond.mul(protocolSwapFee);
+
+            // balancer v2 expects results in ascending address order
+            if (underlying < bond) {
+                dueProtocolFeeAmounts[0] = localFeeUnderlying.mul(
+                    protocolSwapFee
+                );
+                dueProtocolFeeAmounts[1] = localFeeBond.mul(protocolSwapFee);
+            } else {
+                dueProtocolFeeAmounts[1] = localFeeUnderlying.mul(
+                    protocolSwapFee
+                );
+                dueProtocolFeeAmounts[0] = localFeeBond.mul(protocolSwapFee);
+            }
         }
         // Mint for the user
         {
@@ -245,8 +256,15 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             );
             // Assign to variable memory arrays in return
             amountsIn = new uint256[](2);
-            amountsIn[0] = callerUsedUnderlying;
-            amountsIn[1] = callerUsedBond;
+
+            // balancer v2 expects results in ascending address order
+            if (underlying < bond) {
+                amountsIn[0] = callerUsedUnderlying;
+                amountsIn[1] = callerUsedBond;
+            } else {
+                amountsIn[1] = callerUsedUnderlying;
+                amountsIn[0] = callerUsedBond;
+            }
         }
     }
 
@@ -287,7 +305,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             "Invalid format"
         );
 
-        // Mint LP to the governance address.
+        // Burn LP for the governance address.
         // {} zones to help solidity figure out the stack
         {
             (
@@ -296,8 +314,19 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             ) = _mintGovernanceLP(currentBalances);
 
             dueProtocolFeeAmounts = new uint256[](2);
-            dueProtocolFeeAmounts[0] = localFeeUnderlying.mul(protocolSwapFee);
-            dueProtocolFeeAmounts[1] = localFeeBond.mul(protocolSwapFee);
+
+            // balancer v2 expects results in ascending address order
+            if (underlying < bond) {
+                dueProtocolFeeAmounts[0] = localFeeUnderlying.mul(
+                    protocolSwapFee
+                );
+                dueProtocolFeeAmounts[1] = localFeeBond.mul(protocolSwapFee);
+            } else {
+                dueProtocolFeeAmounts[1] = localFeeUnderlying.mul(
+                    protocolSwapFee
+                );
+                dueProtocolFeeAmounts[0] = localFeeBond.mul(protocolSwapFee);
+            }
         }
         // Burn for the user
         {
@@ -309,8 +338,15 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             );
             // Assign to variable memory arrays in return
             amountsOut = new uint256[](2);
-            amountsOut[0] = releasedUnderlying;
-            amountsOut[1] = releasedBond;
+
+            // balancer v2 expects results in ascending address order
+            if (underlying < bond) {
+                amountsOut[0] = releasedUnderlying;
+                amountsOut[1] = releasedBond;
+            } else {
+                amountsOut[1] = releasedUnderlying;
+                amountsOut[0] = releasedBond;
+            }
         }
     }
 

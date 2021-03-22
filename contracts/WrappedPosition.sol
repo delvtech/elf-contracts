@@ -108,7 +108,7 @@ abstract contract WrappedPosition is ERC20, IWrappedPosition {
         // Calls our internal deposit function
         (uint256 shares, uint256 usedUnderlying) = _deposit();
 
-        uint256 balanceBefore = balanceOf[destination];
+        uint256 balanceBefore = balanceOf[_destination];
 
         // Mint them internal ERC20 tokens corresponding to the deposit
         _mint(_destination, shares);

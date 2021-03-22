@@ -36,6 +36,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
     using Math for int256;
+    using Math for uint256;
     using SafeCast for uint256;
     using BalanceAllocation for bytes32;
 
@@ -49,7 +50,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     /**
      * @dev Converts an array of `SwapIn` into an array of `SwapRequest`, with no runtime cost.
      */
-
     function _toInternalSwap(SwapIn[] memory swapsIn) private pure returns (SwapRequest[] memory internalSwapRequests) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
@@ -114,22 +114,22 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
     function batchSwapGivenIn(
         SwapIn[] memory swaps,
-        IERC20[] memory tokens,
+        IAsset[] memory assets,
         FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline
-    ) external override nonReentrant noEmergencyPeriod authenticateFor(funds.sender) returns (int256[] memory) {
-        return _batchSwap(_toInternalSwap(swaps), tokens, funds, limits, deadline, SwapKind.GIVEN_IN);
+    ) external payable override nonReentrant noEmergencyPeriod authenticateFor(funds.sender) returns (int256[] memory) {
+        return _batchSwap(_toInternalSwap(swaps), assets, funds, limits, deadline, SwapKind.GIVEN_IN);
     }
 
     function batchSwapGivenOut(
         SwapOut[] memory swaps,
-        IERC20[] memory tokens,
+        IAsset[] memory assets,
         FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline
-    ) external override nonReentrant noEmergencyPeriod authenticateFor(funds.sender) returns (int256[] memory) {
-        return _batchSwap(_toInternalSwap(swaps), tokens, funds, limits, deadline, SwapKind.GIVEN_OUT);
+    ) external payable override nonReentrant noEmergencyPeriod authenticateFor(funds.sender) returns (int256[] memory) {
+        return _batchSwap(_toInternalSwap(swaps), assets, funds, limits, deadline, SwapKind.GIVEN_OUT);
     }
 
     /**
@@ -137,43 +137,59 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
      */
     function _batchSwap(
         SwapRequest[] memory swaps,
-        IERC20[] memory tokens,
+        IAsset[] memory assets,
         FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline,
         SwapKind kind
-    ) private returns (int256[] memory tokenDeltas) {
+    ) private returns (int256[] memory assetDeltas) {
         // The deadline is timestamp-based: it should not be relied on having sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         require(block.timestamp <= deadline, "SWAP_DEADLINE");
 
-        InputHelpers.ensureInputLengthMatch(tokens.length, limits.length);
+        InputHelpers.ensureInputLengthMatch(assets.length, limits.length);
 
-        // Perform the swaps, updating the Pool token balances and computing the net Vault token deltas.
-        tokenDeltas = _swapWithPools(swaps, tokens, funds, kind);
+        // Perform the swaps, updating the Pool token balances and computing the net Vault asset deltas.
+        assetDeltas = _swapWithPools(swaps, assets, funds, kind);
 
-        // Process token deltas, by either transferring tokens from the sender (for positive deltas) or to the recipient
+        // Process asset deltas, by either transferring tokens from the sender (for positive deltas) or to the recipient
         // (for negative deltas).
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
-            int256 delta = tokenDeltas[i];
+
+        bool ethAssetSeen = false;
+        uint256 wrappedETH = 0;
+
+        for (uint256 i = 0; i < assets.length; ++i) {
+            IAsset asset = assets[i];
+            int256 delta = assetDeltas[i];
 
             require(delta <= limits[i], "SWAP_LIMIT");
 
-            // Ignore zeroed deltas
+            bool isETH = _isETH(asset);
+            if (isETH) {
+                ethAssetSeen = true;
+            }
+
             if (delta > 0) {
-                _receiveTokens(token, uint256(delta), funds.sender, funds.fromInternalBalance);
+                uint256 toReceive = uint256(delta);
+                _receiveAsset(asset, toReceive, funds.sender, funds.fromInternalBalance);
+
+                if (isETH) {
+                    wrappedETH = wrappedETH.add(toReceive);
+                }
             } else if (delta < 0) {
                 uint256 toSend = uint256(-delta);
 
-                if (funds.toInternalBalance) {
-                    _increaseInternalBalance(funds.recipient, token, toSend);
-                } else {
-                    // Note protocol withdraw fees are not charged in this transfer
-                    token.safeTransfer(funds.recipient, toSend);
-                }
+                // Withdraw fees are not charged when sending funds as part of a swap.
+                // Deposits to Internal Balance are also exempt of this fee during the current block.
+                _sendAsset(asset, toSend, funds.recipient, funds.toInternalBalance, false);
             }
         }
+
+        // We prevent user error by reverting if ETH was sent but not referenced by any asset.
+        _ensureNoUnallocatedETH(ethAssetSeen);
+
+        // By returning the excess ETH, we also check that at least wrappedETH has been received.
+        _returnExcessEthToCaller(wrappedETH);
     }
 
     // For `_swapWithPools` to handle both given in and given out swaps, it internally tracks the 'given' amount
@@ -234,11 +250,11 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
      */
     function _swapWithPools(
         SwapRequest[] memory swaps,
-        IERC20[] memory tokens,
+        IAsset[] memory assets,
         FundManagement memory funds,
         SwapKind kind
-    ) private returns (int256[] memory tokenDeltas) {
-        tokenDeltas = new int256[](tokens.length);
+    ) private returns (int256[] memory assetDeltas) {
+        assetDeltas = new int256[](assets.length);
 
         // Passed to _swapWithPool, which stores data about the previous swap here to implement multihop logic across
         // swaps.
@@ -250,10 +266,10 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         for (uint256 i = 0; i < swaps.length; ++i) {
             swap = swaps[i];
             _ensureRegisteredPool(swap.poolId);
-            require(swap.tokenInIndex < tokens.length && swap.tokenOutIndex < tokens.length, "OUT_OF_BOUNDS");
+            require(swap.tokenInIndex < assets.length && swap.tokenOutIndex < assets.length, "OUT_OF_BOUNDS");
 
-            IERC20 tokenIn = tokens[swap.tokenInIndex];
-            IERC20 tokenOut = tokens[swap.tokenOutIndex];
+            IERC20 tokenIn = _translateToIERC20(assets[swap.tokenInIndex]);
+            IERC20 tokenOut = _translateToIERC20(assets[swap.tokenOutIndex]);
             require(tokenIn != tokenOut, "CANNOT_SWAP_SAME_TOKEN");
 
             // Sentinel value for multihop logic
@@ -281,8 +297,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             );
 
             // Accumulate Vault deltas across swaps
-            tokenDeltas[swap.tokenInIndex] = tokenDeltas[swap.tokenInIndex].add(amountIn.toInt256());
-            tokenDeltas[swap.tokenOutIndex] = tokenDeltas[swap.tokenOutIndex].sub(amountOut.toInt256());
+            assetDeltas[swap.tokenInIndex] = assetDeltas[swap.tokenInIndex].add(amountIn.toInt256());
+            assetDeltas[swap.tokenOutIndex] = assetDeltas[swap.tokenOutIndex].sub(amountOut.toInt256());
 
             emit Swap(swap.poolId, tokenIn, tokenOut, amountIn, amountOut);
         }
@@ -506,7 +522,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     function queryBatchSwap(
         SwapKind kind,
         SwapRequest[] memory swaps,
-        IERC20[] memory tokens,
+        IAsset[] memory assets,
         FundManagement memory funds
     ) external override returns (int256[] memory) {
         // In order to accurately 'simulate' swaps, this function actually does perform the swaps, including calling the
@@ -524,7 +540,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         // amount of generated bytecode.
 
         if (msg.sender != address(this)) {
-            // We perform an external call to ourselves, forwarding the same calldata.
+            // We perform an external call to ourselves, forwarding the same calldata. In this call, the else clause of
+            // the preceding if statement will be executed instead.
 
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = address(this).call(msg.data);
@@ -534,23 +551,36 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 // This call should always revert to decode the actual token deltas from the revert reason
                 switch success
                     case 0 {
-                        // The returndata now contains the raw memory representation of an array: length + data. We need
-                        // to return an ABI-encoded representation of this array, which we manually create at address 0
-                        // in memory. We can safely overwrite whatever is stored there as we take full control of the
-                        // execution and then immediately return.
+                        // Note we are manually writing the memory slot 0. We can safely overwrite whatever is
+                        // stored there as we take full control of the execution and then immediately return.
 
+                        // We copy the first 4 bytes to check if it matches with the expected signature, otherwise
+                        // there was another revert reason and we should forward it.
+                        returndatacopy(0, 0, 0x04)
+                        let error := and(mload(0), 0xffffffff00000000000000000000000000000000000000000000000000000000)
+
+                        // If the first 4 bytes don't match with the expected signature, we forward the revert reason.
+                        if eq(eq(error, 0xfa61cc1200000000000000000000000000000000000000000000000000000000), 0) {
+                            returndatacopy(0, 0, returndatasize())
+                            revert(0, returndatasize())
+                        }
+
+                        // The returndata contains the signature, followed by the raw memory representation of an array:
+                        // length + data. We need to return an ABI-encoded representation of this array.
                         // An ABI-encoded array contains an additional field when compared to its raw memory
                         // representation: an offset to the location of the length. The offset itself is 32 bytes long,
-                        // so the smallest value we can use is 32 for the data to be located immediately after it.
+                        // so the smallest value we  can use is 32 for the data to be located immediately after it.
                         mstore(0, 32)
 
                         // We now copy the raw memory array from returndata into memory. Since the offset takes up 32
-                        // bytes, we start copying at address 0x20.
-                        returndatacopy(0x20, 0, returndatasize())
+                        // bytes, we start copying at address 0x20. We also get rid of the error signature, which takes
+                        // the first four bytes of returndata.
+                        let size := sub(returndatasize(), 0x04)
+                        returndatacopy(0x20, 0x04, size)
 
                         // We finally return the ABI-encoded array, which has a total length equal to that of the array
                         // (returndata), plus the 32 bytes for the offset.
-                        return(0, add(returndatasize(), 32))
+                        return(0, add(size, 32))
                     }
                     default {
                         // This call should always revert, but we fail nonetheless if that didn't happen
@@ -558,7 +588,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                     }
             }
         } else {
-            int256[] memory deltas = _swapWithPools(swaps, tokens, funds, kind);
+            int256[] memory deltas = _swapWithPools(swaps, assets, funds, kind);
 
             // solhint-disable-next-line no-inline-assembly
             assembly {
@@ -567,9 +597,16 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 // length (stored at `deltas`) by 32.
                 let size := mul(mload(deltas), 32)
 
-                // When copying from `deltas` into returndata, we copy an additional 32 bytes to also return the array's
-                // length.
-                revert(deltas, add(size, 32))
+                // We send one extra value for the error signature "QueryError(int256[])" which is 0xfa61cc12.
+                // We store it in the previous slot to the `deltas` array. We know there will be at least one available
+                // slot due to how the memory scratch space works.
+                // We can safely overwrite whatever is stored in this slot as we will revert immediately after that.
+                mstore(sub(deltas, 0x20), 0x00000000000000000000000000000000000000000000000000000000fa61cc12)
+                let start := sub(deltas, 0x04)
+
+                // When copying from `deltas` into returndata, we copy an additional 36 bytes to also return the array's
+                // length and the error signature.
+                revert(start, add(size, 36))
             }
         }
     }

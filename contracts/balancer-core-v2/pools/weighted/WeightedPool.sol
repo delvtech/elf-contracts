@@ -31,14 +31,6 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     using FixedPoint for uint256;
     using WeightedPoolUserDataHelpers for bytes;
 
-    uint256 private constant _MIN_WEIGHT = 0.01e18;
-
-    uint256 private constant _MAX_IN_RATIO = 0.3e18;
-    uint256 private constant _MAX_OUT_RATIO = 0.3e18;
-
-    uint256 private constant _MAX_INVARIANT_RATIO = 3e18;
-    uint256 private constant _MIN_INVARIANT_RATIO = 0.7e18;
-
     // The protocol fees will be always charged using the token associated to the max weight in the pool.
     // Since these Pools will register tokens only once, we can assume this index will be constant.
     uint256 private immutable _maxWeightTokenIndex;
@@ -63,7 +55,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     uint256 private _lastInvariant;
 
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
-    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
+    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 
     constructor(
         IVault vault,
@@ -117,7 +109,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         _normalizedWeight15 = weights.length > 15 ? normalizedWeights[15] : 0;
     }
 
-    function _normalizedWeight(IERC20 token) internal view returns (uint256) {
+    function _normalizedWeight(IERC20 token) internal view virtual returns (uint256) {
         // prettier-ignore
         if (token == _token0) { return _normalizedWeight0; }
         else if (token == _token1) { return _normalizedWeight1; }
@@ -140,7 +132,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         }
     }
 
-    function _normalizedWeights() internal view returns (uint256[] memory) {
+    function _normalizedWeights() internal view virtual returns (uint256[] memory) {
         uint256[] memory normalizedWeights = new uint256[](_totalTokens);
 
         // prettier-ignore
@@ -173,7 +165,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     function getInvariant() external view returns (uint256) {
         (, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
         uint256[] memory normalizedWeights = _normalizedWeights();
-        return WeightedMath._invariant(normalizedWeights, balances);
+        return WeightedMath._calculateInvariant(normalizedWeights, balances);
     }
 
     function getNormalizedWeights() external view returns (uint256[] memory) {
@@ -188,11 +180,11 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         IPoolSwapStructs.SwapRequestGivenIn memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view override noEmergencyPeriod returns (uint256) {
+    ) internal view virtual override noEmergencyPeriod returns (uint256) {
         require(swapRequest.amountIn <= currentBalanceTokenIn.mul(_MAX_IN_RATIO), "ERR_MAX_IN_RATIO");
 
         return
-            WeightedMath._outGivenIn(
+            WeightedMath._calcOutGivenIn(
                 currentBalanceTokenIn,
                 _normalizedWeight(swapRequest.tokenIn),
                 currentBalanceTokenOut,
@@ -205,11 +197,11 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         IPoolSwapStructs.SwapRequestGivenOut memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view override noEmergencyPeriod returns (uint256) {
+    ) internal view virtual override noEmergencyPeriod returns (uint256) {
         require(swapRequest.amountOut <= currentBalanceTokenOut.mul(_MAX_OUT_RATIO), "ERR_MAX_OUT_RATIO");
 
         return
-            WeightedMath._inGivenOut(
+            WeightedMath._calcInGivenOut(
                 currentBalanceTokenIn,
                 _normalizedWeight(swapRequest.tokenIn),
                 currentBalanceTokenOut,
@@ -225,7 +217,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         address,
         address,
         bytes memory userData
-    ) internal override noEmergencyPeriod returns (uint256, uint256[] memory) {
+    ) internal virtual override noEmergencyPeriod returns (uint256, uint256[] memory) {
         WeightedPool.JoinKind kind = userData.joinKind();
         require(kind == WeightedPool.JoinKind.INIT, "UNINITIALIZED");
 
@@ -235,7 +227,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         uint256[] memory normalizedWeights = _normalizedWeights();
 
-        uint256 invariantAfterJoin = WeightedMath._invariant(normalizedWeights, amountsIn);
+        uint256 invariantAfterJoin = WeightedMath._calculateInvariant(normalizedWeights, amountsIn);
 
         uint256 bptAmountOut = Math.mul(invariantAfterJoin, _totalTokens);
 
@@ -256,6 +248,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         bytes memory userData
     )
         internal
+        virtual
         override
         noEmergencyPeriod
         returns (
@@ -268,7 +261,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         // Due protocol swap fees are computed by measuring the growth of the invariant from the previous join or exit
         // event and now - the invariant's growth is due exclusively to swap fees.
-        uint256 invariantBeforeJoin = WeightedMath._invariant(normalizedWeights, currentBalances);
+        uint256 invariantBeforeJoin = WeightedMath._calculateInvariant(normalizedWeights, currentBalances);
 
         uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
             currentBalances,
@@ -314,7 +307,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
         _upscaleArray(amountsIn, _scalingFactors());
 
-        uint256 bptAmountOut = WeightedMath._exactTokensInForBPTOut(
+        uint256 bptAmountOut = WeightedMath._calcBptOutGivenExactTokensIn(
             currentBalances,
             normalizedWeights,
             amountsIn,
@@ -341,7 +334,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         require(invariantRatio <= _MAX_INVARIANT_RATIO, "MAX_OUT_BPT_FOR_TOKEN_IN");
 
         uint256[] memory amountsIn = new uint256[](_totalTokens);
-        amountsIn[tokenIndex] = WeightedMath._tokenInForExactBPTOut(
+        amountsIn[tokenIndex] = WeightedMath._calcTokenInGivenExactBptOut(
             currentBalances[tokenIndex],
             normalizedWeights[tokenIndex],
             bptAmountOut,
@@ -364,29 +357,36 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         bytes memory userData
     )
         internal
+        virtual
         override
         returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
+            uint256 bptAmountIn,
+            uint256[] memory amountsOut,
+            uint256[] memory dueProtocolFeeAmounts
         )
     {
         uint256[] memory normalizedWeights = _normalizedWeights();
 
-        // Due protocol swap fees are computed by measuring the growth of the invariant from the previous join or exit
-        // event and now - the invariant's growth is due exclusively to swap fees.
-        uint256 invariantBeforeExit = WeightedMath._invariant(normalizedWeights, currentBalances);
-        uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
-            currentBalances,
-            normalizedWeights,
-            _lastInvariant,
-            invariantBeforeExit,
-            protocolSwapFeePercentage
-        );
+        //If emergency period is active, protocol fees are not charged to avoid any extra calculation.
+        if (_isEmergencyPeriodInactive()) {
+            // Due protocol swap fees are computed by measuring the growth of the invariant from the previous
+            // join or exit event and now - the invariant's growth is due exclusively to swap fees.
+            uint256 invariantBeforeExit = WeightedMath._calculateInvariant(normalizedWeights, currentBalances);
+            dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
+                currentBalances,
+                normalizedWeights,
+                _lastInvariant,
+                invariantBeforeExit,
+                protocolSwapFeePercentage
+            );
 
-        // Update current balances by subtracting the protocol due fee amounts
-        _subtractToCurrentBalances(currentBalances, dueProtocolFeeAmounts);
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(currentBalances, normalizedWeights, userData);
+            // Update current balances by subtracting the protocol due fee amounts
+            _subtractToCurrentBalances(currentBalances, dueProtocolFeeAmounts);
+        } else {
+            dueProtocolFeeAmounts = new uint256[](_totalTokens);
+        }
+
+        (bptAmountIn, amountsOut) = _doExit(currentBalances, normalizedWeights, userData);
 
         // Update the invariant with the balances the Pool will have after the exit, in order to compute the due
         // protocol swap fees in future joins and exits.
@@ -404,7 +404,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         if (kind == ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _exitExactBPTInForTokenOut(normalizedWeights, currentBalances, userData);
-        } else if (kind == ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT) {
+        } else if (kind == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(currentBalances, userData);
         } else if (kind == ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return _exitBPTInForExactTokensOut(normalizedWeights, currentBalances, userData);
@@ -431,7 +431,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory amountsOut = new uint256[](_totalTokens);
 
         // And then assign the result to the selected token
-        amountsOut[tokenIndex] = WeightedMath._exactBPTInForTokenOut(
+        amountsOut[tokenIndex] = WeightedMath._calcTokenOutGivenExactBptIn(
             currentBalances[tokenIndex],
             normalizedWeights[tokenIndex],
             bptAmountIn,
@@ -453,7 +453,11 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     {
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
 
-        uint256[] memory amountsOut = WeightedMath._exactBPTInForTokensOut(currentBalances, bptAmountIn, totalSupply());
+        uint256[] memory amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(
+            currentBalances,
+            bptAmountIn,
+            totalSupply()
+        );
 
         return (bptAmountIn, amountsOut);
     }
@@ -467,7 +471,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         InputHelpers.ensureInputLengthMatch(amountsOut.length, _totalTokens);
         _upscaleArray(amountsOut, _scalingFactors());
 
-        uint256 bptAmountIn = WeightedMath._bptInForExactTokensOut(
+        uint256 bptAmountIn = WeightedMath._calcBptInGivenExactTokensOut(
             currentBalances,
             normalizedWeights,
             amountsOut,
@@ -501,7 +505,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         // The protocol swap fee are always paid using the token with the largest weight in the pool.
         // As this is then token that will probably have the largest balance in the pool, we can
         // make sure this process won't unbalance the pool in a considerable way.
-        dueProtocolFeeAmounts[_maxWeightTokenIndex] = WeightedMath._calculateDueTokenProtocolSwapFee(
+        dueProtocolFeeAmounts[_maxWeightTokenIndex] = WeightedMath._calcDueTokenProtocolSwapFee(
             currentBalances[_maxWeightTokenIndex],
             normalizedWeights[_maxWeightTokenIndex],
             previousInvariant,
@@ -521,7 +525,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             currentBalances[i] = currentBalances[i].add(amountsOut[i]);
         }
 
-        return WeightedMath._invariant(normalizedWeights, currentBalances);
+        return WeightedMath._calculateInvariant(normalizedWeights, currentBalances);
     }
 
     function _invariantAfterExit(
@@ -530,12 +534,21 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory normalizedWeights
     ) private view returns (uint256) {
         _subtractToCurrentBalances(currentBalances, amountsOut);
-        return WeightedMath._invariant(normalizedWeights, currentBalances);
+        return WeightedMath._calculateInvariant(normalizedWeights, currentBalances);
     }
 
     function _subtractToCurrentBalances(uint256[] memory currentBalances, uint256[] memory amounts) private view {
         for (uint256 i = 0; i < _totalTokens; ++i) {
             currentBalances[i] = currentBalances[i].sub(amounts[i]);
         }
+    }
+
+    // This function returns the appreciation of one BPT relative to the
+    // underlying tokens. This starts at 1 when the pool is initialized and grows over time
+    // It's the equivalent to Curve's get_virtual_price() function
+    function getRate() public view override returns (uint256) {
+        (, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
+        return
+            Math.mul(WeightedMath._calculateInvariant(_normalizedWeights(), balances), _totalTokens).div(totalSupply());
     }
 }

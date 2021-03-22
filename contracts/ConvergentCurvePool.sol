@@ -97,16 +97,20 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     }
 
     // Balancer Interface required Getters
+    function getRate() external override view returns (uint256) {
+        // TODO: figure out if this needs to appreciate over time
+        return FixedPoint.ONE;
+    }
 
     /// @dev Returns the vault for this pool
     /// @return The vault for this pool
-    function getVault() external override view returns (IVault) {
+    function getVault() external view returns (IVault) {
         return _vault;
     }
 
     /// @dev Returns the poolId for this pool
     /// @return The poolId for this pool
-    function getPoolId() external override view returns (bytes32) {
+    function getPoolId() external view returns (bytes32) {
         return _poolId;
     }
 

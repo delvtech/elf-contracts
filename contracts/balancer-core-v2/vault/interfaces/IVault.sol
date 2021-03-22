@@ -18,6 +18,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./IAuthorizer.sol";
 import "./IFlashLoanReceiver.sol";
+import "./IAsset.sol";
 
 pragma solidity ^0.7.0;
 
@@ -85,17 +86,24 @@ interface IVault {
     // the same kind (deposit, withdraw or transfer) at once.
 
     /**
-     * @dev Data for internal balance transfers - encompassing deposits, withdrawals, and transfers between accounts.
-     *
-     * This gives aggregators maximum flexibility, and makes it possible for an asset manager to manage multiple tokens
-     * and pools with less gas and fewer calls to the vault.
+     * @dev Data for Internal Balance deposits and withdrawals, which include the possibility for ETH to be sent and
+     * received without manual WETH wrapping or unwrapping.
      */
+    struct AssetBalanceTransfer {
+        IAsset asset;
+        uint256 amount;
+        address sender;
+        address payable recipient;
+    }
 
-    struct BalanceTransfer {
+    /**
+     * @dev Data for Internal Balance transfers, which are limited to ERC20 tokens.
+     */
+    struct TokenBalanceTransfer {
         IERC20 token;
         uint256 amount;
         address sender;
-        address recipient;
+        address payable recipient;
     }
 
     /**
@@ -104,44 +112,58 @@ interface IVault {
     function getInternalBalance(address user, IERC20[] memory tokens) external view returns (uint256[] memory);
 
     /**
-     * @dev Deposits tokens from each `sender` address into Internal Balances of the corresponding `recipient`
-     * accounts specified in the struct. The sources must have allowed the Vault to use their tokens
-     * via `IERC20.approve()`.
-     * Allows aggregators to settle multiple accounts in a single transaction.
+     * @dev Deposits `amount` assets from each `sender` address into Internal Balances of the corresponding `recipient`
+     * accounts. The senders must have allowed the Vault to use their tokens via `IERC20.approve()`.
+     *
+     * If any of the senders doesn't match the contract caller, then it must be a relayer for them.
+     *
+     * ETH can be used by passing the ETH sentinel value as the asset and forwarding ETH in the call. It will be
+     * wrapped into WETH and deposited as that token. Any ETH amount remaining will be sent back to the caller (not the
+     * sender, which is relevant for relayers).
+     *
+     * Reverts if ETH was forwarded but not used in any transfer.
      */
-    function depositToInternalBalance(BalanceTransfer[] memory transfers) external;
+    function depositToInternalBalance(AssetBalanceTransfer[] memory transfers) external payable;
 
     /**
-     * @dev Transfers tokens from each `sender` address to the corresponding `recipient` accounts specified
-     * in the struct, making use of the Vault's allowance (like an internal balance deposit, but without recording it,
-     * since it is really just transferred directly between the sender and receiver). The sources must have allowed
-     * the Vault to use their tokens via `IERC20.approve()`.
-     * This will allow relayers to leverage the allowance given to the vault by each sender, to transfer tokens to
-     * external accounts
-     */
-    function transferToExternalBalance(BalanceTransfer[] memory transfers) external;
-
-    /**
-     * @dev Withdraws tokens from each the internal balance of each `sender` address into the `recipient` accounts
-     * specified in the struct. Allows aggregators to settle multiple accounts in a single transaction.
+     * @dev Withdraws `amount` assets from each `sender` address' Internal Balance to the corresponding `recipient`
+     * accounts. The senders must have allowed the Vault to use their tokens via `IERC20.approve()`.
+     *
+     * If any of the senders doesn't match the contract caller, then it must be a relayer for them.
+     *
+     * ETH can be used by passing the ETH sentinel value as the asset. This will deduct WETH instead, unwrap it and send
+     * it to the recipient.
      *
      * This charges protocol withdrawal fees.
      */
-    function withdrawFromInternalBalance(BalanceTransfer[] memory transfers) external;
+    function withdrawFromInternalBalance(AssetBalanceTransfer[] memory transfers) external;
 
     /**
-     * @dev Transfers tokens from the internal balance of each `sender` address to Internal Balances
-     * of each `recipient`. Allows aggregators to settle multiple accounts in a single transaction.
+     * @dev Transfers tokens from the internal balance of each `sender` address to Internal Balances of each
+     * `recipient`.
      *
      * This does not charge protocol withdrawal fees.
      */
-    function transferInternalBalance(BalanceTransfer[] memory transfers) external;
+    function transferInternalBalance(TokenBalanceTransfer[] memory transfers) external;
+
+    /**
+     * @dev Transfers tokens from each `sender` address to the corresponding `recipient` accounts, making use of the
+     * Vault's allowance. This action is equivalent to an Internal Balance deposit followed immediately by a withdrawal,
+     * except withdraw fees are not charged.
+     *
+     * Typically, this function will only be called by relayers, letting them leverage the allowance users have already
+     * given to the Vault.
+     */
+    function transferToExternalBalance(TokenBalanceTransfer[] memory transfers) external;
 
     /**
      * @dev Emitted when a user's Internal Balance changes, either due to calls to the Internal Balance functions, or
      * due to interacting with Pools using Internal Balance.
+     *
+     * Because Internal Balance works exclusively with ERC20 tokens, ETH deposits and withdrawals will be reflected here
+     * as having used WETH.
      */
-    event InternalBalanceChanged(address indexed user, IERC20 indexed token, uint256 balance);
+    event InternalBalanceChanged(address indexed user, IERC20 indexed token, int256 delta);
 
     // Pools
     //
@@ -277,15 +299,23 @@ interface IVault {
      *
      * If the caller is not `sender`, it must be an authorized relayer for them.
      *
-     * The `tokens` and `maxAmountsIn` arrays must have the same length, and each entry in these indicates the maximum
-     * token amount to send for each token contract. The amounts to send are decided by the Pool and not the Vault: it
-     * just enforces these maximums.
+     * The `assets` and `maxAmountsIn` arrays must have the same length, and each entry in these indicates the maximum
+     * amount to send for each asset. The amounts to send are decided by the Pool and not the Vault: it just enforces
+     * these maximums.
      *
-     * `tokens` must have the same length and order as the one returned by `getPoolTokens`. This prevents issues when
-     * interacting with Pools that register and deregister tokens frequently.
+     * If joining a Pool that holds WETH, it is possible to send ETH directly: the Vault will do the wrapping. To enable
+     * this mechanism, the IAsset sentinel value (the zero address) must be passed in the `assets` array instead of the
+     * WETH address. Note that it is not possible to combine ETH and WETH in the same join. Any excess ETH will be sent
+     * back to the caller (not the sender, which is relevant for relayers).
+     *
+     * `assets` must have the same length and order as the one returned by `getPoolTokens`. This prevents issues when
+     * interacting with Pools that register and deregister tokens frequently. If sending ETH however, the array must be
+     * sorted *before* replacing the WETH address with the ETH address, which means the final `assets` array might not
+     * be sorted.
      *
      * If `fromInternalBalance` is true, the caller's Internal Balance will be preferred: ERC20 transfers will only
-     * be made for the difference between the requested amount and Internal Balance (if any).
+     * be made for the difference between the requested amount and Internal Balance (if any). Note that ETH cannot be
+     * withdrawn from Internal Balance: attempting to do so with trigger a revert.
      *
      * This causes the Vault to call the `IBasePool.onJoinPool` hook on the Pool's contract, where Pools implements
      * their own custom logic. This typically requires additional information from the user (such as the expected number
@@ -298,11 +328,11 @@ interface IVault {
         bytes32 poolId,
         address sender,
         address recipient,
-        IERC20[] memory tokens,
+        IAsset[] memory assets,
         uint256[] memory maxAmountsIn,
         bool fromInternalBalance,
         bytes memory userData
-    ) external;
+    ) external payable;
 
     /**
      * @dev Emitted when a user joins a Pool by calling `joinPool`.
@@ -310,6 +340,7 @@ interface IVault {
     event PoolJoined(
         bytes32 indexed poolId,
         address indexed liquidityProvider,
+        IERC20[] tokens,
         uint256[] amountsIn,
         uint256[] protocolFees
     );
@@ -326,11 +357,18 @@ interface IVault {
      * token amount to receive for each token contract. The amounts to send are decided by the Pool and not the Vault:
      * it just enforces these minimums.
      *
-     * `tokens` must have the same length and order as the one returned by `getPoolTokens`. This prevents issues when
-     * interacting with Pools that register and deregister tokens frequently.
+     * If exiting a Pool that holds WETH, it is possible to receive ETH directly: the Vault will do the unwrapping. To
+     * enable this mechanism, the IAsset sentinel value (the zero address) must be passed in the `assets` array instead
+     * of the WETH address. Note that it is not possible to combine ETH and WETH in the same exit.
+     *
+     * `assets` must have the same length and order as the one returned by `getPoolTokens`. This prevents issues when
+     * interacting with Pools that register and deregister tokens frequently. If receiving ETH however, the array must
+     * be sorted *before* replacing the WETH address with the ETH address, which means the final `assets` array might
+     * not be sorted.
      *
      * If `toInternalBalance` is true, the tokens will be deposited to `recipient`'s Internal Balance. Otherwise,
-     * an ERC20 transfer will be performed, charging protocol withdraw fees.
+     * an ERC20 transfer will be performed, charging protocol withdraw fees. Note that ETH cannot be deposited to
+     * Internal Balance: attempting to do so with trigger a revert.
      *
      * `minAmountsOut` is the minimum amount of tokens the user expects to get out of the Pool, for each token in the
      * `tokens` array. This array must match the Pool's registered tokens.
@@ -349,8 +387,8 @@ interface IVault {
     function exitPool(
         bytes32 poolId,
         address sender,
-        address recipient,
-        IERC20[] memory tokens,
+        address payable recipient,
+        IAsset[] memory assets,
         uint256[] memory minAmountsOut,
         bool toInternalBalance,
         bytes memory userData
@@ -362,6 +400,7 @@ interface IVault {
     event PoolExited(
         bytes32 indexed poolId,
         address indexed liquidityProvider,
+        IERC20[] tokens,
         uint256[] amountsOut,
         uint256[] protocolFees
     );
@@ -397,6 +436,11 @@ interface IVault {
     // Additionally, a 'deadline' timestamp can also be provided, forcing the swap to fail if it occurs after
     // this point in time (e.g. if the transaction failed to be included in a block promptly).
     //
+    // If interacting with Pools that hold WETH, it is possible to both send and receive ETH directly: the Vault will do
+    // the wrapping and unwrapping. To enable this mechanism, the IAsset sentinel value (the zero address) must be
+    // passed in the `assets` array instead of the WETH address. Note that it is possible to combine ETH and WETH in the
+    // same swap. Any excess ETH will be sent back to the caller (not the sender, which is relevant for relayers).
+    //
     // Finally, Internal Balance can be used both when sending and receiving tokens.
 
     /**
@@ -404,9 +448,9 @@ interface IVault {
      * the Pool is determined by the caller. For swaps where the amount of tokens received from the Pool is instead
      * determined, see `batchSwapGivenOut`.
      *
-     * Returns an array with the net Vault token balance deltas. Positive amounts represent tokens sent to the Vault,
-     * and negative amounts tokens sent by the Vault. Each delta corresponds to the token at the same index in the
-     * `tokens` array.
+     * Returns an array with the net Vault asset balance deltas. Positive amounts represent tokens (or ETH) sent to the
+     * Vault, and negative amounts tokens (or ETH) sent by the Vault. Each delta corresponds to the asset at the same
+     * index in the `assets` array.
      *
      * Swaps are executed sequentially, in the order specified by the `swaps` array. Each array element describes a
      * Pool, the token and amount to send to this Pool, and the token to receive from it (but not the amount). This will
@@ -416,8 +460,10 @@ interface IVault {
      * of the previous swap to be used as the amount in of the current one. In such a scenario, `tokenIn` must equal the
      * previous swap's `tokenOut`.
      *
-     * The `tokens` array contains the addresses of all tokens involved in the swaps. Each entry in the `swaps` array
-     * specifies tokens in and out by referencing an index in `tokens`.
+     * The `assets` array contains the addresses of all assets involved in the swaps. These are either token addresses,
+     * or the IAsset sentinel value (the zero address) for ETH. Each entry in the `swaps` array specifies tokens in and
+     * out by referencing an index in `assets`. Note that Pools never interact with ETH directly: it will be wrapped or
+     * unwrapped using WETH by the Vault.
      *
      * Internal Balance usage and recipient are determined by the `funds` struct.
      *
@@ -425,15 +471,15 @@ interface IVault {
      */
     function batchSwapGivenIn(
         SwapIn[] calldata swaps,
-        IERC20[] memory tokens,
+        IAsset[] memory assets,
         FundManagement calldata funds,
         int256[] memory limits,
         uint256 deadline
-    ) external returns (int256[] memory);
+    ) external payable returns (int256[] memory);
 
     /**
      * @dev Data for each individual swap executed by `batchSwapGivenIn`. The tokens in and out are indexed in the
-     * `tokens` array passed to that function.
+     * `assets` array passed to that function, where an ETH asset is translated into WETH.
      *
      * If `amountIn` is zero, the multihop mechanism is used to determine the actual amount based on the amount out from
      * the previous swap.
@@ -454,9 +500,9 @@ interface IVault {
      * received from the Pool is determined by the caller. For swaps where the amount of tokens sent to the Pool is
      * instead determined, see `batchSwapGivenIn`.
      *
-     * Returns an array with the net Vault token balance deltas. Positive amounts represent tokens sent to the Vault,
-     * and negative amounts tokens sent by the Vault. Each delta corresponds to the token at the same index in the
-     * `tokens` array.
+     * Returns an array with the net Vault asset balance deltas. Positive amounts represent tokens (or ETH) sent to the
+     * Vault, and negative amounts tokens (or ETH) sent by the Vault. Each delta corresponds to the asset at the same
+     * index in the `assets` array.
      *
      * Swaps are executed sequentially, in the order specified by the `swaps` array. Each array element describes a
      * Pool, the token and amount to receive from this Pool, and the token to send to it (but not the amount). This will
@@ -466,8 +512,10 @@ interface IVault {
      * of the previous swap to be used as the amount out of the current one. In such a scenario, `tokenOut` must equal
      * the previous swap's `tokenIn`.
      *
-     * The `tokens` array contains the addresses of all tokens involved in the swaps. Each entry in the `swaps` array
-     * specifies tokens in and out by referencing an index in `tokens`.
+     * The `assets` array contains the addresses of all assets involved in the swaps. These are either token addresses,
+     * or the IAsset sentinel value (the zero address) for ETH. Each entry in the `swaps` array specifies tokens in and
+     * out by referencing an index in `assets`. Note that Pools never interact with ETH directly: it will be wrapped or
+     * unwrapped using WETH by the Vault.
      *
      * Internal Balance usage and recipient are determined by the `funds` struct.
      *
@@ -475,15 +523,15 @@ interface IVault {
      */
     function batchSwapGivenOut(
         SwapOut[] calldata swaps,
-        IERC20[] memory tokens,
+        IAsset[] memory assets,
         FundManagement calldata funds,
         int256[] memory limits,
         uint256 deadline
-    ) external returns (int256[] memory);
+    ) external payable returns (int256[] memory);
 
     /**
      * @dev Data for each individual swap executed by `batchSwapGivenOut`. The tokens in and out are indexed in the
-     * `tokens` array passed to that function.
+     * `assets` array passed to that function, where an ETH asset is translated into WETH.
      *
      * If `amountOut` is zero, the multihop mechanism is used to determine the actual amount based on the amount in from
      * the previous swap.
@@ -519,21 +567,25 @@ interface IVault {
      * transfer for the difference between the requested amount and the User's Internal Balance (if any). The `sender`
      * must have allowed the Vault to use their tokens via `IERC20.approve()`. This matches the behavior of
      * `joinPool`.
-     *     * If `toInternalBalance` is true, tokens will be deposited to `recipient`'s internal balance instead of
+     *
+     * If `toInternalBalance` is true, tokens will be deposited to `recipient`'s internal balance instead of
      * transferred. This matches the behavior of `exitPool`.
+     *
+     * Note that ETH cannot be deposited to or withdrawn from Internal Balance: attempting to do so with trigger a
+     * revert.
      */
     struct FundManagement {
         address sender;
         bool fromInternalBalance;
-        address recipient;
+        address payable recipient;
         bool toInternalBalance;
     }
 
     /**
-     * @dev Simulates a call to `batchSwapGivenIn` or `batchSwapGivenOut`, returning an array of Vault token deltas.
-     * Each element in the array corresponds to the token at the same index, and indicates the number of tokens the
-     * Vault would take from the sender (if positive) or send to the recipient (if negative). The arguments it receives
-     * are the same that an equivalent `batchSwapGivenIn` or `batchSwapGivenOut` call would receive, except the
+     * @dev Simulates a call to `batchSwapGivenIn` or `batchSwapGivenOut`, returning an array of Vault asset deltas.
+     * Each element in the array corresponds to the asset at the same index, and indicates the number of tokens (or ETH)
+     * the Vault would take from the sender (if positive) or send to the recipient (if negative). The arguments it
+     * receives are the same that an equivalent `batchSwapGivenIn` or `batchSwapGivenOut` call would receive, except the
      * `SwapRequest` struct is used instead, and the `kind` argument specifies whether the swap is given in or given
      * out.
      *
@@ -547,9 +599,9 @@ interface IVault {
     function queryBatchSwap(
         SwapKind kind,
         SwapRequest[] memory swaps,
-        IERC20[] memory tokens,
+        IAsset[] memory assets,
         FundManagement memory funds
-    ) external returns (int256[] memory tokenDeltas);
+    ) external returns (int256[] memory assetDeltas);
 
     enum SwapKind { GIVEN_IN, GIVEN_OUT }
 

@@ -48,7 +48,7 @@ contract Tranche is ERC20, ITranche {
         unlockTimestamp = expiration;
         // We use local because immutables are not readable in construction
         IERC20 localUnderlying = wpContract.token();
-        underlying = wpContract.token();
+        underlying = localUnderlying;
         // We load and store the underlying decimals
         uint8 localUnderlyingDecimals = localUnderlying.decimals();
         _underlyingDecimals = localUnderlyingDecimals;

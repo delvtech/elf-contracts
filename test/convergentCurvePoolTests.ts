@@ -4,16 +4,20 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import chai, { expect } from "chai";
 import chaiAlmost from "chai-almost";
 import { BigNumber, providers } from "ethers";
+import { formatEther } from "ethers/lib/utils";
 import { ethers, network } from "hardhat";
 import { deployBalancerVault } from "test/helpers/deployBalancerVault";
 import { deployConvergentCurvePool } from "test/helpers/deployConvergentCurvePool";
-import { TestConvergentCurvePool } from "typechain/TestConvergentCurvePool";
+import {
+  EthPoolMainnetInterface,
+  loadEthPoolMainnetFixture,
+} from "test/helpers/deployer";
+import { ConvergentPoolFactory } from "typechain/ConvergentPoolFactory";
+import { ConvergentPoolFactory__factory } from "typechain/factories/ConvergentPoolFactory__factory";
 import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
+import { TestConvergentCurvePool } from "typechain/TestConvergentCurvePool";
 import { TestERC20 } from "typechain/TestERC20";
 import { Vault } from "typechain/Vault";
-import { formatEther } from "ethers/lib/utils";
-import { ConvergentPoolFactory__factory } from "typechain/factories/ConvergentPoolFactory__factory";
-import { ConvergentPoolFactory } from "typechain/ConvergentPoolFactory";
 
 // we need to use almost for the onSwap tests since `hardhat coverage` compiles the contracts
 // slightly differently which causes slightly different fixedpoint logic.
@@ -29,6 +33,7 @@ describe("ConvergentCurvePool", function () {
   const SECONDS_IN_YEAR = 31536000;
 
   const fakeAddress = "0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c";
+  let fixture: EthPoolMainnetInterface;
   let accounts: SignerWithAddress[];
   let balancerSigner: SignerWithAddress;
   let elementSigner: SignerWithAddress;
@@ -85,6 +90,8 @@ describe("ConvergentCurvePool", function () {
   }
 
   before(async function () {
+    fixture = await loadEthPoolMainnetFixture();
+    const wethAddress = fixture.weth.address;
     startTimestamp = await getTimestamp();
     expirationTime = startTimestamp + SECONDS_IN_YEAR;
 
@@ -104,7 +111,10 @@ describe("ConvergentCurvePool", function () {
 
     elementAddress = await elementSigner.getAddress();
 
-    balancerVaultContract = await deployBalancerVault(balancerSigner);
+    balancerVaultContract = await deployBalancerVault(
+      balancerSigner,
+      wethAddress
+    );
     await balancerVaultContract.changeRelayerAllowance(elementAddress, true);
 
     ({ poolContract } = await deployConvergentCurvePool(

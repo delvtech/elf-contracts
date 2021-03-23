@@ -16,15 +16,8 @@ pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-library UnsafeRandom {
-    function rand(uint256 mod) internal view returns (uint256) {
-        uint256 previousBlockNumber = block.number - 1;
-        bytes32 seed = blockhash(previousBlockNumber);
-        return uint256(seed) % mod;
-    }
+interface IWETH is IERC20 {
+    function deposit() external payable;
 
-    function rand(IERC20[] memory list) internal view returns (IERC20, uint256) {
-        uint256 randomIndex = rand(list.length);
-        return (list[randomIndex], randomIndex);
-    }
+    function withdraw(uint256 amount) external;
 }

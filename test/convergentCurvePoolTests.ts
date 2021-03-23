@@ -46,6 +46,9 @@ describe("ConvergentCurvePool", function () {
   let bondAssetContract: TestERC20;
   let balancerVaultContract: Vault;
 
+  const reserveBond = ethers.utils.parseUnits("12000", BOND_DECIMALS);
+  const reserveUnderlying = ethers.utils.parseUnits("10000", BASE_DECIMALS);
+
   async function getTimestamp() {
     return (await ethers.provider.getBlock("latest")).timestamp;
   }
@@ -128,6 +131,63 @@ describe("ConvergentCurvePool", function () {
         expiration: expirationTime,
       }
     ));
+  });
+
+  it("Normalize tokens correctly", async function () {
+    const one = ethers.utils.parseUnits("1", 18);
+    // We check that the same decimals is a no opp
+    const no_opp = await poolContract.normalize(one, 18, 18);
+    expect(no_opp).to.be.eq(one);
+    // We check that it reduces decimals correctly
+    const bp = await poolContract.normalize(one, 18, 14);
+    expect(bp).to.be.eq(ethers.utils.parseUnits("1", 14));
+    // We check that it increases decimals  correctly
+    const x100 = await poolContract.normalize(one, 18, 20);
+    expect(x100).to.be.eq(ethers.utils.parseUnits("1", 20));
+  });
+
+  function getRandomInt(max: number) {
+    return Math.floor(Math.random() * Math.floor(max));
+  }
+
+  it("Converts token units to decimal units", async function () {
+    // Check that a random bond unit is correctly decimal encoded
+    const tokenAmount = getRandomInt(1000);
+    let normalized = await poolContract.tokenToFixed(
+      ethers.utils.parseUnits(tokenAmount.toString(), BOND_DECIMALS),
+      bondAssetContract.address
+    );
+    expect(normalized).to.be.eq(
+      ethers.utils.parseUnits(tokenAmount.toString(), 18)
+    );
+    // Check that the underlying token normalizes correctly
+    normalized = await poolContract.tokenToFixed(
+      ethers.utils.parseUnits(tokenAmount.toString(), BASE_DECIMALS),
+      baseAssetContract.address
+    );
+    expect(normalized).to.be.eq(
+      ethers.utils.parseUnits(tokenAmount.toString(), 18)
+    );
+  });
+
+  it("Converts token units to decimal units", async function () {
+    // Check that a random bond unit is correctly decimal encoded
+    const tokenAmount = getRandomInt(1000);
+    let normalized = await poolContract.tokenToFixed(
+      ethers.utils.parseUnits(tokenAmount.toString(), BOND_DECIMALS),
+      bondAssetContract.address
+    );
+    expect(normalized).to.be.eq(
+      ethers.utils.parseUnits(tokenAmount.toString(), 18)
+    );
+    // Check that the underlying token normalizes correctly
+    normalized = await poolContract.tokenToFixed(
+      ethers.utils.parseUnits(tokenAmount.toString(), BASE_DECIMALS),
+      baseAssetContract.address
+    );
+    expect(normalized).to.be.eq(
+      ethers.utils.parseUnits(tokenAmount.toString(), 18)
+    );
   });
 
   it("Returns the correct fractional time", async function () {
@@ -324,7 +384,7 @@ describe("ConvergentCurvePool", function () {
     expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("10950"));
     // Check the stored fees
     const feeBond = await poolContract.feesBond();
-    expect(feeBond).to.be.eq(ethers.utils.parseUnits("50"));
+    expect(feeBond).to.be.eq(ethers.utils.parseUnits("50", BOND_DECIMALS));
 
     // Check the case when this is an input trade
     result = await mineTx(
@@ -339,7 +399,9 @@ describe("ConvergentCurvePool", function () {
     expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("10050"));
     // Check the stored fees
     const feeUnderlying = await poolContract.feesUnderlying();
-    expect(feeUnderlying).to.be.eq(ethers.utils.parseUnits("50"));
+    expect(feeUnderlying).to.be.eq(
+      ethers.utils.parseUnits("50", BASE_DECIMALS)
+    );
   });
 
   // We test the assigned trade fee when selling a bond
@@ -361,7 +423,9 @@ describe("ConvergentCurvePool", function () {
     expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("9950"));
     // Check the stored fees
     const feeUnderlying = await poolContract.feesUnderlying();
-    expect(feeUnderlying).to.be.eq(ethers.utils.parseUnits("50"));
+    expect(feeUnderlying).to.be.eq(
+      ethers.utils.parseUnits("50", BASE_DECIMALS)
+    );
 
     // Check the case when this is an input trade
     result = await mineTx(
@@ -376,21 +440,19 @@ describe("ConvergentCurvePool", function () {
     expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("11050"));
     // Check the stored fees
     const feesBond = await poolContract.feesBond();
-    expect(feesBond).to.be.eq(ethers.utils.parseUnits("50"));
+    expect(feesBond).to.be.eq(ethers.utils.parseUnits("50", BOND_DECIMALS));
   });
 
   // We get a series of quotes for specifically checked trades
 
   it("Quotes a buy output trade correctly", async function () {
     await resetPool();
-    const reserveBond = ethers.utils.parseEther("12000");
-    const reserveUnderlying = ethers.utils.parseEther("10000");
 
     const quote = await poolContract.callStatic.onSwapGivenIn(
       {
         tokenIn: baseAssetContract.address,
         tokenOut: bondAssetContract.address,
-        amountIn: ethers.utils.parseUnits("100"),
+        amountIn: ethers.utils.parseUnits("100", BASE_DECIMALS),
         // Misc data
         poolId:
           "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
@@ -403,19 +465,16 @@ describe("ConvergentCurvePool", function () {
       reserveBond
     );
     const result = Number(formatEther(quote));
-    const expectedValue = 108.572076454026339518;
+    const expectedValue = 10.8572076454026339518;
     expect(result).to.be.almost(expectedValue);
   });
 
   it("Quotes a sell output trade correctly", async function () {
-    const reserveBond = ethers.utils.parseEther("12000");
-    const reserveUnderlying = ethers.utils.parseEther("10000");
-
     const quote = await poolContract.callStatic.onSwapGivenIn(
       {
         tokenIn: bondAssetContract.address,
         tokenOut: baseAssetContract.address,
-        amountIn: ethers.utils.parseUnits("100"),
+        amountIn: ethers.utils.parseUnits("100", BOND_DECIMALS),
         // Misc data
         poolId:
           "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
@@ -427,20 +486,15 @@ describe("ConvergentCurvePool", function () {
       reserveBond,
       reserveUnderlying
     );
-    const result = Number(formatEther(quote));
-    const expectedValue = 90.434755941585224376;
-    expect(result).to.be.almost(expectedValue);
+    expect(quote).to.be.eq(ethers.utils.parseUnits("90.434755", BASE_DECIMALS));
   });
 
   it("Quotes a buy input trade correctly", async function () {
-    const reserveBond = ethers.utils.parseEther("12000");
-    const reserveUnderlying = ethers.utils.parseEther("10000");
-
     const quote = await poolContract.callStatic.onSwapGivenOut(
       {
         tokenIn: baseAssetContract.address,
         tokenOut: bondAssetContract.address,
-        amountOut: ethers.utils.parseUnits("200"),
+        amountOut: ethers.utils.parseUnits("200", BOND_DECIMALS),
         // Misc data
         poolId:
           "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
@@ -452,20 +506,17 @@ describe("ConvergentCurvePool", function () {
       reserveUnderlying,
       reserveBond
     );
-    const result = Number(formatEther(quote));
-    const expectedValue = 184.972608299922486264;
-    expect(result).to.be.almost(expectedValue);
+    expect(quote).to.be.eq(
+      ethers.utils.parseUnits("184.972608", BASE_DECIMALS)
+    );
   });
 
   it("Quotes a sell input trade correctly", async function () {
-    const reserveBond = ethers.utils.parseEther("12000");
-    const reserveUnderlying = ethers.utils.parseEther("10000");
-
     const quote = await poolContract.callStatic.onSwapGivenOut(
       {
         tokenIn: bondAssetContract.address,
         tokenOut: baseAssetContract.address,
-        amountOut: ethers.utils.parseUnits("150"),
+        amountOut: ethers.utils.parseUnits("150", BASE_DECIMALS),
         // Misc data
         poolId:
           "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
@@ -478,7 +529,7 @@ describe("ConvergentCurvePool", function () {
       reserveUnderlying
     );
     const result = Number(formatEther(quote));
-    const expectedValue = 166.279570802359854161;
+    const expectedValue = 16.6279570802359854161;
     expect(result).to.be.almost(expectedValue);
   });
 

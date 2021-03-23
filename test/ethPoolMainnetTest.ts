@@ -21,7 +21,6 @@ describe("ETHPool-Mainnet", () => {
 
     // load all related contracts
     fixture = await loadEthPoolMainnetFixture();
-    console.log("got fixture");
 
     // begin to populate the user array by assigning each index a signer
     users = ((await ethers.getSigners()) as Signer[]).map(function (user) {

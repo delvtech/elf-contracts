@@ -495,7 +495,8 @@ describe("ConvergentCurvePool", function () {
       reserveUnderlying
     );
     expect(quote.toNumber()).to.be.almost(
-      ethers.utils.parseUnits("90.434755", BASE_DECIMALS)
+      ethers.utils.parseUnits("90.434755", BASE_DECIMALS).toNumber(),
+      10
     );
   });
 
@@ -517,7 +518,8 @@ describe("ConvergentCurvePool", function () {
       reserveBond
     );
     expect(quote.toNumber()).to.be.almost(
-      ethers.utils.parseUnits("184.972608", BASE_DECIMALS)
+      ethers.utils.parseUnits("184.972608", BASE_DECIMALS).toNumber(),
+      10
     );
   });
 

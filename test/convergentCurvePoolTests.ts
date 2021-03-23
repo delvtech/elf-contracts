@@ -494,7 +494,9 @@ describe("ConvergentCurvePool", function () {
       reserveBond,
       reserveUnderlying
     );
-    expect(quote).to.be.eq(ethers.utils.parseUnits("90.434755", BASE_DECIMALS));
+    expect(quote.toNumber()).to.be.almost(
+      ethers.utils.parseUnits("90.434755", BASE_DECIMALS)
+    );
   });
 
   it("Quotes a buy input trade correctly", async function () {
@@ -514,7 +516,7 @@ describe("ConvergentCurvePool", function () {
       reserveUnderlying,
       reserveBond
     );
-    expect(quote).to.be.eq(
+    expect(quote.toNumber()).to.be.almost(
       ethers.utils.parseUnits("184.972608", BASE_DECIMALS)
     );
   });

@@ -97,13 +97,10 @@ const deployInterestTokenFactory = async (signer: Signer) => {
 };
 
 const deployTrancheFactory = async (signer: Signer) => {
-  const interestTokenFactory = await (
-    await deployInterestTokenFactory(signer)
-  ).deployTransaction.wait();
-  console.log("passed intrest token deployment");
+  const interestTokenFactory = await deployInterestTokenFactory(signer);
   const deployer = new TrancheFactory__factory(signer);
-  console.log(interestTokenFactory);
-  return await deployer.deploy(interestTokenFactory.contractAddress);
+  const deployTx = await deployer.deploy(interestTokenFactory.address);
+  return deployTx;
 };
 
 export async function loadFixture() {
@@ -163,7 +160,6 @@ export async function loadEthPoolMainnetFixture() {
   const wethAddress = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
   const ywethAddress = "0xac333895ce1A73875CF7B4Ecdc5A743C12f3d82B";
   const [signer] = await ethers.getSigners();
-  console.log("trivial steps");
 
   const weth = IWETH__factory.connect(wethAddress, signer);
   const yweth = IYearnVault__factory.connect(ywethAddress, signer);
@@ -174,13 +170,10 @@ export async function loadEthPoolMainnetFixture() {
     "Element Yearn Wrapped Ether",
     "eyWETH"
   );
-  console.log("deployed yasset");
 
   // deploy and fetch tranche contract
   const trancheFactory = await deployTrancheFactory(signer);
-  console.log("Got factory");
   await trancheFactory.deployTranche(1e10, position.address);
-  console.log("deployed tranche factory");
   const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
   const events = await trancheFactory.queryFilter(eventFilter);
   const trancheAddress = events[0] && events[0].args && events[0].args[0];

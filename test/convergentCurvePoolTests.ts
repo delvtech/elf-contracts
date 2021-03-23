@@ -5,7 +5,7 @@ import chai, { expect } from "chai";
 import chaiAlmost from "chai-almost";
 import { BigNumber, providers } from "ethers";
 import { formatEther } from "ethers/lib/utils";
-import { ethers, network } from "hardhat";
+import { ethers, network, waffle } from "hardhat";
 import { deployBalancerVault } from "test/helpers/deployBalancerVault";
 import { deployConvergentCurvePool } from "test/helpers/deployConvergentCurvePool";
 import {
@@ -18,6 +18,9 @@ import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
 import { TestConvergentCurvePool } from "typechain/TestConvergentCurvePool";
 import { TestERC20 } from "typechain/TestERC20";
 import { Vault } from "typechain/Vault";
+import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
+
+const { provider } = waffle;
 
 // we need to use almost for the onSwap tests since `hardhat coverage` compiles the contracts
 // slightly differently which causes slightly different fixedpoint logic.
@@ -93,6 +96,7 @@ describe("ConvergentCurvePool", function () {
   }
 
   before(async function () {
+    await createSnapshot(provider);
     fixture = await loadEthPoolMainnetFixture();
     const wethAddress = fixture.weth.address;
     startTimestamp = await getTimestamp();
@@ -131,6 +135,10 @@ describe("ConvergentCurvePool", function () {
         expiration: expirationTime,
       }
     ));
+  });
+
+  after(function () {
+    restoreSnapshot(provider);
   });
 
   it("Normalize tokens correctly", async function () {

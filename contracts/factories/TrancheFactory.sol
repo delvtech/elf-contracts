@@ -6,8 +6,6 @@ import "../interfaces/IERC20.sol";
 import "../interfaces/IInterestTokenFactory.sol";
 import "../interfaces/IInterestToken.sol";
 
-import "hardhat/console.sol";
-
 pragma solidity ^0.8.0;
 
 /// @author Element Finance
@@ -30,7 +28,6 @@ contract TrancheFactory {
     /// @notice Create a new Tranche.
     /// @param _factory Address of the interest token factory.
     constructor(address _factory) {
-        console.log("got here");
         _interestTokenFactory = IInterestTokenFactory(_factory);
     }
 
@@ -44,17 +41,12 @@ contract TrancheFactory {
     {
         _tempWpAddress = _wpAddress;
         _tempExpiration = _expiration;
-        console.log("set immutable");
 
         IWrappedPosition wpContract = IWrappedPosition(_wpAddress);
         bytes32 salt = keccak256(abi.encodePacked(_wpAddress, _expiration));
-        console.log("Salted");
         string memory wpSymbol = wpContract.symbol();
-        console.log("got symbol");
         IERC20 underlying = wpContract.token();
-        console.log("got token");
         uint8 underlyingDecimals = underlying.decimals();
-        console.log("got decimals");
 
         // derive the expected tranche address
         address predictedAddress = address(
@@ -78,21 +70,17 @@ contract TrancheFactory {
             _expiration,
             underlyingDecimals
         );
-        console.log("got here");
 
         Tranche tranche = new Tranche{ salt: salt }();
-        console.log("new tranche");
         emit TrancheCreated(
             address(tranche),
             _wpAddress,
             _expiration - block.timestamp
         );
-        console.log("emit event");
         require(
             address(tranche) == predictedAddress,
             "CREATE2 address mismatch"
         );
-        console.log("create2 failed");
         // set back to 0-value for some gas savings
         delete _tempWpAddress;
         delete _tempExpiration;

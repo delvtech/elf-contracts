@@ -132,14 +132,6 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             request.amountIn,
             request.tokenIn
         );
-        currentBalanceTokenIn = _tokenToFixed(
-            currentBalanceTokenIn,
-            request.tokenIn
-        );
-        currentBalanceTokenOut = _tokenToFixed(
-            currentBalanceTokenOut,
-            request.tokenOut
-        );
 
         // We apply the trick which is used in the paper and
         // double count the reserves because the curve provisions liquidity
@@ -150,6 +142,10 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             currentBalanceTokenOut,
             request.tokenOut
         );
+        // Reserves are token decimals at this point so we normalize
+        tokenInReserve = _tokenToFixed(tokenInReserve, request.tokenIn);
+        tokenOutReserve = _tokenToFixed(tokenOutReserve, request.tokenOut);
+
         // Solve the invariant
         uint256 quote = solveTradeInvariant(
             amountTokenIn,
@@ -180,14 +176,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             request.amountOut,
             request.tokenOut
         );
-        currentBalanceTokenIn = _tokenToFixed(
-            currentBalanceTokenIn,
-            request.tokenIn
-        );
-        currentBalanceTokenOut = _tokenToFixed(
-            currentBalanceTokenOut,
-            request.tokenOut
-        );
+
         // We apply the trick which is used in the paper and
         // double count the reserves because the curve provisions liquidity
         // for prices above one underlying per bond, which we don't want to be accessible
@@ -197,6 +186,11 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             currentBalanceTokenOut,
             request.tokenOut
         );
+
+        // Reserves are in token decimals at this point so we normalize
+        tokenInReserve = _tokenToFixed(tokenInReserve, request.tokenIn);
+        tokenOutReserve = _tokenToFixed(tokenOutReserve, request.tokenOut);
+
         // Solve the invariant
         uint256 quote = solveTradeInvariant(
             amountTokenOut,

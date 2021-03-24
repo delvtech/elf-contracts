@@ -519,7 +519,7 @@ describe("ConvergentCurvePool", function () {
     );
     expect(quote.toNumber()).to.be.almost(
       ethers.utils.parseUnits("184.972608", BASE_DECIMALS).toNumber(),
-      10
+      20
     );
   });
 

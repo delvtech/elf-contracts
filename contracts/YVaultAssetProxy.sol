@@ -135,7 +135,7 @@ contract YVaultAssetProxy is WrappedPosition {
         // Deposit and get the shares that were minted to this
         uint256 shares = vault.deposit(localUnderlying + amount, address(this));
         // We set the reserves
-        _setReserves(0, shares - neededShares);
+        _setReserves(0, localShares + shares - neededShares);
         // Return the amount of shares the user has produced, and the amount used for it.
         return (neededShares, amount);
     }
@@ -173,7 +173,7 @@ contract YVaultAssetProxy is WrappedPosition {
             address(this),
             1
         );
-        _setReserves(amountReceived - needed, 0);
+        _setReserves(localUnderlying + amountReceived - needed, 0);
         // Transfer the underlying to the destination 'token' is an immutable in WrappedPosition
         token.transfer(_destination, needed);
         // Return the amount of underlying

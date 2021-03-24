@@ -77,12 +77,10 @@ contract TrancheFactory {
             _wpAddress,
             _expiration - block.timestamp
         );
-
         require(
             address(tranche) == predictedAddress,
             "CREATE2 address mismatch"
         );
-
         // set back to 0-value for some gas savings
         delete _tempWpAddress;
         delete _tempExpiration;

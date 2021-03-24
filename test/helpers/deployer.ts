@@ -99,7 +99,8 @@ const deployInterestTokenFactory = async (signer: Signer) => {
 const deployTrancheFactory = async (signer: Signer) => {
   const interestTokenFactory = await deployInterestTokenFactory(signer);
   const deployer = new TrancheFactory__factory(signer);
-  return await deployer.deploy(interestTokenFactory.address);
+  const deployTx = await deployer.deploy(interestTokenFactory.address);
+  return deployTx;
 };
 
 export async function loadFixture() {

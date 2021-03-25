@@ -84,7 +84,8 @@ describe("UserProxyTests", function () {
       ethers.utils.parseUnits("1", 6),
       underlying.address,
       1e10,
-      usdcFixture.position.address
+      usdcFixture.position.address,
+      []
     );
     // Mint for the first time
     receipt = await receipt.wait();
@@ -93,7 +94,8 @@ describe("UserProxyTests", function () {
       ethers.utils.parseUnits("1", 6),
       underlying.address,
       1e10,
-      usdcFixture.position.address
+      usdcFixture.position.address,
+      []
     );
     receipt = await receipt.wait();
     console.log("Repeat Mint", receipt.gasUsed.toNumber());
@@ -105,7 +107,8 @@ describe("UserProxyTests", function () {
         ethers.utils.parseUnits("1", 6),
         underlying.address,
         1e10,
-        usdcFixture.position.address
+        usdcFixture.position.address,
+        []
       );
     receipt = await receipt.wait();
     console.log("New User First mint", receipt.gasUsed.toNumber());
@@ -150,6 +153,7 @@ describe("UserProxyTests", function () {
             "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
             1e10,
             wethFixture.position.address,
+            [],
             { value: utils.parseEther("2") }
           )
       ).to.be.revertedWith("Incorrect amount provided");
@@ -162,6 +166,7 @@ describe("UserProxyTests", function () {
           "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
           1e10,
           wethFixture.position.address,
+          [],
           { value: utils.parseEther("1") }
         );
       const trancheValue = await wethFixture.tranche.balanceOf(
@@ -219,15 +224,17 @@ describe("UserProxyTests", function () {
       const walletSigner = await ethers.provider.getSigner(wallet.address);
       await usdcFixture.proxy
         .connect(walletSigner)
-        .mintPermit(
-          100,
-          underlying.address,
-          1e10,
-          usdcFixture.position.address,
-          v,
-          r,
-          s
-        );
+        .mint(100, underlying.address, 1e10, usdcFixture.position.address, [
+          {
+            tokenContract: usdcFixture.usdc.address,
+            who: usdcFixture.proxy.address,
+            amount: ethers.constants.MaxUint256,
+            expiration: ethers.constants.MaxUint256,
+            r: r,
+            s: s,
+            v: v,
+          },
+        ]);
       const trancheValue = await usdcFixture.tranche.balanceOf(wallet.address);
       expect(trancheValue).to.be.eq(100);
     });

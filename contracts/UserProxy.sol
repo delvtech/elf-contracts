@@ -58,6 +58,49 @@ contract UserProxy is Authorizable {
         isFrozen = _newState;
     }
 
+    // Memory encoding of the permit data
+    struct PermitData {
+        IERC20Permit tokenContract;
+        address who;
+        uint256 amount;
+        uint256 expiration;
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+    }
+
+    /// @dev Takes the input permit calls and executes them
+    /// @param data The array which encodes the set of permit calls to make
+    modifier preApproval(PermitData[] memory data) {
+        // If permit calls are provided we make try to make them
+        if (data.length != 0) {
+            // We make permit calls for each indicated call
+            for (uint256 i = 0; i < data.length; i++) {
+                permitCall(data[i]);
+            }
+        }
+        _;
+    }
+
+    /// @dev Makes permit calls indicated by a struct
+    /// @param data the struct which has the permit calldata
+    function permitCall(PermitData memory data) internal {
+        // Make the permit call to the token in the data field using
+        // the fields provided.
+        // Security note - This fairly open call is safe because it cannot
+        // call 'transferFrom' or other sensitive methods despite the open
+        // scope. Do not make more general without security review.
+        data.tokenContract.permit(
+            msg.sender,
+            data.who,
+            data.amount,
+            data.expiration,
+            data.v,
+            data.r,
+            data.s
+        );
+    }
+
     /// @notice Mints a Principal/Interest token pair from either underlying token or Eth
     ///      then returns the tokens to the caller.
     /// @dev This function assumes that it already has an allowance for the token in question.
@@ -67,20 +110,25 @@ contract UserProxy is Authorizable {
     ///                   This token should revert in the event of a transfer failure.
     /// @param _expiration The expiration time of the Tranche contract
     /// @param _position The contract which manages pooled deposits
+    /// @param _permitCallData Encoded array of permit calls to make prior to minting
+    ///                        the data should be encoded with abi.encode(data, "PermitData[]")
+    ///                        each PermitData struct provided will be executed as a call.
+    ///                        An example use of this is if using a token with permit like USDC
+    ///                        to encode a permit which gives this contract allowance before minting.
+    // NOTE - It is critical that the notFrozen modifier is listed first so it gets called first.
     function mint(
         uint256 _amount,
         IERC20 _underlying,
         uint256 _expiration,
-        address _position
-    ) external payable notFrozen() {
+        address _position,
+        PermitData[] calldata _permitCallData
+    ) external payable notFrozen() preApproval(_permitCallData) {
         // If the underlying token matches this predefined 'ETH token'
         // then we create weth for the user and go from there
         if (address(_underlying) == _ETH_CONSTANT) {
             // Check that the amount matches the amount provided
             require(msg.value == _amount, "Incorrect amount provided");
             // Create weth from the provided eth
-            // NOTE - This can be made slightly cheaper by depositing 1 wei into this
-            //        contract address on weth.
             weth.deposit{ value: msg.value }();
             weth.transfer(address(_position), _amount);
             // Proceed to internal minting steps
@@ -91,44 +139,6 @@ contract UserProxy is Authorizable {
             // Proceed to internal minting steps
             _mint(_expiration, _position);
         }
-    }
-
-    /// @notice Mints a Principal/Interest token pair from a underlying token which supports
-    ///      the permit method.
-    /// @dev This call sets the allowance on this contract
-    ///      for the underlying ERC20 token to be unlimited and expects the
-    ///      signature to have an expiration time of uint256.max
-    /// @param _amount The amount of underlying to turn into tokens
-    /// @param _underlying The underlying ERC20 token contract
-    /// @param _expiration The expiration time of the Tranche contract
-    /// @param _position The contract which manages pooled positions
-    /// @param _v The bit indicator which allows address recover from signature
-    /// @param _r The r component of the signature.
-    /// @param _s The s component of the signature.
-    function mintPermit(
-        uint256 _amount,
-        IERC20Permit _underlying,
-        uint256 _expiration,
-        address _position,
-        uint8 _v,
-        bytes32 _r,
-        bytes32 _s
-    ) external notFrozen() {
-        // Permit this contract to have unlimited access to
-        // the msg.sender's funds
-        _underlying.permit(
-            msg.sender,
-            address(this),
-            type(uint256).max,
-            type(uint256).max,
-            _v,
-            _r,
-            _s
-        );
-        // Move the user's funds to the wrapped position contract
-        _underlying.transferFrom(msg.sender, address(_position), _amount);
-        // Pass call to internal function which works once approved
-        _mint(_expiration, _position);
     }
 
     /// @dev This internal mint function performs the core minting logic after

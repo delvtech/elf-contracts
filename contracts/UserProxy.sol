@@ -76,7 +76,7 @@ contract UserProxy is Authorizable {
         if (data.length != 0) {
             // We make permit calls for each indicated call
             for (uint256 i = 0; i < data.length; i++) {
-                permitCall(data[i]);
+                _permitCall(data[i]);
             }
         }
         _;
@@ -84,7 +84,7 @@ contract UserProxy is Authorizable {
 
     /// @dev Makes permit calls indicated by a struct
     /// @param data the struct which has the permit calldata
-    function permitCall(PermitData memory data) internal {
+    function _permitCall(PermitData memory data) internal {
         // Make the permit call to the token in the data field using
         // the fields provided.
         // Security note - This fairly open call is safe because it cannot

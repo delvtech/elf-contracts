@@ -5,6 +5,8 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IYearnVaultV2.sol";
 import "./WrappedPosition.sol";
 
+import "hardhat/console.sol";
+
 /// @author Element Finance
 /// @title Yearn Vault v1 Asset Proxy
 contract YVaultAssetProxy is WrappedPosition {
@@ -155,9 +157,17 @@ contract YVaultAssetProxy is WrappedPosition {
         }
         // We load the reserves
         (uint256 localUnderlying, uint256 localShares) = _getReserves();
+        // Calculate the amount of shares the amount deposited is worth
+        // Note - to get a realistic reading and avoid rounding errors we
+        // use the method of the yearn vault instead of '_pricePerShare'
+        uint256 yearnTotalSupply = vault.totalSupply();
+        uint256 yearnTotalAssets = vault.totalAssets();
+        uint256 needed = (_shares * yearnTotalAssets) / yearnTotalSupply;
         // If we have enough underlying we don't have to actually withdraw
-        uint256 needed = (_shares * _underlyingPerShare) / 10**vaultDecimals;
         if (needed < localUnderlying) {
+            console.log("from reserves");
+            console.log("underlying", localUnderlying - needed);
+
             // We set the reserves to be the new reserves
             _setReserves(localUnderlying - needed, localShares + _shares);
             // Then transfer needed underlying to the destination
@@ -173,6 +183,9 @@ contract YVaultAssetProxy is WrappedPosition {
             address(this),
             1
         );
+        console.log(localUnderlying);
+        console.log(amountReceived);
+        console.log(needed);
         _setReserves(localUnderlying + amountReceived - needed, 0);
         // Transfer the underlying to the destination 'token' is an immutable in WrappedPosition
         token.transfer(_destination, needed);

@@ -5,11 +5,11 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IWETH.sol";
 import "./interfaces/IWrappedPosition.sol";
 
-import "./libraries/ERC20.sol";
+import "./libraries/ERC20Permit.sol";
 
 /// @author Element Finance
 /// @title Wrapped Position Core
-abstract contract WrappedPosition is ERC20, IWrappedPosition {
+abstract contract WrappedPosition is ERC20Permit, IWrappedPosition {
     IERC20 public immutable override token;
 
     /// @notice Constructs this contract
@@ -21,7 +21,7 @@ abstract contract WrappedPosition is ERC20, IWrappedPosition {
         IERC20 _token,
         string memory _name,
         string memory _symbol
-    ) ERC20(_name, _symbol) {
+    ) ERC20Permit(_name, _symbol) {
         token = _token;
         // We set our decimals to be the same as the underlying
         _setupDecimals(_token.decimals());

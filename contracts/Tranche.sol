@@ -7,12 +7,12 @@ import "./interfaces/ITranche.sol";
 import "./interfaces/ITrancheFactory.sol";
 import "./interfaces/IInterestToken.sol";
 
-import "./libraries/ERC20.sol";
+import "./libraries/ERC20Permit.sol";
 import "./libraries/DateString.sol";
 
 /// @author Element Finance
 /// @title Tranche
-contract Tranche is ERC20, ITranche {
+contract Tranche is ERC20Permit, ITranche {
     IInterestToken public immutable override interestToken;
     IWrappedPosition public immutable position;
     IERC20 public immutable underlying;
@@ -30,7 +30,7 @@ contract Tranche is ERC20, ITranche {
     uint256 internal constant _SLIPPAGE_BP = 1e13;
 
     /// @notice Constructs this contract
-    constructor() ERC20("Element Principal Token", "ELF:") {
+    constructor() ERC20Permit("Element Principal Token", "ELF:") {
         // Assume the caller is the Tranche factory.
         ITrancheFactory trancheFactory = ITrancheFactory(msg.sender);
         (
@@ -143,7 +143,7 @@ contract Tranche is ERC20, ITranche {
     @return The number of underlying tokens released
     @dev This method will return 1 underlying for 1 principal except when interest
          is negative, in that case liquidity might run out and some principal token may
-         not be redeemable. 
+         not be redeemable.
          Also note: Redemption has the possibility of at most _SLIPPAGE_BP
          numerical error on each redemption so each principal token may occasionally redeem
          for less than 1 unit of underlying. Max loss defaults to 0.1 BP ie 0.001% loss

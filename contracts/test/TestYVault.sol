@@ -6,12 +6,13 @@ import "../interfaces/IYearnVaultV2.sol";
 
 import "../libraries/ERC20PermitWithSupply.sol";
 
+import "../libraries/ERC20Permit.sol";
 import "./TestERC20.sol";
 
 contract TestYVault is ERC20PermitWithSupply {
     address public token;
 
-    constructor(address _token) ERC20("test ytoken", "yToken") {
+    constructor(address _token) ERC20Permit("test ytoken", "yToken") {
         token = _token;
     }
 
@@ -37,18 +38,18 @@ contract TestYVault is ERC20PermitWithSupply {
     }
 
     function pricePerShare() public view returns (uint256) {
-        uint256 balance = ERC20(token).balanceOf(address(this));
+        uint256 balance = ERC20Permit(token).balanceOf(address(this));
         if (balance == 0) return 1e18;
         return (balance * 1e18) / totalSupply;
     }
 
     function updateShares() external {
-        uint256 balance = ERC20(token).balanceOf(address(this));
+        uint256 balance = ERC20Permit(token).balanceOf(address(this));
         TestERC20(token).mint(address(this), balance / 10);
     }
 
     function totalAssets() public view returns (uint256) {
-        return ERC20(token).balanceOf(address(this));
+        return ERC20Permit(token).balanceOf(address(this));
     }
 
     function governance() external pure returns (address) {

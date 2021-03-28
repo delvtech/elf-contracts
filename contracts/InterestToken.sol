@@ -1,11 +1,11 @@
 pragma solidity ^0.8.0;
 
-import "./libraries/ERC20.sol";
+import "./libraries/ERC20Permit.sol";
 import "./libraries/DateString.sol";
 
 import "./interfaces/IInterestToken.sol";
 
-contract InterestToken is ERC20, IInterestToken {
+contract InterestToken is ERC20Permit, IInterestToken {
     // The tranche address which controls the minting
     address public immutable tranche;
 
@@ -18,7 +18,7 @@ contract InterestToken is ERC20, IInterestToken {
         string memory _strategySymbol,
         uint256 _timestamp,
         uint8 _decimals
-    ) ERC20("Element Interest Token ", "ELV:") {
+    ) ERC20Permit("Element Interest Token ", "ELV:") {
         tranche = _tranche;
         _setupDecimals(_decimals);
         // Write the strategySymbol and expiration time to name and symbol

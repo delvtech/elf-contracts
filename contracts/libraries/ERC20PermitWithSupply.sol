@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-import "./ERC20.sol";
+import "./ERC20Permit.sol";
 
-abstract contract ERC20WithSupply is ERC20 {
+abstract contract ERC20PermitWithSupply is ERC20Permit {
     uint256 public totalSupply;
 
     function _mint(address account, uint256 amount) internal override {

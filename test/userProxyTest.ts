@@ -34,7 +34,7 @@ describe("UserProxyTests", function () {
     ({ proxy } = usdcFixture);
 
     underlying = await ethers.getContractAt(
-      "contracts/libraries/ERC20.sol:ERC20",
+      "contracts/libraries/ERC20Permit.sol:ERC20Permit",
       await usdcFixture.position.token()
     );
     impersonate(usdcWhaleAddress);

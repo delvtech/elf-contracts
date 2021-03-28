@@ -4,11 +4,11 @@ pragma solidity ^0.8.0;
 import "../interfaces/IERC20.sol";
 import "../interfaces/IYearnVaultV2.sol";
 
-import "../libraries/ERC20WithSupply.sol";
+import "../libraries/ERC20PermitWithSupply.sol";
 
 import "./TestERC20.sol";
 
-contract TestYVault is ERC20WithSupply {
+contract TestYVault is ERC20PermitWithSupply {
     address public token;
 
     constructor(address _token) ERC20("test ytoken", "yToken") {

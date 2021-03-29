@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.7.1;
 
 // A contract who's whole purpose is to not trigger call failure reverts

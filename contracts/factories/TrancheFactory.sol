@@ -14,7 +14,7 @@ contract TrancheFactory {
     event TrancheCreated(
         address indexed trancheAddress,
         address indexed wpAddress,
-        uint256 indexed duration
+        uint256 indexed expiration
     );
 
     IInterestTokenFactory internal _interestTokenFactory;
@@ -72,12 +72,7 @@ contract TrancheFactory {
         );
 
         Tranche tranche = new Tranche{ salt: salt }();
-        emit TrancheCreated(
-            address(tranche),
-            _wpAddress,
-            _expiration - block.timestamp
-        );
-
+        emit TrancheCreated(address(tranche), _wpAddress, _expiration);
         require(
             address(tranche) == predictedAddress,
             "CREATE2 address mismatch"

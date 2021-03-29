@@ -50,7 +50,7 @@ const config: HardhatUserConfig = {
       },
       accounts: {
         accountsBalance: "100000000000000000000000", // 100000 ETH
-        count: 4,
+        count: 5,
       },
     },
   },

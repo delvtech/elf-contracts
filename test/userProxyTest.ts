@@ -1,20 +1,22 @@
-import { expect } from "chai";
-import { ethers, waffle } from "hardhat";
-import {
-  loadUsdcPoolMainnetFixture,
-  UsdcPoolMainnetInterface,
-  EthPoolMainnetInterface,
-  loadEthPoolMainnetFixture,
-} from "./helpers/deployer";
-import { impersonate } from "./helpers/impersonate";
-import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
-import { getDigest } from "./helpers/signatures";
-import { Contract } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
-import { CodeSizeChecker__factory } from "typechain/factories/CodeSizeChecker__factory";
-import { Signer, utils } from "ethers";
+import { expect } from "chai";
 import { MockProvider } from "ethereum-waffle";
 import { ecsign } from "ethereumjs-util";
+import { Contract, Signer, utils } from "ethers";
+import { ethers, waffle } from "hardhat";
+import { ERC20Permit } from "typechain/ERC20Permit";
+import { CodeSizeChecker__factory } from "typechain/factories/CodeSizeChecker__factory";
+import { ERC20Permit__factory } from "typechain/factories/ERC20Permit__factory";
+
+import {
+  EthPoolMainnetInterface,
+  loadEthPoolMainnetFixture,
+  loadUsdcPoolMainnetFixture,
+  UsdcPoolMainnetInterface,
+} from "./helpers/deployer";
+import { impersonate } from "./helpers/impersonate";
+import { getDigest } from "./helpers/signatures";
+import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 
 const { provider } = waffle;
 
@@ -22,7 +24,7 @@ describe("UserProxyTests", function () {
   let usdcFixture: UsdcPoolMainnetInterface;
 
   let proxy: Contract;
-  let underlying: Contract;
+  let underlying: ERC20Permit;
   let signers: SignerWithAddress[];
   const lots = ethers.utils.parseUnits("1000000", 6);
   const usdcWhaleAddress = "0xAe2D4617c862309A3d75A0fFB358c7a5009c673F";
@@ -32,15 +34,12 @@ describe("UserProxyTests", function () {
     // Get the setup contracts
     usdcFixture = await loadUsdcPoolMainnetFixture();
     ({ proxy } = usdcFixture);
-
-    underlying = await ethers.getContractAt(
-      "contracts/libraries/ERC20.sol:ERC20",
-      await usdcFixture.position.token()
-    );
+    const underlyingAddress = await usdcFixture.position.token();
     impersonate(usdcWhaleAddress);
     const usdcWhale = await ethers.provider.getSigner(usdcWhaleAddress);
     // Get the signers
     signers = await ethers.getSigners();
+    underlying = ERC20Permit__factory.connect(underlyingAddress, signers[0]);
     // mint to the user 0
     await underlying.connect(usdcWhale).transfer(signers[0].address, lots);
     // mint to the user 1
@@ -194,10 +193,8 @@ describe("UserProxyTests", function () {
       impersonate(usdcWhaleAddress);
       const tokenHolder = await ethers.provider.getSigner(usdcWhaleAddress);
       await usdcFixture.usdc.connect(tokenHolder).transfer(wallet.address, 100);
-      underlying = await ethers.getContractAt(
-        "contracts/libraries/ERC20.sol:ERC20",
-        await usdcFixture.position.token()
-      );
+      const underlyingAddress = await usdcFixture.position.token();
+      underlying = ERC20Permit__factory.connect(underlyingAddress, signers[0]);
     });
     it("Correctly mints with permit", async () => {
       // domain separator of USDC mainnet contract at 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48

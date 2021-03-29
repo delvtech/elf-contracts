@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import "../interfaces/IERC20Permit.sol";
 
-abstract contract ERC20 is IERC20Permit {
+abstract contract ERC20Permit is IERC20Permit {
     // --- ERC20 Data ---
     string public name;
     string public override symbol;

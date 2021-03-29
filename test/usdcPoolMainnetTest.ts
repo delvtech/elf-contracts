@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { Signer, BigNumber } from "ethers";
+import { Signer, BigNumber, BigNumberish } from "ethers";
 import { ethers, waffle } from "hardhat";
 
 import {
@@ -43,18 +43,19 @@ describe("USDCPool-Mainnet", () => {
     await fixture.usdc.connect(usdcWhale).transfer(users[1].address, 2e11); // 200k usdc
     await fixture.usdc.connect(usdcWhale).transfer(users[2].address, 2e11); // 200k usdc
     await fixture.usdc.connect(usdcWhale).transfer(users[3].address, 6e11); // 600k usdc
+    await fixture.usdc.connect(usdcWhale).transfer(users[4].address, 10e11); // 1000k usdc
 
     stopImpersonating(usdcWhaleAddress);
 
     await fixture.usdc
       .connect(users[1].user)
-      .approve(fixture.position.address, 2e11); // 200k usdc
+      .approve(fixture.position.address, 10e11); // 200k usdc
     await fixture.usdc
       .connect(users[2].user)
-      .approve(fixture.position.address, 2e11); // 200k usdc
+      .approve(fixture.position.address, 10e11); // 200k usdc
     await fixture.usdc
       .connect(users[3].user)
-      .approve(fixture.position.address, 6e11); // 600k usdc
+      .approve(fixture.position.address, 10e11); // 600k usdc
   });
   after(async () => {
     // revert back to initial state after all tests pass
@@ -192,15 +193,37 @@ describe("USDCPool-Mainnet", () => {
     });
   });
 
+  async function yearnDepositSim(
+    fixture: UsdcPoolMainnetInterface,
+    amount: BigNumberish
+  ) {
+    const yearnTotalSupply = await fixture.yusdc.totalSupply();
+    const yearnTotalAssets = await fixture.yusdc.totalAssets();
+    return yearnTotalSupply.mul(amount).div(yearnTotalAssets);
+  }
+
+  async function yearnWithdrawSim(
+    fixture: UsdcPoolMainnetInterface,
+    amount: BigNumberish
+  ) {
+    const yearnTotalSupply = await fixture.yusdc.totalSupply();
+    const yearnTotalAssets = await fixture.yusdc.totalAssets();
+    return yearnTotalAssets.mul(amount).div(yearnTotalSupply);
+  }
+
   describe("Funded Reserve Deposit/Withdraw", () => {
     it("should correctly handle deposits and withdrawals", async () => {
       impersonate(usdcWhaleAddress);
       const usdcWhale = await ethers.provider.getSigner(usdcWhaleAddress);
       // A user funds the reserves to enable gas efficient actions
+      const initialReserve = 3e11;
       await fixture.usdc
         .connect(usdcWhale)
         .approve(fixture.position.address, 4e11);
-      await fixture.position.connect(usdcWhale).reserveDeposit(3e11 + 1);
+      await fixture.position
+        .connect(usdcWhale)
+        .reserveDeposit(initialReserve + 1);
+      let deposit = await yearnDepositSim(fixture, initialReserve);
       let pricePerFullShare = await fixture.yusdc.pricePerShare();
 
       // Now we try some deposits
@@ -212,29 +235,45 @@ describe("USDCPool-Mainnet", () => {
       let userBalance = await fixture.position.balanceOf(users[1].address);
       let shareAmount = BigNumber.from(1e11).mul(1e6).div(pricePerFullShare);
       expect(userBalance).to.be.at.least(subError(shareAmount));
+      const shareReserve = await fixture.position.reserveShares();
+      expect(shareReserve).to.be.eq(deposit);
+      expect(await fixture.position.reserveUnderlying()).to.be.eq(0);
 
       // The second is fully fillable from the reserve's wrapped position shares
+      deposit = await yearnDepositSim(fixture, 2e11);
       await fixture.position
         .connect(users[2].user)
         .deposit(users[2].address, 2e11);
       userBalance = await fixture.position.balanceOf(users[2].address);
       shareAmount = BigNumber.from(2e11).mul(1e6).div(pricePerFullShare);
       expect(userBalance).to.be.at.least(subError(shareAmount));
+      expect(await fixture.position.reserveShares()).to.be.eq(
+        shareReserve.sub(deposit)
+      );
+      expect(await fixture.position.reserveUnderlying()).to.be.eq(2e11);
 
       // The third consumes the remaining requiring switchover
+      deposit = await yearnDepositSim(fixture, initialReserve + 1);
+      await fixture.usdc.connect(users[4].user).transfer(users[1].address, 1);
+      // Note we have to add 1 unit to this transfer to cause the right behavior
       await fixture.position
         .connect(users[1].user)
-        .deposit(users[1].address, 1e11);
+        .deposit(users[1].address, 1e11 + 1);
       userBalance = await fixture.position.balanceOf(users[1].address);
       shareAmount = BigNumber.from(2e11).mul(1e6).div(pricePerFullShare);
       expect(userBalance).to.be.at.least(subError(shareAmount));
+      expect(await fixture.position.reserveShares()).to.be.eq(deposit);
+      expect(await fixture.position.reserveUnderlying()).to.be.eq(0);
 
+      // Final deposit should be preformed without the reserve
       await fixture.position
         .connect(users[3].user)
         .deposit(users[3].address, 6e11);
       userBalance = await fixture.position.balanceOf(users[3].address);
       shareAmount = BigNumber.from(6e11).mul(1e6).div(pricePerFullShare);
       expect(userBalance).to.be.at.least(subError(shareAmount));
+      expect(await fixture.position.reserveShares()).to.be.eq(deposit);
+      expect(await fixture.position.reserveUnderlying()).to.be.eq(0);
 
       // Test withdraws
       const toWithdraw = ethers.BigNumber.from("1000000"); // 1 usdc
@@ -244,6 +283,7 @@ describe("USDCPool-Mainnet", () => {
         .mul(pricePerFullShare)
         .div(ethers.utils.parseUnits("1", 6));
 
+      let usdcBalance = await yearnWithdrawSim(fixture, deposit);
       await fixture.position
         .connect(users[1].user)
         .withdraw(users[1].address, toWithdraw, 0);
@@ -253,31 +293,47 @@ describe("USDCPool-Mainnet", () => {
       expect(await fixture.usdc.balanceOf(users[1].address)).to.equal(
         withdrawUsdc
       );
-
-      /* At this point:
-       *         deposited     held
-       * User 1: 49,999 USDC | 1 USDC
-       * user 2: 20,000 USDC | 0 USDC
-       * User 3: 30,000 USDC | 0 USDC
-       */
+      expect(await fixture.position.reserveShares()).to.be.eq(0);
+      // The extra unit is from rounding error in the contract's favor
+      expect(await fixture.position.reserveUnderlying()).to.be.eq(
+        usdcBalance.add(1)
+      );
 
       const shareBalanceU1 = await fixture.position.balanceOf(users[1].address);
+      let newWithdraw = await yearnWithdrawSim(fixture, shareBalanceU1);
       await fixture.position
         .connect(users[1].user)
         .withdraw(users[1].address, shareBalanceU1, 0);
       expect(await fixture.position.balanceOf(users[1].address)).to.equal(0);
+      expect(await fixture.position.reserveShares()).to.be.eq(shareBalanceU1);
+      expect(await fixture.position.reserveUnderlying()).to.be.eq(
+        usdcBalance.add(1).sub(newWithdraw)
+      );
+      // We record the current share balance
+      usdcBalance = usdcBalance.add(1).sub(newWithdraw);
 
+      // This withdraw requires resetting the reserves
       const shareBalanceU2 = await fixture.position.balanceOf(users[2].address);
+      newWithdraw = await yearnWithdrawSim(fixture, shareBalanceU2);
       await fixture.position
         .connect(users[2].user)
         .withdraw(users[2].address, shareBalanceU2, 0);
       expect(await fixture.position.balanceOf(users[2].address)).to.equal(0);
+      expect(await fixture.position.reserveShares()).to.be.eq(0);
+      expect(await fixture.position.reserveUnderlying()).to.be.eq(
+        initialReserve + 1
+      );
 
+      // This withdraw cannot use the reserves so doesn't change them
       const shareBalanceU3 = await fixture.position.balanceOf(users[3].address);
       await fixture.position
         .connect(users[3].user)
         .withdraw(users[3].address, shareBalanceU3, 0);
       expect(await fixture.position.balanceOf(users[3].address)).to.equal(0);
+      expect(await fixture.position.reserveShares()).to.be.eq(0);
+      expect(await fixture.position.reserveUnderlying()).to.be.eq(
+        initialReserve + 1
+      );
 
       /* At this point:
        *         deposited     held

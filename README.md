@@ -4,31 +4,33 @@
 [![Coverage Status](https://coveralls.io/repos/github/element-fi/elf-contracts/badge.svg?branch=main&service=github&t=7FWsvc)](https://coveralls.io/github/element-fi/elf-contracts?branch=main)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/element-fi/elf-contracts/blob/master/LICENSE)
 
-The Element Protocol is a DeFi primitive which runs on the Ethereum blockchain. Element allows a tokenized yield bearing position to be split into principal and Yield tokens where the Principal tokens are redeemable for the deposited principal and the Yield tokens are redeemable for the yield earned over the period. This repository contains the smart contract which enable that functionality and a custom AMM implementation based on the YieldSpace [paper](https://yield.is/YieldSpace.pdf). This custom AMM is designed as an integration with the Balancer V2 system.
+The Element Protocol is a new DeFi primitive which runs on the Ethereum blockchain. The Protocol, at its core, allows a tokenized yield bearing position (ETH, BTC, USDC, etc) to be split into two distinct separate tokens, the 1) principal token, and the 2) yield token. The principal tokens are redeemable for the deposited principal and the yield tokens are redeemable for the yield earned over the term period. This splitting mechanism allows users to sell their principal as a fixed-rate income position, further leveraging or increasing exposure to interest without any liquidation risk. This competitive activity along with the custom curve built on Balancer V2 is what drives the high fixed yield markets, bringing liquidity to fixed yield income while minimizing slippage and fees as the discount decreases, ultimately opening the door to a number of new DeFi primitives.
 
-For a technical contract overview please read our [specification](https://github.com/element-fi/elf-contracts/blob/master/SPECIFICATION.md).
+This repository contains the smart contracts which enable the functionality described above, including the custom AMM implementation based on the YieldSpace [paper](https://yield.is/YieldSpace.pdf), designed as an integration with the Balancer V2 system.
 
 Element is a community driven protocol and there are many ways to contribute to it, we encourage you to jump in and improve and use this code.
 
+For a technical contract overview please read our [specification](https://github.com/element-fi/elf-contracts/blob/master/SPECIFICATION.md).
+
 ## Bugs and Feature Requests
 
-The code in this repository's main branch is deployed to the blockchain and cannot be changed. Despite that the Element community is engaged in active development of new features and code fixes which are extension of this code. If you have a suggestion for a new feature, extension, or cool use case and want to help the community, drop by the dev channel in our [discord](https://discord.com/invite/JpctS728r9) to discuss and you will have a warm welcome!
+The code in this repository's main branch is deployed to the Ethereum blockchain and cannot be changed. Despite that, the Element community is engaged in the active development of new features and code fixes which are an extension of this code. If you have a suggestion for a new feature, extension, or cool use case and want to help the community, drop by the dev channel in our [discord](https://discord.com/invite/JpctS728r9) to discuss and you will have a warm welcome!
 
-For non security critical bugs you can open a public issue on this repository, but please follow our issue guidelines. For security critical bugs please report to security@element.fi and follow responsible disclosure standards since these contracts are likely to hold high value cryptocurrency. If you do find a bug there is a Bug Bounty program sponsored by the Element Foundation and may be further rewards allocated from other community members.
+For non-security-critical bugs, you can open a public issue on this repository, but please follow our issue guidelines. For any security-related critical bugs please report to security@element.fi and follow responsible disclosure standards since these contracts are likely to hold high-value cryptocurrency. If you do find a bug there is a Bug Bounty program funded by Element Finance [here](link when ready). 
 
 ## Integrations and Code Contributions
 
-Integrating with the Element protocol's tokens is as easy as using the ERC20 compliant tokens into your project or integrating with the public methods smart contract directly on the ethereum blockchain. Launching new assets is also permissionless but may require some new smart contract code, to write this code please carefully review the specification and ask any questions that remain in the dev channel of our [discord](https://discord.com/invite/JpctS728r9).
+Integrating with the Element protocol's tokens is as easy as adding ERC20 compliant tokens to your project or integrating with the public methods smart contract directly on the Ethereum blockchain. Launching new assets on Element is also permissionless but may require some new smart contract code; to write this code please carefully review the specification and don't hesitate to reach out and ask any questions in the dev channel of our [discord](https://discord.com/invite/JpctS728r9).
 
-We welcome new code contributions and contributors, please follow out contribution [guidelines](https://github.com/element-fi/elf-contracts/blob/master/CONTRIBUTING.md). New code contributions are more likely to be accepted into future deployments of the protocol if they are discussed with our community first.
+We welcome new contributors and code contributions with open arms! Please be sure to follow our contribution [guidelines](https://github.com/element-fi/elf-contracts/blob/master/CONTRIBUTING.md) when proposing any new code. Lastly, because Element is a community driven protocol, any new code contributions are more likely to be accepted into future deployments of the protocol if they have been openly discussed within the community first.
 
 ## Build and Testing
 
-### Prerequisites
+### 1. Getting Started (Prerequisites)
 
-- [npm](https://nodejs.org/en/download/)
+- [Install npm](https://nodejs.org/en/download/)
 
-### Setup
+### 2. Setup
 
 ```
 git clone git@github.com:element-fi/elf-contracts.git
@@ -39,13 +41,13 @@ cd elf-contracts
 npm install
 ```
 
-### Build
+### 3. Build
 
 ```
 npm run build
 ```
 
-### Test
+### 4. Test
 
 ```
 npm run test

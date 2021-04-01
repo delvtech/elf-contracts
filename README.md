@@ -4,7 +4,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/element-fi/elf-contracts/badge.svg?branch=main&service=github&t=7FWsvc)](https://coveralls.io/github/element-fi/elf-contracts?branch=main)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/element-fi/elf-contracts/blob/master/LICENSE)
 
-The Element Protocol is a DeFi primitive which runs on the Ethereum blockchain. Element allows a tokenized yield bearing position to be split into principal and Yield tokens where the Principal tokens are redeemable for the deposited principal and the Yield are redeemable for the yield earned by principal earns over the period. This repository contains the smart contract which enable that functionality and a custom AMM implementation based on the YieldSpace paper. This custom AMM is designed as an integration with the Balancer V2 system.
+The Element Protocol is a DeFi primitive which runs on the Ethereum blockchain. Element allows a tokenized yield bearing position to be split into principal and Yield tokens where the Principal tokens are redeemable for the deposited principal and the Yield tokens are redeemable for the yield earned over the period. This repository contains the smart contract which enable that functionality and a custom AMM implementation based on the YieldSpace [paper](https://yield.is/YieldSpace.pdf). This custom AMM is designed as an integration with the Balancer V2 system.
 
 For a technical contract overview please read our [specification](https://github.com/element-fi/elf-contracts/blob/master/SPECIFICATION.md).
 

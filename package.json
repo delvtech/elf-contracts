@@ -5,6 +5,7 @@
   "scripts": {
     "solhint": "npx solhint -f table contracts/*.sol contracts/**/*.sol contracts/**/**/*.sol",
     "style-check": "npx prettier --check .",
+    "lint": "npm run solhint && npm run style-check",
     "prettier": "npx prettier --write .",
     "build": "npx hardhat compile && rm ./typechain/index.ts",
     "test": "npx hardhat compile && rm ./typechain/index.ts && npx hardhat test --config hardhat.config.test.ts ./test/*.ts",

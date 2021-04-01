@@ -13,7 +13,7 @@ jobs:
       steps:
         - uses: actions/checkout@v2
         - name: Install dependencies
-          run: npm install
+          run: npm ci
         - name: Coverage
           run: npm run build && npm run coverage
         - name: Edit lcov.info

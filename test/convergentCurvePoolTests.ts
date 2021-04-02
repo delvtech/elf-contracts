@@ -376,8 +376,8 @@ describe("ConvergentCurvePool", function () {
   // We test the assigned trade fee when buying a bond
   it("Calculates fees correctly for a buy", async function () {
     await resetPool();
-    const amount = ethers.utils.parseUnits("11000");
-    const inputUnderlying = ethers.utils.parseUnits("10000");
+    const amount = ethers.utils.parseUnits("11000", BOND_DECIMALS);
+    const inputUnderlying = ethers.utils.parseUnits("10000", BASE_DECIMALS);
 
     // Check the case when this is an output trade
     let result = await mineTx(
@@ -389,10 +389,13 @@ describe("ConvergentCurvePool", function () {
       )
     );
     let returned = result.events.filter((event) => event.event == "UIntReturn");
-    expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("10950"));
+    expect(returned[0].data).to.be.eq(
+      ethers.utils.parseUnits("10950", BOND_DECIMALS)
+    );
     // Check the stored fees
     const feeBond = await poolContract.feesBond();
-    expect(feeBond).to.be.eq(ethers.utils.parseUnits("50", BOND_DECIMALS));
+    //
+    expect(feeBond).to.be.eq(ethers.utils.parseUnits("50"));
 
     // Check the case when this is an input trade
     result = await mineTx(
@@ -404,21 +407,21 @@ describe("ConvergentCurvePool", function () {
       )
     );
     returned = result.events.filter((event) => event.event == "UIntReturn");
-    expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("10050"));
+    expect(returned[0].data).to.be.eq(
+      ethers.utils.parseUnits("10050", BASE_DECIMALS)
+    );
     // Check the stored fees
     const feeUnderlying = await poolContract.feesUnderlying();
-    expect(feeUnderlying).to.be.eq(
-      ethers.utils.parseUnits("50", BASE_DECIMALS)
-    );
+    expect(feeUnderlying).to.be.eq(ethers.utils.parseUnits("50"));
   });
 
   // We test the assigned trade fee when selling a bond
   it("Calculates fees correctly for a sell", async function () {
     await resetPool();
-    const inputBond = ethers.utils.parseUnits("11000");
-    const amount = ethers.utils.parseUnits("10000");
+    const inputBond = ethers.utils.parseUnits("11000", BOND_DECIMALS);
+    const amount = ethers.utils.parseUnits("10000", BASE_DECIMALS);
 
-    // Check the case when this is an output trade
+    // Check the case when this is an input trade
     let result = await mineTx(
       poolContract.assignTradeFee(
         inputBond,
@@ -428,14 +431,14 @@ describe("ConvergentCurvePool", function () {
       )
     );
     let returned = result.events.filter((event) => event.event == "UIntReturn");
-    expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("9950"));
+    expect(returned[0].data).to.be.eq(
+      ethers.utils.parseUnits("9950", BASE_DECIMALS)
+    );
     // Check the stored fees
     const feeUnderlying = await poolContract.feesUnderlying();
-    expect(feeUnderlying).to.be.eq(
-      ethers.utils.parseUnits("50", BASE_DECIMALS)
-    );
-
-    // Check the case when this is an input trade
+    // This will be recorded internally as 18 point
+    expect(feeUnderlying).to.be.eq(ethers.utils.parseUnits("50"));
+    // Check the case when this is an false trade
     result = await mineTx(
       poolContract.assignTradeFee(
         inputBond,
@@ -445,10 +448,13 @@ describe("ConvergentCurvePool", function () {
       )
     );
     returned = result.events.filter((event) => event.event == "UIntReturn");
-    expect(returned[0].data).to.be.eq(ethers.utils.parseUnits("11050"));
+    expect(returned[0].data).to.be.eq(
+      ethers.utils.parseUnits("11050", BOND_DECIMALS)
+    );
     // Check the stored fees
     const feesBond = await poolContract.feesBond();
-    expect(feesBond).to.be.eq(ethers.utils.parseUnits("50", BOND_DECIMALS));
+    // Internally recorded as 18 fixed point
+    expect(feesBond).to.be.eq(ethers.utils.parseUnits("50"));
   });
 
   // We get a series of quotes for specifically checked trades
@@ -561,11 +567,12 @@ describe("ConvergentCurvePool", function () {
     });
 
     it("Deploys pools", async () => {
+      const seconds = Math.round(new Date().getTime() / 1000);
       await poolFactory.create(
         baseAssetContract.address,
         bondAssetContract.address,
-        1000,
-        1000,
+        seconds + SECONDS_IN_YEAR / 2,
+        SECONDS_IN_YEAR,
         1,
         "fake pool",
         "FP"

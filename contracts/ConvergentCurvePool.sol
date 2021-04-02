@@ -29,7 +29,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
 
-    // The fees recorded during swaps
+    // The fees recorded during swaps. These will be 18 point not token decimal encoded
     uint128 public feesUnderlying;
     uint128 public feesBond;
     // Stored records of governance tokens
@@ -38,6 +38,10 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     uint256 public immutable percentFee;
     // The percent of LP fees that is payed to governance
     uint256 public immutable percentFeeGov;
+
+    // Store constant token indexes for ascending sorted order
+    uint256 internal immutable underlyingIndex;
+    uint256 internal immutable bondIndex;
 
     /// @dev We need need to set the immutables on contract creation
     ///      Note - We expect both 'bond' and 'underlying' to have 'decimals()'
@@ -63,6 +67,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         string memory name,
         string memory symbol
     ) BalancerPoolToken(name, symbol) {
+        // Sanity Check
+        require(_expiration - block.timestamp < _unitSeconds);
         // Initialization on the vault
         bytes32 poolId = vault.registerPool(
             IVault.PoolSpecialization.TWO_TOKEN
@@ -78,7 +84,6 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         }
 
         // Pass in zero addresses for Asset Managers
-        // Solidity really needs inline declaration of dynamic arrays
         // Note - functions below assume this token order
         vault.registerTokens(poolId, tokens, new address[](2));
 
@@ -94,6 +99,10 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         expiration = _expiration;
         unitSeconds = _unitSeconds;
         governance = _governance;
+        // Calculate the preset indexes for ordering
+        bool underlyingFirst = _underlying < _bond;
+        underlyingIndex = underlyingFirst ? 0 : 1;
+        bondIndex = underlyingFirst ? 1 : 0;
     }
 
     // Balancer Interface required Getters
@@ -132,6 +141,14 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             request.amountIn,
             request.tokenIn
         );
+        currentBalanceTokenIn = _tokenToFixed(
+            currentBalanceTokenIn,
+            request.tokenIn
+        );
+        currentBalanceTokenOut = _tokenToFixed(
+            currentBalanceTokenOut,
+            request.tokenOut
+        );
 
         // We apply the trick which is used in the paper and
         // double count the reserves because the curve provisions liquidity
@@ -142,9 +159,6 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             currentBalanceTokenOut,
             request.tokenOut
         );
-        // Reserves are token decimals at this point so we normalize
-        tokenInReserve = _tokenToFixed(tokenInReserve, request.tokenIn);
-        tokenOutReserve = _tokenToFixed(tokenOutReserve, request.tokenOut);
 
         // Solve the invariant
         uint256 quote = solveTradeInvariant(
@@ -176,6 +190,14 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             request.amountOut,
             request.tokenOut
         );
+        currentBalanceTokenIn = _tokenToFixed(
+            currentBalanceTokenIn,
+            request.tokenIn
+        );
+        currentBalanceTokenOut = _tokenToFixed(
+            currentBalanceTokenOut,
+            request.tokenOut
+        );
 
         // We apply the trick which is used in the paper and
         // double count the reserves because the curve provisions liquidity
@@ -186,10 +208,6 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             currentBalanceTokenOut,
             request.tokenOut
         );
-
-        // Reserves are in token decimals at this point so we normalize
-        tokenInReserve = _tokenToFixed(tokenInReserve, request.tokenIn);
-        tokenOutReserve = _tokenToFixed(tokenOutReserve, request.tokenOut);
 
         // Solve the invariant
         uint256 quote = solveTradeInvariant(
@@ -204,22 +222,17 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         return _fixedToToken(quote, request.tokenIn);
     }
 
-    /// @dev Returns the balances so that they'll be in the order [underlying, bond].
-    /// @param currentBalances balances sorted low to high of address value.
-    function _getSortedBalances(uint256[] memory currentBalances)
-        internal
-        view
-        returns (uint256 underlyingBalance, uint256 bondBalance)
-    {
-        if (underlying < bond) {
-            underlyingBalance = currentBalances[0];
-            bondBalance = currentBalances[1];
-        } else {
-            underlyingBalance = currentBalances[1];
-            bondBalance = currentBalances[0];
-        }
-    }
-
+    /// @dev Hook for joining the pool that must be called from the vault.
+    ///      It mints a proportional number of tokens compared to current LP pool,
+    ///      based on the maximum input the user indicates.
+    // @param poolId Unused by this pool but in interface
+    // @param sender Unused by this pool but in interface
+    /// @param recipient The address which will receive lp tokens.
+    /// @param currentBalances The current pool balances, sorted by address low to high.  length 2
+    // @param latestBlockNumberUsed last block number unused in this pool
+    /// @param protocolSwapFee The percent of pool fees to be paid to the Balancer Protocol
+    /// @param userData Abi encoded fixed length 2 array containing max inputs also sorted by
+    ///                 address high to low
     /// @return amountsIn The actual amounts of token the vault should move to this pool
     /// @return dueProtocolFeeAmounts The amounts of each token to pay as protocol fees
     function onJoinPool(
@@ -240,11 +253,14 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     {
         // Default checks
         require(msg.sender == address(_vault), "Non Vault caller");
-        uint256[2] memory maxAmountsIn = abi.decode(userData, (uint256[2]));
+        uint256[] memory maxAmountsIn = abi.decode(userData, (uint256[]));
         require(
             currentBalances.length == 2 && maxAmountsIn.length == 2,
             "Invalid format"
         );
+        // We must normalize the inputs to 18 point
+        _normalizeSortedArray(currentBalances);
+        _normalizeSortedArray(maxAmountsIn);
 
         // Mint LP to the governance address.
         // The {} zoning here helps solidity figure out the stack
@@ -255,39 +271,24 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             ) = _mintGovernanceLP(currentBalances);
             dueProtocolFeeAmounts = new uint256[](2);
 
-            // balancer v2 expects results in ascending address order
-            if (underlying < bond) {
-                dueProtocolFeeAmounts[0] = localFeeUnderlying.mul(
-                    protocolSwapFee
-                );
-                dueProtocolFeeAmounts[1] = localFeeBond.mul(protocolSwapFee);
-            } else {
-                dueProtocolFeeAmounts[1] = localFeeUnderlying.mul(
-                    protocolSwapFee
-                );
-                dueProtocolFeeAmounts[0] = localFeeBond.mul(protocolSwapFee);
-            }
+            dueProtocolFeeAmounts[underlyingIndex] = localFeeUnderlying.mul(
+                protocolSwapFee
+            );
+            dueProtocolFeeAmounts[bondIndex] = localFeeBond.mul(
+                protocolSwapFee
+            );
         }
         // Mint for the user
-        {
-            (uint256 callerUsedUnderlying, uint256 callerUsedBond) = _mintLP(
-                maxAmountsIn[0],
-                maxAmountsIn[1],
-                currentBalances,
-                recipient
-            );
-            // Assign to variable memory arrays in return
-            amountsIn = new uint256[](2);
+        amountsIn = _mintLP(
+            maxAmountsIn[underlyingIndex],
+            maxAmountsIn[bondIndex],
+            currentBalances,
+            recipient
+        );
 
-            // balancer v2 expects results in ascending address order
-            if (underlying < bond) {
-                amountsIn[0] = callerUsedUnderlying;
-                amountsIn[1] = callerUsedBond;
-            } else {
-                amountsIn[1] = callerUsedUnderlying;
-                amountsIn[0] = callerUsedBond;
-            }
-        }
+        // We now have make the outputs have the correct decimals
+        _denormalizeSortedArray(amountsIn);
+        _denormalizeSortedArray(dueProtocolFeeAmounts);
     }
 
     /// @dev Hook for leaving the pool that must be called from the vault.
@@ -295,12 +296,12 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     ///      based on the minium output the user wants.
     // @param poolId Unused by this pool but in interface
     // @param sender Unused by this pool but in interface
-    /// @param recipient The address which will receive lp tokens.
+    /// @param recipient The address which will receive the withdraw tokens.
     /// @param currentBalances The current pool balances, sorted by address low to high.  length 2
     // @param latestBlockNumberUsed last block number unused in this pool
     /// @param protocolSwapFee The percent of pool fees to be paid to the Balancer Protocol
-    /// @param userData Abi encoded fixed length 2 array containing
-    ///                 [min output of underlying, min output of bond]
+    /// @param userData Abi encoded fixed length 2 array containing min outputs also sorted by
+    ///                 address high to low
     /// @return amountsOut The number of each token to send to the caller
     /// @return dueProtocolFeeAmounts The amounts of each token to pay as protocol fees
     function onExitPool(
@@ -321,13 +322,16 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     {
         // Default checks
         require(msg.sender == address(_vault), "Non Vault caller");
-        uint256[2] memory minAmountsOut = abi.decode(userData, (uint256[2]));
+        uint256[] memory minAmountsOut = abi.decode(userData, (uint256[]));
         require(
             currentBalances.length == 2 && minAmountsOut.length == 2,
             "Invalid format"
         );
+        // We have to convert to 18 decimals
+        _normalizeSortedArray(currentBalances);
+        _normalizeSortedArray(minAmountsOut);
 
-        // Burn LP for the governance address.
+        // Mint LP for the governance address.
         // {} zones to help solidity figure out the stack
         {
             (
@@ -335,41 +339,59 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                 uint256 localFeeBond
             ) = _mintGovernanceLP(currentBalances);
 
+            // Calculate the amount of fees for balancer to collect
             dueProtocolFeeAmounts = new uint256[](2);
-
-            // balancer v2 expects results in ascending address order
-            if (underlying < bond) {
-                dueProtocolFeeAmounts[0] = localFeeUnderlying.mul(
-                    protocolSwapFee
-                );
-                dueProtocolFeeAmounts[1] = localFeeBond.mul(protocolSwapFee);
-            } else {
-                dueProtocolFeeAmounts[1] = localFeeUnderlying.mul(
-                    protocolSwapFee
-                );
-                dueProtocolFeeAmounts[0] = localFeeBond.mul(protocolSwapFee);
-            }
-        }
-        // Burn for the user
-        {
-            (uint256 releasedUnderlying, uint256 releasedBond) = _burnLP(
-                minAmountsOut[0],
-                minAmountsOut[1],
-                currentBalances,
-                recipient
+            dueProtocolFeeAmounts[underlyingIndex] = localFeeUnderlying.mul(
+                protocolSwapFee
             );
-            // Assign to variable memory arrays in return
-            amountsOut = new uint256[](2);
-
-            // balancer v2 expects results in ascending address order
-            if (underlying < bond) {
-                amountsOut[0] = releasedUnderlying;
-                amountsOut[1] = releasedBond;
-            } else {
-                amountsOut[1] = releasedUnderlying;
-                amountsOut[0] = releasedBond;
-            }
+            dueProtocolFeeAmounts[bondIndex] = localFeeBond.mul(
+                protocolSwapFee
+            );
         }
+
+        amountsOut = _burnLP(
+            minAmountsOut[underlyingIndex],
+            minAmountsOut[bondIndex],
+            currentBalances,
+            recipient
+        );
+
+        // We need to convert the balancer outputs to token decimals instead of 18
+        _denormalizeSortedArray(amountsOut);
+        _denormalizeSortedArray(dueProtocolFeeAmounts);
+        return (amountsOut, dueProtocolFeeAmounts);
+    }
+
+    /// @dev Returns the balances so that they'll be in the order [underlying, bond].
+    /// @param currentBalances balances sorted low to high of address value.
+    function _getSortedBalances(uint256[] memory currentBalances)
+        internal
+        view
+        returns (uint256 underlyingBalance, uint256 bondBalance)
+    {
+        return (currentBalances[underlyingIndex], currentBalances[bondIndex]);
+    }
+
+    /// @dev Turns an array of token amounts into an array of 18 point amounts
+    /// @param data The data to normalize
+    function _normalizeSortedArray(uint256[] memory data) internal view {
+        data[underlyingIndex] = _normalize(
+            data[underlyingIndex],
+            underlyingDecimals,
+            18
+        );
+        data[bondIndex] = _normalize(data[bondIndex], bondDecimals, 18);
+    }
+
+    /// @dev Turns an array of 18 point amounts into token amounts
+    /// @param data The data to turn in to token decimals
+    function _denormalizeSortedArray(uint256[] memory data) internal view {
+        data[underlyingIndex] = _normalize(
+            data[underlyingIndex],
+            18,
+            underlyingDecimals
+        );
+        data[bondIndex] = _normalize(data[bondIndex], 18, bondDecimals);
     }
 
     // Math libraries and internal routing
@@ -435,9 +457,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountOut.sub(amountIn)
                 );
                 // we record that fee collected from the underlying
-                feesUnderlying += uint128(
-                    _fixedToToken(impliedYieldFee, underlying)
-                );
+                feesUnderlying += uint128(impliedYieldFee);
                 // and return the adjusted input quote
                 return amountIn.add(impliedYieldFee);
             } else {
@@ -446,7 +466,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountIn.sub(amountOut)
                 );
                 // we record that collected fee from the input bond
-                feesBond += uint128(_fixedToToken(impliedYieldFee, bond));
+                feesBond += uint128(impliedYieldFee);
                 // and return the updated input quote
                 return amountIn.add(impliedYieldFee);
             }
@@ -457,7 +477,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountOut.sub(amountIn)
                 );
                 // we record that fee collected from the bond output
-                feesBond += uint128(_fixedToToken(impliedYieldFee, bond));
+                feesBond += uint128(impliedYieldFee);
                 // and then return the updated output
                 return amountOut.sub(impliedYieldFee);
             } else {
@@ -466,9 +486,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountIn.sub(amountOut)
                 );
                 // we record the collected underlying fee
-                feesUnderlying += uint128(
-                    _fixedToToken(impliedYieldFee, underlying)
-                );
+                feesUnderlying += uint128(impliedYieldFee);
                 // and then return the updated output quote
                 return amountOut.sub(impliedYieldFee);
             }
@@ -480,15 +498,16 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     /// @param inputBond The max bond to deposit
     /// @param currentBalances The current pool balances, sorted by address low to high.  length 2
     /// @param recipient The person who receives the lp funds
-    /// @return The actual amounts of token deposited layed out as (underlying, bond)
+    /// @return amountsIn The actual amounts of token deposited in token sorted order
     function _mintLP(
         uint256 inputUnderlying,
         uint256 inputBond,
         uint256[] memory currentBalances,
         address recipient
-    ) internal returns (uint256, uint256) {
+    ) internal returns (uint256[] memory amountsIn) {
+        // Initialize the memory array with length
+        amountsIn = new uint256[](2);
         // Passing in in memory array helps stack but we use locals for better names
-
         (uint256 reserveUnderlying, uint256 reserveBond) = _getSortedBalances(
             currentBalances
         );
@@ -499,9 +518,10 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             // When uninitialized we mint exactly the underlying input
             // in LP tokens
             _mintPoolTokens(recipient, inputUnderlying);
-            return (inputUnderlying, 0);
+            amountsIn[underlyingIndex] = inputUnderlying;
+            amountsIn[bondIndex] = 0;
+            return (amountsIn);
         }
-
         // Get the reserve ratio, the say how many underlying per bond in the reserve
         // (input underlying / reserve underlying) is the percent increase caused by deposit
         uint256 underlyingPerBond = reserveUnderlying.div(reserveBond);
@@ -520,7 +540,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             _mintPoolTokens(recipient, mintAmount);
             // In this case we use the whole input of underlying
             // and consume (inputUnderlying/underlyingPerBond) bonds
-            return (inputUnderlying, inputUnderlying.div(underlyingPerBond));
+            amountsIn[underlyingIndex] = inputUnderlying;
+            amountsIn[bondIndex] = inputUnderlying.div(underlyingPerBond);
         } else {
             // We calculate the percent increase in the reserves from contributing
             // all of the bond
@@ -530,7 +551,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             // We then mint an amount of pool token which corresponds to that increase
             _mintPoolTokens(recipient, mintAmount);
             // The indicate we consumed the input bond and (inputBond*underlyingPerBond)
-            return (neededUnderlying, inputBond);
+            amountsIn[underlyingIndex] = neededUnderlying;
+            amountsIn[bondIndex] = inputBond;
         }
     }
 
@@ -540,13 +562,17 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     /// @param minOutputBond The minimum output in the bond
     /// @param currentBalances The current pool balances, sorted by address low to high.  length 2
     /// @param source The address to burn from.
-    /// @return Tuple (output in underlying, output in bond)
+    /// @return amountsReleased in address sorted order
     function _burnLP(
         uint256 minOutputUnderlying,
         uint256 minOutputBond,
         uint256[] memory currentBalances,
         address source
-    ) internal returns (uint256, uint256) {
+    ) internal returns (uint256[] memory amountsReleased) {
+        // Initialize the memory array with length
+        amountsReleased = new uint256[](2);
+        // We take in sorted token arrays to help the stack but
+        // use local names to improve readability
         (uint256 reserveUnderlying, uint256 reserveBond) = _getSortedBalances(
             currentBalances
         );
@@ -565,9 +591,9 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             _burnPoolTokens(source, burned);
             // We return that we released 'minOutputUnderlying' and the number of bonds that
             // preserves the reserve ratio
-            return (
-                minOutputUnderlying,
-                minOutputUnderlying.div(underlyingPerBond)
+            amountsReleased[underlyingIndex] = minOutputUnderlying;
+            amountsReleased[bondIndex] = minOutputUnderlying.div(
+                underlyingPerBond
             );
         } else {
             // Then the amount burned is the ratio of the minOutputBond
@@ -578,7 +604,10 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             _burnPoolTokens(source, burned);
             // We return that we released all of the minOutputBond
             // and the number of underlying which preserves the reserve ratio
-            return (minOutputBond.mul(underlyingPerBond), minOutputBond);
+            amountsReleased[underlyingIndex] = minOutputBond.mul(
+                underlyingPerBond
+            );
+            amountsReleased[bondIndex] = minOutputBond;
         }
     }
 
@@ -590,6 +619,10 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         returns (uint256, uint256)
     {
         if (percentFeeGov == 0) {
+            // We reset this state because it is expected that this function
+            // resets the amount to match what's consumed and in the zero fee case
+            // that's everything.
+            (feesUnderlying, feesBond) = (0, 0);
             return (feesUnderlying, feesBond);
         }
 
@@ -597,27 +630,28 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         // Note - Because of sizes should only be one sload
         uint256 localFeeUnderlying = uint256(feesUnderlying);
         uint256 localFeeBond = uint256(feesBond);
-        (uint256 feesUsedUnderlying, uint256 feesUsedBond) = _mintLP(
+        uint256[] memory consumed = _mintLP(
             localFeeUnderlying.mul(percentFeeGov),
             localFeeBond.mul(percentFeeGov),
             currentBalances,
             governance
         );
-        // Safe math sanity checks
-        require(
-            localFeeUnderlying >= (feesUsedUnderlying).div(percentFeeGov),
-            "Underflow"
+        // We calculate the actual fees used
+        uint256 usedFeeUnderlying = (consumed[underlyingIndex]).div(
+            percentFeeGov
         );
-        require(localFeeBond >= (feesUsedBond).div(percentFeeGov), "Underflow");
+        uint256 usedFeeBond = (consumed[bondIndex]).div(percentFeeGov);
+        // Safe math sanity checks
+        require(localFeeUnderlying >= usedFeeUnderlying, "Underflow");
+        require(localFeeBond >= usedFeeBond, "Underflow");
+        // Calculate the used fees
         // Store the remaining fees should only be one sstore
         (feesUnderlying, feesBond) = (
-            uint128(
-                localFeeUnderlying - (feesUsedUnderlying).div(percentFeeGov)
-            ),
-            uint128(localFeeBond - (feesUsedBond).div(percentFeeGov))
+            uint128(localFeeUnderlying - usedFeeUnderlying),
+            uint128(localFeeBond - usedFeeBond)
         );
-        // We return the sload-ed values so that they do not need to be loaded again.
-        return (localFeeUnderlying, localFeeBond);
+        // We return the fees which were removed from storage
+        return (usedFeeUnderlying, usedFeeBond);
     }
 
     /// @dev Calculates 1 - t
@@ -631,10 +665,14 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         // timeTillExpiry now contains the a fixed point of the years remaining
         timeTillExpiry = timeTillExpiry.div(unitSeconds * 1e18);
         uint256 result = uint256(FixedPoint.ONE).sub(timeTillExpiry);
+        // Sanity Check
+        require(result != 0);
+        // Return result
         return result;
     }
 
     /// @dev Applies the reserve adjustment from the paper and returns the reserves
+    ///      Note: The inputs should be in 18 point fixed to match the LP decimals
     /// @param reserveTokenIn The reserve of the input token
     /// @param tokenIn The address of the input token
     /// @param reserveTokenOut The reserve of the output token

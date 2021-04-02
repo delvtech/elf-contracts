@@ -43,15 +43,15 @@ contract TestConvergentCurvePool is ConvergentCurvePool {
         uint256[] memory currentBalances,
         address source
     ) public {
-        (uint256 releasedUnderlying, uint256 releasedBond) = _burnLP(
+        uint256[] memory outputs = _burnLP(
             outputUnderlying,
             outputBond,
             currentBalances,
             source
         );
         // We use this to return because returndata from state changing tx isn't easily accessible.
-        emit UIntReturn(releasedUnderlying);
-        emit UIntReturn(releasedBond);
+        emit UIntReturn(outputs[underlyingIndex]);
+        emit UIntReturn(outputs[bondIndex]);
     }
 
     // Allows tests to mint LP tokens directly
@@ -61,15 +61,15 @@ contract TestConvergentCurvePool is ConvergentCurvePool {
         uint256[] memory currentBalances,
         address recipient
     ) public {
-        (uint256 usedUnderlying, uint256 usedBond) = _mintLP(
+        uint256[] memory amountsIn = _mintLP(
             inputUnderlying,
             inputBond,
             currentBalances,
             recipient
         );
         // We use this to return because returndata from state changing tx isn't easily accessible.
-        emit UIntReturn(usedUnderlying);
-        emit UIntReturn(usedBond);
+        emit UIntReturn(amountsIn[underlyingIndex]);
+        emit UIntReturn(amountsIn[bondIndex]);
     }
 
     // Allows tests to access mint gov LP
@@ -84,13 +84,23 @@ contract TestConvergentCurvePool is ConvergentCurvePool {
         IERC20 outputToken,
         bool isInputTrade
     ) public {
+        IERC20 quoteToken;
+        if (outputToken == underlying) {
+            amountIn = _tokenToFixed(amountIn, bond);
+            amountOut = _tokenToFixed(amountOut, underlying);
+            quoteToken = isInputTrade ? bond : underlying;
+        } else {
+            amountIn = _tokenToFixed(amountIn, underlying);
+            amountOut = _tokenToFixed(amountOut, bond);
+            quoteToken = isInputTrade ? underlying : bond;
+        }
         uint256 newQuote = _assignTradeFee(
             amountIn,
             amountOut,
             outputToken,
             isInputTrade
         );
-        emit UIntReturn(newQuote);
+        emit UIntReturn(_fixedToToken(newQuote, quoteToken));
     }
 
     // Allows tests to specify fees without making trades

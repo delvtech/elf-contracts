@@ -16,11 +16,14 @@ contract TestVault {
         return (bytes32)("0x00");
     }
 
+    /* solhint-disable no-empty-blocks */
     function registerTokens(
         bytes32,
         address[] memory,
         address[] memory
     ) external {}
+
+    /* solhint-enable no-empty-blocks */
 
     // This fallback allows us to make an arbitrary call with this vault as the msg.sender
     // solhint-disable-next-line payable-fallback

@@ -51,7 +51,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     // Equivalent to 10^-6 ie 0.0001% in 18 point fixed.
     uint256 public constant EPSILON = 1e12;
     // The max percent fee for governance, immutable after compilation
-    uint256 public constant feeBound = 3e17;
+    uint256 public constant FEE_BOUND = 3e17;
 
     /// @dev We need need to set the immutables on contract creation
     ///      Note - We expect both 'bond' and 'underlying' to have 'decimals()'
@@ -102,7 +102,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         _poolId = poolId;
         percentFee = _percentFee;
         // We check that the gov percent fee is less than bound
-        require(_percentFeeGov < feeBound, "Fee too high");
+        require(_percentFeeGov < FEE_BOUND, "Fee too high");
         percentFeeGov = _percentFeeGov;
         underlying = _underlying;
         underlyingDecimals = IERC20Decimals(address(_underlying)).decimals();

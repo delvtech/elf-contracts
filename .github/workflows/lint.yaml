@@ -20,7 +20,7 @@ jobs:
           fetch-depth: 1
 
       - name: init
-        run: npm install
+        run: npm ci
       
       - name: fmt
         run: npm run style-check

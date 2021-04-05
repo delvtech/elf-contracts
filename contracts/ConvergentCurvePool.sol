@@ -43,6 +43,12 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     uint256 internal immutable underlyingIndex;
     uint256 internal immutable bondIndex;
 
+    // This is an error factor allowed in some fixed point operations
+    // Equivalent to 10^-6 ie 0.0001% in 18 point fixed.
+    uint256 constant EPSILON = 1e12;
+    // The max percent fee for governance, immutable after compilation
+    uint256 constant feeBound = 3e17;
+
     /// @dev We need need to set the immutables on contract creation
     ///      Note - We expect both 'bond' and 'underlying' to have 'decimals()'
     /// @param _underlying The asset which the second asset should appreciate to match
@@ -91,6 +97,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         _vault = vault;
         _poolId = poolId;
         percentFee = _percentFee;
+        // We check that the gov percent fee is less than bound
+        require(_percentFeeGov < feeBound, "Fee too high");
         percentFeeGov = _percentFeeGov;
         underlying = _underlying;
         underlyingDecimals = IERC20Decimals(address(_underlying)).decimals();
@@ -641,15 +649,29 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             percentFeeGov
         );
         uint256 usedFeeBond = (consumed[bondIndex]).div(percentFeeGov);
-        // Safe math sanity checks
-        require(localFeeUnderlying >= usedFeeUnderlying, "Underflow");
-        require(localFeeBond >= usedFeeBond, "Underflow");
-        // Calculate the used fees
-        // Store the remaining fees should only be one sstore
-        (feesUnderlying, feesBond) = (
-            uint128(localFeeUnderlying - usedFeeUnderlying),
-            uint128(localFeeBond - usedFeeBond)
+        // Safe math sanity checks, due to rounding errors we allow a very
+        // small differential in consumed.div(percentFee) compared to real local
+        // fees. With a bounded percentFee this is guaranteed to never consume
+        // any LP token holder's assets, but may allow the of fees consumed be
+        // too high by at most EPSILON.
+        require(
+            localFeeUnderlying.mul(FixedPoint.ONE + EPSILON) >=
+                usedFeeUnderlying,
+            "Underflow"
         );
+        require(
+            localFeeBond.mul(FixedPoint.ONE + EPSILON) >= usedFeeBond,
+            "Underflow"
+        );
+        // Calculate the amount of fee left splitting on the cases where one could cause underflow
+        uint256 newUnderlying = localFeeUnderlying >= usedFeeUnderlying
+            ? localFeeUnderlying - usedFeeUnderlying
+            : 0;
+        uint256 newBond = localFeeBond >= usedFeeBond
+            ? localFeeBond - usedFeeBond
+            : 0;
+        // Store the remaining fees should only be one sstore
+        (feesUnderlying, feesBond) = (uint128(newUnderlying), uint128(newBond));
         // We return the fees which were removed from storage
         return (usedFeeUnderlying, usedFeeBond);
     }

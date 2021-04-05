@@ -615,6 +615,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
 
     /// @dev Mints LP tokens from a percentage of the stored fees and then updates them
     /// @param currentBalances The current pool balances, sorted by address low to high.  length 2
+    ///                        expects the inputs to be 18 point fixed
     /// @return Returns the fee amounts as (feeUnderlying, feeBond) to avoid other sloads
     function _mintGovernanceLP(uint256[] memory currentBalances)
         internal
@@ -759,7 +760,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         uint256 amount,
         uint8 decimalsBefore,
         uint8 decimalsAfter
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         // If we need to increase the decimals
         if (decimalsBefore > decimalsAfter) {
             // Then we shift right the amount by the number of decimals

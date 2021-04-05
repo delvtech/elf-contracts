@@ -218,7 +218,7 @@ contract TestConvergentCurvePool is ConvergentCurvePool {
         uint256 amount,
         uint8 decimalsBefore,
         uint8 decimalsAfter
-    ) public view returns (uint256) {
+    ) public pure returns (uint256) {
         return _normalize(amount, decimalsBefore, decimalsAfter);
     }
 }

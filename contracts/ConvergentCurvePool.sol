@@ -40,14 +40,18 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     uint256 public immutable percentFeeGov;
 
     // Store constant token indexes for ascending sorted order
-    uint256 internal immutable underlyingIndex;
+    // In this case despite these being internal it's cleaner
+    // to ignore linting rules that require _
+    /* solhint-disable private-vars-leading-underscore */
+    uint256 internal immutable baseIndex;
     uint256 internal immutable bondIndex;
+    /* solhint-enable private-vars-leading-underscore */
 
     // This is an error factor allowed in some fixed point operations
     // Equivalent to 10^-6 ie 0.0001% in 18 point fixed.
-    uint256 constant EPSILON = 1e12;
+    uint256 public constant EPSILON = 1e12;
     // The max percent fee for governance, immutable after compilation
-    uint256 constant feeBound = 3e17;
+    uint256 public constant feeBound = 3e17;
 
     /// @dev We need need to set the immutables on contract creation
     ///      Note - We expect both 'bond' and 'underlying' to have 'decimals()'
@@ -109,7 +113,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         governance = _governance;
         // Calculate the preset indexes for ordering
         bool underlyingFirst = _underlying < _bond;
-        underlyingIndex = underlyingFirst ? 0 : 1;
+        baseIndex = underlyingFirst ? 0 : 1;
         bondIndex = underlyingFirst ? 1 : 0;
     }
 
@@ -279,7 +283,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             ) = _mintGovernanceLP(currentBalances);
             dueProtocolFeeAmounts = new uint256[](2);
 
-            dueProtocolFeeAmounts[underlyingIndex] = localFeeUnderlying.mul(
+            dueProtocolFeeAmounts[baseIndex] = localFeeUnderlying.mul(
                 protocolSwapFee
             );
             dueProtocolFeeAmounts[bondIndex] = localFeeBond.mul(
@@ -288,7 +292,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         }
         // Mint for the user
         amountsIn = _mintLP(
-            maxAmountsIn[underlyingIndex],
+            maxAmountsIn[baseIndex],
             maxAmountsIn[bondIndex],
             currentBalances,
             recipient
@@ -349,7 +353,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
 
             // Calculate the amount of fees for balancer to collect
             dueProtocolFeeAmounts = new uint256[](2);
-            dueProtocolFeeAmounts[underlyingIndex] = localFeeUnderlying.mul(
+            dueProtocolFeeAmounts[baseIndex] = localFeeUnderlying.mul(
                 protocolSwapFee
             );
             dueProtocolFeeAmounts[bondIndex] = localFeeBond.mul(
@@ -358,7 +362,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         }
 
         amountsOut = _burnLP(
-            minAmountsOut[underlyingIndex],
+            minAmountsOut[baseIndex],
             minAmountsOut[bondIndex],
             currentBalances,
             recipient
@@ -377,28 +381,20 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         view
         returns (uint256 underlyingBalance, uint256 bondBalance)
     {
-        return (currentBalances[underlyingIndex], currentBalances[bondIndex]);
+        return (currentBalances[baseIndex], currentBalances[bondIndex]);
     }
 
     /// @dev Turns an array of token amounts into an array of 18 point amounts
     /// @param data The data to normalize
     function _normalizeSortedArray(uint256[] memory data) internal view {
-        data[underlyingIndex] = _normalize(
-            data[underlyingIndex],
-            underlyingDecimals,
-            18
-        );
+        data[baseIndex] = _normalize(data[baseIndex], underlyingDecimals, 18);
         data[bondIndex] = _normalize(data[bondIndex], bondDecimals, 18);
     }
 
     /// @dev Turns an array of 18 point amounts into token amounts
     /// @param data The data to turn in to token decimals
     function _denormalizeSortedArray(uint256[] memory data) internal view {
-        data[underlyingIndex] = _normalize(
-            data[underlyingIndex],
-            18,
-            underlyingDecimals
-        );
+        data[baseIndex] = _normalize(data[baseIndex], 18, underlyingDecimals);
         data[bondIndex] = _normalize(data[bondIndex], 18, bondDecimals);
     }
 
@@ -526,7 +522,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             // When uninitialized we mint exactly the underlying input
             // in LP tokens
             _mintPoolTokens(recipient, inputUnderlying);
-            amountsIn[underlyingIndex] = inputUnderlying;
+            amountsIn[baseIndex] = inputUnderlying;
             amountsIn[bondIndex] = 0;
             return (amountsIn);
         }
@@ -548,7 +544,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             _mintPoolTokens(recipient, mintAmount);
             // In this case we use the whole input of underlying
             // and consume (inputUnderlying/underlyingPerBond) bonds
-            amountsIn[underlyingIndex] = inputUnderlying;
+            amountsIn[baseIndex] = inputUnderlying;
             amountsIn[bondIndex] = inputUnderlying.div(underlyingPerBond);
         } else {
             // We calculate the percent increase in the reserves from contributing
@@ -559,7 +555,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             // We then mint an amount of pool token which corresponds to that increase
             _mintPoolTokens(recipient, mintAmount);
             // The indicate we consumed the input bond and (inputBond*underlyingPerBond)
-            amountsIn[underlyingIndex] = neededUnderlying;
+            amountsIn[baseIndex] = neededUnderlying;
             amountsIn[bondIndex] = inputBond;
         }
     }
@@ -599,7 +595,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             _burnPoolTokens(source, burned);
             // We return that we released 'minOutputUnderlying' and the number of bonds that
             // preserves the reserve ratio
-            amountsReleased[underlyingIndex] = minOutputUnderlying;
+            amountsReleased[baseIndex] = minOutputUnderlying;
             amountsReleased[bondIndex] = minOutputUnderlying.div(
                 underlyingPerBond
             );
@@ -612,9 +608,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             _burnPoolTokens(source, burned);
             // We return that we released all of the minOutputBond
             // and the number of underlying which preserves the reserve ratio
-            amountsReleased[underlyingIndex] = minOutputBond.mul(
-                underlyingPerBond
-            );
+            amountsReleased[baseIndex] = minOutputBond.mul(underlyingPerBond);
             amountsReleased[bondIndex] = minOutputBond;
         }
     }
@@ -638,18 +632,14 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         // Note - Because of sizes should only be one sload
         uint256 localFeeUnderlying = uint256(feesUnderlying);
         uint256 localFeeBond = uint256(feesBond);
-        console.log("Loaded fees", localFeeUnderlying, localFeeBond);
         uint256[] memory consumed = _mintLP(
             localFeeUnderlying.mul(percentFeeGov),
             localFeeBond.mul(percentFeeGov),
             currentBalances,
             governance
         );
-        console.log("consumed fees", consumed[0], consumed[1]);
         // We calculate the actual fees used
-        uint256 usedFeeUnderlying = (consumed[underlyingIndex]).div(
-            percentFeeGov
-        );
+        uint256 usedFeeUnderlying = (consumed[baseIndex]).div(percentFeeGov);
         uint256 usedFeeBond = (consumed[bondIndex]).div(percentFeeGov);
         // Safe math sanity checks, due to rounding errors we allow a very
         // small differential in consumed.div(percentFee) compared to real local

@@ -11,9 +11,19 @@ contract TestVault {
 
     enum PoolSpecialization { GENERAL, MINIMAL_SWAP_INFO, TWO_TOKEN }
 
-    function registerPool(PoolSpecialization) external pure returns (bytes32) {
+    function registerPool(PoolSpecialization) external returns (bytes32) {
+        pool = msg.sender;
         return (bytes32)("0x00");
     }
+
+    /* solhint-disable no-empty-blocks */
+    function registerTokens(
+        bytes32,
+        address[] memory,
+        address[] memory
+    ) external {}
+
+    /* solhint-enable no-empty-blocks */
 
     // This fallback allows us to make an arbitrary call with this vault as the msg.sender
     // solhint-disable-next-line payable-fallback

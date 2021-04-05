@@ -17,6 +17,7 @@
         "chainid",
         "deauthorize",
         "delegatecall",
+        "denormalize",
         "destinatary",
         "ecsign",
         "EIP",

@@ -638,12 +638,14 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         // Note - Because of sizes should only be one sload
         uint256 localFeeUnderlying = uint256(feesUnderlying);
         uint256 localFeeBond = uint256(feesBond);
+        console.log("Loaded fees", localFeeUnderlying, localFeeBond);
         uint256[] memory consumed = _mintLP(
             localFeeUnderlying.mul(percentFeeGov),
             localFeeBond.mul(percentFeeGov),
             currentBalances,
             governance
         );
+        console.log("consumed fees", consumed[0], consumed[1]);
         // We calculate the actual fees used
         uint256 usedFeeUnderlying = (consumed[underlyingIndex]).div(
             percentFeeGov

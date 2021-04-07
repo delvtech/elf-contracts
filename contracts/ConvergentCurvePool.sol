@@ -655,10 +655,12 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         // Calculate the remaining fees, note due to rounding errors they are likely to
         // be true that usedFees + remainingFees > originalFees by a very small rounding error
         // this is safe as with a bounded gov fee it never consumes LP funds.
-        feesUnderlying = govFeeUnderlying.sub(consumed[baseIndex]).div(
-            percentFeeGov
+        feesUnderlying = uint128(
+            govFeeUnderlying.sub(consumed[baseIndex]).div(percentFeeGov)
         );
-        feesBond = govFeeBond.sub(consumed[bondIndex]).div(percentFeeGov);
+        feesBond = uint128(
+            govFeeBond.sub(consumed[bondIndex]).div(percentFeeGov)
+        );
         // We return the fees which were removed from storage
         return (usedFeeUnderlying, usedFeeBond);
     }

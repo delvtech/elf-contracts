@@ -13,74 +13,30 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../lib/math/Math.sol";
+import "../lib/helpers/BalancerErrors.sol";
+import "../lib/helpers/AssetHelpers.sol";
+import "../lib/openzeppelin/SafeERC20.sol";
+import "../lib/openzeppelin/Address.sol";
 
 import "./interfaces/IWETH.sol";
 import "./interfaces/IAsset.sol";
+import "./interfaces/IVault.sol";
 
-abstract contract AssetTransfersHandler {
+abstract contract AssetTransfersHandler is AssetHelpers {
     using SafeERC20 for IERC20;
     using Address for address payable;
-    using Math for uint256;
-
-    // solhint-disable-next-line var-name-mixedcase
-    IWETH private immutable _WETH;
-
-    // Sentinel value used to indicate WETH with wrapping/unwrapping semantics. The zero address is a good choice for
-    // multiple reasons: it is cheap to pass as a calldata argument, it is a known invalid token and non-contract, and
-    // it is an adddress Pools cannot register as a token.
-    address private constant _ETH = address(0);
-
-    constructor(IWETH weth) {
-        _WETH = weth;
-    }
 
     /**
-     * @dev Returns true if `asset` is the sentinel value that stands for ETH.
-     */
-    function _isETH(IAsset asset) internal pure returns (bool) {
-        return address(asset) == _ETH;
-    }
-
-    /**
-     * @dev Translates `asset` into an equivalent IERC20 token address. If `asset` stands for ETH, it will be translated
-     * into the WETH contract.
-     */
-    function _translateToIERC20(IAsset asset) internal view returns (IERC20) {
-        return _isETH(asset) ? _WETH : _asIERC20(asset);
-    }
-
-    /**
-     * @dev Same as `_translateToIERC20(IAsset)`, but for an entire array.
-     */
-    function _translateToIERC20(IAsset[] memory assets) internal view returns (IERC20[] memory) {
-        IERC20[] memory tokens = new IERC20[](assets.length);
-        for (uint256 i = 0; i < assets.length; ++i) {
-            tokens[i] = _translateToIERC20(assets[i]);
-        }
-
-        return tokens;
-    }
-
-    /**
-     * @dev Interprets `asset` as an IERC20 token. This function should only be called on `asset` if `_isETH` previously
-     * returned false for it, that is, if `asset` is guaranteed to not be the sentinel value that stands for ETH.
-     */
-    function _asIERC20(IAsset asset) internal pure returns (IERC20) {
-        return IERC20(address(asset));
-    }
-
-    /**
-     * @dev Receives `amount` of `asset` from `sender`. If `fromInternalBalance` is true, as much as possible is first
-     * withdrawn from Internal Balance, and the transfer is performed on the remaining amount, if any.
+     * @dev Receives `amount` of `asset` from `sender`. If `fromInternalBalance` is true, it first withdraws as much
+     * as possible from Internal Balance, then transfers any remaining amount.
      *
      * If `asset` is ETH, `fromInternalBalance` must be false (as ETH cannot be held as internal balance), and the funds
-     * will be wrapped wrapped into WETH.
+     * will be wrapped into WETH.
      *
      * WARNING: this function does not check that the contract caller has actually supplied any ETH - it is up to the
      * caller of this function to check that this is true to prevent the Vault from using its own ETH (though the Vault
@@ -97,25 +53,24 @@ abstract contract AssetTransfersHandler {
         }
 
         if (_isETH(asset)) {
-            require(!fromInternalBalance, "INVALID_ETH_INTERNAL_BALANCE");
+            _require(!fromInternalBalance, Errors.INVALID_ETH_INTERNAL_BALANCE);
 
             // The ETH amount to receive is deposited into the WETH contract, which will in turn mint WETH for
             // the Vault at a 1:1 ratio.
 
             // A check for this condition is also introduced by the compiler, but this one provides a revert reason.
             // Note we're checking for the Vault's total balance, *not* ETH sent in this transaction.
-            require(address(this).balance >= amount, "INSUFFICIENT_ETH");
+            _require(address(this).balance >= amount, Errors.INSUFFICIENT_ETH);
             _WETH.deposit{ value: amount }();
         } else {
             IERC20 token = _asIERC20(asset);
 
             if (fromInternalBalance) {
-                // Note that we ignore the taxable amount here since these assets are not being withdrawn from the Vault
-                // but rather reallocated (e.g. as part of a swap or join).
-                // Because `receivedFromInternalBalance` will be always the minimum between the current internal balance
+                // We take as many tokens from Internal Balance as possible: any remaining amounts will be transferred.
+                uint256 deductedBalance = _decreaseInternalBalance(sender, token, amount, true);
+                // Because `deductedBalance` will be always the lesser of the current internal balance
                 // and the amount to decrease, it is safe to perform unchecked arithmetic.
-                (, uint256 receivedFromInternalBalance) = _decreaseInternalBalance(sender, token, amount, true);
-                amount -= receivedFromInternalBalance;
+                amount -= deductedBalance;
             }
 
             if (amount > 0) {
@@ -135,19 +90,18 @@ abstract contract AssetTransfersHandler {
         IAsset asset,
         uint256 amount,
         address payable recipient,
-        bool toInternalBalance,
-        bool trackExempt
+        bool toInternalBalance
     ) internal {
         if (amount == 0) {
             return;
         }
 
         if (_isETH(asset)) {
-            // Sending ETH is not as involved as receiving it: the only special behavior it has is it cannot be
+            // Sending ETH is not as involved as receiving it: the only special behavior is it cannot be
             // deposited to Internal Balance.
-            require(!toInternalBalance, "INVALID_ETH_INTERNAL_BALANCE");
+            _require(!toInternalBalance, Errors.INVALID_ETH_INTERNAL_BALANCE);
 
-            // First, the Vault withdraws deposited ETH in the WETH contract, by burning the same amount of WETH
+            // First, the Vault withdraws deposited ETH from the WETH contract, by burning the same amount of WETH
             // from the Vault. This receipt will be handled by the Vault's `receive`.
             _WETH.withdraw(amount);
 
@@ -156,7 +110,7 @@ abstract contract AssetTransfersHandler {
         } else {
             IERC20 token = _asIERC20(asset);
             if (toInternalBalance) {
-                _increaseInternalBalance(recipient, token, amount, trackExempt);
+                _increaseInternalBalance(recipient, token, amount);
             } else {
                 token.safeTransfer(recipient, amount);
             }
@@ -164,31 +118,20 @@ abstract contract AssetTransfersHandler {
     }
 
     /**
-     * @dev Returns excess ETH back to the contract caller, assuming `amountUsed` of it has been spent.
+     * @dev Returns excess ETH back to the contract caller, assuming `amountUsed` has been spent. Reverts
+     * if the caller sent less ETH than `amountUsed`.
      *
-     * Because the caller might not now exactly how much ETH a Vault action will require, they may send extra amounts.
+     * Because the caller might not now exactly how much ETH a Vault action will require, they may send extra.
      * Note that this excess value is returned *to the contract caller* (msg.sender). If caller and e.g. swap sender are
      * not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
      * returned ETH.
-     *
-     * Reverts if the contract caller sent less ETH than `amountUsed`.
      */
-    function _returnExcessEthToCaller(uint256 amountUsed) internal {
-        require(msg.value >= amountUsed, "INSUFFICIENT_ETH");
+    function _handleRemainingEth(uint256 amountUsed) internal {
+        _require(msg.value >= amountUsed, Errors.INSUFFICIENT_ETH);
 
         uint256 excess = msg.value - amountUsed;
         if (excess > 0) {
             msg.sender.sendValue(excess);
-        }
-    }
-
-    /**
-     * @dev Reverts in transactions where a user sent ETH, but didn't specify usage of it as an asset. `ethAssetSeen`
-     * should be true if any asset held the sentinel value for ETH, and false otherwise.
-     */
-    function _ensureNoUnallocatedETH(bool ethAssetSeen) internal view {
-        if (msg.value > 0) {
-            require(ethAssetSeen, "UNALLOCATED_ETH");
         }
     }
 
@@ -202,20 +145,17 @@ abstract contract AssetTransfersHandler {
      * soundness issue. This check only exists as an attempt to prevent user error.
      */
     receive() external payable {
-        require(msg.sender == address(_WETH), "ETH_TRANSFER");
+        _require(msg.sender == address(_WETH), Errors.ETH_TRANSFER);
     }
 
-    // This contract has uses virtual internal functions instead of inheriting from the modules that implement them (in
+    // This contract uses virtual internal functions instead of inheriting from the modules that implement them (in
     // this case, Fees and InternalBalance) in order to decouple it from the rest of the system and enable standalone
     // testing by implementing these with mocks.
-
-    function _calculateProtocolWithdrawFeeAmount(uint256 amount) internal view virtual returns (uint256);
 
     function _increaseInternalBalance(
         address account,
         IERC20 token,
-        uint256 amount,
-        bool track
+        uint256 amount
     ) internal virtual;
 
     function _decreaseInternalBalance(
@@ -223,5 +163,5 @@ abstract contract AssetTransfersHandler {
         IERC20 token,
         uint256 amount,
         bool capped
-    ) internal virtual returns (uint256, uint256);
+    ) internal virtual returns (uint256);
 }

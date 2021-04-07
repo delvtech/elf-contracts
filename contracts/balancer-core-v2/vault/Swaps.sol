@@ -16,21 +16,23 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "../lib/math/Math.sol";
+import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/EnumerableMap.sol";
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
+import "../lib/openzeppelin/SafeCast.sol";
+import "../lib/openzeppelin/SafeERC20.sol";
+import "../lib/openzeppelin/EnumerableSet.sol";
 
-import "./PoolRegistry.sol";
+import "./PoolAssets.sol";
 import "./interfaces/IPoolSwapStructs.sol";
 import "./interfaces/IGeneralPool.sol";
 import "./interfaces/IMinimalSwapInfoPool.sol";
 import "./balances/BalanceAllocation.sol";
 
-abstract contract Swaps is ReentrancyGuard, PoolRegistry {
+abstract contract Swaps is ReentrancyGuard, PoolAssets {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -40,7 +42,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     using SafeCast for uint256;
     using BalanceAllocation for bytes32;
 
-    // Despite the external API having two separate functions for given in and given out, internally their are handled
+    // Despite the external API having two separate functions for given in and given out, internally they are handled
     // together to avoid unnecessary code duplication. This enum indicates which kind of swap we're processing.
 
     // We use inline assembly to convert arrays of different struct types that have the same underlying data
@@ -50,30 +52,26 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     /**
      * @dev Converts an array of `SwapIn` into an array of `SwapRequest`, with no runtime cost.
      */
-    function _toInternalSwap(SwapIn[] memory swapsIn) private pure returns (SwapRequest[] memory internalSwapRequests) {
+    function _toSwapRequests(SwapIn[] memory swapsIn) private pure returns (SwapRequest[] memory swapRequests) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            internalSwapRequests := swapsIn
+            swapRequests := swapsIn
         }
     }
 
     /**
      * @dev Converts an array of `SwapOut` into an array of `InternalSwap`, with no runtime cost.
      */
-    function _toInternalSwap(SwapOut[] memory swapsOut)
-        private
-        pure
-        returns (SwapRequest[] memory internalSwapRequests)
-    {
+    function _toSwapRequests(SwapOut[] memory swapsOut) private pure returns (SwapRequest[] memory swapRequests) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            internalSwapRequests := swapsOut
+            swapRequests := swapsOut
         }
     }
 
-    // This struct is identical in layout to SwapRequestGivenIn and SwapRequestGivenOut from IPoolSwapStructs, except
-    // the 'amountIn/Out' is named 'amount'.
+    // This struct is identical in layout to IPoolSwapStructs.SwapRequest
     struct InternalSwapRequest {
+        SwapKind kind;
         IERC20 tokenIn;
         IERC20 tokenOut;
         uint256 amount;
@@ -85,31 +83,60 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     }
 
     /**
-     * @dev Converts an InternalSwapRequest into a SwapRequestGivenIn, with no runtime cost.
+     * @dev Converts an InternalSwapRequest into a Pool SwapRequest, with no runtime cost.
      */
-    function _toSwapRequestGivenIn(InternalSwapRequest memory internalSwapRequest)
+    function _toPoolSwapRequest(InternalSwapRequest memory internalSwapRequest)
         private
         pure
-        returns (IPoolSwapStructs.SwapRequestGivenIn memory swapRequestGivenIn)
+        returns (IPoolSwapStructs.SwapRequest memory swapRequest)
     {
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            swapRequestGivenIn := internalSwapRequest
+            swapRequest := internalSwapRequest
         }
     }
 
-    /**
-     * @dev Converts an InternalSwapRequest into a SwapRequestGivenOut, with no runtime cost.
-     */
-    function _toSwapRequestGivenOut(InternalSwapRequest memory internalSwapRequest)
-        private
-        pure
-        returns (IPoolSwapStructs.SwapRequestGivenOut memory swapRequestGivenOut)
-    {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            swapRequestGivenOut := internalSwapRequest
-        }
+    function swap(
+        SingleSwap memory request,
+        FundManagement memory funds,
+        uint256 limit,
+        uint256 deadline
+    ) external payable override nonReentrant noEmergencyPeriod authenticateFor(funds.sender) returns (uint256) {
+        // solhint-disable-next-line not-rely-on-time
+        _require(block.timestamp <= deadline, Errors.SWAP_DEADLINE);
+
+        uint256 amountGiven = request.amount;
+        _require(amountGiven > 0, Errors.UNKNOWN_AMOUNT_IN_FIRST_SWAP);
+
+        IERC20 tokenIn = _translateToIERC20(request.assetIn);
+        IERC20 tokenOut = _translateToIERC20(request.assetOut);
+        _require(tokenIn != tokenOut, Errors.CANNOT_SWAP_SAME_TOKEN);
+        // Initializing each struct field one-by-one uses less gas than setting all at once
+        InternalSwapRequest memory internalRequest;
+        internalRequest.poolId = request.poolId;
+        internalRequest.kind = request.kind;
+        internalRequest.tokenIn = tokenIn;
+        internalRequest.tokenOut = tokenOut;
+        internalRequest.amount = amountGiven;
+        internalRequest.userData = request.userData;
+        internalRequest.from = funds.sender;
+        internalRequest.to = funds.recipient;
+
+        uint256 amountCalculated = _swapWithPool(internalRequest);
+        (uint256 amountIn, uint256 amountOut) = _getAmounts(request.kind, amountGiven, amountCalculated);
+        _require(request.kind == SwapKind.GIVEN_IN ? amountOut >= limit : amountIn <= limit, Errors.SWAP_LIMIT);
+
+        // Receive token in
+        _receiveAsset(request.assetIn, amountIn, funds.sender, funds.fromInternalBalance);
+
+        // Send token out
+        _sendAsset(request.assetOut, amountOut, funds.recipient, funds.toInternalBalance);
+
+        // Handle any used and remaining ETH.
+        _handleRemainingEth(_isETH(request.assetIn) ? amountIn : 0);
+
+        emit Swap(request.poolId, tokenIn, tokenOut, amountIn, amountOut);
+        return amountCalculated;
     }
 
     function batchSwapGivenIn(
@@ -119,7 +146,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         int256[] memory limits,
         uint256 deadline
     ) external payable override nonReentrant noEmergencyPeriod authenticateFor(funds.sender) returns (int256[] memory) {
-        return _batchSwap(_toInternalSwap(swaps), assets, funds, limits, deadline, SwapKind.GIVEN_IN);
+        return _batchSwap(_toSwapRequests(swaps), assets, funds, limits, deadline, SwapKind.GIVEN_IN);
     }
 
     function batchSwapGivenOut(
@@ -129,7 +156,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         int256[] memory limits,
         uint256 deadline
     ) external payable override nonReentrant noEmergencyPeriod authenticateFor(funds.sender) returns (int256[] memory) {
-        return _batchSwap(_toInternalSwap(swaps), assets, funds, limits, deadline, SwapKind.GIVEN_OUT);
+        return _batchSwap(_toSwapRequests(swaps), assets, funds, limits, deadline, SwapKind.GIVEN_OUT);
     }
 
     /**
@@ -143,9 +170,9 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         uint256 deadline,
         SwapKind kind
     ) private returns (int256[] memory assetDeltas) {
-        // The deadline is timestamp-based: it should not be relied on having sub-minute accuracy.
+        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
-        require(block.timestamp <= deadline, "SWAP_DEADLINE");
+        _require(block.timestamp <= deadline, Errors.SWAP_DEADLINE);
 
         InputHelpers.ensureInputLengthMatch(assets.length, limits.length);
 
@@ -155,41 +182,28 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         // Process asset deltas, by either transferring tokens from the sender (for positive deltas) or to the recipient
         // (for negative deltas).
 
-        bool ethAssetSeen = false;
-        uint256 wrappedETH = 0;
-
+        uint256 wrappedEth = 0;
         for (uint256 i = 0; i < assets.length; ++i) {
             IAsset asset = assets[i];
             int256 delta = assetDeltas[i];
 
-            require(delta <= limits[i], "SWAP_LIMIT");
-
-            bool isETH = _isETH(asset);
-            if (isETH) {
-                ethAssetSeen = true;
-            }
+            _require(delta <= limits[i], Errors.SWAP_LIMIT);
 
             if (delta > 0) {
                 uint256 toReceive = uint256(delta);
                 _receiveAsset(asset, toReceive, funds.sender, funds.fromInternalBalance);
 
-                if (isETH) {
-                    wrappedETH = wrappedETH.add(toReceive);
+                if (_isETH(asset)) {
+                    wrappedEth = wrappedEth.add(toReceive);
                 }
             } else if (delta < 0) {
                 uint256 toSend = uint256(-delta);
-
-                // Withdraw fees are not charged when sending funds as part of a swap.
-                // Deposits to Internal Balance are also exempt of this fee during the current block.
-                _sendAsset(asset, toSend, funds.recipient, funds.toInternalBalance, false);
+                _sendAsset(asset, toSend, funds.recipient, funds.toInternalBalance);
             }
         }
 
-        // We prevent user error by reverting if ETH was sent but not referenced by any asset.
-        _ensureNoUnallocatedETH(ethAssetSeen);
-
-        // By returning the excess ETH, we also check that at least wrappedETH has been received.
-        _returnExcessEthToCaller(wrappedETH);
+        // Handle any used and remaining ETH.
+        _handleRemainingEth(wrappedEth);
     }
 
     // For `_swapWithPools` to handle both given in and given out swaps, it internally tracks the 'given' amount
@@ -234,18 +248,9 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         }
     }
 
-    // This struct helps implement the multihop logic: if the amount given is not provided for a swap, then the given
-    // token must match the previous calculated token, and the previous calculated amount becomes the new given amount.
-    // For swaps of kind given in, amount in and token in are given, while amount out and token out are calculated.
-    // For swaps of kind given out, amount out and token out are given, while amount in and token in are calculated.
-    struct LastSwapData {
-        IERC20 tokenCalculated;
-        uint256 amountCalculated;
-    }
-
     /**
      * @dev Performs all `swaps`, calling swap hooks on the Pool contracts and updating their balances. Does not cause
-     * any transfer of tokens - it instead returns the net Vault token deltas: positive if the Vault should receive
+     * any transfer of tokens - instead it returns the net Vault token deltas: positive if the Vault should receive
      * tokens, and negative if it should send them.
      */
     function _swapWithPools(
@@ -256,116 +261,82 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     ) private returns (int256[] memory assetDeltas) {
         assetDeltas = new int256[](assets.length);
 
-        // Passed to _swapWithPool, which stores data about the previous swap here to implement multihop logic across
-        // swaps.
-        LastSwapData memory previous;
+        // This variable could be declared inside the loop, but that causes the compiler to allocate memory on each
+        // loop iteration, increasing gas costs.
+        SwapRequest memory request;
 
-        // This variable could be declared inside the loop, but that causes the compiler to allocate memory on each loop
-        // iteration, increasing gas costs.
-        SwapRequest memory swap;
+        // These store data about the previous swap here to implement multihop logic across swaps.
+        IERC20 previousTokenCalculated;
+        uint256 previousAmountCalculated;
+
         for (uint256 i = 0; i < swaps.length; ++i) {
-            swap = swaps[i];
-            _ensureRegisteredPool(swap.poolId);
-            require(swap.tokenInIndex < assets.length && swap.tokenOutIndex < assets.length, "OUT_OF_BOUNDS");
+            request = swaps[i];
+            bool withinBounds = request.tokenInIndex < assets.length && request.tokenOutIndex < assets.length;
+            _require(withinBounds, Errors.OUT_OF_BOUNDS);
 
-            IERC20 tokenIn = _translateToIERC20(assets[swap.tokenInIndex]);
-            IERC20 tokenOut = _translateToIERC20(assets[swap.tokenOutIndex]);
-            require(tokenIn != tokenOut, "CANNOT_SWAP_SAME_TOKEN");
+            IERC20 tokenIn = _translateToIERC20(assets[request.tokenInIndex]);
+            IERC20 tokenOut = _translateToIERC20(assets[request.tokenOutIndex]);
+            _require(tokenIn != tokenOut, Errors.CANNOT_SWAP_SAME_TOKEN);
 
             // Sentinel value for multihop logic
-            if (swap.amount == 0) {
+            if (request.amount == 0) {
                 // When the amount given is zero, we use the calculated amount for the previous swap, as long as the
-                // current swap's given token is the previous' calculated token. This makes it possible to e.g. swap a
+                // current swap's given token is the previous calculated token. This makes it possible to e.g. swap a
                 // given amount of token A for token B, and then use the resulting token B amount to swap for token C.
-                if (swaps.length > 1) {
-                    bool usingPreviousToken = previous.tokenCalculated == _tokenGiven(kind, tokenIn, tokenOut);
-                    require(usingPreviousToken, "MALCONSTRUCTED_MULTIHOP_SWAP");
-                    swap.amount = previous.amountCalculated;
-                } else {
-                    revert("UNKNOWN_AMOUNT_IN_FIRST_SWAP");
-                }
+                _require(i > 0, Errors.UNKNOWN_AMOUNT_IN_FIRST_SWAP);
+                bool usingPreviousToken = previousTokenCalculated == _tokenGiven(kind, tokenIn, tokenOut);
+                _require(usingPreviousToken, Errors.MALCONSTRUCTED_MULTIHOP_SWAP);
+                request.amount = previousAmountCalculated;
             }
 
-            (uint256 amountIn, uint256 amountOut) = _swapWithPool(
-                tokenIn,
-                tokenOut,
-                swap,
-                funds.sender,
-                funds.recipient,
-                previous,
-                kind
-            );
+            // Initializing each struct field one-by-one uses less gas than setting all at once
+            InternalSwapRequest memory internalRequest;
+            internalRequest.poolId = request.poolId;
+            internalRequest.kind = kind;
+            internalRequest.tokenIn = tokenIn;
+            internalRequest.tokenOut = tokenOut;
+            internalRequest.amount = request.amount;
+            internalRequest.userData = request.userData;
+            internalRequest.from = funds.sender;
+            internalRequest.to = funds.recipient;
+            // latestBlockNumberUsed is not set here - that will be done later by the different Pool specialization
+            // handlers
+
+            previousAmountCalculated = _swapWithPool(internalRequest);
+            previousTokenCalculated = _tokenCalculated(kind, tokenIn, tokenOut);
+
+            (uint256 amountIn, uint256 amountOut) = _getAmounts(kind, request.amount, previousAmountCalculated);
+            emit Swap(request.poolId, tokenIn, tokenOut, amountIn, amountOut);
 
             // Accumulate Vault deltas across swaps
-            assetDeltas[swap.tokenInIndex] = assetDeltas[swap.tokenInIndex].add(amountIn.toInt256());
-            assetDeltas[swap.tokenOutIndex] = assetDeltas[swap.tokenOutIndex].sub(amountOut.toInt256());
-
-            emit Swap(swap.poolId, tokenIn, tokenOut, amountIn, amountOut);
+            assetDeltas[request.tokenInIndex] = assetDeltas[request.tokenInIndex].add(amountIn.toInt256());
+            assetDeltas[request.tokenOutIndex] = assetDeltas[request.tokenOutIndex].sub(amountOut.toInt256());
         }
     }
 
     /**
-     * @dev Performs `swap`, calling the Pool's contract hook and updating the Pool balance. Returns a pair with the
-     * amount of tokens going into and out of the Vault as a result of this swap.
-     *
-     * This function expects to be called with the `previous` swap struct, which will be updated internally to
-     * implement multihop logic.
+     * @dev Performs `swap`, calling the Pool's contract hook and updating the Pool balance.
+     * Returns the amount of tokens going into/out of the Vault as a result of this swap, depending on the swap kind.
      */
-    function _swapWithPool(
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        SwapRequest memory swap,
-        address from,
-        address to,
-        LastSwapData memory previous,
-        SwapKind kind
-    ) private returns (uint256 amountIn, uint256 amountOut) {
-        InternalSwapRequest memory request = InternalSwapRequest({
-            tokenIn: tokenIn,
-            tokenOut: tokenOut,
-            amount: swap.amount,
-            poolId: swap.poolId,
-            latestBlockNumberUsed: 0, // will be updated later on based on the pool specialization
-            from: from,
-            to: to,
-            userData: swap.userData
-        });
-
+    function _swapWithPool(InternalSwapRequest memory request) private returns (uint256) {
         // Get the calculated amount from the Pool and update its balances
-        uint256 amountCalculated = _processSwapRequest(request, kind);
-
-        // Store swap information for next swap
-        previous.tokenCalculated = _tokenCalculated(kind, tokenIn, tokenOut);
-        previous.amountCalculated = amountCalculated;
-
-        (amountIn, amountOut) = _getAmounts(kind, swap.amount, amountCalculated);
-    }
-
-    /**
-     * @dev Calls the swap hook on the Pool and updates its balances as a result of the swap being executed. The
-     * interface used for the call will depend on the Pool's specialization setting.
-     *
-     * Returns the token amount calculated by the Pool.
-     */
-    function _processSwapRequest(InternalSwapRequest memory request, SwapKind kind) private returns (uint256) {
         address pool = _getPoolAddress(request.poolId);
         PoolSpecialization specialization = _getPoolSpecialization(request.poolId);
 
         if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            return _processMinimalSwapInfoPoolSwapRequest(request, IMinimalSwapInfoPool(pool), kind);
+            return _processMinimalSwapInfoPoolSwapRequest(request, IMinimalSwapInfoPool(pool));
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
-            return _processTwoTokenPoolSwapRequest(request, IMinimalSwapInfoPool(pool), kind);
+            return _processTwoTokenPoolSwapRequest(request, IMinimalSwapInfoPool(pool));
         } else {
-            return _processGeneralPoolSwapRequest(request, IGeneralPool(pool), kind);
+            return _processGeneralPoolSwapRequest(request, IGeneralPool(pool));
         }
     }
 
-    function _processTwoTokenPoolSwapRequest(
-        InternalSwapRequest memory request,
-        IMinimalSwapInfoPool pool,
-        SwapKind kind
-    ) private returns (uint256 amountCalculated) {
-        // Due to gas efficiency reasons, this function uses low-level knowledge of how Two Token Pool balances are
+    function _processTwoTokenPoolSwapRequest(InternalSwapRequest memory request, IMinimalSwapInfoPool pool)
+        private
+        returns (uint256 amountCalculated)
+    {
+        // For gas efficiency reasons, this function uses low-level knowledge of how Two Token Pool balances are
         // stored internally, instead of using getters and setters for all operations.
 
         (
@@ -393,7 +364,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         (tokenInBalance, tokenOutBalance, amountCalculated) = _callMinimalSwapInfoPoolOnSwapHook(
             request,
             pool,
-            kind,
             tokenInBalance,
             tokenOutBalance
         );
@@ -404,11 +374,10 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             : BalanceAllocation.toSharedCash(tokenOutBalance, tokenInBalance); // in is B, out is A
     }
 
-    function _processMinimalSwapInfoPoolSwapRequest(
-        InternalSwapRequest memory request,
-        IMinimalSwapInfoPool pool,
-        SwapKind kind
-    ) private returns (uint256 amountCalculated) {
+    function _processMinimalSwapInfoPoolSwapRequest(InternalSwapRequest memory request, IMinimalSwapInfoPool pool)
+        private
+        returns (uint256 amountCalculated)
+    {
         bytes32 tokenInBalance = _getMinimalSwapInfoPoolBalance(request.poolId, request.tokenIn);
         bytes32 tokenOutBalance = _getMinimalSwapInfoPoolBalance(request.poolId, request.tokenOut);
 
@@ -416,7 +385,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         (tokenInBalance, tokenOutBalance, amountCalculated) = _callMinimalSwapInfoPoolOnSwapHook(
             request,
             pool,
-            kind,
             tokenInBalance,
             tokenOutBalance
         );
@@ -432,7 +400,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     function _callMinimalSwapInfoPoolOnSwapHook(
         InternalSwapRequest memory request,
         IMinimalSwapInfoPool pool,
-        SwapKind kind,
         bytes32 tokenInBalance,
         bytes32 tokenOutBalance
     )
@@ -448,34 +415,37 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         request.latestBlockNumberUsed = Math.max(tokenInBalance.blockNumber(), tokenOutBalance.blockNumber());
 
         // Perform the swap request callback and compute the new balances for token in and token out after the swap
-        if (kind == SwapKind.GIVEN_IN) {
-            IPoolSwapStructs.SwapRequestGivenIn memory swapIn = _toSwapRequestGivenIn(request);
-            uint256 amountOut = pool.onSwapGivenIn(swapIn, tokenInTotal, tokenOutTotal);
-
-            newTokenInBalance = tokenInBalance.increaseCash(request.amount);
-            newTokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
-            amountCalculated = amountOut;
-        } else {
-            IPoolSwapStructs.SwapRequestGivenOut memory swapOut = _toSwapRequestGivenOut(request);
-            uint256 amountIn = pool.onSwapGivenOut(swapOut, tokenInTotal, tokenOutTotal);
-
-            newTokenInBalance = tokenInBalance.increaseCash(amountIn);
-            newTokenOutBalance = tokenOutBalance.decreaseCash(request.amount);
-            amountCalculated = amountIn;
-        }
+        IPoolSwapStructs.SwapRequest memory poolSwapRequest = _toPoolSwapRequest(request);
+        amountCalculated = pool.onSwap(poolSwapRequest, tokenInTotal, tokenOutTotal);
+        (uint256 amountIn, uint256 amountOut) = _getAmounts(request.kind, request.amount, amountCalculated);
+        newTokenInBalance = tokenInBalance.increaseCash(amountIn);
+        newTokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
     }
 
-    function _processGeneralPoolSwapRequest(
-        InternalSwapRequest memory request,
-        IGeneralPool pool,
-        SwapKind kind
-    ) private returns (uint256 amountCalculated) {
+    function _processGeneralPoolSwapRequest(InternalSwapRequest memory request, IGeneralPool pool)
+        private
+        returns (uint256 amountCalculated)
+    {
         bytes32 tokenInBalance;
         bytes32 tokenOutBalance;
 
+        // We access both token indexes without checking existence,  because we will do it manually immediately after.
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[request.poolId];
-        uint256 indexIn = poolBalances.indexOf(request.tokenIn, "TOKEN_NOT_REGISTERED");
-        uint256 indexOut = poolBalances.indexOf(request.tokenOut, "TOKEN_NOT_REGISTERED");
+        uint256 indexIn = poolBalances.unchecked_indexOf(request.tokenIn);
+        uint256 indexOut = poolBalances.unchecked_indexOf(request.tokenOut);
+
+        if (indexIn == 0 || indexOut == 0) {
+            // The tokens might not be registered because the Pool itself is not registered. If so, we provide a more
+            // accurate revert reason. We only check this at this stage to save gas in the case where the tokens
+            // are registered, whicn implies the Pool is as well.
+            _ensureRegisteredPool(request.poolId);
+            _revert(Errors.TOKEN_NOT_REGISTERED);
+        }
+
+        // EnumerableMap stores indices plus one to use the zero index as a sentinel value - because these are valid,
+        // we can undo this.
+        indexIn -= 1;
+        indexOut -= 1;
 
         uint256 tokenAmount = poolBalances.length();
         uint256[] memory currentBalances = new uint256[](tokenAmount);
@@ -496,23 +466,13 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         }
 
         // Perform the swap request callback and compute the new balances for token in and token out after the swap
-        if (kind == SwapKind.GIVEN_IN) {
-            IPoolSwapStructs.SwapRequestGivenIn memory swapRequestIn = _toSwapRequestGivenIn(request);
-            uint256 amountOut = pool.onSwapGivenIn(swapRequestIn, currentBalances, indexIn, indexOut);
+        IPoolSwapStructs.SwapRequest memory poolSwapRequest = _toPoolSwapRequest(request);
+        amountCalculated = pool.onSwap(poolSwapRequest, currentBalances, indexIn, indexOut);
+        (uint256 amountIn, uint256 amountOut) = _getAmounts(request.kind, request.amount, amountCalculated);
+        tokenInBalance = tokenInBalance.increaseCash(amountIn);
+        tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
 
-            amountCalculated = amountOut;
-            tokenInBalance = tokenInBalance.increaseCash(request.amount);
-            tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
-        } else {
-            IPoolSwapStructs.SwapRequestGivenOut memory swapRequestOut = _toSwapRequestGivenOut(request);
-            uint256 amountIn = pool.onSwapGivenOut(swapRequestOut, currentBalances, indexIn, indexOut);
-
-            amountCalculated = amountIn;
-            tokenInBalance = tokenInBalance.increaseCash(amountIn);
-            tokenOutBalance = tokenOutBalance.decreaseCash(request.amount);
-        }
-
-        // Because no token registrations or unregistrations happened between now and when we retrieved the indexes for
+        // Because no tokens were registered or deregistered between now and when we retrieved the indexes for
         // token in and token out, we can use `unchecked_setAt`, saving storage reads.
         poolBalances.unchecked_setAt(indexIn, tokenInBalance);
         poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
@@ -526,15 +486,16 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         FundManagement memory funds
     ) external override returns (int256[] memory) {
         // In order to accurately 'simulate' swaps, this function actually does perform the swaps, including calling the
-        // Pool hooks and updating  balances in storage. However, once it computes the final Vault Deltas it then
+        // Pool hooks and updating balances in storage. However, once it computes the final Vault Deltas, it
         // reverts unconditionally, returning this array as the revert data.
+        //
         // By wrapping this reverting call, we can decode the deltas 'returned' and return them as a normal Solidity
         // function would. The only caveat is the function becomes non-view, but off-chain clients can still call it
         // via eth_call to get the expected result.
         //
         // This technique was inspired by the work from the Gnosis team in the Gnosis Safe contract:
         // https://github.com/gnosis/safe-contracts/blob/v1.2.0/contracts/GnosisSafe.sol#L265
-
+        //
         // Most of this function is implemented using inline assembly, as the actual work it needs to do is not
         // significant, and Solidity is not particularly well-suited to generate this behavior, resulting in a large
         // amount of generated bytecode.

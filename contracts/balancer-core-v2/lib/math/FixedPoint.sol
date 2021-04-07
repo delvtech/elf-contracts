@@ -14,7 +14,8 @@
 
 pragma solidity ^0.7.0;
 
-import "../../lib/math/LogExpMath.sol";
+import "./LogExpMath.sol";
+import "../helpers/BalancerErrors.sol";
 
 /* solhint-disable private-vars-leading-underscore */
 
@@ -22,41 +23,44 @@ library FixedPoint {
     uint256 internal constant ONE = 1e18; // 18 decimal places
     uint256 internal constant MAX_POW_RELATIVE_ERROR = 10000; // 10^(-14)
 
+    // Minimum base for the power function when the exponent is 'free' (larger than ONE).
+    uint256 internal constant MIN_POW_BASE_FREE_EXPONENT = 0.7e18;
+
     function add(uint256 a, uint256 b) internal pure returns (uint256) {
         // Fixed Point addition is the same as regular checked addition
 
         uint256 c = a + b;
-        require(c >= a, "ADD_OVERFLOW");
+        _require(c >= a, Errors.ADD_OVERFLOW);
         return c;
     }
 
     function sub(uint256 a, uint256 b) internal pure returns (uint256) {
         // Fixed Point addition is the same as regular checked addition
 
-        require(b <= a, "SUB_OVERFLOW");
+        _require(b <= a, Errors.SUB_OVERFLOW);
         uint256 c = a - b;
         return c;
     }
 
     function mul(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 c0 = a * b;
-        require(a == 0 || c0 / a == b, "MUL_OVERFLOW");
+        _require(a == 0 || c0 / a == b, Errors.MUL_OVERFLOW);
         uint256 c1 = c0 + (ONE / 2);
-        require(c1 >= c0, "MUL_OVERFLOW");
+        _require(c1 >= c0, Errors.MUL_OVERFLOW);
         uint256 c2 = c1 / ONE;
         return c2;
     }
 
     function mulDown(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 product = a * b;
-        require(a == 0 || product / a == b, "MUL_OVERFLOW");
+        _require(a == 0 || product / a == b, Errors.MUL_OVERFLOW);
 
         return product / ONE;
     }
 
     function mulUp(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 product = a * b;
-        require(a == 0 || product / a == b, "MUL_OVERFLOW");
+        _require(a == 0 || product / a == b, Errors.MUL_OVERFLOW);
 
         if (product == 0) {
             return 0;
@@ -72,36 +76,36 @@ library FixedPoint {
     }
 
     function div(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b != 0, "ZERO_DIVISION");
+        _require(b != 0, Errors.ZERO_DIVISION);
         uint256 c0 = a * ONE;
-        require(a == 0 || c0 / a == ONE, "DIV_INTERNAL"); // mul overflow
+        _require(a == 0 || c0 / a == ONE, Errors.DIV_INTERNAL); // mul overflow
         uint256 c1 = c0 + (b / 2);
-        require(c1 >= c0, "DIV_INTERNAL"); // add require
+        _require(c1 >= c0, Errors.DIV_INTERNAL); // add require
         uint256 c2 = c1 / b;
         return c2;
     }
 
     function divDown(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b != 0, "ZERO_DIVISION");
+        _require(b != 0, Errors.ZERO_DIVISION);
 
         if (a == 0) {
             return 0;
         } else {
             uint256 aInflated = a * ONE;
-            require(aInflated / a == ONE, "DIV_INTERNAL"); // mul overflow
+            _require(aInflated / a == ONE, Errors.DIV_INTERNAL); // mul overflow
 
             return aInflated / b;
         }
     }
 
     function divUp(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b != 0, "ZERO_DIVISION");
+        _require(b != 0, Errors.ZERO_DIVISION);
 
         if (a == 0) {
             return 0;
         } else {
             uint256 aInflated = a * ONE;
-            require(aInflated / a == ONE, "DIV_INTERNAL"); // mul overflow
+            _require(aInflated / a == ONE, Errors.DIV_INTERNAL); // mul overflow
 
             // The traditional divUp formula is:
             // divUp(x, y) := (x + y - 1) / y
@@ -117,23 +121,39 @@ library FixedPoint {
         return LogExpMath.pow(x, y);
     }
 
+    /**
+     * @dev Returns x^y, assuming both are fixed point numbers, rounding down. The result is guaranteed to not be above
+     * the true value (that is, the error function expected - actual is always positive).
+     */
     function powDown(uint256 x, uint256 y) internal pure returns (uint256) {
-        uint256 result = LogExpMath.pow(x, y);
-        if (result == 0) {
-            return 0;
-        }
-        return sub(sub(result, mulDown(result, MAX_POW_RELATIVE_ERROR)), 1);
-    }
+        uint256 raw = LogExpMath.pow(x, y);
+        uint256 maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), 1);
 
-    function powUp(uint256 x, uint256 y) internal pure returns (uint256) {
-        uint256 result = LogExpMath.pow(x, y);
-        return add(add(result, mulUp(result, MAX_POW_RELATIVE_ERROR)), 1);
+        if (raw < maxError) {
+            return 0;
+        } else {
+            return sub(raw, maxError);
+        }
     }
 
     /**
-     * @dev Tells the complement of a given value capped to zero to avoid overflow
+     * @dev Returns x^y, assuming both are fixed point numbers, rounding up. The result is guaranteed to not be below
+     * the true value (that is, the error function expected - actual is always negative).
+     */
+    function powUp(uint256 x, uint256 y) internal pure returns (uint256) {
+        uint256 raw = LogExpMath.pow(x, y);
+        uint256 maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), 1);
+
+        return add(raw, maxError);
+    }
+
+    /**
+     * @dev Returns the complement of a value (1 - x), capped to 0 if x is larger than 1.
+     *
+     * Useful when computing the complement for values with some level of relative error, as it strips this error and
+     * prevents intermediate negative values.
      */
     function complement(uint256 x) internal pure returns (uint256) {
-        return x >= ONE ? 0 : sub(ONE, x);
+        return (x < ONE) ? (ONE - x) : 0;
     }
 }

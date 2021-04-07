@@ -53,6 +53,9 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     // The max percent fee for governance, immutable after compilation
     uint256 public constant FEE_BOUND = 3e17;
 
+    // This state helper allows the increase in invariant to be tracked
+    uint256 public initialInvariant;
+
     /// @dev We need need to set the immutables on contract creation
     ///      Note - We expect both 'bond' and 'underlying' to have 'decimals()'
     /// @param _underlying The asset which the second asset should appreciate to match
@@ -118,9 +121,36 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     }
 
     // Balancer Interface required Getters
+    /// @dev A function which calculates the increase in invariant over time
+    ///      this number should correspond to the increase in value of the pool
+    ///      token. Care should be used if this number in other smart contracts
+    ///      to review the math and ensure it is used correctly.
     function getRate() external override view returns (uint256) {
-        // TODO: figure out if this needs to appreciate over time
-        return FixedPoint.ONE;
+        // Get the pool balances
+        (, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
+        // Normalize the balances
+        _normalizeSortedArray(balances);
+        // Returns 1 at start then the increase in invariant
+        return
+            getCurrentInvariant(balances[0], balances[1]).div(initialInvariant);
+    }
+
+    /// @dev calculates the current invariant
+    /// @param x the 18 point balance of token 1
+    /// @param y the 18 point balance of token 2
+    /// @return returns the current invariant
+    function getCurrentInvariant(uint256 x, uint256 y)
+        public
+        view
+        returns (uint256)
+    {
+        // Get 1 - t
+        uint256 a = _getYieldExponent();
+        // Get x^(1-t)
+        uint256 inv = LogExpMath.pow(x, a);
+        // get x^(1-t) + y^(1-t)
+        inv = inv.add(LogExpMath.pow(y, a));
+        return inv;
     }
 
     /// @dev Returns the vault for this pool
@@ -137,29 +167,35 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
 
     // Trade Functionality
 
-    /// @dev Returns the amount of 'tokenOut' to give for an input of 'tokenIn'
-    /// @param request Balancer encoded structure with request details
-    /// @param currentBalanceTokenIn The reserve of the input token
-    /// @param currentBalanceTokenOut The reserve of the output token
-    /// @return The amount of output token to send for the input token
-    function onSwapGivenIn(
-        IPoolSwapStructs.SwapRequestGivenIn calldata request,
+    /// @dev Called by the Vault on swaps to get a price quote
+    /// @param swapRequest The request which contains the details of the swap
+    /// @param currentBalanceTokenIn The input token balance
+    /// @param currentBalanceTokenOut The output token balance
+    /// @return the amount of the output or input token amount of for swap
+    function onSwap(
+        SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) public override returns (uint256) {
+        // Check that the sender is pool, we change state so must make
+        // this check.
+        require(msg.sender == address(_vault), "Non Vault caller");
         // Tokens amounts are passed to us in decimal form of the tokens
         // But we want theme in 18 point
-        uint256 amountTokenIn = _tokenToFixed(
-            request.amountIn,
-            request.tokenIn
-        );
+        uint256 amount;
+        bool isOutputSwap = swapRequest.kind == IVault.SwapKind.GIVEN_IN;
+        if (isOutputSwap) {
+            amount = _tokenToFixed(swapRequest.amount, swapRequest.tokenIn);
+        } else {
+            amount = _tokenToFixed(swapRequest.amount, swapRequest.tokenOut);
+        }
         currentBalanceTokenIn = _tokenToFixed(
             currentBalanceTokenIn,
-            request.tokenIn
+            swapRequest.tokenIn
         );
         currentBalanceTokenOut = _tokenToFixed(
             currentBalanceTokenOut,
-            request.tokenOut
+            swapRequest.tokenOut
         );
 
         // We apply the trick which is used in the paper and
@@ -167,71 +203,37 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         // for prices above one underlying per bond, which we don't want to be accessible
         (uint256 tokenInReserve, uint256 tokenOutReserve) = _adjustedReserve(
             currentBalanceTokenIn,
-            request.tokenIn,
+            swapRequest.tokenIn,
             currentBalanceTokenOut,
-            request.tokenOut
+            swapRequest.tokenOut
         );
 
-        // Solve the invariant
-        uint256 quote = solveTradeInvariant(
-            amountTokenIn,
-            tokenInReserve,
-            tokenOutReserve,
-            true
-        );
-
-        // Assign trade fees
-        quote = _assignTradeFee(amountTokenIn, quote, request.tokenOut, false);
-        return _fixedToToken(quote, request.tokenOut);
-    }
-
-    /// @dev Returns the amount of 'tokenIn' need to receive a specified amount
-    ///      of 'tokenOut'
-    /// @param request Balancer encoded structure with request details
-    /// @param currentBalanceTokenIn The reserve of the input token
-    /// @param currentBalanceTokenOut The reserve of the output token
-    /// @return The amount of input token to receive the requested output
-    function onSwapGivenOut(
-        IPoolSwapStructs.SwapRequestGivenOut calldata request,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) public override returns (uint256) {
-        // Tokens amounts are passed to us in decimal form of the tokens
-        // However we want them to be in 18 decimal fixed point form
-        uint256 amountTokenOut = _tokenToFixed(
-            request.amountOut,
-            request.tokenOut
-        );
-        currentBalanceTokenIn = _tokenToFixed(
-            currentBalanceTokenIn,
-            request.tokenIn
-        );
-        currentBalanceTokenOut = _tokenToFixed(
-            currentBalanceTokenOut,
-            request.tokenOut
-        );
-
-        // We apply the trick which is used in the paper and
-        // double count the reserves because the curve provisions liquidity
-        // for prices above one underlying per bond, which we don't want to be accessible
-        (uint256 tokenInReserve, uint256 tokenOutReserve) = _adjustedReserve(
-            currentBalanceTokenIn,
-            request.tokenIn,
-            currentBalanceTokenOut,
-            request.tokenOut
-        );
-
-        // Solve the invariant
-        uint256 quote = solveTradeInvariant(
-            amountTokenOut,
-            tokenOutReserve,
-            tokenInReserve,
-            false
-        );
-        // Assign trade fees
-        quote = _assignTradeFee(quote, amountTokenOut, request.tokenOut, true);
-        // Return the quote in input token decimals
-        return _fixedToToken(quote, request.tokenIn);
+        // We switch on if this is an input or output case
+        if (isOutputSwap) {
+            // We get quote
+            uint256 quote = solveTradeInvariant(
+                amount,
+                tokenInReserve,
+                tokenOutReserve,
+                isOutputSwap
+            );
+            // We assign the trade fee
+            quote = _assignTradeFee(amount, quote, swapRequest.tokenOut, false);
+            // We return the quote
+            return _fixedToToken(quote, swapRequest.tokenOut);
+        } else {
+            // We get the quote
+            uint256 quote = solveTradeInvariant(
+                amount,
+                tokenOutReserve,
+                tokenInReserve,
+                isOutputSwap
+            );
+            // We assign the trade fee
+            quote = _assignTradeFee(quote, amount, swapRequest.tokenOut, true);
+            // We return the output
+            return _fixedToToken(quote, swapRequest.tokenIn);
+        }
     }
 
     /// @dev Hook for joining the pool that must be called from the vault.
@@ -522,6 +524,9 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             // When uninitialized we mint exactly the underlying input
             // in LP tokens
             _mintPoolTokens(recipient, inputUnderlying);
+            // Set the initial invariant
+            initialInvariant = getCurrentInvariant(inputUnderlying, 0);
+            // Return the right data
             amountsIn[baseIndex] = inputUnderlying;
             amountsIn[bondIndex] = 0;
             return (amountsIn);

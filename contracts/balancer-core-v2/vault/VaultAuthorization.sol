@@ -15,9 +15,11 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/Authentication.sol";
 import "../lib/helpers/EmergencyPeriod.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
+import "../lib/helpers/BalancerErrors.sol";
 
 import "./interfaces/IVault.sol";
 import "./interfaces/IAuthorizer.sol";
@@ -31,7 +33,7 @@ abstract contract VaultAuthorization is IVault, Authentication, EmergencyPeriod,
      * call this function. Should only be applied to external functions.
      */
     modifier authenticateFor(address user) {
-        _authenticateCallerFor(user);
+        _authenticateFor(user);
         _;
     }
 
@@ -59,11 +61,18 @@ abstract contract VaultAuthorization is IVault, Authentication, EmergencyPeriod,
      * @dev Reverts unless  `user` has allowed the caller as a relayer, and the caller is allowed by the Authorizer to
      * call the entry point function.
      */
-    function _authenticateCallerFor(address user) internal view {
+    function _authenticateFor(address user) internal view {
         if (msg.sender != user) {
             _authenticateCaller();
-            require(_hasAllowedRelayer(user, msg.sender), "USER_DOESNT_ALLOW_RELAYER");
+            _authenticateCallerFor(user);
         }
+    }
+
+    /**
+     * @dev Reverts unless  `user` has allowed the caller as a relayer.
+     */
+    function _authenticateCallerFor(address user) internal view {
+        _require(_hasAllowedRelayer(user, msg.sender), Errors.USER_DOESNT_ALLOW_RELAYER);
     }
 
     function _hasAllowedRelayer(address user, address relayer) internal view returns (bool) {

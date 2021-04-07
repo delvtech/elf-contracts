@@ -16,23 +16,24 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../lib/math/Math.sol";
+import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
+import "../lib/openzeppelin/SafeERC20.sol";
+import "../lib/openzeppelin/SafeCast.sol";
 
 import "./Fees.sol";
 import "./AssetTransfersHandler.sol";
-import "./balances/InternalBalanceAllocation.sol";
 
 abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fees {
     using Math for uint256;
+    using SafeCast for uint256;
     using SafeERC20 for IERC20;
-    using InternalBalanceAllocation for bytes32;
 
-    // Stores all account's Internal Balance for each token.
-    mapping(address => mapping(IERC20 => bytes32)) private _internalTokenBalance;
+    // Stores all accounts' Internal Balances for each token.
+    mapping(address => mapping(IERC20 => uint256)) private _internalTokenBalance;
 
     function getInternalBalance(address user, IERC20[] memory tokens)
         external
@@ -42,7 +43,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     {
         balances = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
-            balances[i] = _getInternalBalance(user, tokens[i]).actual();
+            balances[i] = _getInternalBalance(user, tokens[i]);
         }
     }
 
@@ -53,91 +54,110 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         nonReentrant
         noEmergencyPeriod
     {
-        bool ethAssetSeen = false;
-        uint256 wrappedETH = 0;
+        IAsset asset;
+        address sender;
+        uint256 amount;
+        address recipient;
+        bool authenticated = false;
+        uint256 wrappedEth = 0;
 
         for (uint256 i = 0; i < transfers.length; i++) {
-            address sender = transfers[i].sender;
-            _authenticateCallerFor(sender);
+            (asset, sender, recipient, amount, authenticated) = _validateTransfer(transfers[i], authenticated);
 
-            IAsset asset = transfers[i].asset;
-            uint256 amount = transfers[i].amount;
-            address recipient = transfers[i].recipient;
-
-            _increaseInternalBalance(recipient, _translateToIERC20(asset), amount, true);
+            _increaseInternalBalance(recipient, _translateToIERC20(asset), amount);
 
             // _receiveAsset does not check if the caller sent enough ETH, so we keep track of it independently (as
             // multiple deposits may have all deposited ETH).
             _receiveAsset(asset, amount, sender, false);
+
             if (_isETH(asset)) {
-                ethAssetSeen = true;
-                wrappedETH = wrappedETH.add(amount);
+                wrappedEth = wrappedEth.add(amount);
             }
         }
 
-        // We prevent user error by reverting if ETH was sent but not allocated to any deposit.
-        _ensureNoUnallocatedETH(ethAssetSeen);
-
-        // By returning the excess ETH, we also check that at least wrappedETH has been received.
-        _returnExcessEthToCaller(wrappedETH);
+        // Handle any used and remaining ETH.
+        _handleRemainingEth(wrappedEth);
     }
 
-    function withdrawFromInternalBalance(AssetBalanceTransfer[] memory transfers) external override nonReentrant {
-        for (uint256 i = 0; i < transfers.length; i++) {
-            address sender = transfers[i].sender;
-            _authenticateCallerFor(sender);
-
-            IAsset asset = transfers[i].asset;
-            uint256 amount = transfers[i].amount;
-            address payable recipient = transfers[i].recipient;
-            IERC20 token = _translateToIERC20(asset);
-
-            uint256 amountToSend = amount;
-            (uint256 taxableAmount, ) = _decreaseInternalBalance(sender, token, amount, false);
-
-            if (taxableAmount > 0) {
-                uint256 feeAmount = _calculateProtocolWithdrawFeeAmount(taxableAmount);
-                _increaseCollectedFees(token, feeAmount);
-                amountToSend = amountToSend.sub(feeAmount);
-            }
-
-            _sendAsset(asset, amountToSend, recipient, false, false);
-        }
+    /**
+     * @dev Note that this is not marked as `nonReentrant` because `_processInternalBalanceOps` is already doing it
+     */
+    function withdrawFromInternalBalance(AssetBalanceTransfer[] memory transfers) external override {
+        _processInternalBalanceOps(transfers, _withdrawFromInternalBalance);
     }
 
-    function transferInternalBalance(TokenBalanceTransfer[] memory transfers)
-        external
-        override
-        nonReentrant
-        noEmergencyPeriod
+    function _withdrawFromInternalBalance(
+        IAsset asset,
+        address sender,
+        address recipient,
+        uint256 amount
+    ) private {
+        uint256 amountToSend = amount;
+        IERC20 token = _translateToIERC20(asset);
+
+        _decreaseInternalBalance(sender, token, amount, false);
+
+        _sendAsset(asset, amountToSend, payable(recipient), false);
+    }
+
+    /**
+     * @dev Converts an array of `TokenBalanceTransfer` into an array of `AssetBalanceTransfer`, with no runtime cost.
+     */
+    function _toAssetBalanceTransfer(TokenBalanceTransfer[] memory tokenTransfers)
+        private
+        pure
+        returns (AssetBalanceTransfer[] memory assetTransfers)
     {
-        for (uint256 i = 0; i < transfers.length; i++) {
-            address sender = transfers[i].sender;
-            _authenticateCallerFor(sender);
-
-            IERC20 token = transfers[i].token;
-            uint256 amount = transfers[i].amount;
-            address recipient = transfers[i].recipient;
-
-            // Transferring internal balance to another account is not charged withdrawal fees
-            _decreaseInternalBalance(sender, token, amount, false);
-            // Tokens transferred internally are not later exempt from withdrawal fees.
-            _increaseInternalBalance(recipient, token, amount, false);
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            assetTransfers := tokenTransfers
         }
     }
 
-    function transferToExternalBalance(TokenBalanceTransfer[] memory transfers) external override nonReentrant {
-        for (uint256 i = 0; i < transfers.length; i++) {
-            address sender = transfers[i].sender;
-            _authenticateCallerFor(sender);
+    /**
+     * @dev Note that this is not marked as `nonReentrant` because `_processInternalBalanceOps` is already doing it
+     */
+    function transferInternalBalance(TokenBalanceTransfer[] memory transfers) external override noEmergencyPeriod {
+        // We cast transfers into AssetBalanceTransfers in order to reuse _processInternalBalanceOps.
+        _processInternalBalanceOps(_toAssetBalanceTransfer(transfers), _transferInternalBalance);
+    }
 
-            IERC20 token = transfers[i].token;
-            uint256 amount = transfers[i].amount;
-            address recipient = transfers[i].recipient;
+    function _transferInternalBalance(
+        IAsset asset,
+        address sender,
+        address recipient,
+        uint256 amount
+    ) private {
+        // `transferInteralBalance` doesn't actually support assets: this function complies with the interface expected
+        // by `_processInternalBalanceOps` to be able to use that function. We therefore cast assets directly into
+        // IERC20, with no translation.
+        IERC20 token = _asIERC20(asset);
 
-            // Do not charge withdrawal fee, since it's just making use of the Vault's allowance
-            token.safeTransferFrom(sender, recipient, amount);
-        }
+        _decreaseInternalBalance(sender, token, amount, false);
+        _increaseInternalBalance(recipient, token, amount);
+    }
+
+    /**
+     * @dev Note that this is not marked as `nonReentrant` because `_processInternalBalanceOps` is already doing it
+     */
+    function transferToExternalBalance(TokenBalanceTransfer[] memory transfers) external override noEmergencyPeriod {
+        // We cast transfers into AssetBalanceTransfers in order to reuse _processInternalBalanceOps.
+        _processInternalBalanceOps(_toAssetBalanceTransfer(transfers), _transferToExternalBalance);
+    }
+
+    function _transferToExternalBalance(
+        IAsset asset,
+        address sender,
+        address recipient,
+        uint256 amount
+    ) private {
+        // `transferToExternalBalance` doesn't actually support assets: this function complies with the interface
+        // expected by `_processInternalBalanceOps` to be able to use that function. We therefore cast assets directly
+        // into IERC20, with no translation.
+        IERC20 token = _asIERC20(asset);
+
+        // Do not charge a withdrawal fee, since it's just making use of the Vault's allowance
+        token.safeTransferFrom(sender, recipient, amount);
     }
 
     /**
@@ -146,53 +166,95 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     function _increaseInternalBalance(
         address account,
         IERC20 token,
-        uint256 amount,
-        bool trackExempt
+        uint256 amount
     ) internal override {
-        bytes32 currentInternalBalance = _getInternalBalance(account, token);
-        bytes32 newBalance = currentInternalBalance.increase(amount, trackExempt);
-
-        // Because Internal Balance is stored in 112 bits internally, we can safely cast to int256 as the value is
-        // guaranteed to fit.
-        emit InternalBalanceChanged(account, token, int256(amount));
+        uint256 currentBalance = _getInternalBalance(account, token);
+        uint256 newBalance = currentBalance.add(amount);
 
         _internalTokenBalance[account][token] = newBalance;
+
+        emit InternalBalanceChanged(account, token, amount.toInt256());
     }
 
     /**
      * @dev Decreases `account`'s Internal Balance for `token` by `amount`.
      * When `capped` the internal balance will be decreased as much as possible without reverting.
-     * @return taxableAmount The amount that should be used to charge fees. Some functionalities in the Vault
-     * allows users to avoid fees when working with internal balance deltas in the same block. This is the case for
-     * deposits and withdrawals for example.
-     * @return decreasedAmount The amount that was actually decreased, note this might not be equal to `amount` in
-     * case it was `capped` and the internal balance was actually lower than it.
+     *
+     * Returns the amount that was actually deducted from Internal Balance. Note this might not be equal to `amount`
+     * in case it was `capped` and the Internal Balance was actually lower.
      */
     function _decreaseInternalBalance(
         address account,
         IERC20 token,
         uint256 amount,
         bool capped
-    ) internal override returns (uint256, uint256) {
-        bytes32 currentInternalBalance = _getInternalBalance(account, token);
-        (bytes32 newBalance, uint256 taxableAmount, uint256 decreasedAmount) = currentInternalBalance.decrease(
-            amount,
-            capped
-        );
+    ) internal override returns (uint256 deducted) {
+        uint256 currentBalance = _getInternalBalance(account, token);
+        _require(capped || (currentBalance >= amount), Errors.INSUFFICIENT_INTERNAL_BALANCE);
 
-        // Because Internal Balance is stored in 112 bits internally, we can safely cast to int256 as the value is
-        // guaranteed to fit.
-        emit InternalBalanceChanged(account, token, -int256(amount));
+        deducted = Math.min(currentBalance, amount);
+        uint256 newBalance = currentBalance - deducted;
 
         _internalTokenBalance[account][token] = newBalance;
-
-        return (taxableAmount, decreasedAmount);
+        emit InternalBalanceChanged(account, token, -(deducted.toInt256()));
     }
 
     /**
      * @dev Returns `account`'s Internal Balance for `token`.
      */
-    function _getInternalBalance(address account, IERC20 token) internal view returns (bytes32) {
+    function _getInternalBalance(address account, IERC20 token) internal view returns (uint256) {
         return _internalTokenBalance[account][token];
+    }
+
+    function _processInternalBalanceOps(
+        AssetBalanceTransfer[] memory transfers,
+        function(IAsset, address, address, uint256) op
+    ) private nonReentrant {
+        IAsset asset;
+        address sender;
+        address recipient;
+        uint256 amount;
+        bool authenticated = false;
+
+        for (uint256 i = 0; i < transfers.length; i++) {
+            (asset, sender, recipient, amount, authenticated) = _validateTransfer(transfers[i], authenticated);
+            op(asset, sender, recipient, amount);
+        }
+    }
+
+    /**
+     * @dev Decodes an asset balance transfer and validates the actual sender is allowed to operate
+     */
+    function _validateTransfer(AssetBalanceTransfer memory transfer, bool wasAuthenticated)
+        private
+        view
+        returns (
+            IAsset asset,
+            address sender,
+            address recipient,
+            uint256 amount,
+            bool authenticated
+        )
+    {
+        sender = transfer.sender;
+        authenticated = wasAuthenticated;
+
+        if (sender != msg.sender) {
+            // In case we found a `sender` address that is not the actual sender (msg.sender)
+            // we ensure it's a relayer allowed by the protocol. Note that we are not computing this check
+            // for the next senders, it's a global authorization, we only need to check it once.
+            if (!wasAuthenticated) {
+                // This will revert in case the actual sender is not allowed by the protocol
+                _authenticateCaller();
+                authenticated = true;
+            }
+
+            // Finally we check the actual msg.sender was also allowed by the `sender`
+            _authenticateCallerFor(sender);
+        }
+
+        asset = transfer.asset;
+        amount = transfer.amount;
+        recipient = transfer.recipient;
     }
 }

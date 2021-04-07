@@ -53,9 +53,6 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     // The max percent fee for governance, immutable after compilation
     uint256 public constant FEE_BOUND = 3e17;
 
-    // This state helper allows the increase in invariant to be tracked
-    uint256 public initialInvariant;
-
     /// @dev We need need to set the immutables on contract creation
     ///      Note - We expect both 'bond' and 'underlying' to have 'decimals()'
     /// @param _underlying The asset which the second asset should appreciate to match
@@ -121,36 +118,16 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     }
 
     // Balancer Interface required Getters
-    /// @dev A function which calculates the increase in invariant over time
-    ///      this number should correspond to the increase in value of the pool
-    ///      token. Care should be used if this number in other smart contracts
-    ///      to review the math and ensure it is used correctly.
-    function getRate() external override view returns (uint256) {
-        // Get the pool balances
-        (, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
-        // Normalize the balances
-        _normalizeSortedArray(balances);
-        // Returns 1 at start then the increase in invariant
-        return
-            getCurrentInvariant(balances[0], balances[1]).div(initialInvariant);
-    }
 
-    /// @dev calculates the current invariant
-    /// @param x the 18 point balance of token 1
-    /// @param y the 18 point balance of token 2
-    /// @return returns the current invariant
-    function getCurrentInvariant(uint256 x, uint256 y)
-        public
-        view
-        returns (uint256)
-    {
-        // Get 1 - t
-        uint256 a = _getYieldExponent();
-        // Get x^(1-t)
-        uint256 inv = LogExpMath.pow(x, a);
-        // get x^(1-t) + y^(1-t)
-        inv = inv.add(LogExpMath.pow(y, a));
-        return inv;
+    /// @dev A function which is intended to measure the increase
+    ///      in lp share price overtime. However for our pool the
+    ///      invariant cannot be relied on for this and methods with
+    ///      trade rates are vulnerable to flash loan manipulation.
+    ///      For this reason we return one no mater the circumstances
+    ///      WARNING - This may break balancer LP compatibility with some
+    ///      onchain protocols.
+    function getRate() external override view returns (uint256) {
+        return FixedPoint.ONE;
     }
 
     /// @dev Returns the vault for this pool
@@ -524,8 +501,6 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             // When uninitialized we mint exactly the underlying input
             // in LP tokens
             _mintPoolTokens(recipient, inputUnderlying);
-            // Set the initial invariant
-            initialInvariant = getCurrentInvariant(inputUnderlying, 0);
             // Return the right data
             amountsIn[baseIndex] = inputUnderlying;
             amountsIn[bondIndex] = 0;

@@ -246,7 +246,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     // @param latestBlockNumberUsed last block number unused in this pool
     /// @param protocolSwapFee The percent of pool fees to be paid to the Balancer Protocol
     /// @param userData Abi encoded fixed length 2 array containing max inputs also sorted by
-    ///                 address high to low
+    ///                 address low to high
     /// @return amountsIn The actual amounts of token the vault should move to this pool
     /// @return dueProtocolFeeAmounts The amounts of each token to pay as protocol fees
     function onJoinPool(
@@ -315,7 +315,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     // @param latestBlockNumberUsed last block number unused in this pool
     /// @param protocolSwapFee The percent of pool fees to be paid to the Balancer Protocol
     /// @param userData Abi encoded fixed length 2 array containing min outputs also sorted by
-    ///                 address high to low
+    ///                 address low to high
     /// @return amountsOut The number of each token to send to the caller
     /// @return dueProtocolFeeAmounts The amounts of each token to pay as protocol fees
     function onExitPool(
@@ -626,50 +626,39 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         internal
         returns (uint256, uint256)
     {
+        // Load and cast the stored fees
+        // Note - Because of sizes should only be one sload
+        uint256 localFeeUnderlying = uint256(feesUnderlying);
+        uint256 localFeeBond = uint256(feesBond);
         if (percentFeeGov == 0) {
             // We reset this state because it is expected that this function
             // resets the amount to match what's consumed and in the zero fee case
             // that's everything.
             (feesUnderlying, feesBond) = (0, 0);
-            return (feesUnderlying, feesBond);
+            return (localFeeUnderlying, localFeeBond);
         }
 
-        // Load and cast the stored fees
-        // Note - Because of sizes should only be one sload
-        uint256 localFeeUnderlying = uint256(feesUnderlying);
-        uint256 localFeeBond = uint256(feesBond);
+        // Calculate the gov fee which is the assigned fees times the
+        // percent
+        uint256 govFeeUnderlying = localFeeUnderlying.mul(percentFeeGov);
+        uint256 govFeeBond = localFeeBond.mul(percentFeeGov);
+        // Mint the actual LP for gov address
         uint256[] memory consumed = _mintLP(
-            localFeeUnderlying.mul(percentFeeGov),
-            localFeeBond.mul(percentFeeGov),
+            govFeeUnderlying,
+            govFeeBond,
             currentBalances,
             governance
         );
         // We calculate the actual fees used
         uint256 usedFeeUnderlying = (consumed[baseIndex]).div(percentFeeGov);
         uint256 usedFeeBond = (consumed[bondIndex]).div(percentFeeGov);
-        // Safe math sanity checks, due to rounding errors we allow a very
-        // small differential in consumed.div(percentFee) compared to real local
-        // fees. With a bounded percentFee this is guaranteed to never consume
-        // any LP token holder's assets, but may allow the of fees consumed be
-        // too high by at most EPSILON.
-        require(
-            localFeeUnderlying.mul(FixedPoint.ONE + EPSILON) >=
-                usedFeeUnderlying,
-            "Underflow"
+        // Calculate the remaining fees, note due to rounding errors they are likely to
+        // be true that usedFees + remainingFees > originalFees by a very small rounding error
+        // this is safe as with a bounded gov fee it never consumes LP funds.
+        feesUnderlying = govFeeUnderlying.sub(consumed[baseIndex]).div(
+            percentFeeGov
         );
-        require(
-            localFeeBond.mul(FixedPoint.ONE + EPSILON) >= usedFeeBond,
-            "Underflow"
-        );
-        // Calculate the amount of fee left splitting on the cases where one could cause underflow
-        uint256 newUnderlying = localFeeUnderlying >= usedFeeUnderlying
-            ? localFeeUnderlying - usedFeeUnderlying
-            : 0;
-        uint256 newBond = localFeeBond >= usedFeeBond
-            ? localFeeBond - usedFeeBond
-            : 0;
-        // Store the remaining fees should only be one sstore
-        (feesUnderlying, feesBond) = (uint128(newUnderlying), uint128(newBond));
+        feesBond = govFeeBond.sub(consumed[bondIndex]).div(percentFeeGov);
         // We return the fees which were removed from storage
         return (usedFeeUnderlying, usedFeeBond);
     }

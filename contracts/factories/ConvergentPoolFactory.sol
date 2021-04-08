@@ -15,6 +15,8 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
     uint256 public percentFeeGov;
     address public governance;
 
+    event PoolCreated(address indexed pool, address indexed bondToken);
+
     /// @notice This function constructs the pool
     /// @param _vault The balancer v2 vault
     /// @param _governance The governance address
@@ -60,7 +62,10 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
                 _symbol
             )
         );
+        // Register the pool with the vault
         _register(pool);
+        // Emit a creation event
+        emit PoolCreated(pool, _bond);
         return pool;
     }
 

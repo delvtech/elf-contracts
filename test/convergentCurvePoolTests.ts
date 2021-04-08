@@ -21,6 +21,7 @@ import { TestERC20 } from "typechain/TestERC20";
 import { Vault } from "typechain/Vault";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 import { TestConvergentCurvePool__factory } from "typechain/factories/TestConvergentCurvePool__factory";
+import { impersonate, stopImpersonating } from "./helpers/impersonate";
 
 const { provider } = waffle;
 
@@ -36,6 +37,8 @@ describe("ConvergentCurvePool", function () {
   const BOND_DECIMALS = 17;
   const BASE_DECIMALS = 6;
   const SECONDS_IN_YEAR = 31536000;
+  const inForOutType = 0;
+  const outForInType = 1;
 
   const fakeAddress = "0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c";
   let fixture: EthPoolMainnetInterface;
@@ -461,96 +464,115 @@ describe("ConvergentCurvePool", function () {
 
   // We get a series of quotes for specifically checked trades
 
-  it("Quotes a buy output trade correctly", async function () {
-    await resetPool();
+  describe("Trades correctly", async () => {
+    before(async () => {
+      impersonate(balancerVaultContract.address);
+    });
+    after(async () => {
+      stopImpersonating(balancerVaultContract.address);
+    });
+    it("Quotes a buy output trade correctly", async function () {
+      await resetPool();
+      const quote = await poolContract
+        .connect(balancerVaultContract.address)
+        .callStatic.onSwap(
+          {
+            tokenIn: baseAssetContract.address,
+            tokenOut: bondAssetContract.address,
+            amount: ethers.utils.parseUnits("100", BASE_DECIMALS),
+            kind: inForOutType,
+            // Misc data
+            poolId:
+              "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
+            latestBlockNumberUsed: BigNumber.from(0),
+            from: fakeAddress,
+            to: fakeAddress,
+            userData: "0x",
+          },
+          reserveUnderlying,
+          reserveBond
+        );
+      const result = Number(formatEther(quote));
+      const expectedValue = 10.8572076454026339518;
+      expect(result).to.be.almost(expectedValue);
+    });
 
-    const quote = await poolContract.callStatic.onSwapGivenIn(
-      {
-        tokenIn: baseAssetContract.address,
-        tokenOut: bondAssetContract.address,
-        amountIn: ethers.utils.parseUnits("100", BASE_DECIMALS),
-        // Misc data
-        poolId:
-          "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
-        latestBlockNumberUsed: BigNumber.from(0),
-        from: fakeAddress,
-        to: fakeAddress,
-        userData: "0x",
-      },
-      reserveUnderlying,
-      reserveBond
-    );
-    const result = Number(formatEther(quote));
-    const expectedValue = 10.8572076454026339518;
-    expect(result).to.be.almost(expectedValue);
-  });
+    it("Quotes a sell output trade correctly", async function () {
+      const quote = await poolContract
+        .connect(balancerVaultContract.address)
+        .callStatic.onSwap(
+          {
+            tokenIn: bondAssetContract.address,
+            tokenOut: baseAssetContract.address,
+            amount: ethers.utils.parseUnits("100", BOND_DECIMALS),
+            kind: inForOutType,
+            // Misc data
+            poolId:
+              "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
+            latestBlockNumberUsed: BigNumber.from(0),
+            from: fakeAddress,
+            to: fakeAddress,
+            userData: "0x",
+          },
+          reserveBond,
+          reserveUnderlying
+        );
+      expect(quote.toNumber()).to.be.almost(
+        ethers.utils.parseUnits("90.434755", BASE_DECIMALS).toNumber(),
+        10
+      );
+    });
 
-  it("Quotes a sell output trade correctly", async function () {
-    const quote = await poolContract.callStatic.onSwapGivenIn(
-      {
-        tokenIn: bondAssetContract.address,
-        tokenOut: baseAssetContract.address,
-        amountIn: ethers.utils.parseUnits("100", BOND_DECIMALS),
-        // Misc data
-        poolId:
-          "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
-        latestBlockNumberUsed: BigNumber.from(0),
-        from: fakeAddress,
-        to: fakeAddress,
-        userData: "0x",
-      },
-      reserveBond,
-      reserveUnderlying
-    );
-    expect(quote.toNumber()).to.be.almost(
-      ethers.utils.parseUnits("90.434755", BASE_DECIMALS).toNumber(),
-      10
-    );
-  });
+    it("Quotes a buy input trade correctly", async function () {
+      const quote = await poolContract
+        .connect(balancerVaultContract.address)
+        .callStatic.onSwap(
+          {
+            tokenIn: baseAssetContract.address,
+            tokenOut: bondAssetContract.address,
+            amount: ethers.utils.parseUnits("200", BOND_DECIMALS),
+            kind: outForInType,
+            // Misc data
+            poolId:
+              "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
+            latestBlockNumberUsed: BigNumber.from(0),
+            from: fakeAddress,
+            to: fakeAddress,
+            userData: "0x",
+          },
+          reserveUnderlying,
+          reserveBond
+        );
+      expect(quote.toNumber()).to.be.almost(
+        ethers.utils.parseUnits("184.972608", BASE_DECIMALS).toNumber(),
+        20
+      );
+    });
 
-  it("Quotes a buy input trade correctly", async function () {
-    const quote = await poolContract.callStatic.onSwapGivenOut(
-      {
-        tokenIn: baseAssetContract.address,
-        tokenOut: bondAssetContract.address,
-        amountOut: ethers.utils.parseUnits("200", BOND_DECIMALS),
-        // Misc data
-        poolId:
-          "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
-        latestBlockNumberUsed: BigNumber.from(0),
-        from: fakeAddress,
-        to: fakeAddress,
-        userData: "0x",
-      },
-      reserveUnderlying,
-      reserveBond
-    );
-    expect(quote.toNumber()).to.be.almost(
-      ethers.utils.parseUnits("184.972608", BASE_DECIMALS).toNumber(),
-      20
-    );
-  });
-
-  it("Quotes a sell input trade correctly", async function () {
-    const quote = await poolContract.callStatic.onSwapGivenOut(
-      {
-        tokenIn: bondAssetContract.address,
-        tokenOut: baseAssetContract.address,
-        amountOut: ethers.utils.parseUnits("150", BASE_DECIMALS),
-        // Misc data
-        poolId:
-          "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
-        latestBlockNumberUsed: BigNumber.from(0),
-        from: fakeAddress,
-        to: fakeAddress,
-        userData: "0x",
-      },
-      reserveBond,
-      reserveUnderlying
-    );
-    const result = Number(formatEther(quote));
-    const expectedValue = 16.6279570802359854161;
-    expect(result).to.be.almost(expectedValue);
+    it("Quotes a sell input trade correctly", async function () {
+      const quote = await poolContract
+        .connect(balancerVaultContract.address)
+        .callStatic.onSwap(
+          {
+            tokenIn: bondAssetContract.address,
+            tokenOut: baseAssetContract.address,
+            amount: ethers.utils.parseUnits("150", BASE_DECIMALS),
+            kind: outForInType,
+            // Misc data
+            poolId:
+              "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
+            latestBlockNumberUsed: BigNumber.from(0),
+            from: fakeAddress,
+            to: fakeAddress,
+            userData: "0x",
+          },
+          reserveBond,
+          reserveUnderlying
+        );
+      const result = Number(formatEther(quote));
+      const expectedValue = 16.6279570802359854161;
+      expect(result).to.be.almost(expectedValue);
+    });
   });
 
   describe("Balancer Fees Collected Properly", async () => {

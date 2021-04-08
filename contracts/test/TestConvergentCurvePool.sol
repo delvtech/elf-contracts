@@ -123,67 +123,34 @@ contract TestConvergentCurvePool is ConvergentCurvePool {
         return _getYieldExponent();
     }
 
-    // Trade estimator which also takes and stores a time override variable
-    // if expectedPrice is nonzero it returns the delta in price instead of
-    // the quote
-    function quoteInGivenOutSimulation(
-        IPoolSwapStructs.SwapRequestGivenOut calldata request,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut,
-        uint256 _time,
-        uint256 expectedPrice,
-        uint256 totalSupply
-    ) external returns (uint256) {
-        time = _time;
-        // We now set the total supply
-        setLPBalance(request.from, totalSupply);
-        uint256 quote = onSwapGivenOut(
-            request,
-            currentBalanceTokenIn,
-            currentBalanceTokenOut
-        );
-        time = 0;
-        if (expectedPrice != 0) {
-            return
-                (quote > expectedPrice)
-                    ? quote - expectedPrice
-                    : expectedPrice - quote;
-        } else {
-            return quote;
-        }
-    }
-
-    // Trade estimator which also takes and stores a time override variable
-    // if expectedPrice is nonzero it returns the delta in price instead of
-    // the quote
-    function quoteOutGivenInSimulation(
-        IPoolSwapStructs.SwapRequestGivenIn calldata request,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut,
-        uint256 _time,
-        uint256 expectedPrice,
-        uint256 totalSupply
-    ) external returns (uint256) {
-        time = _time;
-        // We now set the total supply
-        setLPBalance(request.from, totalSupply);
-        uint256 quote = onSwapGivenIn(
-            request,
-            currentBalanceTokenIn,
-            currentBalanceTokenOut
-        );
-        time = 0;
-        if (expectedPrice != 0) {
-            return
-                (quote > expectedPrice)
-                    ? quote - expectedPrice
-                    : expectedPrice - quote;
-        } else {
-            return quote;
-        }
-    }
-
     uint256 public time;
+
+    function swapSimulation(
+        IPoolSwapStructs.SwapRequest memory request,
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut,
+        uint256 _time,
+        uint256 expectedPrice,
+        uint256 totalSupply
+    ) public returns (uint256) {
+        time = _time;
+        // We now set the total supply
+        setLPBalance(request.from, totalSupply);
+        uint256 quote = onSwap(
+            request,
+            currentBalanceTokenIn,
+            currentBalanceTokenOut
+        );
+        time = 0;
+        if (expectedPrice != 0) {
+            return
+                (quote > expectedPrice)
+                    ? quote - expectedPrice
+                    : expectedPrice - quote;
+        } else {
+            return quote;
+        }
+    }
 
     // Allows the error measurement test to set the time
     function _getYieldExponent() internal override view returns (uint256) {

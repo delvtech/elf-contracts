@@ -13,12 +13,16 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./BalanceAllocation.sol";
+import "../../lib/helpers/BalancerErrors.sol";
 
-contract TwoTokenPoolsBalance {
+import "./BalanceAllocation.sol";
+import "../PoolRegistry.sol";
+
+abstract contract TwoTokenPoolsBalance is PoolRegistry {
     using BalanceAllocation for bytes32;
 
     // Data for Pools with Two Tokens
@@ -26,10 +30,12 @@ contract TwoTokenPoolsBalance {
     // These are similar to the Minimal Swap Info Pool case (because the Pool only has two tokens, and therefore there
     // are only two balances to read), but there's a key difference in how data is stored. Keeping a set makes little
     // sense, as it will only ever hold two tokens, so we can just store those two directly.
+    //
     // The gas savings associated with using these Pools come from how token balances are stored: cash for token A and
-    // token B is packed together, as are external amounts. Because only cash changes in a swap, there's no need to
+    // token B are packed together, as are external amounts. Because only cash changes in a swap, there's no need to
     // write to this second storage slot.
-    // This however makes Vault code that interacts with these Pools cumbersome: both balances must be accessed at the
+    //
+    // However, this makes Vault code that interacts with these Pools cumbersome: both balances must be accessed at the
     // same time by using both token addresses, and some logic is needed to differentiate token A from token B. In this
     // case, token A is always the token with the lowest numerical address value. The token X and token Y names are used
     // in functions when it is unknown which one is A and which one is B.
@@ -48,22 +54,25 @@ contract TwoTokenPoolsBalance {
     // We could just keep a mapping from Pool ID to TwoTokenSharedBalances, but there's an issue: we wouldn't know to
     // which tokens those balances correspond. This would mean having to also check the tokens struct in a swap, to make
     // sure the tokens being swapped are the ones in the Pool.
+    //
     // What we do instead to save those storage reads is keep a nested mapping from token pair hash to the balances
     // struct. The Pool only has two tokens, so only a single entry of this mapping is set (the one that corresponds to
-    // that pair's hash). This means queries for token pairs where any of the tokens is not in the Pool will generate a
-    // hash for a mapping entry that was not set, containing zero balances. Non-zero balances are only possible if both
-    // tokens in the pair are the Pool's tokens, which means we don't have to check the TwoTokensTokens struct and save
-    // storage reads.
+    // that pair's hash).
+    //
+    // This means queries for token pairs where any of the tokens is not in the Pool will generate a hash for a mapping
+    // entry that was not set, containing zero balances. Non-zero balances are only possible if both tokens in the pair
+    // are the Pool's tokens, which means we don't have to check the TwoTokensTokens struct and can save storage reads.
+
     mapping(bytes32 => TwoTokenPoolTokens) private _twoTokenPoolTokens;
 
     /**
-     * @dev Registers the tokens of a Two Token Pool.
+     * @dev Registers the tokens of a Two Token Pool. This function assumes the given tokens are contracts,
+     * it's responsibility of the function caller to perform this check.
      *
      * Requirements:
      *
-     * - `tokenX` and `tokenY` cannot be the same.
-     * - Both tokens must not be the zero address.
-     * - Both tokens must not be registered in the Pool.
+     * - `tokenX` and `tokenY` cannot be the same
+     * - Token cannot already be registered in the Pool
      * - Tokens must be ordered: tokenX < tokenY.
      */
     function _registerTwoTokenPoolTokens(
@@ -71,15 +80,13 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenX,
         IERC20 tokenY
     ) internal {
-        require(tokenX != IERC20(0) && tokenY != IERC20(0), "ZERO_ADDRESS_TOKEN");
-
         // Not technically true since we didn't register yet, but this is consistent with the error messages of other
         // specialization settings.
-        require(tokenX != tokenY, "TOKEN_ALREADY_REGISTERED");
-        require(tokenX < tokenY, "UNSORTED_TOKENS");
+        _require(tokenX != tokenY, Errors.TOKEN_ALREADY_REGISTERED);
+        _require(tokenX < tokenY, Errors.UNSORTED_TOKENS);
 
         TwoTokenPoolTokens storage poolTokens = _twoTokenPoolTokens[poolId];
-        require(poolTokens.tokenA == IERC20(0) && poolTokens.tokenB == IERC20(0), "TOKENS_ALREADY_SET");
+        _require(poolTokens.tokenA == IERC20(0) && poolTokens.tokenB == IERC20(0), Errors.TOKENS_ALREADY_SET);
 
         poolTokens.tokenA = tokenX;
         poolTokens.tokenB = tokenY;
@@ -91,7 +98,7 @@ contract TwoTokenPoolsBalance {
      * Requirements:
      *
      * - `tokenX` and `tokenY` must be the Pool's tokens.
-     * - Both tokens must have non balance in the Vault.
+     * - Both tokens must have zero balance in the Vault.
      */
     function _deregisterTwoTokenPoolTokens(
         bytes32 poolId,
@@ -99,7 +106,7 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenY
     ) internal {
         (bytes32 balanceA, bytes32 balanceB, ) = _getTwoTokenPoolSharedBalances(poolId, tokenX, tokenY);
-        require(balanceA.isZero() && balanceB.isZero(), "NONZERO_TOKEN_BALANCE");
+        _require(balanceA.isZero() && balanceB.isZero(), Errors.NONZERO_TOKEN_BALANCE);
 
         delete _twoTokenPoolTokens[poolId];
         // No need to delete the balance entries, since they already are zero
@@ -141,8 +148,8 @@ contract TwoTokenPoolsBalance {
         bytes32 poolId,
         IERC20 token,
         uint256 amount
-    ) internal {
-        _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.setManaged, amount);
+    ) internal returns (int256) {
+        return _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.setManaged, amount);
     }
 
     function _updateTwoTokenPoolSharedBalance(
@@ -150,7 +157,7 @@ contract TwoTokenPoolsBalance {
         IERC20 token,
         function(bytes32, uint256) returns (bytes32) mutation,
         uint256 amount
-    ) private {
+    ) private returns (int256) {
         (
             TwoTokenPoolBalances storage balances,
             IERC20 tokenA,
@@ -159,16 +166,22 @@ contract TwoTokenPoolsBalance {
             bytes32 balanceB
         ) = _getTwoTokenPoolBalances(poolId);
 
+        int256 delta;
         if (token == tokenA) {
-            balanceA = mutation(balanceA, amount);
+            bytes32 newBalance = mutation(balanceA, amount);
+            delta = newBalance.managedDelta(balanceA);
+            balanceA = newBalance;
         } else if (token == tokenB) {
-            balanceB = mutation(balanceB, amount);
+            bytes32 newBalance = mutation(balanceB, amount);
+            delta = newBalance.managedDelta(balanceB);
+            balanceB = newBalance;
         } else {
-            revert("TOKEN_NOT_REGISTERED");
+            _revert(Errors.TOKEN_NOT_REGISTERED);
         }
 
         balances.sharedCash = BalanceAllocation.toSharedCash(balanceA, balanceB);
         balances.sharedManaged = BalanceAllocation.toSharedManaged(balanceA, balanceB);
+        return delta;
     }
 
     /**
@@ -204,7 +217,14 @@ contract TwoTokenPoolsBalance {
         // Only registered tokens can have non-zero balances, so we can use this as a shortcut to avoid the
         // expensive _hasPoolTwoTokens check.
         bool exists = sharedCash.isNotZero() || sharedManaged.isNotZero() || _hasPoolTwoTokens(poolId, tokenA, tokenB);
-        require(exists, "TOKEN_NOT_REGISTERED");
+
+        if (!exists) {
+            // The token might not be registered because the Pool itself is not registered. If so, we provide a more
+            // accurate revert reason. We only check this at this stage to save gas in the case where the token
+            // is registered, which implies the Pool is as well.
+            _ensureRegisteredPool(poolId);
+            _revert(Errors.TOKEN_NOT_REGISTERED);
+        }
 
         balanceA = BalanceAllocation.fromSharedToBalanceA(sharedCash, sharedManaged);
         balanceB = BalanceAllocation.fromSharedToBalanceB(sharedCash, sharedManaged);
@@ -258,7 +278,7 @@ contract TwoTokenPoolsBalance {
         } else if (token == tokenB) {
             return balanceB;
         } else {
-            revert("TOKEN_NOT_REGISTERED");
+            _revert(Errors.TOKEN_NOT_REGISTERED);
         }
     }
 
@@ -309,7 +329,7 @@ contract TwoTokenPoolsBalance {
     }
 
     /**
-     * @dev Sorts two tokens ascendingly, returning them as a (tokenA, tokenB) tuple.
+     * @dev Sorts two tokens ascending, returning them as a (tokenA, tokenB) tuple.
      */
     function _sortTwoTokens(IERC20 tokenX, IERC20 tokenY) private pure returns (IERC20, IERC20) {
         return tokenX < tokenY ? (tokenX, tokenY) : (tokenY, tokenX);

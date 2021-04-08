@@ -14,9 +14,8 @@
 
 pragma solidity ^0.7.0;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-
 import "../lib/helpers/InputHelpers.sol";
+import "../lib/openzeppelin/AccessControl.sol";
 
 contract Authorizer is AccessControl {
     constructor(address admin) {
@@ -39,6 +38,25 @@ contract Authorizer is AccessControl {
         InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);
         for (uint256 i = 0; i < roles.length; i++) {
             grantRole(roles[i], accounts[i]);
+        }
+    }
+
+    /**
+     * @dev Revokes multiple roles from a single account
+     */
+    function revokeRoles(bytes32[] memory roles, address account) external {
+        for (uint256 i = 0; i < roles.length; i++) {
+            revokeRole(roles[i], account);
+        }
+    }
+
+    /**
+     * @dev Revokes roles from a list of accounts
+     */
+    function revokeRolesFromMany(bytes32[] memory roles, address[] memory accounts) external {
+        InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);
+        for (uint256 i = 0; i < roles.length; i++) {
+            revokeRole(roles[i], accounts[i]);
         }
     }
 }

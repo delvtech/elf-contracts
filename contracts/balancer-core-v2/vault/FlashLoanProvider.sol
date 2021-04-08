@@ -20,15 +20,15 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
+import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
+import "../lib/openzeppelin/SafeERC20.sol";
 
 import "./Fees.sol";
 import "./interfaces/IFlashLoanReceiver.sol";
 
 abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     function flashLoan(
@@ -47,12 +47,12 @@ abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
             IERC20 token = tokens[i];
             uint256 amount = amounts[i];
 
-            require(token > previousToken, "UNSORTED_TOKENS"); // Prevents duplicate tokens
+            _require(token > previousToken, Errors.UNSORTED_TOKENS); // Prevents duplicate tokens
             previousToken = token;
 
             // Not checking amount against current balance, transfer will revert if it is exceeded
             preLoanBalances[i] = token.balanceOf(address(this));
-            feeAmounts[i] = _calculateProtocolFlashLoanFeeAmount(amount);
+            feeAmounts[i] = _calculateFlashLoanFee(amount);
 
             token.safeTransfer(address(receiver), amount);
         }
@@ -64,12 +64,12 @@ abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
             uint256 preLoanBalance = preLoanBalances[i];
 
             uint256 postLoanBalance = token.balanceOf(address(this));
-            require(postLoanBalance >= preLoanBalance, "INVALID_POST_LOAN_BALANCE");
+            _require(postLoanBalance >= preLoanBalance, Errors.INVALID_POST_LOAN_BALANCE);
 
             uint256 receivedFees = postLoanBalance - preLoanBalance;
-            require(receivedFees >= feeAmounts[i], "INSUFFICIENT_COLLECTED_FEES");
+            _require(receivedFees >= feeAmounts[i], Errors.INSUFFICIENT_COLLECTED_FEES);
 
-            _increaseCollectedFees(token, receivedFees);
+            _payFee(token, receivedFees);
         }
     }
 }

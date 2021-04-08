@@ -1,6 +1,8 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { Contract, BigNumber } from "ethers";
+import { impersonate, stopImpersonating } from "../helpers/impersonate";
+import { TestConvergentCurvePool } from "typechain/TestConvergentCurvePool";
 
 import testTrades from "./testTrades.json";
 
@@ -10,6 +12,9 @@ describe("ConvergentCurvePoolErrSim", function () {
   const BOND_DECIMALS = 18;
   const BASE_DECIMALS = 18;
 
+  const inForOutType = 0;
+  const outForInType = 1;
+
   async function getTimestamp(): Promise<number> {
     return (await ethers.provider.getBlock("latest")).timestamp;
   }
@@ -18,11 +23,11 @@ describe("ConvergentCurvePoolErrSim", function () {
   const fakeAddress = "0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c";
   // This is 10^-9 in 18 point fixed
   const epsilon = ethers.utils.parseUnits("1", 10);
-  let pool: Contract;
+  let pool: TestConvergentCurvePool;
   let startTimestamp;
   let erc20_base: Contract;
   let erc20_bond: Contract;
-  let vault;
+  let vault: Contract;
 
   interface TradeData {
     input: {
@@ -51,7 +56,7 @@ describe("ConvergentCurvePoolErrSim", function () {
     vault = await Vault.deploy();
 
     const Pool = await ethers.getContractFactory("TestConvergentCurvePool");
-    pool = await Pool.deploy(
+    pool = (await Pool.deploy(
       erc20_base.address.toString(),
       erc20_bond.address.toString(),
       startTimestamp + SECONDS_IN_YEAR,
@@ -61,7 +66,13 @@ describe("ConvergentCurvePoolErrSim", function () {
       fakeAddress,
       "ConvergentCurveBPT",
       "BPT"
-    );
+    )) as TestConvergentCurvePool;
+
+    impersonate(vault.address);
+  });
+
+  after(async () => {
+    stopImpersonating(vault.address);
   });
 
   // This dynamically generated test uses each case in the vector
@@ -87,57 +98,37 @@ describe("ConvergentCurvePoolErrSim", function () {
         ? trade.input.y_reserves
         : trade.input.x_reserves;
 
-      if (trade.input.direction === "in") {
-        pool.callStatic
-          .quoteInGivenOutSimulation(
-            {
-              tokenIn: tokenAddressIn,
-              tokenOut: tokenAddressOut,
-              amountOut: ethers.utils.parseUnits(
-                trade.input.amount_in.toString(),
-                decimalsIn
-              ),
-              // Misc data
-              poolId:
-                "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
-              latestBlockNumberUsed: BigNumber.from(0),
-              from: fakeAddress,
-              to: fakeAddress,
-              userData: "0x",
-            },
-            ethers.utils.parseUnits(reserveIn.toString(), decimalsIn),
-            ethers.utils.parseUnits(reserveOut.toString(), decimalsOut),
-            ethers.utils.parseUnits(trade.input.time.toString(), 18),
-            ethers.utils.parseUnits(trade.output.amount_out.toString(), 18),
-            ethers.utils.parseEther(trade.input.total_supply.toString())
-          )
-          .then(check);
-      } else if (trade.input.direction === "out") {
-        pool.callStatic
-          .quoteOutGivenInSimulation(
-            {
-              tokenIn: tokenAddressIn,
-              tokenOut: tokenAddressOut,
-              amountIn: ethers.utils.parseUnits(
-                trade.input.amount_in.toString(),
-                decimalsIn
-              ),
-              // Misc data
-              poolId:
-                "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
-              latestBlockNumberUsed: BigNumber.from(0),
-              from: fakeAddress,
-              to: fakeAddress,
-              userData: "0x",
-            },
-            ethers.utils.parseUnits(reserveIn.toString(), decimalsIn),
-            ethers.utils.parseUnits(reserveOut.toString(), decimalsOut),
-            ethers.utils.parseUnits(trade.input.time.toString(), 18),
-            ethers.utils.parseUnits(trade.output.amount_out.toString(), 18),
-            ethers.utils.parseEther(trade.input.total_supply.toString())
-          )
-          .then(check);
-      }
+      const kind = trade.input.direction == "in" ? outForInType : inForOutType;
+
+      pool
+        .connect(vault.address)
+        .callStatic.swapSimulation(
+          {
+            tokenIn: tokenAddressIn,
+            tokenOut: tokenAddressOut,
+            amount: ethers.utils.parseUnits(
+              trade.input.amount_in.toString(),
+              decimalsIn
+            ),
+            kind: kind,
+            // Misc data
+            poolId:
+              "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
+            latestBlockNumberUsed: BigNumber.from(0),
+            from: fakeAddress,
+            to: fakeAddress,
+            userData: "0x",
+          },
+          ethers.utils.parseUnits(reserveIn.toString(), decimalsIn),
+          ethers.utils.parseUnits(reserveOut.toString(), decimalsOut),
+          ethers.utils.parseUnits(trade.input.time.toString(), 18),
+          ethers.utils.parseUnits(
+            trade.output.amount_out.toString(),
+            decimalsOut
+          ),
+          ethers.utils.parseEther(trade.input.total_supply.toString())
+        )
+        .then(check);
       // We use a closure after the promise to retain access to the mocha done
       // call
       function check(value: BigNumber) {

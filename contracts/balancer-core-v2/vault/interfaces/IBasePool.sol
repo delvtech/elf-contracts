@@ -16,12 +16,13 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./IVault.sol";
+import "./IPoolSwapStructs.sol";
 
 /**
  * @dev Interface all Pool contracts should implement. Note that this is not the complete Pool contract interface, as it
  * is missing the swap hooks: Pool contracts should instead inherit from either IGeneralPool or IMinimalSwapInfoPool.
  */
-interface IBasePool {
+interface IBasePool is IPoolSwapStructs {
     /**
      * @dev Called by the Vault when a user calls `IVault.joinPool` to join this Pool. Returns how many tokens the user
      * should provide for each registered token, as well as how many protocol fees the Pool owes to the Vault. After
@@ -30,9 +31,9 @@ interface IBasePool {
      *
      * Due protocol fees are reported and charged on join events so that new users join the Pool free of debt.
      *
-     * `sender` is the account performing the join (from whom tokens will be withdrawn), and `recipient` an account
+     * `sender` is the account performing the join (from whom tokens will be withdrawn), and `recipient` is an account
      * designated to receive any benefits (typically pool shares). `currentBalances` contains the total token balances
-     * for each token the Pool registered in the Vault, in the same order as `IVault.getPoolTokens` would return.
+     * for each token the Pool registered in the Vault, in the same order that `IVault.getPoolTokens` would return.
      *
      * `latestBlockNumberUsed` is the last block number in which any of the Pool's registered tokens last changed its
      * balance. This can be used to implement price oracles that are resilient to 'sandwich' attacks.
@@ -58,9 +59,9 @@ interface IBasePool {
      *
      * Due protocol fees are reported and charged on exit events so that users exit the Pool having paid all debt.
      *
-     * `sender` is the account performing the exit (typically the holder of pool shares), and `recipient` the account to
-     * which the Vault will grant tokens. `currentBalances` contains the total token balances for each token the Pool
-     * registered in the Vault, in the same order as `IVault.getPoolTokens` would return.
+     * `sender` is the account performing the exit (typically the holder of pool shares), and `recipient` is the account
+     * to which the Vault will grant tokens. `currentBalances` contains the total token balances for each token the Pool
+     * registered in the Vault, in the same order that `IVault.getPoolTokens` would return.
      *
      * `latestBlockNumberUsed` is the last block number in which any of the Pool's registered tokens last changed its
      * balance. This can be used to implement price oracles that are resilient to 'sandwich' attacks.
@@ -81,7 +82,7 @@ interface IBasePool {
     /**
      * @dev This function returns the appreciation of one BPT relative to the
      * underlying tokens. This starts at 1 when the pool is created and grows over time
-     * It's the equivalent to Curve's get_virtual_price() function
+     * It's equivalent to Curve's get_virtual_price() function
      */
     function getRate() external view returns (uint256);
 }

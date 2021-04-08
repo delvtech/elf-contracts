@@ -15,10 +15,9 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-
 import "../lib/math/Math.sol";
 import "../lib/math/FixedPoint.sol";
+import "../lib/openzeppelin/SafeERC20.sol";
 
 import "../vault/AssetTransfersHandler.sol";
 
@@ -27,9 +26,8 @@ contract MockAssetTransfersHandler is AssetTransfersHandler {
     using SafeERC20 for IERC20;
 
     mapping(address => mapping(IERC20 => uint256)) private _internalTokenBalance;
-    uint256 private _fee;
 
-    constructor(IWETH weth) AssetTransfersHandler(weth) {}
+    constructor(IWETH weth) AssetHelpers(weth) {}
 
     function receiveAsset(
         IAsset asset,
@@ -44,10 +42,9 @@ contract MockAssetTransfersHandler is AssetTransfersHandler {
         IAsset asset,
         uint256 amount,
         address payable recipient,
-        bool toInternalBalance,
-        bool trackExempt
+        bool toInternalBalance
     ) external {
-        _sendAsset(asset, amount, recipient, toInternalBalance, trackExempt);
+        _sendAsset(asset, amount, recipient, toInternalBalance);
     }
 
     function getInternalBalance(address account, IERC20 token) external view returns (uint256) {
@@ -60,14 +57,13 @@ contract MockAssetTransfersHandler is AssetTransfersHandler {
         uint256 amount
     ) external {
         token.safeTransferFrom(account, address(this), amount);
-        _increaseInternalBalance(account, token, amount, true);
+        _increaseInternalBalance(account, token, amount);
     }
 
     function _increaseInternalBalance(
         address account,
         IERC20 token,
-        uint256 amount,
-        bool
+        uint256 amount
     ) internal override {
         _internalTokenBalance[account][token] += amount;
     }
@@ -77,24 +73,9 @@ contract MockAssetTransfersHandler is AssetTransfersHandler {
         IERC20 token,
         uint256 amount,
         bool capped
-    ) internal override returns (uint256, uint256) {
+    ) internal override returns (uint256 deducted) {
         uint256 currentBalance = _internalTokenBalance[account][token];
-        uint256 toDeduct = capped ? Math.min(currentBalance, amount) : amount;
-        _internalTokenBalance[account][token] = currentBalance.sub(toDeduct);
-
-        // For this mock scenario, we consider always the amount to be fully taxable
-        return (toDeduct, toDeduct);
-    }
-
-    function calculateProtocolWithdrawFeeAmount(uint256 amount) external view returns (uint256) {
-        return _calculateProtocolWithdrawFeeAmount(amount);
-    }
-
-    function setProtocolWithdrawFeePercentage(uint256 fee) external {
-        _fee = fee;
-    }
-
-    function _calculateProtocolWithdrawFeeAmount(uint256 amount) internal view override returns (uint256) {
-        return FixedPoint.mulDown(amount, _fee);
+        deducted = capped ? Math.min(currentBalance, amount) : amount;
+        _internalTokenBalance[account][token] = currentBalance.sub(deducted);
     }
 }

@@ -118,8 +118,15 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     }
 
     // Balancer Interface required Getters
+
+    /// @dev A function which is intended to measure the increase
+    ///      in lp share price overtime. However for our pool the
+    ///      invariant cannot be relied on for this and methods with
+    ///      trade rates are vulnerable to flash loan manipulation.
+    ///      For this reason we return one no mater the circumstances
+    ///      WARNING - This may break balancer LP compatibility with some
+    ///      onchain protocols.
     function getRate() external override view returns (uint256) {
-        // TODO: figure out if this needs to appreciate over time
         return FixedPoint.ONE;
     }
 
@@ -137,29 +144,35 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
 
     // Trade Functionality
 
-    /// @dev Returns the amount of 'tokenOut' to give for an input of 'tokenIn'
-    /// @param request Balancer encoded structure with request details
-    /// @param currentBalanceTokenIn The reserve of the input token
-    /// @param currentBalanceTokenOut The reserve of the output token
-    /// @return The amount of output token to send for the input token
-    function onSwapGivenIn(
-        IPoolSwapStructs.SwapRequestGivenIn calldata request,
+    /// @dev Called by the Vault on swaps to get a price quote
+    /// @param swapRequest The request which contains the details of the swap
+    /// @param currentBalanceTokenIn The input token balance
+    /// @param currentBalanceTokenOut The output token balance
+    /// @return the amount of the output or input token amount of for swap
+    function onSwap(
+        SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) public override returns (uint256) {
+        // Check that the sender is pool, we change state so must make
+        // this check.
+        require(msg.sender == address(_vault), "Non Vault caller");
         // Tokens amounts are passed to us in decimal form of the tokens
         // But we want theme in 18 point
-        uint256 amountTokenIn = _tokenToFixed(
-            request.amountIn,
-            request.tokenIn
-        );
+        uint256 amount;
+        bool isOutputSwap = swapRequest.kind == IVault.SwapKind.GIVEN_IN;
+        if (isOutputSwap) {
+            amount = _tokenToFixed(swapRequest.amount, swapRequest.tokenIn);
+        } else {
+            amount = _tokenToFixed(swapRequest.amount, swapRequest.tokenOut);
+        }
         currentBalanceTokenIn = _tokenToFixed(
             currentBalanceTokenIn,
-            request.tokenIn
+            swapRequest.tokenIn
         );
         currentBalanceTokenOut = _tokenToFixed(
             currentBalanceTokenOut,
-            request.tokenOut
+            swapRequest.tokenOut
         );
 
         // We apply the trick which is used in the paper and
@@ -167,71 +180,37 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         // for prices above one underlying per bond, which we don't want to be accessible
         (uint256 tokenInReserve, uint256 tokenOutReserve) = _adjustedReserve(
             currentBalanceTokenIn,
-            request.tokenIn,
+            swapRequest.tokenIn,
             currentBalanceTokenOut,
-            request.tokenOut
+            swapRequest.tokenOut
         );
 
-        // Solve the invariant
-        uint256 quote = solveTradeInvariant(
-            amountTokenIn,
-            tokenInReserve,
-            tokenOutReserve,
-            true
-        );
-
-        // Assign trade fees
-        quote = _assignTradeFee(amountTokenIn, quote, request.tokenOut, false);
-        return _fixedToToken(quote, request.tokenOut);
-    }
-
-    /// @dev Returns the amount of 'tokenIn' need to receive a specified amount
-    ///      of 'tokenOut'
-    /// @param request Balancer encoded structure with request details
-    /// @param currentBalanceTokenIn The reserve of the input token
-    /// @param currentBalanceTokenOut The reserve of the output token
-    /// @return The amount of input token to receive the requested output
-    function onSwapGivenOut(
-        IPoolSwapStructs.SwapRequestGivenOut calldata request,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) public override returns (uint256) {
-        // Tokens amounts are passed to us in decimal form of the tokens
-        // However we want them to be in 18 decimal fixed point form
-        uint256 amountTokenOut = _tokenToFixed(
-            request.amountOut,
-            request.tokenOut
-        );
-        currentBalanceTokenIn = _tokenToFixed(
-            currentBalanceTokenIn,
-            request.tokenIn
-        );
-        currentBalanceTokenOut = _tokenToFixed(
-            currentBalanceTokenOut,
-            request.tokenOut
-        );
-
-        // We apply the trick which is used in the paper and
-        // double count the reserves because the curve provisions liquidity
-        // for prices above one underlying per bond, which we don't want to be accessible
-        (uint256 tokenInReserve, uint256 tokenOutReserve) = _adjustedReserve(
-            currentBalanceTokenIn,
-            request.tokenIn,
-            currentBalanceTokenOut,
-            request.tokenOut
-        );
-
-        // Solve the invariant
-        uint256 quote = solveTradeInvariant(
-            amountTokenOut,
-            tokenOutReserve,
-            tokenInReserve,
-            false
-        );
-        // Assign trade fees
-        quote = _assignTradeFee(quote, amountTokenOut, request.tokenOut, true);
-        // Return the quote in input token decimals
-        return _fixedToToken(quote, request.tokenIn);
+        // We switch on if this is an input or output case
+        if (isOutputSwap) {
+            // We get quote
+            uint256 quote = solveTradeInvariant(
+                amount,
+                tokenInReserve,
+                tokenOutReserve,
+                isOutputSwap
+            );
+            // We assign the trade fee
+            quote = _assignTradeFee(amount, quote, swapRequest.tokenOut, false);
+            // We return the quote
+            return _fixedToToken(quote, swapRequest.tokenOut);
+        } else {
+            // We get the quote
+            uint256 quote = solveTradeInvariant(
+                amount,
+                tokenOutReserve,
+                tokenInReserve,
+                isOutputSwap
+            );
+            // We assign the trade fee
+            quote = _assignTradeFee(quote, amount, swapRequest.tokenOut, true);
+            // We return the output
+            return _fixedToToken(quote, swapRequest.tokenIn);
+        }
     }
 
     /// @dev Hook for joining the pool that must be called from the vault.
@@ -244,7 +223,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     // @param latestBlockNumberUsed last block number unused in this pool
     /// @param protocolSwapFee The percent of pool fees to be paid to the Balancer Protocol
     /// @param userData Abi encoded fixed length 2 array containing max inputs also sorted by
-    ///                 address high to low
+    ///                 address low to high
     /// @return amountsIn The actual amounts of token the vault should move to this pool
     /// @return dueProtocolFeeAmounts The amounts of each token to pay as protocol fees
     function onJoinPool(
@@ -313,7 +292,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     // @param latestBlockNumberUsed last block number unused in this pool
     /// @param protocolSwapFee The percent of pool fees to be paid to the Balancer Protocol
     /// @param userData Abi encoded fixed length 2 array containing min outputs also sorted by
-    ///                 address high to low
+    ///                 address low to high
     /// @return amountsOut The number of each token to send to the caller
     /// @return dueProtocolFeeAmounts The amounts of each token to pay as protocol fees
     function onExitPool(
@@ -522,6 +501,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             // When uninitialized we mint exactly the underlying input
             // in LP tokens
             _mintPoolTokens(recipient, inputUnderlying);
+            // Return the right data
             amountsIn[baseIndex] = inputUnderlying;
             amountsIn[bondIndex] = 0;
             return (amountsIn);
@@ -621,50 +601,41 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         internal
         returns (uint256, uint256)
     {
+        // Load and cast the stored fees
+        // Note - Because of sizes should only be one sload
+        uint256 localFeeUnderlying = uint256(feesUnderlying);
+        uint256 localFeeBond = uint256(feesBond);
         if (percentFeeGov == 0) {
             // We reset this state because it is expected that this function
             // resets the amount to match what's consumed and in the zero fee case
             // that's everything.
             (feesUnderlying, feesBond) = (0, 0);
-            return (feesUnderlying, feesBond);
+            return (localFeeUnderlying, localFeeBond);
         }
 
-        // Load and cast the stored fees
-        // Note - Because of sizes should only be one sload
-        uint256 localFeeUnderlying = uint256(feesUnderlying);
-        uint256 localFeeBond = uint256(feesBond);
+        // Calculate the gov fee which is the assigned fees times the
+        // percent
+        uint256 govFeeUnderlying = localFeeUnderlying.mul(percentFeeGov);
+        uint256 govFeeBond = localFeeBond.mul(percentFeeGov);
+        // Mint the actual LP for gov address
         uint256[] memory consumed = _mintLP(
-            localFeeUnderlying.mul(percentFeeGov),
-            localFeeBond.mul(percentFeeGov),
+            govFeeUnderlying,
+            govFeeBond,
             currentBalances,
             governance
         );
         // We calculate the actual fees used
         uint256 usedFeeUnderlying = (consumed[baseIndex]).div(percentFeeGov);
         uint256 usedFeeBond = (consumed[bondIndex]).div(percentFeeGov);
-        // Safe math sanity checks, due to rounding errors we allow a very
-        // small differential in consumed.div(percentFee) compared to real local
-        // fees. With a bounded percentFee this is guaranteed to never consume
-        // any LP token holder's assets, but may allow the of fees consumed be
-        // too high by at most EPSILON.
-        require(
-            localFeeUnderlying.mul(FixedPoint.ONE + EPSILON) >=
-                usedFeeUnderlying,
-            "Underflow"
+        // Calculate the remaining fees, note due to rounding errors they are likely to
+        // be true that usedFees + remainingFees > originalFees by a very small rounding error
+        // this is safe as with a bounded gov fee it never consumes LP funds.
+        feesUnderlying = uint128(
+            govFeeUnderlying.sub(consumed[baseIndex]).div(percentFeeGov)
         );
-        require(
-            localFeeBond.mul(FixedPoint.ONE + EPSILON) >= usedFeeBond,
-            "Underflow"
+        feesBond = uint128(
+            govFeeBond.sub(consumed[bondIndex]).div(percentFeeGov)
         );
-        // Calculate the amount of fee left splitting on the cases where one could cause underflow
-        uint256 newUnderlying = localFeeUnderlying >= usedFeeUnderlying
-            ? localFeeUnderlying - usedFeeUnderlying
-            : 0;
-        uint256 newBond = localFeeBond >= usedFeeBond
-            ? localFeeBond - usedFeeBond
-            : 0;
-        // Store the remaining fees should only be one sstore
-        (feesUnderlying, feesBond) = (uint128(newUnderlying), uint128(newBond));
         // We return the fees which were removed from storage
         return (usedFeeUnderlying, usedFeeBond);
     }

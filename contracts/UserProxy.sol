@@ -122,7 +122,13 @@ contract UserProxy is Authorizable {
         uint256 _expiration,
         address _position,
         PermitData[] calldata _permitCallData
-    ) external payable notFrozen() preApproval(_permitCallData) {
+    )
+        external
+        payable
+        notFrozen()
+        preApproval(_permitCallData)
+        returns (uint256)
+    {
         // If the underlying token matches this predefined 'ETH token'
         // then we create weth for the user and go from there
         if (address(_underlying) == _ETH_CONSTANT) {
@@ -132,12 +138,12 @@ contract UserProxy is Authorizable {
             weth.deposit{ value: msg.value }();
             weth.transfer(address(_position), _amount);
             // Proceed to internal minting steps
-            _mint(_expiration, _position);
+            return _mint(_expiration, _position);
         } else {
             // Move the user's funds to the wrapped position contract
             _underlying.transferFrom(msg.sender, address(_position), _amount);
             // Proceed to internal minting steps
-            _mint(_expiration, _position);
+            return _mint(_expiration, _position);
         }
     }
 
@@ -145,12 +151,15 @@ contract UserProxy is Authorizable {
     ///      the contract has already transferred to WrappedPosition contract
     /// @param _expiration The tranche expiration time
     /// @param _position The contract which interacts with the yield bearing strategy
-    function _mint(uint256 _expiration, address _position) internal {
+    function _mint(uint256 _expiration, address _position)
+        internal
+        returns (uint256)
+    {
         // Use create2 to derive the tranche contract
         ITranche tranche = _deriveTranche(address(_position), _expiration);
         // Move funds into the Tranche contract
         // it will credit the msg.sender with the new tokens
-        tranche.prefundedDeposit(msg.sender);
+        return tranche.prefundedDeposit(msg.sender);
     }
 
     /// @dev This internal function produces the deterministic create2

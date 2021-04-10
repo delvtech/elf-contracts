@@ -6,6 +6,9 @@ import "../InterestToken.sol";
 import "../interfaces/IERC20.sol";
 
 contract InterestTokenFactory {
+    /// @dev Emitted when a new InterestToken is created.
+    event InterestTokenCreated(address indexed token, address indexed tranche);
+
     /// @notice Deploy a new interest token contract
     /// @param _tranche The Tranche contract associated with this interest token.
     /// The Tranche contract is also the mint authority.
@@ -19,12 +22,15 @@ contract InterestTokenFactory {
         uint256 _expiration,
         uint8 _underlyingDecimals
     ) public returns (InterestToken) {
-        return
-            new InterestToken(
-                _tranche,
-                _strategySymbol,
-                _expiration,
-                _underlyingDecimals
-            );
+        InterestToken token = new InterestToken(
+            _tranche,
+            _strategySymbol,
+            _expiration,
+            _underlyingDecimals
+        );
+
+        emit InterestTokenCreated(address(token), _tranche);
+
+        return token;
     }
 }

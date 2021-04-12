@@ -67,7 +67,7 @@ contract Tranche is ERC20Permit, ITranche {
             reduced in order to pay for the accrued interest.
     @param _amount The amount of underlying to deposit
     @param _destination The address to mint to
-    @return The amount of principle and yield token minted as (pt, yt)
+    @return The amount of principal and yield token minted as (pt, yt)
      */
     function deposit(uint256 _amount, address _destination)
         external

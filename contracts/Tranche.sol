@@ -86,7 +86,7 @@ contract Tranche is ERC20Permit, ITranche {
     ///         only be called when a transfer has already been made to
     ///         the wrapped position contract of the underlying
     /// @param _destination The address to mint to
-    /// @return the amount of principle and yield token minted as (pt, yt)
+    /// @return the amount of principal and yield token minted as (pt, yt)
     function prefundedDeposit(address _destination)
         public
         override

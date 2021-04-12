@@ -156,7 +156,7 @@ contract UserProxy is Authorizable {
             );
             // This sanity check ensure that at least as much was minted as was transferred
             require(ytMinted >= _amount, "Not enough minted");
-            return (ptMinted, ycMinted);
+            return (ptMinted, ytMinted);
         }
     }
 

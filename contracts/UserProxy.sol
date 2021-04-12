@@ -164,7 +164,7 @@ contract UserProxy is Authorizable {
     ///      the contract has already transferred to WrappedPosition contract
     /// @param _expiration The tranche expiration time
     /// @param _position The contract which interacts with the yield bearing strategy
-    /// @return the principle token yield token returned
+    /// @return the principal token yield token returned
     function _mint(uint256 _expiration, address _position)
         internal
         returns (uint256, uint256)

@@ -67,12 +67,12 @@ contract Tranche is ERC20Permit, ITranche {
             reduced in order to pay for the accrued interest.
     @param _amount The amount of underlying to deposit
     @param _destination The address to mint to
-    @return The amount of principal tokens minted after earned interest discount
+    @return The amount of principle and yield token minted as (pt, yt)
      */
     function deposit(uint256 _amount, address _destination)
         external
         override
-        returns (uint256)
+        returns (uint256, uint256)
     {
         // Transfer the underlying to be wrapped into the position
         underlying.transferFrom(msg.sender, address(position), _amount);
@@ -86,10 +86,11 @@ contract Tranche is ERC20Permit, ITranche {
     ///         only be called when a transfer has already been made to
     ///         the wrapped position contract of the underlying
     /// @param _destination The address to mint to
+    /// @return the amount of principle and yield token minted as (pt, yt)
     function prefundedDeposit(address _destination)
         public
         override
-        returns (uint256)
+        returns (uint256, uint256)
     {
         // We check that this it is possible to deposit
         require(block.timestamp < unlockTimestamp, "expired");
@@ -132,8 +133,8 @@ contract Tranche is ERC20Permit, ITranche {
         interestToken.mint(_destination, usedUnderlying);
         // We mint principal token discounted by the accumulated interest.
         _mint(_destination, adjustedAmount);
-        // We return the number of principal token because it may be useful.
-        return adjustedAmount;
+        // We return the number of principal token and yield token
+        return (adjustedAmount, usedUnderlying);
     }
 
     /**

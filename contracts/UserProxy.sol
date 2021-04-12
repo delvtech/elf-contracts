@@ -145,7 +145,7 @@ contract UserProxy is Authorizable {
             );
             // This sanity check ensure that at least as much was minted as was transferred
             require(ytMinted >= _amount, "Not enough minted");
-            return (ptMinted, ycMinted);
+            return (ptMinted, ytMinted);
         } else {
             // Move the user's funds to the wrapped position contract
             _underlying.transferFrom(msg.sender, address(_position), _amount);

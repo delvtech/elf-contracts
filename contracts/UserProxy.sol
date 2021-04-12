@@ -144,7 +144,7 @@ contract UserProxy is Authorizable {
                 _position
             );
             // This sanity check ensure that at least as much was minted as was transferred
-            require(ycMinted >= _amount, "Not enough minted");
+            require(ytMinted >= _amount, "Not enough minted");
             return (ptMinted, ycMinted);
         } else {
             // Move the user's funds to the wrapped position contract

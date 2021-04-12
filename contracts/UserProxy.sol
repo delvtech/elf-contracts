@@ -139,7 +139,7 @@ contract UserProxy is Authorizable {
             weth.deposit{ value: msg.value }();
             weth.transfer(address(_position), _amount);
             // Proceed to internal minting steps
-            (uint256 ptMinted, uint256 ycMinted) = _mint(
+            (uint256 ptMinted, uint256 ytMinted) = _mint(
                 _expiration,
                 _position
             );

@@ -7,9 +7,11 @@ import "./IInterestToken.sol";
 interface ITranche is IERC20Permit {
     function deposit(uint256 _shares, address destination)
         external
-        returns (uint256);
+        returns (uint256, uint256);
 
-    function prefundedDeposit(address _destination) external returns (uint256);
+    function prefundedDeposit(address _destination)
+        external
+        returns (uint256, uint256);
 
     function withdrawPrincipal(uint256 _amount, address _destination)
         external

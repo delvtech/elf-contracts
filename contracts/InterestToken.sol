@@ -5,10 +5,11 @@ import "./libraries/ERC20Permit.sol";
 import "./libraries/DateString.sol";
 
 import "./interfaces/IInterestToken.sol";
+import "./interfaces/ITranche.sol";
 
 contract InterestToken is ERC20Permit, IInterestToken {
     // The tranche address which controls the minting
-    address public immutable tranche;
+    ITranche public immutable tranche;
 
     /// @dev Initializes the ERC20 and writes the correct names
     /// @param _tranche The tranche contract address
@@ -20,16 +21,26 @@ contract InterestToken is ERC20Permit, IInterestToken {
         uint256 _timestamp,
         uint8 _decimals
     ) ERC20Permit("Element Interest Token ", "ELV:") {
-        tranche = _tranche;
+        tranche = ITranche(_tranche);
         _setupDecimals(_decimals);
         // Write the strategySymbol and expiration time to name and symbol
         DateString.encodeAndWriteTimestamp(_strategySymbol, _timestamp, name);
         DateString.encodeAndWriteTimestamp(_strategySymbol, _timestamp, symbol);
     }
 
+    /// @dev Aliasing of the lookup method for the supply of yield tokens which
+    ///      improves our ERC20 compatibility.
+    /// @return The total supply of yield tokens
+    function totalSupply() external view returns (uint256) {
+        return uint256(tranche.interestSupply());
+    }
+
     /// @dev Prevents execution if the caller isn't the tranche
     modifier onlyMintAuthority() {
-        require(msg.sender == tranche, "caller is not an authorized minter");
+        require(
+            msg.sender == address(tranche),
+            "caller is not an authorized minter"
+        );
         _;
     }
 

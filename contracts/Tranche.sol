@@ -23,7 +23,7 @@ contract Tranche is ERC20Permit, ITranche {
     // NOTE - we use smaller sizes so that they can be one storage slot
     uint128 public valueSupplied;
     // The total supply of interest tokens
-    uint128 public interestSupply;
+    uint128 public override interestSupply;
     // The timestamp when tokens can be redeemed.
     uint256 public immutable unlockTimestamp;
     // The amount of slippage allowed on the Principal token redemption [0.1 basis points]
@@ -58,6 +58,12 @@ contract Tranche is ERC20Permit, ITranche {
         // Write the strategySymbol  and expiration time to name and symbol
         DateString.encodeAndWriteTimestamp(strategySymbol, expiration, name);
         DateString.encodeAndWriteTimestamp(strategySymbol, expiration, symbol);
+    }
+
+    /// @notice An aliasing of the getter for valueSupplied to improve ERC20 compatibility
+    /// @return The number of principal tokens which exist.
+    function totalSupply() external view returns (uint256) {
+        return uint256(valueSupplied);
     }
 
     /**

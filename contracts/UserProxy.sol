@@ -138,26 +138,18 @@ contract UserProxy is Authorizable {
             // Create weth from the provided eth
             weth.deposit{ value: msg.value }();
             weth.transfer(address(_position), _amount);
-            // Proceed to internal minting steps
-            (uint256 ptMinted, uint256 ytMinted) = _mint(
-                _expiration,
-                _position
-            );
-            // This sanity check ensure that at least as much was minted as was transferred
-            require(ytMinted >= _amount, "Not enough minted");
-            return (ptMinted, ytMinted);
         } else {
+            // Check for the fact that this branch should not be payable
+            require(msg.value == 0, "Non payable");
             // Move the user's funds to the wrapped position contract
             _underlying.transferFrom(msg.sender, address(_position), _amount);
-            // Proceed to internal minting steps
-            (uint256 ptMinted, uint256 ytMinted) = _mint(
-                _expiration,
-                _position
-            );
-            // This sanity check ensure that at least as much was minted as was transferred
-            require(ytMinted >= _amount, "Not enough minted");
-            return (ptMinted, ytMinted);
         }
+
+        // Proceed to internal minting steps
+        (uint256 ptMinted, uint256 ytMinted) = _mint(_expiration, _position);
+        // This sanity check ensure that at least as much was minted as was transferred
+        require(ytMinted >= _amount, "Not enough minted");
+        return (ptMinted, ytMinted);
     }
 
     /// @dev This internal mint function performs the core minting logic after

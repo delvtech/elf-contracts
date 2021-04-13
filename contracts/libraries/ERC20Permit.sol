@@ -26,6 +26,11 @@ abstract contract ERC20Permit is IERC20Permit {
         symbol = symbol_;
         decimals = 18;
 
+        // By setting these addresses to 0 attempting to execute a transfer to
+        // either of them will revert. This is a gas efficient way to prevent
+        // a common user mistake where they transfer to the token address.
+        // These values are not considered 'real' tokens and so are not included
+        // in 'total supply' which only contains minted tokens.
         balanceOf[address(0)] = type(uint256).max;
         balanceOf[address(this)] = type(uint256).max;
 

@@ -115,6 +115,7 @@ contract UserProxy is Authorizable {
     ///                        each PermitData struct provided will be executed as a call.
     ///                        An example use of this is if using a token with permit like USDC
     ///                        to encode a permit which gives this contract allowance before minting.
+    /// @return returns the minted amounts of PT and YT
     // NOTE - It is critical that the notFrozen modifier is listed first so it gets called first.
     function mint(
         uint256 _amount,
@@ -122,7 +123,13 @@ contract UserProxy is Authorizable {
         uint256 _expiration,
         address _position,
         PermitData[] calldata _permitCallData
-    ) external payable notFrozen() preApproval(_permitCallData) {
+    )
+        external
+        payable
+        notFrozen()
+        preApproval(_permitCallData)
+        returns (uint256, uint256)
+    {
         // If the underlying token matches this predefined 'ETH token'
         // then we create weth for the user and go from there
         if (address(_underlying) == _ETH_CONSTANT) {
@@ -132,12 +139,24 @@ contract UserProxy is Authorizable {
             weth.deposit{ value: msg.value }();
             weth.transfer(address(_position), _amount);
             // Proceed to internal minting steps
-            _mint(_expiration, _position);
+            (uint256 ptMinted, uint256 ytMinted) = _mint(
+                _expiration,
+                _position
+            );
+            // This sanity check ensure that at least as much was minted as was transferred
+            require(ytMinted >= _amount, "Not enough minted");
+            return (ptMinted, ytMinted);
         } else {
             // Move the user's funds to the wrapped position contract
             _underlying.transferFrom(msg.sender, address(_position), _amount);
             // Proceed to internal minting steps
-            _mint(_expiration, _position);
+            (uint256 ptMinted, uint256 ytMinted) = _mint(
+                _expiration,
+                _position
+            );
+            // This sanity check ensure that at least as much was minted as was transferred
+            require(ytMinted >= _amount, "Not enough minted");
+            return (ptMinted, ytMinted);
         }
     }
 
@@ -145,12 +164,16 @@ contract UserProxy is Authorizable {
     ///      the contract has already transferred to WrappedPosition contract
     /// @param _expiration The tranche expiration time
     /// @param _position The contract which interacts with the yield bearing strategy
-    function _mint(uint256 _expiration, address _position) internal {
+    /// @return the principal token yield token returned
+    function _mint(uint256 _expiration, address _position)
+        internal
+        returns (uint256, uint256)
+    {
         // Use create2 to derive the tranche contract
         ITranche tranche = _deriveTranche(address(_position), _expiration);
         // Move funds into the Tranche contract
         // it will credit the msg.sender with the new tokens
-        tranche.prefundedDeposit(msg.sender);
+        return tranche.prefundedDeposit(msg.sender);
     }
 
     /// @dev This internal function produces the deterministic create2

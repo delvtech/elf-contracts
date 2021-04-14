@@ -120,8 +120,6 @@ contract YVaultAssetProxy is WrappedPosition {
             amount -= 1;
         }
         // Calculate the amount of shares the amount deposited is worth
-        // Note - to get a realistic reading and avoid rounding errors we
-        // use the method of the yearn vault instead of '_pricePerShare'
         uint256 neededShares = (amount * (10**vaultDecimals)) /
             _pricePerShare();
 
@@ -160,8 +158,6 @@ contract YVaultAssetProxy is WrappedPosition {
         // We load the reserves
         (uint256 localUnderlying, uint256 localShares) = _getReserves();
         // Calculate the amount of shares the amount deposited is worth
-        // Note - to get a realistic reading and avoid rounding errors we
-        // use the method of the yearn vault instead of '_pricePerShare'
         uint256 needed = (_shares * _pricePerShare()) / (10**vaultDecimals);
         // If we have enough underlying we don't have to actually withdraw
         if (needed < localUnderlying) {

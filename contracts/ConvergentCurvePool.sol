@@ -53,7 +53,12 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     // The max percent fee for governance, immutable after compilation
     uint256 public constant FEE_BOUND = 3e17;
 
-    // An event emitted to make tracking fees easier
+    /// @notice This event allows the frontend to track the fees
+    /// @param collectedBase the base asset tokens fees collected in this txn
+    /// @param collectedBond the bond asset tokens fees collected in this txn
+    /// @param remainingBase the amount of base asset fees have been charged but not collected
+    /// @param remainingBond the amount of bond asset fees have been charged but not collected
+    /// @dev All values emitted by this event are 18 point fixed not token native decimals
     event FeeCollection(
         uint256 collectedBase,
         uint256 collectedBond,

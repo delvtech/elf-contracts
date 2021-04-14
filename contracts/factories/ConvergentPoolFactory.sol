@@ -15,6 +15,9 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
     uint256 public percentFeeGov;
     address public governance;
 
+    /// @notice This event tracks pool creations from this factory
+    /// @param pool the address of the pool
+    /// @param bondToken The token of the bond token in this pool
     event PoolCreated(address indexed pool, address indexed bondToken);
 
     /// @notice This function constructs the pool

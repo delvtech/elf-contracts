@@ -33,7 +33,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     uint128 public feesUnderlying;
     uint128 public feesBond;
     // Stored records of governance tokens
-    address public governance;
+    address public immutable governance;
     // The percent of each trade's implied yield to collect as LP fee
     uint256 public immutable percentFee;
     // The percent of LP fees that is payed to governance
@@ -52,6 +52,14 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     uint256 public constant EPSILON = 1e12;
     // The max percent fee for governance, immutable after compilation
     uint256 public constant FEE_BOUND = 3e17;
+
+    // An event emitted to make tracking fees easier
+    event FeeCollection(
+        uint256 collectedBase,
+        uint256 collectedBond,
+        uint256 remainingBase,
+        uint256 remainingBond
+    );
 
     /// @dev We need need to set the immutables on contract creation
     ///      Note - We expect both 'bond' and 'underlying' to have 'decimals()'
@@ -610,6 +618,9 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             // resets the amount to match what's consumed and in the zero fee case
             // that's everything.
             (feesUnderlying, feesBond) = (0, 0);
+            // Emit a fee tracking event
+            emit FeeCollection(localFeeUnderlying, localFeeBond, 0, 0);
+            // Return the used fees
             return (localFeeUnderlying, localFeeBond);
         }
 
@@ -630,12 +641,22 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         // Calculate the remaining fees, note due to rounding errors they are likely to
         // be true that usedFees + remainingFees > originalFees by a very small rounding error
         // this is safe as with a bounded gov fee it never consumes LP funds.
-        feesUnderlying = uint128(
-            govFeeUnderlying.sub(consumed[baseIndex]).div(percentFeeGov)
+        uint256 remainingUnderlying = govFeeUnderlying
+            .sub(consumed[baseIndex])
+            .div(percentFeeGov);
+        uint256 remainingBond = govFeeBond.sub(consumed[bondIndex]).div(
+            percentFeeGov
         );
-        feesBond = uint128(
-            govFeeBond.sub(consumed[bondIndex]).div(percentFeeGov)
+        // Emit fee tracking event
+        emit FeeCollection(
+            usedFeeUnderlying,
+            usedFeeBond,
+            remainingUnderlying,
+            remainingBond
         );
+        // Store the remaining fees
+        feesUnderlying = uint128(remainingUnderlying);
+        feesBond = uint128(remainingBond);
         // We return the fees which were removed from storage
         return (usedFeeUnderlying, usedFeeBond);
     }

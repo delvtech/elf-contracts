@@ -122,9 +122,9 @@ contract YVaultAssetProxy is WrappedPosition {
         // Calculate the amount of shares the amount deposited is worth
         // Note - to get a realistic reading and avoid rounding errors we
         // use the method of the yearn vault instead of '_pricePerShare'
-        uint256 yearnTotalSupply = vault.totalSupply();
-        uint256 yearnTotalAssets = vault.totalAssets();
-        uint256 neededShares = (amount * yearnTotalSupply) / yearnTotalAssets;
+        uint256 neededShares = (amount * (10**vaultDecimals)) /
+            _pricePerShare();
+
         // If we have enough in local reserves we don't call out for deposits
         if (localShares > neededShares) {
             // We set the reserves
@@ -134,10 +134,14 @@ contract YVaultAssetProxy is WrappedPosition {
         }
         // Deposit and get the shares that were minted to this
         uint256 shares = vault.deposit(localUnderlying + amount, address(this));
+
+        // calculate the user share
+        uint256 userShare = (amount * shares) / (localUnderlying + amount);
+
         // We set the reserves
-        _setReserves(0, localShares + shares - neededShares);
+        _setReserves(0, localShares + shares - userShare);
         // Return the amount of shares the user has produced, and the amount used for it.
-        return (neededShares, amount);
+        return (userShare, amount);
     }
 
     /// @notice Withdraw the number of shares and will short circuit if it can
@@ -158,9 +162,7 @@ contract YVaultAssetProxy is WrappedPosition {
         // Calculate the amount of shares the amount deposited is worth
         // Note - to get a realistic reading and avoid rounding errors we
         // use the method of the yearn vault instead of '_pricePerShare'
-        uint256 yearnTotalSupply = vault.totalSupply();
-        uint256 yearnTotalAssets = vault.totalAssets();
-        uint256 needed = (_shares * yearnTotalAssets) / yearnTotalSupply;
+        uint256 needed = (_shares * _pricePerShare()) / (10**vaultDecimals);
         // If we have enough underlying we don't have to actually withdraw
         if (needed < localUnderlying) {
             // We set the reserves to be the new reserves
@@ -172,17 +174,24 @@ contract YVaultAssetProxy is WrappedPosition {
             return (needed);
         }
         // If we don't have enough local reserves we do the actual withdraw
-        // Withdraws shares from the vault with max loss 0.01%
+        // Withdraws shares from the vault. Max loss is set at 100% as
+        // the minimum output value is enforced by the calling
+        // function in the WrappedPosition contract.
         uint256 amountReceived = vault.withdraw(
             _shares + localShares,
             address(this),
-            1
+            10000
         );
-        _setReserves(localUnderlying + amountReceived - needed, 0);
+
+        // calculate the user share
+        uint256 userShare = (_shares * amountReceived) /
+            (localShares + _shares);
+
+        _setReserves(localUnderlying + amountReceived - userShare, 0);
         // Transfer the underlying to the destination 'token' is an immutable in WrappedPosition
-        token.transfer(_destination, needed);
+        token.transfer(_destination, userShare);
         // Return the amount of underlying
-        return needed;
+        return userShare;
     }
 
     /// @notice Get the underlying amount of tokens per shares given
@@ -194,9 +203,7 @@ contract YVaultAssetProxy is WrappedPosition {
         view
         returns (uint256)
     {
-        uint256 yearnTotalSupply = vault.totalSupply();
-        uint256 yearnTotalAssets = vault.totalAssets();
-        return (yearnTotalAssets * _amount) / yearnTotalSupply;
+        return (_amount * _pricePerShare()) / (10**vaultDecimals);
     }
 
     /// @notice Get the price per share in the vault

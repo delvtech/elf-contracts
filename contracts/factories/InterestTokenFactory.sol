@@ -7,6 +7,8 @@ import "../interfaces/IERC20.sol";
 
 contract InterestTokenFactory {
     /// @dev Emitted when a new InterestToken is created.
+    /// @param token the token address
+    /// @param tranche the tranche address
     event InterestTokenCreated(address indexed token, address indexed tranche);
 
     /// @notice Deploy a new interest token contract

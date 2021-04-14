@@ -11,6 +11,10 @@ pragma solidity ^0.8.0;
 /// @author Element Finance
 /// @title Tranche Factory
 contract TrancheFactory {
+    /// @dev An event to track tranche creations
+    /// @param trancheAddress the address of the tranche contract
+    /// @param wpAddress the address of the wrapped position
+    /// @param expiration the expiration time of the tranche
     event TrancheCreated(
         address indexed trancheAddress,
         address indexed wpAddress,

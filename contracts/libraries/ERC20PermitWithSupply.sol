@@ -22,7 +22,7 @@ abstract contract ERC20PermitWithSupply is ERC20Permit {
         emit Transfer(address(0), account, amount);
     }
 
-    /// @notice This function overrides the ERC20Permit Libary's _burn to decrement total supply
+    /// @notice This function overrides the ERC20Permit Library's _burn to decrement total supply
     /// @param account the account to burn from
     /// @param amount the amount of token to burn
     function _burn(address account, uint256 amount) internal override {

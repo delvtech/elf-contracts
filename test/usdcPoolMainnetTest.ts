@@ -240,7 +240,7 @@ describe("USDCPool-Mainnet", () => {
       expect(await fixture.position.reserveUnderlying()).to.be.eq(0);
 
       // The second is fully fillable from the reserve's wrapped position shares
-      deposit = await yearnDepositSim(fixture, 2e11);
+      deposit = BigNumber.from(2e11).mul(1e6).div(pricePerFullShare);
       await fixture.position
         .connect(users[2].user)
         .deposit(users[2].address, 2e11);
@@ -262,7 +262,9 @@ describe("USDCPool-Mainnet", () => {
       userBalance = await fixture.position.balanceOf(users[1].address);
       shareAmount = BigNumber.from(2e11).mul(1e6).div(pricePerFullShare);
       expect(userBalance).to.be.at.least(subError(shareAmount));
-      expect(await fixture.position.reserveShares()).to.be.eq(deposit);
+      expect(await fixture.position.reserveShares()).to.be.at.least(
+        subError(deposit)
+      );
       expect(await fixture.position.reserveUnderlying()).to.be.eq(0);
 
       // Final deposit should be preformed without the reserve
@@ -272,7 +274,9 @@ describe("USDCPool-Mainnet", () => {
       userBalance = await fixture.position.balanceOf(users[3].address);
       shareAmount = BigNumber.from(6e11).mul(1e6).div(pricePerFullShare);
       expect(userBalance).to.be.at.least(subError(shareAmount));
-      expect(await fixture.position.reserveShares()).to.be.eq(deposit);
+      expect(await fixture.position.reserveShares()).to.be.at.least(
+        subError(deposit)
+      );
       expect(await fixture.position.reserveUnderlying()).to.be.eq(0);
 
       // Test withdraws
@@ -295,8 +299,8 @@ describe("USDCPool-Mainnet", () => {
       );
       expect(await fixture.position.reserveShares()).to.be.eq(0);
       // The extra unit is from rounding error in the contract's favor
-      expect(await fixture.position.reserveUnderlying()).to.be.eq(
-        usdcBalance.add(1)
+      expect(await fixture.position.reserveUnderlying()).to.be.at.least(
+        subError(usdcBalance)
       );
 
       const shareBalanceU1 = await fixture.position.balanceOf(users[1].address);
@@ -307,7 +311,7 @@ describe("USDCPool-Mainnet", () => {
       expect(await fixture.position.balanceOf(users[1].address)).to.equal(0);
       expect(await fixture.position.reserveShares()).to.be.eq(shareBalanceU1);
       expect(await fixture.position.reserveUnderlying()).to.be.eq(
-        usdcBalance.add(1).sub(newWithdraw)
+        usdcBalance.sub(newWithdraw)
       );
       // We record the current share balance
       usdcBalance = usdcBalance.add(1).sub(newWithdraw);

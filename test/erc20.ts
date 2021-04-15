@@ -27,14 +27,14 @@ describe("erc20", function () {
     await restoreSnapshot(provider);
   });
 
-  beforeEach(async () => {
-    await createSnapshot(provider);
-  });
-  afterEach(async () => {
-    await restoreSnapshot(provider);
-  });
-
   describe("Permit function", async () => {
+    beforeEach(async () => {
+      await createSnapshot(provider);
+    });
+    afterEach(async () => {
+      await restoreSnapshot(provider);
+    });
+
     it("has a correctly precomputed typehash", async function () {
       expect(await token.PERMIT_TYPEHASH()).to.equal(PERMIT_TYPEHASH);
     });
@@ -110,6 +110,13 @@ describe("erc20", function () {
   });
 
   describe("transfer functionality", async () => {
+    beforeEach(async () => {
+      await createSnapshot(provider);
+    });
+    afterEach(async () => {
+      await restoreSnapshot(provider);
+    });
+
     it("transfers successfully", async () => {
       await token.transfer(signers[1].address, ethers.utils.parseEther("5"));
       expect(await token.balanceOf(signers[0].address)).to.be.eq(
@@ -124,7 +131,7 @@ describe("erc20", function () {
         signers[1].address,
         ethers.utils.parseEther("500")
       );
-      expect(tx).to.be.revertedWith("ERC20: insufficient-balance");
+      await expect(tx).to.be.revertedWith("ERC20: insufficient-balance");
     });
     it("transferFrom successfully", async () => {
       await token.approve(signers[1].address, ethers.utils.parseEther("5"));
@@ -165,11 +172,14 @@ describe("erc20", function () {
       ).to.be.eq(ethers.constants.MaxUint256);
     });
     it("blocks invalid transferFrom", async () => {
-      const tx = token.transfer(
-        signers[1].address,
-        ethers.utils.parseEther("5")
-      );
-      expect(tx).to.be.revertedWith("ERC20: insufficient-allowance");
+      const tx = token
+        .connect(signers[1])
+        .transferFrom(
+          signers[0].address,
+          signers[2].address,
+          ethers.utils.parseEther("5")
+        );
+      await expect(tx).to.be.revertedWith("ERC20: insufficient-allowance");
     });
   });
 });

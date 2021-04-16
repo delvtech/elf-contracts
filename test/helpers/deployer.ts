@@ -30,8 +30,8 @@ import data from "../../artifacts/contracts/Tranche.sol/Tranche.json";
 
 export interface FixtureInterface {
   signer: Signer;
-  usdc: TestERC20;
-  yusdc: TestYVault;
+  erc20: TestERC20;
+  yvault: TestYVault;
   position: YVaultAssetProxy;
   tranche: Tranche;
   interestToken: InterestToken;
@@ -70,12 +70,12 @@ const deployTestWrappedPosition = async (signer: Signer, address: string) => {
   return await deployer.deploy(address);
 };
 
-const deployUsdc = async (signer: Signer, owner: string) => {
+const deployErc20 = async (signer: Signer, owner: string) => {
   const deployer = new TestERC20__factory(signer);
-  return await deployer.deploy(owner, "tUSDC", 6);
+  return await deployer.deploy(owner, "tTKN", 18);
 };
 
-const deployYusdc = async (signer: Signer, usdcAddress: string) => {
+const deployYvault = async (signer: Signer, usdcAddress: string) => {
   const deployer = new TestYVault__factory(signer);
   return await deployer.deploy(usdcAddress);
 };
@@ -108,15 +108,15 @@ export async function loadFixture() {
   const wethAddress = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
   const [signer] = await ethers.getSigners();
   const signerAddress = (await signer.getAddress()) as string;
-  const usdc = await deployUsdc(signer, signerAddress);
-  const yusdc = await deployYusdc(signer, usdc.address);
-
+  const erc20 = await deployErc20(signer, signerAddress);
+  const yvault = await deployYvault(signer, erc20.address);
+  const decimals = await yvault.decimals();
   const position: YVaultAssetProxy = await deployYasset(
     signer,
-    yusdc.address,
-    usdc.address,
-    "eyUSDC",
-    "eyUSDC"
+    yvault.address,
+    erc20.address,
+    "eyTKN",
+    "eyTKN"
   );
 
   // deploy and fetch tranche contract
@@ -146,8 +146,8 @@ export async function loadFixture() {
   );
   return {
     signer,
-    usdc,
-    yusdc,
+    erc20,
+    yvault,
     position,
     tranche,
     interestToken,

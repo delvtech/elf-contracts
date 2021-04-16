@@ -37,7 +37,12 @@ contract YVaultAssetProxy is WrappedPosition {
     ) WrappedPosition(_token, _name, _symbol) {
         vault = IYearnVault(vault_);
         _token.approve(vault_, type(uint256).max);
-        vaultDecimals = IERC20(vault_).decimals();
+        uint8 localVaultDecimals = IERC20(vault_).decimals();
+        vaultDecimals = localVaultDecimals;
+        require(
+            uint8(_token.decimals()) == localVaultDecimals,
+            "Inconsistent decimals"
+        );
     }
 
     /// @notice This function allows a user to deposit to the reserve

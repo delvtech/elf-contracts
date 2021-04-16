@@ -28,8 +28,8 @@ describe("Wrapped Position", () => {
       users.map(async (userInfo) => {
         const { user } = userInfo;
         userInfo.address = await user.getAddress();
-        await fixture.usdc.mint(userInfo.address, 6e6);
-        await fixture.usdc
+        await fixture.erc20.mint(userInfo.address, 6e6);
+        await fixture.erc20
           .connect(user)
           .approve(fixture.position.address, 12e6);
       })
@@ -37,9 +37,9 @@ describe("Wrapped Position", () => {
 
     // Make an initial deposit in the aypool contract
     // This prevents a div by zero reversion in several cases
-    await fixture.usdc.mint(users[0].address, 100);
-    await fixture.usdc.approve(fixture.yusdc.address, 100);
-    await fixture.yusdc.deposit(100, users[0].address);
+    await fixture.erc20.mint(users[0].address, 100);
+    await fixture.erc20.approve(fixture.yvault.address, 100);
+    await fixture.yvault.deposit(100, users[0].address);
   });
   after(async () => {
     // revert back to initial state after all tests pass
@@ -94,7 +94,7 @@ describe("Wrapped Position", () => {
        * User 3: 6 USDC deposited
        */
       // Update vault to 1 share = 1.1 USDC
-      await fixture.yusdc.updateShares();
+      await fixture.yvault.updateShares();
       await fixture.position
         .connect(users[3].user)
         .transfer(users[1].address, 5e6);
@@ -140,9 +140,9 @@ describe("Wrapped Position", () => {
         .withdraw(users[3].address, shareBalanceUser2, 0);
       expect(await fixture.position.balanceOf(users[3].address)).to.equal(0);
 
-      const usdcBalanceUser0 = await fixture.usdc.balanceOf(users[1].address);
-      const usdcBalanceUser1 = await fixture.usdc.balanceOf(users[2].address);
-      const usdcBalanceUser2 = await fixture.usdc.balanceOf(users[3].address);
+      const usdcBalanceUser0 = await fixture.erc20.balanceOf(users[1].address);
+      const usdcBalanceUser1 = await fixture.erc20.balanceOf(users[2].address);
+      const usdcBalanceUser2 = await fixture.erc20.balanceOf(users[3].address);
 
       const totalUsdcBalance = usdcBalanceUser0
         .add(usdcBalanceUser1)
@@ -160,9 +160,9 @@ describe("Wrapped Position", () => {
     });
     it("Successfully deposits", async () => {
       // Create some underlying
-      await fixture.usdc.mint(users[0].address, 100e6);
+      await fixture.erc20.mint(users[0].address, 100e6);
       // Approve the wrapped position reserve
-      await fixture.usdc.approve(fixture.position.address, 100e6);
+      await fixture.erc20.approve(fixture.position.address, 100e6);
       // deposit to the reserves
       await fixture.position.reserveDeposit(10e6);
       expect(await fixture.position.reserveUnderlying()).to.be.eq(10e6 - 1);
@@ -191,15 +191,15 @@ describe("Wrapped Position", () => {
 
     it("Successfully withdraws", async () => {
       // Create some underlying
-      await fixture.usdc.mint(users[0].address, 10e6);
+      await fixture.erc20.mint(users[0].address, 10e6);
       // Approve the position reserve
-      await fixture.usdc.approve(fixture.position.address, 100e6);
+      await fixture.erc20.approve(fixture.position.address, 100e6);
       // deposit to the reserve
       await fixture.position.reserveDeposit(10e6);
-      const balanceStart = await fixture.usdc.balanceOf(users[0].address);
+      const balanceStart = await fixture.erc20.balanceOf(users[0].address);
       // We do a trial withdraw
       await fixture.position.reserveWithdraw(1e6);
-      let currentBalance = await fixture.usdc.balanceOf(users[0].address);
+      let currentBalance = await fixture.erc20.balanceOf(users[0].address);
       // Note - this is slightly less because underlying reserves are missing
       //        exactly one unit of usdc
       expect(currentBalance).to.be.eq(balanceStart.add(999999));
@@ -211,7 +211,7 @@ describe("Wrapped Position", () => {
       expect(await fixture.position.reserveShares()).to.be.eq(8181819);
       // We now make a withdraw and check that the right amount is produced
       await fixture.position.reserveWithdraw(1e6);
-      currentBalance = await fixture.usdc.balanceOf(users[0].address);
+      currentBalance = await fixture.erc20.balanceOf(users[0].address);
       expect(currentBalance).to.be.eq(balanceStart.add(999999).add(1e6));
       expect(await fixture.position.reserveShares()).to.be.eq(7272728);
     });

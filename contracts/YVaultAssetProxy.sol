@@ -53,7 +53,9 @@ contract YVaultAssetProxy is WrappedPosition {
         (uint256 localUnderlying, uint256 localShares) = _getReserves();
         // Calculate the total reserve value
         uint256 totalValue = localUnderlying;
-        totalValue += _underlying(localShares);
+        uint256 yearnTotalSupply = vault.totalSupply();
+        uint256 yearnTotalAssets = vault.totalAssets();
+        totalValue += ((yearnTotalAssets * localShares) / yearnTotalSupply);
         // If this is the first deposit we need different logic
         uint256 localReserveSupply = reserveSupply;
         uint256 mintAmount;
@@ -120,8 +122,11 @@ contract YVaultAssetProxy is WrappedPosition {
             amount -= 1;
         }
         // Calculate the amount of shares the amount deposited is worth
-        uint256 neededShares = (amount * (10**vaultDecimals)) /
-            _pricePerShare();
+        // Note - to get a realistic reading and avoid rounding errors we
+        // use the method of the yearn vault instead of '_pricePerShare'
+        uint256 yearnTotalSupply = vault.totalSupply();
+        uint256 yearnTotalAssets = vault.totalAssets();
+        uint256 neededShares = (amount * yearnTotalSupply) / yearnTotalAssets;
 
         // If we have enough in local reserves we don't call out for deposits
         if (localShares > neededShares) {

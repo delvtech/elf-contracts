@@ -116,6 +116,18 @@ describe("UserProxyTests", function () {
     receipt = await receipt.wait();
     console.log("New User First mint", receipt.gasUsed.toNumber());
   });
+
+  it("Blocks Weth withdraw function when using USDC", async function () {
+    const tx = proxy.withdrawWeth(
+      1e10,
+      usdcFixture.position.address,
+      ethers.BigNumber.from(utils.parseEther("1")),
+      ethers.BigNumber.from(utils.parseEther("1")),
+      []
+    );
+    expect(tx).to.be.revertedWith("Non weth token");
+  });
+
   describe("Deprecation function", async () => {
     it("Blocks deprecation by non owners", async () => {
       const tx = proxy.connect(signers[1]).deprecate();
@@ -192,7 +204,7 @@ describe("UserProxyTests", function () {
     });
 
     // TODO - Figure out to how to sim yield accrual on mainnet fork yearn
-    it("Correctly redeems minted weth principal tokens from mainnet", async () => {
+    it("Correctly redeems weth pt + yt for eth", async () => {
       // Mint tokens for this test
       await wethFixture.proxy
         .connect(users[1].user)
@@ -281,6 +293,12 @@ describe("UserProxyTests", function () {
       );
 
       expect(nextBalance.sub(postBalance)).to.be.at.least(expectedDifferential);
+    });
+    it("Blocks weth redemption when both assets are 0", async () => {
+      const tx = wethFixture.proxy
+        .connect(users[1].user)
+        .withdrawWeth(1e10, wethFixture.position.address, 0, 0, []);
+      expect(tx).to.be.revertedWith("Invalid withdraw");
     });
   });
 

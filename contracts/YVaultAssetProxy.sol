@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
+// WARNING: This has been validated for yearn vaults up to version 0.2.11.
+// Using this code with any later version can be unsafe.
 pragma solidity ^0.8.0;
 
 import "./interfaces/IERC20.sol";
@@ -37,7 +39,12 @@ contract YVaultAssetProxy is WrappedPosition {
     ) WrappedPosition(_token, _name, _symbol) {
         vault = IYearnVault(vault_);
         _token.approve(vault_, type(uint256).max);
-        vaultDecimals = IERC20(vault_).decimals();
+        uint8 localVaultDecimals = IERC20(vault_).decimals();
+        vaultDecimals = localVaultDecimals;
+        require(
+            uint8(_token.decimals()) == localVaultDecimals,
+            "Inconsistent decimals"
+        );
     }
 
     /// @notice This function allows a user to deposit to the reserve
@@ -53,7 +60,9 @@ contract YVaultAssetProxy is WrappedPosition {
         (uint256 localUnderlying, uint256 localShares) = _getReserves();
         // Calculate the total reserve value
         uint256 totalValue = localUnderlying;
-        totalValue += _underlying(localShares);
+        uint256 yearnTotalSupply = vault.totalSupply();
+        uint256 yearnTotalAssets = vault.totalAssets();
+        totalValue += ((yearnTotalAssets * localShares) / yearnTotalSupply);
         // If this is the first deposit we need different logic
         uint256 localReserveSupply = reserveSupply;
         uint256 mintAmount;
@@ -120,8 +129,11 @@ contract YVaultAssetProxy is WrappedPosition {
             amount -= 1;
         }
         // Calculate the amount of shares the amount deposited is worth
-        uint256 neededShares = (amount * (10**vaultDecimals)) /
-            _pricePerShare();
+        // Note - to get a realistic reading and avoid rounding errors we
+        // use the method of the yearn vault instead of '_pricePerShare'
+        uint256 yearnTotalSupply = vault.totalSupply();
+        uint256 yearnTotalAssets = vault.totalAssets();
+        uint256 neededShares = (amount * yearnTotalSupply) / yearnTotalAssets;
 
         // If we have enough in local reserves we don't call out for deposits
         if (localShares > neededShares) {

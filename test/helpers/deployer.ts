@@ -75,9 +75,13 @@ const deployUsdc = async (signer: Signer, owner: string) => {
   return await deployer.deploy(owner, "tUSDC", 6);
 };
 
-const deployYusdc = async (signer: Signer, usdcAddress: string) => {
+const deployYusdc = async (
+  signer: Signer,
+  usdcAddress: string,
+  decimals: number
+) => {
   const deployer = new TestYVault__factory(signer);
-  return await deployer.deploy(usdcAddress);
+  return await deployer.deploy(usdcAddress, decimals);
 };
 
 const deployYasset = async (
@@ -109,8 +113,7 @@ export async function loadFixture() {
   const [signer] = await ethers.getSigners();
   const signerAddress = (await signer.getAddress()) as string;
   const usdc = await deployUsdc(signer, signerAddress);
-  const yusdc = await deployYusdc(signer, usdc.address);
-
+  const yusdc = await deployYusdc(signer, usdc.address, 6);
   const position: YVaultAssetProxy = await deployYasset(
     signer,
     yusdc.address,

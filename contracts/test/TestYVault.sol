@@ -12,15 +12,18 @@ import "./TestERC20.sol";
 contract TestYVault is ERC20PermitWithSupply {
     address public token;
 
-    constructor(address _token) ERC20Permit("test ytoken", "yToken") {
+    constructor(address _token, uint8 _decimals)
+        ERC20Permit("test ytoken", "yToken")
+    {
         token = _token;
+        _setupDecimals(_decimals);
     }
 
     function deposit(uint256 _amount, address destination)
         external
         returns (uint256)
     {
-        uint256 _shares = (_amount * 1e18) / pricePerShare(); // calculate shares
+        uint256 _shares = (_amount * (10**decimals)) / pricePerShare(); // calculate shares
         IERC20(token).transferFrom(msg.sender, address(this), _amount); // pull deposit from sender
         _mint(destination, _shares); // mint shares for sender
         return _shares;
@@ -31,7 +34,7 @@ contract TestYVault is ERC20PermitWithSupply {
         address destination,
         uint256
     ) external returns (uint256) {
-        uint256 _amount = (_shares * pricePerShare()) / 1e18;
+        uint256 _amount = (_shares * pricePerShare()) / (10**decimals);
         _burn(msg.sender, _shares);
         IERC20(token).transfer(destination, _amount);
         return _amount;
@@ -39,8 +42,8 @@ contract TestYVault is ERC20PermitWithSupply {
 
     function pricePerShare() public view returns (uint256) {
         uint256 balance = ERC20Permit(token).balanceOf(address(this));
-        if (balance == 0) return 1e18;
-        return (balance * 1e18) / totalSupply;
+        if (balance == 0) return (10**decimals);
+        return (balance * (10**decimals)) / totalSupply;
     }
 
     function updateShares() external {

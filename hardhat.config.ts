@@ -29,12 +29,21 @@ const config: HardhatUserConfig = {
       },
     ],
     overrides: {
-      "contracts/vault/Vault.sol": {
+      "contracts/balancer-core-v2/vault/Vault.sol": {
         version: "0.7.1",
         settings: {
           optimizer: {
             enabled: true,
             runs: 400,
+          },
+        },
+      },
+      "contracts/balancer-core-v2/pools/weighted/WeightedPoolFactory.sol": {
+        version: "0.7.1",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 1000,
           },
         },
       },

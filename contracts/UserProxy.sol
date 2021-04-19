@@ -5,6 +5,7 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IERC20Permit.sol";
 import "./interfaces/ITranche.sol";
 import "./interfaces/IWETH.sol";
+import "./interfaces/IWrappedPosition.sol";
 import "./libraries/Authorizable.sol";
 
 /// @author Element Finance
@@ -150,6 +151,74 @@ contract UserProxy is Authorizable {
         // This sanity check ensure that at least as much was minted as was transferred
         require(ytMinted >= _amount, "Not enough minted");
         return (ptMinted, ytMinted);
+    }
+
+    /// @dev Allows a user to withdraw and unwrap weth in the same transaction
+    ///      likely quite a bit more expensive than direct unwrapping but useful
+    ///      for those who want to do one tx instead of two
+    /// @param _expiration The tranche expiration time
+    /// @param _position The contract which interacts with the yield bearing strategy
+    /// @param _amountPT The amount of principal token to withdraw
+    /// @param _amountYT The amount of yield token to withdraw.
+    /// @param _permitCallData Encoded array of permit calls to make prior to withdrawing,
+    ///                        should be used to get allowances for PT and YT
+    // NOTE - It is critical that the notFrozen modifier is listed first so it gets called first.
+    function withdrawWeth(
+        uint256 _expiration,
+        address _position,
+        uint256 _amountPT,
+        uint256 _amountYT,
+        PermitData[] calldata _permitCallData
+    ) external notFrozen() preApproval(_permitCallData) {
+        // Post the Berlin hardfork this call warms the address so only cost ~100 gas overall
+        require(IWrappedPosition(_position).token() == weth, "Non weth token");
+        // Because of create2 we know this code is exactly what is expected.
+        ITranche derivedTranche = _deriveTranche(_position, _expiration);
+
+        uint256 wethReceivedPt = 0;
+        uint256 wethReceivedYt = 0;
+        // Check if we need to withdraw principal token
+        if (_amountPT != 0) {
+            // If we have to withdraw PT first transfer it to this contract
+            derivedTranche.transferFrom(msg.sender, address(this), _amountPT);
+            // Then we withdraw that PT with the resulting weth going to this address
+            wethReceivedPt = derivedTranche.withdrawPrincipal(
+                _amountPT,
+                address(this)
+            );
+        }
+        // Check if we need to withdraw yield token
+        if (_amountYT != 0) {
+            // Post Berlin this lookup only costs 100 gas overall as well
+            IERC20Permit yieldToken = derivedTranche.interestToken();
+            // Transfer the YT to this contract
+            yieldToken.transferFrom(msg.sender, address(this), _amountYT);
+            // Withdraw that YT
+            wethReceivedYt = derivedTranche.withdrawInterest(
+                _amountYT,
+                address(this)
+            );
+        }
+
+        // We now try to withdraw from weth and send to the user after safety checks
+        // We check that (1) we actually transferred tokens from the user and (2) we
+        // got back some weth
+        require(
+            ((_amountPT != 0) || (_amountYT != 0)) &&
+                (wethReceivedPt + wethReceivedYt != 0),
+            "Invalid withdraw"
+        );
+        // Withdraw the ether from weth
+        weth.withdraw(wethReceivedPt + wethReceivedYt);
+        // Send the withdrawn eth to the caller
+        payable(msg.sender).transfer(wethReceivedPt + wethReceivedYt);
+    }
+
+    /// @dev The receive function allows WETH and only WETH to send
+    ///      eth directly to this contract. Note - It Cannot be assumed
+    ///      that this will prevent this contract from having an ETH balance
+    receive() external payable {
+        require(msg.sender == address(weth));
     }
 
     /// @dev This internal mint function performs the core minting logic after

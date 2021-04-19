@@ -6,7 +6,7 @@ import "./ERC20Permit.sol";
 
 // This contract adds a total supply variable to the ERC20 lib to increase compatibility with standard
 abstract contract ERC20PermitWithSupply is ERC20Permit {
-    // The stored totalSuppl, it equals all tokens minted - all tokens burned
+    // The stored totalSupply, it equals all tokens minted - all tokens burned
     uint256 public totalSupply;
 
     /// @notice This function overrides the ERC20Permit Library's _mint and causes it

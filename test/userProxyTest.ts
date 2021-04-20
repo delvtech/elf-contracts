@@ -235,7 +235,7 @@ describe("UserProxyTests", function () {
       weth.deposit({ value: assets.div(10) });
       weth.transfer(await wethFixture.position.vault(), assets.div(10));
 
-      // In normal operation we would use permit sigs to get approvals
+      // In normal operation we would use permit signatures to get approvals
       // but in this case we pre-approve
       await wethFixture.tranche
         .connect(users[1].user)

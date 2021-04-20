@@ -22,11 +22,11 @@ jobs:
       - name: init
         run: npm ci
       
-      - name: fmt
+      - name: Style Check
         run: npm run style-check
 
-      - name: lint
+      - name: Solhint
         run: npm run solhint
 
       - name: Spell Check
-        run: npx cspell "./**/**/**.sol" && npx cspell "./**/**/**.ts"
+        run: npm run spell-check

@@ -4,9 +4,10 @@
   "description": "",
   "scripts": {
     "solhint": "npx solhint -f table contracts/*.sol contracts/**/*.sol contracts/**/**/*.sol",
+    "spell-check": "npx cspell ./**/**/**.sol && npx cspell ./**/**/**.ts",
     "style-check": "npx prettier --check .",
     "prettier": "npx prettier --write .",
-    "lint": "npm run solhint & npm run style-check",
+    "lint": "npm run solhint & npm run style-check & npm run spell-check",
     "build": "npx hardhat compile && rm ./typechain/index.ts",
     "test": "npx hardhat compile && rm ./typechain/index.ts && npx hardhat test --config hardhat.config.test.ts ./test/*.ts",
     "sim": "npx hardhat test --config hardhat.config.test.ts ./test/simulation/*.ts",

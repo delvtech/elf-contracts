@@ -4,7 +4,7 @@ import "../libraries/Authorizable.sol";
 import "../libraries/ERC20Permit.sol";
 
 contract MockERC20YearnVault is IYearnVault, Authorizable, ERC20Permit {
-    // total amount of vault shares in existance
+    // total amount of vault shares in existence
     uint256 public totalShares;
 
     // a large number used to offset potential division precision errors

@@ -8,6 +8,7 @@ import { ERC20Permit } from "typechain/ERC20Permit";
 import { CodeSizeChecker__factory } from "typechain/factories/CodeSizeChecker__factory";
 import { ERC20Permit__factory } from "typechain/factories/ERC20Permit__factory";
 import { IWETH__factory } from "typechain/factories/IWETH__factory";
+import { TestEthSender__factory } from "typechain/factories/TestEthSender__factory";
 import { IWETH } from "typechain/IWETH";
 
 import {
@@ -203,7 +204,6 @@ describe("UserProxyTests", function () {
       );
     });
 
-    // TODO - Figure out to how to sim yield accrual on mainnet fork yearn
     it("Correctly redeems weth pt + yt for eth", async () => {
       // Mint tokens for this test
       await wethFixture.proxy
@@ -299,6 +299,12 @@ describe("UserProxyTests", function () {
         .connect(users[1].user)
         .withdrawWeth(1e10, wethFixture.position.address, 0, 0, []);
       expect(tx).to.be.revertedWith("Invalid withdraw");
+    });
+    it("Blocks non weth incoming eth transfers", async () => {
+      const senderFactory = new TestEthSender__factory(users[0].user);
+      const sender = await senderFactory.deploy();
+      const tx = sender.sendEth(wethFixture.proxy.address, { value: 1 });
+      expect(tx).to.be.revertedWith("");
     });
   });
 

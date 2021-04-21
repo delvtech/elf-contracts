@@ -172,6 +172,8 @@ contract UserProxy is Authorizable {
     ) external notFrozen() preApproval(_permitCallData) {
         // Post the Berlin hardfork this call warms the address so only cost ~100 gas overall
         require(IWrappedPosition(_position).token() == weth, "Non weth token");
+        // Only allow access if the user is actually attempting to withdraw
+        require(((_amountPT != 0) || (_amountYT != 0)), "Invalid withdraw");
         // Because of create2 we know this code is exactly what is expected.
         ITranche derivedTranche = _deriveTranche(_position, _expiration);
 
@@ -200,14 +202,8 @@ contract UserProxy is Authorizable {
             );
         }
 
-        // We now try to withdraw from weth and send to the user after safety checks
-        // We check that (1) we actually transferred tokens from the user and (2) we
-        // got back some weth
-        require(
-            ((_amountPT != 0) || (_amountYT != 0)) &&
-                (wethReceivedPt + wethReceivedYt != 0),
-            "Invalid withdraw"
-        );
+        // A sanity check that some value was withdrawn
+        require((wethReceivedPt + wethReceivedYt != 0), "Failed withdraw");
         // Withdraw the ether from weth
         weth.withdraw(wethReceivedPt + wethReceivedYt);
         // Send the withdrawn eth to the caller

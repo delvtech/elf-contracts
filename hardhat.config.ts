@@ -2,6 +2,7 @@ import "@nomiclabs/hardhat-waffle";
 import "hardhat-typechain";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
+import "@nomiclabs/hardhat-etherscan";
 
 import { HardhatUserConfig } from "hardhat/config";
 
@@ -39,6 +40,11 @@ const config: HardhatUserConfig = {
         },
       },
     },
+  },
+  etherscan: {
+    // Your API key for Etherscan
+    // Obtain one at https://etherscan.io/
+    apiKey: "Z73GWKPFXX87ENVY9KK9DK7NJS4ZYA7JM2",
   },
   mocha: { timeout: 0 },
   networks: {

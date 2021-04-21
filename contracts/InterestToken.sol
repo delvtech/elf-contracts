@@ -20,7 +20,7 @@ contract InterestToken is ERC20Permit, IInterestToken {
         string memory _strategySymbol,
         uint256 _timestamp,
         uint8 _decimals
-    ) ERC20Permit("Element Interest Token ", "ELV:") {
+    ) ERC20Permit("Element Yield Token ", "eY:") {
         tranche = ITranche(_tranche);
         _setupDecimals(_decimals);
         // Write the strategySymbol and expiration time to name and symbol

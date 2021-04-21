@@ -30,7 +30,7 @@ contract Tranche is ERC20Permit, ITranche {
     uint256 internal constant _SLIPPAGE_BP = 1e13;
 
     /// @notice Constructs this contract
-    constructor() ERC20Permit("Element Principal Token", "ELF:") {
+    constructor() ERC20Permit("Element Principal Token", "eP:") {
         // Assume the caller is the Tranche factory.
         ITrancheFactory trancheFactory = ITrancheFactory(msg.sender);
         (

@@ -173,5 +173,11 @@ library DateString {
             // add it to the string
             output.push(bytes1(uint8(bytes1("0")) + uint8(secondDigit)));
         }
+
+        // Add a timezone tag
+        output.push(bytes1("-"));
+        output.push(bytes1("G"));
+        output.push(bytes1("M"));
+        output.push(bytes1("T"));
     }
 }

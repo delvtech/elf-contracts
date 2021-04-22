@@ -14,8 +14,8 @@ contract MockERC20YearnVault is IYearnVault, Authorizable, ERC20Permit {
     ERC20Permit public token;
 
     // variables for the profit time-lock
-    uint256 public constant DEGREDATION_COEFFICIENT = 1e18;
-    uint256 public lockedProfitDegration;
+    uint256 public constant DEGRADATION_COEFFICIENT = 1e18;
+    uint256 public lockedProfitDegradation;
 
     // last time someone deposited value through report()
     uint256 public lastReport;
@@ -35,7 +35,7 @@ contract MockERC20YearnVault is IYearnVault, Authorizable, ERC20Permit {
         precisionFactor = 10**(18 - decimals);
         // 6 hours in blocks
         // 6*60*60 ~= 1e6 / 46
-        lockedProfitDegration = (DEGREDATION_COEFFICIENT * 46) / 1e6;
+        lockedProfitDegradation = (DEGRADATION_COEFFICIENT * 46) / 1e6;
     }
 
     /**
@@ -162,12 +162,12 @@ contract MockERC20YearnVault is IYearnVault, Authorizable, ERC20Permit {
         }
         // determine the current value of the shares
         uint256 lockedFundsRatio = (block.timestamp - lastReport) *
-            lockedProfitDegration;
+            lockedProfitDegradation;
         uint256 freeFunds = totalAssets();
-        if (lockedFundsRatio < DEGREDATION_COEFFICIENT) {
+        if (lockedFundsRatio < DEGRADATION_COEFFICIENT) {
             freeFunds -= (lockedProfit -
                 ((precisionFactor * lockedFundsRatio * lockedProfit) /
-                    DEGREDATION_COEFFICIENT /
+                    DEGRADATION_COEFFICIENT /
                     precisionFactor));
         }
         return ((precisionFactor * _shares * freeFunds) /

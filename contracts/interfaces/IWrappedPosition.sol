@@ -26,7 +26,7 @@ interface IWrappedPosition is IERC20Permit {
         address _destination,
         uint256 _amount,
         uint256 _minUnderlying
-    ) external returns (uint256);
+    ) external returns (uint256, uint256);
 
     function prefundedDeposit(address _destination)
         external

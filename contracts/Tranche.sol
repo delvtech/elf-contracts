@@ -28,6 +28,15 @@ contract Tranche is ERC20Permit, ITranche {
     uint256 public immutable unlockTimestamp;
     // The amount of slippage allowed on the Principal token redemption [0.1 basis points]
     uint256 internal constant _SLIPPAGE_BP = 1e13;
+    // The speedbump variable records the first block where redemption was attempted to be
+    // preformed on a tranche where loss occurred. It blocks redemptions for 48 hours after
+    // it is triggered in order to (1) prevent atomic flash loan price manipulation (2)
+    // give 48 hours to remediate any other loss scenario before allowing withdraws
+    uint256 public speedbump;
+    // Const which is 48 hours in seconds
+    uint256 internal constant _FORTY_EIGHT_HOURS = 172800;
+    // An event to listen for when negative interest withdraw are triggered
+    event SpeedBumpHit(uint256 timestamp);
 
     /// @notice Constructs this contract
     constructor() ERC20Permit("Element Principal Token", "eP:") {
@@ -120,6 +129,9 @@ contract Tranche is ERC20Permit, ITranche {
             uint256(valueSupplied),
             uint256(interestSupply)
         );
+        // We block deposits in negative interest rate regimes
+        require(_valueSupplied <= holdingsValue, "E:NEG_INT");
+
         uint256 adjustedAmount;
         // Have to split on the initialization case and negative interest case
         if (_valueSupplied > 0 && holdingsValue > _valueSupplied) {
@@ -162,12 +174,72 @@ contract Tranche is ERC20Permit, ITranche {
     {
         // No redemptions before unlock
         require(block.timestamp >= unlockTimestamp, "not expired");
+        // If the speedbump == 0 it's never been hit so we don't need
+        // to change the withdraw rate.
+        uint256 localSpeedbump = speedbump;
+        uint256 withdrawAmount = _amount;
+        uint256 localSupply = uint256(valueSupplied);
+        if (localSpeedbump != 0) {
+            // Load the assets we have in this vault
+            uint256 holdings = position.balanceOfUnderlying(address(this));
+            // If we check and the interest rate is no longer negative then we
+            // allow normal 1 to 1 withdraws [even if the speedbump was hit less
+            // than 48 hours ago, to prevent possible griefing]
+            if (holdings < localSupply) {
+                // We allow the user to only withdraw their percent of holdings
+                withdrawAmount = (_amount * holdings) / localSupply;
+                // If interest is negative and continues to be negative we
+                require(
+                    localSpeedbump + _FORTY_EIGHT_HOURS < block.timestamp,
+                    "E:Early"
+                );
+            }
+        }
+
         // Burn from the sender
         _burn(msg.sender, _amount);
         // Remove these principal token from the interest calculations for future interest redemptions
-        valueSupplied -= uint128(_amount);
-        uint256 minOutput = _amount - (_amount * _SLIPPAGE_BP) / 1e18;
-        return position.withdrawUnderlying(_destination, _amount, minOutput);
+        valueSupplied = uint128(localSupply) - uint128(_amount);
+
+        // Load the share balance of the vault before withdrawing [gas note - both the smart
+        // contract and share value is warmed so this is actually quite a cheap lookup]
+        uint256 shareBalanceBefore = position.balanceOf(address(this));
+        // Calculate the min output
+        uint256 minOutput = withdrawAmount -
+            (withdrawAmount * _SLIPPAGE_BP) /
+            1e18;
+        // We make the actual withdraw from the position.
+        (uint256 actualWithdraw, uint256 sharesBurned) = position
+            .withdrawUnderlying(_destination, withdrawAmount, minOutput);
+
+        // At this point we check that the implied contract holdings before this withdraw occurred
+        // are more than enough to redeem all of the principal tokens for underlying ie that no
+        // loss has happened.
+        uint256 balanceBefore = (shareBalanceBefore * actualWithdraw) /
+            sharesBurned;
+        if (balanceBefore < localSupply) {
+            // We require for the lossy withdraw to occur that it's been 48 hours since
+            // a speedbump was set. Notice that if speedbump has never been set this can't
+            // pass unless it's 1970.
+            require(
+                localSpeedbump + _FORTY_EIGHT_HOURS < block.timestamp,
+                "E:Early"
+            );
+        }
+        return (actualWithdraw);
+    }
+
+    /// @notice This function allows someone to trigger the speedbump and eventually allow
+    ///         pro rata withdraws
+    function hitSpeedbump() external {
+        require(speedbump == 0, "E:AlreadySet");
+        uint256 totalHoldings = position.balanceOfUnderlying(address(this));
+        if (totalHoldings < valueSupplied) {
+            emit SpeedBumpHit(block.timestamp);
+            speedbump = block.timestamp;
+        } else {
+            revert("E:NoLoss");
+        }
     }
 
     /**
@@ -183,7 +255,7 @@ contract Tranche is ERC20Permit, ITranche {
         override
         returns (uint256)
     {
-        require(block.timestamp >= unlockTimestamp, "not expired");
+        require(block.timestamp >= unlockTimestamp, "E:EARLY");
         // Burn tokens from the sender
         interestToken.burn(msg.sender, _amount);
         // Load the underlying value of this contract
@@ -207,11 +279,11 @@ contract Tranche is ERC20Permit, ITranche {
         // Store that we reduced the supply
         interestSupply = uint128(_interestSupply - _amount);
         // Redeem position tokens for underlying
-        return
-            position.withdrawUnderlying(
-                _destination,
-                redemptionAmount,
-                minRedemption
-            );
+        (uint256 redemption, uint256 _unused) = position.withdrawUnderlying(
+            _destination,
+            redemptionAmount,
+            minRedemption
+        );
+        return (redemption);
     }
 }

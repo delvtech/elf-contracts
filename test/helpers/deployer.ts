@@ -253,7 +253,7 @@ export async function loadUsdcPoolMainnetFixture() {
 export async function loadTestTrancheFixture() {
   const [signer] = await ethers.getSigners();
   const testTokenDeployer = new TestERC20__factory(signer);
-  const usdc = await testTokenDeployer.deploy("test token", "TEST", 18);
+  const usdc = await testTokenDeployer.deploy("test token", "TEST", 6);
 
   const positionStub: TestWrappedPosition = await deployTestWrappedPosition(
     signer,

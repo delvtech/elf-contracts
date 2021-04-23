@@ -69,6 +69,8 @@ library DateString {
         _encodeAndWriteTimestamp(_prefix, _timestamp, _output);
     }
 
+    /// @dev Sn internal version of the above function 'encodeAndWriteTimestamp'
+    // solhint-disable-next-line
     function _encodeAndWriteTimestamp(
         string memory _prefix,
         uint256 _timestamp,
@@ -100,6 +102,8 @@ library DateString {
         _timestampToDateString(_timestamp, _outputPointer);
     }
 
+    /// @dev Sn internal version of the above function 'timestampToDateString'
+    // solhint-disable-next-line
     function _timestampToDateString(
         uint256 _timestamp,
         string storage _outputPointer

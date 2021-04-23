@@ -216,19 +216,18 @@ contract Tranche is ERC20Permit, ITranche {
                 //        in the case of loss at the end of the period. Biases are very
                 //        small except in extreme cases.
                 withdrawAmount = (_amount * holdings) / localSupply;
-                // If interest is negative and continues to be negative we
+                // If the interest rate is still negative and we are not 48 hours after
+                // speedbump being set we revert
                 require(
                     localSpeedbump + _FORTY_EIGHT_HOURS < block.timestamp,
                     "E:Early"
                 );
             }
         }
-
         // Burn from the sender
         _burn(msg.sender, _amount);
         // Remove these principal token from the interest calculations for future interest redemptions
         valueSupplied = uint128(localSupply) - uint128(_amount);
-
         // Load the share balance of the vault before withdrawing [gas note - both the smart
         // contract and share value is warmed so this is actually quite a cheap lookup]
         uint256 shareBalanceBefore = position.balanceOf(address(this));
@@ -240,20 +239,14 @@ contract Tranche is ERC20Permit, ITranche {
         (uint256 actualWithdraw, uint256 sharesBurned) = position
             .withdrawUnderlying(_destination, withdrawAmount, minOutput);
 
-        // console.log(actualWithdraw, sharesBurned);
         // At this point we check that the implied contract holdings before this withdraw occurred
         // are more than enough to redeem all of the principal tokens for underlying ie that no
         // loss has happened.
         uint256 balanceBefore = (shareBalanceBefore * actualWithdraw) /
             sharesBurned;
         if (balanceBefore < localSupply) {
-            // We require for the lossy withdraw to occur that it's been 48 hours since
-            // a speedbump was set. Notice that if speedbump has never been set this can't
-            // pass unless it's 1970.
-            require(
-                localSpeedbump + _FORTY_EIGHT_HOURS < block.timestamp,
-                "E:Early"
-            );
+            // Require that that the speedbump has been set.
+            require(localSpeedbump != 0, "E:NEG_INT");
         }
         return (actualWithdraw);
     }

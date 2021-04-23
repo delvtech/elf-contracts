@@ -65,6 +65,14 @@ library DateString {
         string memory _prefix,
         uint256 _timestamp,
         string storage _output
+    ) external {
+        _encodeAndWriteTimestamp(_prefix, _timestamp, _output);
+    }
+
+    function _encodeAndWriteTimestamp(
+        string memory _prefix,
+        uint256 _timestamp,
+        string storage _output
     ) internal {
         // Cast the prefix string to a byte array
         bytes memory bytePrefix = bytes(_prefix);
@@ -86,6 +94,13 @@ library DateString {
     /// @param _timestamp the unix seconds timestamp
     /// @param _outputPointer the storage pointer to change.
     function timestampToDateString(
+        uint256 _timestamp,
+        string storage _outputPointer
+    ) public {
+        _timestampToDateString(_timestamp, _outputPointer);
+    }
+
+    function _timestampToDateString(
         uint256 _timestamp,
         string storage _outputPointer
     ) internal {

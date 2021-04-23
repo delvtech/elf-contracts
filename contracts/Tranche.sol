@@ -28,7 +28,7 @@ contract Tranche is ERC20Permit, ITranche {
     uint256 public immutable unlockTimestamp;
     // The amount of slippage allowed on the Principal token redemption [0.1 basis points]
     uint256 internal constant _SLIPPAGE_BP = 1e13;
-    // The speedbump variable records the first block where redemption was attempted to be
+    // The speedbump variable records the first timestamp where redemption was attempted to be
     // preformed on a tranche where loss occurred. It blocks redemptions for 48 hours after
     // it is triggered in order to (1) prevent atomic flash loan price manipulation (2)
     // give 48 hours to remediate any other loss scenario before allowing withdraws
@@ -39,13 +39,14 @@ contract Tranche is ERC20Permit, ITranche {
     event SpeedBumpHit(uint256 timestamp);
 
     /// @notice Constructs this contract
-    constructor() ERC20Permit("Element Principal Token", "eP:") {
+    constructor() ERC20Permit("Principal Token ", "eP:") {
         // Assume the caller is the Tranche factory.
         ITrancheFactory trancheFactory = ITrancheFactory(msg.sender);
         (
             address wpAddress,
             uint256 expiration,
-            IInterestToken interestTokenTemp
+            IInterestToken interestTokenTemp,
+            address dateLib
         ) = trancheFactory.getData();
         interestToken = interestTokenTemp;
 
@@ -64,9 +65,30 @@ contract Tranche is ERC20Permit, ITranche {
         // And set this contract to have the same
         _setupDecimals(localUnderlyingDecimals);
 
-        // Write the strategySymbol  and expiration time to name and symbol
-        DateString.encodeAndWriteTimestamp(strategySymbol, expiration, name);
-        DateString.encodeAndWriteTimestamp(strategySymbol, expiration, symbol);
+        // Write the strategySymbol and expiration time to name and symbol
+        uint256 namePtr;
+        uint256 symbolPtr;
+        assembly {
+            namePtr := name.slot
+            symbolPtr := symbol.slot
+        }
+        (bool success1, ) = dateLib.delegatecall(
+            abi.encodeWithSelector(
+                DateString.encodeAndWriteTimestamp.selector,
+                strategySymbol,
+                expiration,
+                namePtr
+            )
+        );
+        (bool success2, ) = dateLib.delegatecall(
+            abi.encodeWithSelector(
+                DateString.encodeAndWriteTimestamp.selector,
+                strategySymbol,
+                expiration,
+                symbolPtr
+            )
+        );
+        assert(success1 && success2);
     }
 
     /// @notice An aliasing of the getter for valueSupplied to improve ERC20 compatibility
@@ -173,7 +195,7 @@ contract Tranche is ERC20Permit, ITranche {
         returns (uint256)
     {
         // No redemptions before unlock
-        require(block.timestamp >= unlockTimestamp, "not expired");
+        require(block.timestamp >= unlockTimestamp, "E:Not Expired");
         // If the speedbump == 0 it's never been hit so we don't need
         // to change the withdraw rate.
         uint256 localSpeedbump = speedbump;
@@ -187,6 +209,12 @@ contract Tranche is ERC20Permit, ITranche {
             // than 48 hours ago, to prevent possible griefing]
             if (holdings < localSupply) {
                 // We allow the user to only withdraw their percent of holdings
+                // NOTE - Because of the discounting mechanics this causes account loss
+                //        percentages to be slightly perturbed from overall loss.
+                //        ie: tokens holders who join when interest has accumulated
+                //        will get slightly higher percent loss than those who joined earlier
+                //        in the case of loss at the end of the period. Biases are very
+                //        small except in extreme cases.
                 withdrawAmount = (_amount * holdings) / localSupply;
                 // If interest is negative and continues to be negative we
                 require(
@@ -212,6 +240,7 @@ contract Tranche is ERC20Permit, ITranche {
         (uint256 actualWithdraw, uint256 sharesBurned) = position
             .withdrawUnderlying(_destination, withdrawAmount, minOutput);
 
+        // console.log(actualWithdraw, sharesBurned);
         // At this point we check that the implied contract holdings before this withdraw occurred
         // are more than enough to redeem all of the principal tokens for underlying ie that no
         // loss has happened.
@@ -232,10 +261,21 @@ contract Tranche is ERC20Permit, ITranche {
     /// @notice This function allows someone to trigger the speedbump and eventually allow
     ///         pro rata withdraws
     function hitSpeedbump() external {
+        // We only allow setting the speedbump once
         require(speedbump == 0, "E:AlreadySet");
+        // We only allow setting it when withdraws can happen
+        require(block.timestamp >= unlockTimestamp, "E:Not Expired");
+        // We require that the total holds are less than the supply of
+        // principal token we need to redeem
         uint256 totalHoldings = position.balanceOfUnderlying(address(this));
         if (totalHoldings < valueSupplied) {
+            // We emit a notification so that if a speedbump is hit the community
+            // can investigate.
+            // Note - this is a form of defense mechanism because any flash loan
+            //        attack must be public for at least 48 hours before it has
+            //        affects.
             emit SpeedBumpHit(block.timestamp);
+            // Set the speedbump
             speedbump = block.timestamp;
         } else {
             revert("E:NoLoss");
@@ -255,7 +295,7 @@ contract Tranche is ERC20Permit, ITranche {
         override
         returns (uint256)
     {
-        require(block.timestamp >= unlockTimestamp, "E:EARLY");
+        require(block.timestamp >= unlockTimestamp, "E:Not Expired");
         // Burn tokens from the sender
         interestToken.burn(msg.sender, _amount);
         // Load the underlying value of this contract
@@ -279,7 +319,7 @@ contract Tranche is ERC20Permit, ITranche {
         // Store that we reduced the supply
         interestSupply = uint128(_interestSupply - _amount);
         // Redeem position tokens for underlying
-        (uint256 redemption, uint256 _unused) = position.withdrawUnderlying(
+        (uint256 redemption, ) = position.withdrawUnderlying(
             _destination,
             redemptionAmount,
             minRedemption

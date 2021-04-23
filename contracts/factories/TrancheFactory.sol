@@ -28,11 +28,14 @@ contract TrancheFactory {
     bytes32 public constant TRANCHE_CREATION_HASH = keccak256(
         type(Tranche).creationCode
     );
+    // The address of our date library
+    address internal _dateLibrary;
 
     /// @notice Create a new Tranche.
     /// @param _factory Address of the interest token factory.
-    constructor(address _factory) {
+    constructor(address _factory, address dateLibrary) {
         _interestTokenFactory = IInterestTokenFactory(_factory);
+        _dateLibrary = dateLibrary;
     }
 
     /// @notice Deploy a new Tranche contract.
@@ -102,9 +105,15 @@ contract TrancheFactory {
         returns (
             address,
             uint256,
-            IInterestToken
+            IInterestToken,
+            address
         )
     {
-        return (_tempWpAddress, _tempExpiration, _tempInterestToken);
+        return (
+            _tempWpAddress,
+            _tempExpiration,
+            _tempInterestToken,
+            _dateLibrary
+        );
     }
 }

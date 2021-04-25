@@ -66,12 +66,25 @@ contract Tranche is ERC20Permit, ITranche {
         _setupDecimals(localUnderlyingDecimals);
 
         // Write the strategySymbol and expiration time to name and symbol
+
+        // This logic was previously encoded as calling a library "DateString"
+        // in line and directly. However even though this code is only in the constructor
+        // it both made the code of this contract much bigger and made the factory
+        // un deployable. So we needed to use the library as an external contract
+        // but solidity does not have support for address to library conversions
+        // or other support for working directly with libraries in a type safe way.
+        // For that reason we have to use this ugly and non type safe hack to make these
+        // contracts deployable. Since the library is an immutable in the factory
+        // the security profile is quite similar to a standard external linked library.
+
+        // We load the real storage slots of the symbol and name storage variables
         uint256 namePtr;
         uint256 symbolPtr;
         assembly {
             namePtr := name.slot
             symbolPtr := symbol.slot
         }
+        // We then call the 'encodeAndWriteTimestamp' function on our library contract
         (bool success1, ) = dateLib.delegatecall(
             abi.encodeWithSelector(
                 DateString.encodeAndWriteTimestamp.selector,
@@ -88,6 +101,7 @@ contract Tranche is ERC20Permit, ITranche {
                 symbolPtr
             )
         );
+        // Assert that both calls succeeded
         assert(success1 && success2);
     }
 
@@ -183,8 +197,8 @@ contract Tranche is ERC20Permit, ITranche {
     @param _destination The address to send the underlying too
     @return The number of underlying tokens released
     @dev This method will return 1 underlying for 1 principal except when interest
-         is negative, in that case liquidity might run out and some principal token may
-         not be redeemable.
+         is negative, in which case the principal tokens is redeemable pro rata for
+         the assets controlled by this vault.
          Also note: Redemption has the possibility of at most _SLIPPAGE_BP
          numerical error on each redemption so each principal token may occasionally redeem
          for less than 1 unit of underlying. Max loss defaults to 0.1 BP ie 0.001% loss
@@ -247,6 +261,9 @@ contract Tranche is ERC20Permit, ITranche {
         if (balanceBefore < localSupply) {
             // Require that that the speedbump has been set.
             require(localSpeedbump != 0, "E:NEG_INT");
+            // This assert should be very difficult to hit because it is checked above
+            // but may be possible with  complex reentrancy.
+            assert(localSpeedbump + _FORTY_EIGHT_HOURS < block.timestamp);
         }
         return (actualWithdraw);
     }

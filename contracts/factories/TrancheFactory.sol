@@ -29,7 +29,7 @@ contract TrancheFactory {
         type(Tranche).creationCode
     );
     // The address of our date library
-    address internal _dateLibrary;
+    address internal immutable _dateLibrary;
 
     /// @notice Create a new Tranche.
     /// @param _factory Address of the interest token factory.

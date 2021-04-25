@@ -211,6 +211,7 @@ export async function loadEthPoolMainnetFixture() {
 export async function loadUsdcPoolMainnetFixture() {
   const usdcAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
   const yusdcAddress = "0x5f18C75AbDAe578b483E5F43f12a39cF75b973a9";
+  const wethAddress = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
   const [signer] = await ethers.getSigners();
 
   const usdc = IERC20__factory.connect(usdcAddress, signer);
@@ -236,7 +237,7 @@ export async function loadUsdcPoolMainnetFixture() {
   );
   const proxyFactory = new TestUserProxy__factory(signer);
   const proxy = await proxyFactory.deploy(
-    usdcAddress,
+    wethAddress,
     trancheFactory.address,
     bytecodehash
   );

@@ -128,53 +128,29 @@ library DateString {
         output.push(bytes1("-"));
         // Next we encode the month string and add it
         if (month == 1) {
-            output.push(bytes1("J"));
-            output.push(bytes1("A"));
-            output.push(bytes1("N"));
+            stringPush(output, "J", "A", "N");
         } else if (month == 2) {
-            output.push(bytes1("F"));
-            output.push(bytes1("E"));
-            output.push(bytes1("B"));
+            stringPush(output, "F", "E", "B");
         } else if (month == 3) {
-            output.push(bytes1("M"));
-            output.push(bytes1("A"));
-            output.push(bytes1("R"));
+            stringPush(output, "M", "A", "R");
         } else if (month == 4) {
-            output.push(bytes1("A"));
-            output.push(bytes1("P"));
-            output.push(bytes1("R"));
+            stringPush(output, "A", "P", "R");
         } else if (month == 5) {
-            output.push(bytes1("M"));
-            output.push(bytes1("A"));
-            output.push(bytes1("Y"));
+            stringPush(output, "M", "A", "Y");
         } else if (month == 6) {
-            output.push(bytes1("J"));
-            output.push(bytes1("U"));
-            output.push(bytes1("N"));
+            stringPush(output, "J", "U", "N");
         } else if (month == 7) {
-            output.push(bytes1("J"));
-            output.push(bytes1("U"));
-            output.push(bytes1("L"));
+            stringPush(output, "J", "U", "L");
         } else if (month == 8) {
-            output.push(bytes1("A"));
-            output.push(bytes1("U"));
-            output.push(bytes1("G"));
+            stringPush(output, "A", "U", "G");
         } else if (month == 9) {
-            output.push(bytes1("S"));
-            output.push(bytes1("E"));
-            output.push(bytes1("P"));
+            stringPush(output, "S", "E", "P");
         } else if (month == 10) {
-            output.push(bytes1("O"));
-            output.push(bytes1("C"));
-            output.push(bytes1("T"));
+            stringPush(output, "O", "C", "T");
         } else if (month == 11) {
-            output.push(bytes1("N"));
-            output.push(bytes1("O"));
-            output.push(bytes1("V"));
+            stringPush(output, "N", "O", "V");
         } else if (month == 12) {
-            output.push(bytes1("D"));
-            output.push(bytes1("E"));
-            output.push(bytes1("C"));
+            stringPush(output, "D", "E", "C");
         } else {
             revert("date decoding error");
         }
@@ -195,8 +171,17 @@ library DateString {
 
         // Add a timezone tag
         output.push(bytes1("-"));
-        output.push(bytes1("G"));
-        output.push(bytes1("M"));
-        output.push(bytes1("T"));
+        stringPush(output, "G", "M", "T");
+    }
+
+    function stringPush(
+        bytes storage output,
+        bytes1 data1,
+        bytes1 data2,
+        bytes1 data3
+    ) internal {
+        output.push(data1);
+        output.push(data2);
+        output.push(data3);
     }
 }

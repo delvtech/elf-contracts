@@ -770,7 +770,7 @@ describe("ConvergentCurvePool", function () {
       await expect(tx).to.be.revertedWith("Invalid format");
       // Too many tokens in input array on join
       tx = aliasedVault.onJoinPool(
-        "0xb6749d30a0b09b310151e2cd2db8f72dd34aab4bbc60cf3e8dbca13b4d9369ad",
+        poolId,
         fakeAddress,
         tokenSigner.address,
         // Pool reserves are [100, 50]

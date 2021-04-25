@@ -542,6 +542,19 @@ describe("Tranche", () => {
       );
     });
 
+    it("Should only allow setting the speedbump when there is a real loss", async () => {
+      // Deposit so it's possible to make a loss
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, user1Address);
+      // Allow setting it
+      advanceTime(provider, expiration);
+      // Try setting without a loss
+      await expect(fixture.tranche.hitSpeedbump()).to.be.revertedWith(
+        "E:NoLoss"
+      );
+    });
+
     it("should correctly handle full withdrawals with no accrued interest - withdraw Interest Token, then Principal Token", async () => {
       await fixture.tranche
         .connect(user1)

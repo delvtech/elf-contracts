@@ -622,7 +622,7 @@ describe("ConvergentCurvePool", function () {
       await poolContract.setFees(ten, ten);
       // Mint some LP
       let data = await aliasedVault.callStatic.onJoinPool(
-        "0xa4077079ce2891cc7626ec3f76d450b735a76407961a3c84b06a8a4212a60a97",
+        "0x3078303000000000000000000000000000000000000000000000000000000000",
         fakeAddress,
         tokenSigner.address,
         // Pool reserves are [100, 50]
@@ -641,7 +641,7 @@ describe("ConvergentCurvePool", function () {
       );
       // We run the call but state changing
       await aliasedVault.onJoinPool(
-        "0xa4077079ce2891cc7626ec3f76d450b735a76407961a3c84b06a8a4212a60a97",
+        "0x3078303000000000000000000000000000000000000000000000000000000000",
         fakeAddress,
         tokenSigner.address,
         // Pool reserves are [100, 50]
@@ -661,7 +661,7 @@ describe("ConvergentCurvePool", function () {
       // We run another trade to ensure fees are not charged when no lp
       // is minted
       data = await aliasedVault.callStatic.onJoinPool(
-        "0xa4077079ce2891cc7626ec3f76d450b735a76407961a3c84b06a8a4212a60a97",
+        "0x3078303000000000000000000000000000000000000000000000000000000000",
         fakeAddress,
         tokenSigner.address,
         // Pool reserves are [100, 25]

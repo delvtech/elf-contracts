@@ -21,7 +21,7 @@ contract TrancheFactory {
         uint256 indexed expiration
     );
 
-    IInterestTokenFactory internal _interestTokenFactory;
+    IInterestTokenFactory internal immutable _interestTokenFactory;
     address internal _tempWpAddress;
     uint256 internal _tempExpiration;
     IInterestToken internal _tempInterestToken;

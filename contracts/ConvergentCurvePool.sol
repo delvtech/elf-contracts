@@ -254,7 +254,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     {
         // Default checks
         require(msg.sender == address(_vault), "Non Vault caller");
-        require(poolId == _poolId, "Improperly formatted vault call");
+        require(poolId == _poolId, "Wrong pool id");
         uint256[] memory maxAmountsIn = abi.decode(userData, (uint256[]));
         require(
             currentBalances.length == 2 && maxAmountsIn.length == 2,
@@ -324,7 +324,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     {
         // Default checks
         require(msg.sender == address(_vault), "Non Vault caller");
-        require(poolId == _poolId, "Improperly formatted vault call");
+        require(poolId == _poolId, "Wrong pool id");
         uint256[] memory minAmountsOut = abi.decode(userData, (uint256[]));
         require(
             currentBalances.length == 2 && minAmountsOut.length == 2,

@@ -613,6 +613,7 @@ describe("ConvergentCurvePool", function () {
     // This test calls through the test balancer vault to use the join/leave pool interface
     // directly, it checks that the balancer fee is assessed correctly
     it("Assigns balancer fees correctly", async () => {
+      const poolId = await poolContract.getPoolId();
       // First create some pretend fees
       const ten = ethers.utils.parseUnits("10", 18);
       const five = ethers.utils.parseUnits("5", 18);
@@ -622,7 +623,7 @@ describe("ConvergentCurvePool", function () {
       await poolContract.setFees(ten, ten);
       // Mint some LP
       let data = await aliasedVault.callStatic.onJoinPool(
-        "0x3078303000000000000000000000000000000000000000000000000000000000",
+        poolId,
         fakeAddress,
         tokenSigner.address,
         // Pool reserves are [100, 50]
@@ -641,7 +642,7 @@ describe("ConvergentCurvePool", function () {
       );
       // We run the call but state changing
       await aliasedVault.onJoinPool(
-        "0x3078303000000000000000000000000000000000000000000000000000000000",
+        poolId,
         fakeAddress,
         tokenSigner.address,
         // Pool reserves are [100, 50]
@@ -661,7 +662,7 @@ describe("ConvergentCurvePool", function () {
       // We run another trade to ensure fees are not charged when no lp
       // is minted
       data = await aliasedVault.callStatic.onJoinPool(
-        "0x3078303000000000000000000000000000000000000000000000000000000000",
+        poolId,
         fakeAddress,
         tokenSigner.address,
         // Pool reserves are [100, 25]
@@ -676,6 +677,112 @@ describe("ConvergentCurvePool", function () {
       // Check the returned fees
       expect(data[1][0]).to.be.eq(0);
       expect(data[1][1]).to.be.eq(0);
+    });
+    it("Blocks invalid vault calls", async () => {
+      const poolId = await poolContract.getPoolId();
+      // First create some pretend fees
+      const ten = ethers.utils.parseUnits("10", 18);
+      const five = ethers.utils.parseUnits("5", 18);
+      // Mint some lp to avoid init case
+      await poolContract.setLPBalance(tokenSigner.address, 1);
+      // We set the accumulated fees
+      await poolContract.setFees(ten, ten);
+
+      // Called not from the vault
+      // Blocked join
+      let tx = poolContract.onJoinPool(
+        poolId,
+        fakeAddress,
+        tokenSigner.address,
+        // Pool reserves are [100, 50]
+        [ten.mul(10), five.mul(10)],
+        0,
+        ethers.utils.parseEther("0.1"),
+        ethers.utils.defaultAbiCoder.encode(
+          ["uint256[]"],
+          [[ten.mul(10), five.mul(10)]]
+        )
+      );
+      await expect(tx).to.be.revertedWith("Non Vault caller");
+      // blocked exit
+      tx = poolContract.onExitPool(
+        poolId,
+        fakeAddress,
+        tokenSigner.address,
+        // Pool reserves are [100, 50]
+        [ten.mul(10), five.mul(10)],
+        0,
+        ethers.utils.parseEther("0.1"),
+        ethers.utils.defaultAbiCoder.encode(
+          ["uint256[]"],
+          [[ten.mul(10), five.mul(10)]]
+        )
+      );
+      await expect(tx).to.be.revertedWith("Non Vault caller");
+      // blocked swap
+
+      // Tests of invalid formatting
+      // Not giving the right pool id on join
+      tx = aliasedVault.onJoinPool(
+        "0xb6749d30a0b09b310151e2cd2db8f72dd34aab4bbc60cf3e8dbca13b4d9369ad",
+        fakeAddress,
+        tokenSigner.address,
+        // Pool reserves are [100, 50]
+        [ten.mul(10), five.mul(10)],
+        0,
+        ethers.utils.parseEther("0.1"),
+        ethers.utils.defaultAbiCoder.encode(
+          ["uint256[]"],
+          [[ten.mul(10), five.mul(10)]]
+        )
+      );
+      await expect(tx).to.be.revertedWith("Wrong pool id");
+      // Not giving the right pool id on exit
+      tx = aliasedVault.onJoinPool(
+        "0xb6749d30a0b09b310151e2cd2db8f72dd34aab4bbc60cf3e8dbca13b4d9369ad",
+        fakeAddress,
+        tokenSigner.address,
+        // Pool reserves are [100, 50]
+        [ten.mul(10), five.mul(10)],
+        0,
+        ethers.utils.parseEther("0.1"),
+        ethers.utils.defaultAbiCoder.encode(
+          ["uint256[]"],
+          [[ten.mul(10), five.mul(10)]]
+        )
+      );
+      await expect(tx).to.be.revertedWith("Wrong pool id");
+
+      // Too many tokens in input array on join
+      tx = aliasedVault.onJoinPool(
+        poolId,
+        fakeAddress,
+        tokenSigner.address,
+        // Pool reserves are [100, 50]
+        [ten.mul(10), five.mul(10)],
+        0,
+        ethers.utils.parseEther("0.1"),
+        ethers.utils.defaultAbiCoder.encode(
+          ["uint256[]"],
+          [[ten.mul(10), five.mul(10), ten]]
+        )
+      );
+      await expect(tx).to.be.revertedWith("Invalid format");
+      // Too many tokens in input array on join
+      tx = aliasedVault.onJoinPool(
+        "0xb6749d30a0b09b310151e2cd2db8f72dd34aab4bbc60cf3e8dbca13b4d9369ad",
+        fakeAddress,
+        tokenSigner.address,
+        // Pool reserves are [100, 50]
+        [ten.mul(10), five.mul(10)],
+        0,
+        ethers.utils.parseEther("0.1"),
+        ethers.utils.defaultAbiCoder.encode(
+          ["uint256[]"],
+          [[ten.mul(10), five.mul(10), ten]]
+        )
+      );
+      await expect(tx).to.be.revertedWith("Invalid format");
     });
   });
 

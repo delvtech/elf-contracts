@@ -203,7 +203,12 @@ contract UserProxy is Authorizable {
         }
 
         // A sanity check that some value was withdrawn
-        require((wethReceivedPt + wethReceivedYt != 0), "Failed withdraw");
+        if (_amountPT != 0) {
+            require((wethReceivedPt != 0), "Rugged");
+        }
+        if (_amountYT != 0) {
+            require((wethReceivedYt != 0), "No yield accrued");
+        }
         // Withdraw the ether from weth
         weth.withdraw(wethReceivedPt + wethReceivedYt);
         // Send the withdrawn eth to the caller

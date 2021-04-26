@@ -15,55 +15,53 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import "../lib/math/FixedPoint.sol";
-import "../lib/helpers/ReentrancyGuard.sol";
 import "../lib/helpers/BalancerErrors.sol";
+import "../lib/openzeppelin/IERC20.sol";
+import "../lib/openzeppelin/ReentrancyGuard.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
 
 import "./ProtocolFeesCollector.sol";
 import "./VaultAuthorization.sol";
 import "./interfaces/IVault.sol";
 
-abstract contract Fees is IVault, ReentrancyGuard, VaultAuthorization {
+/**
+ * @dev To reduce the bytecode size of the Vault, most of the protocol fee logic is not here, but in the
+ * ProtocolFeesCollector contract.
+ */
+abstract contract Fees is IVault {
     using SafeERC20 for IERC20;
 
-    ProtocolFeesCollector private _protocolFeesCollector;
+    ProtocolFeesCollector private immutable _protocolFeesCollector;
 
     constructor() {
-        // Most of the protocol fee logic is not here but in the ProtocolFeesCollector contract. The reason for this is
-        // to reduce the bytecode size of the Vault.
         _protocolFeesCollector = new ProtocolFeesCollector(IVault(this));
     }
 
-    function getProtocolFeesCollector() external view override returns (ProtocolFeesCollector) {
+    function getProtocolFeesCollector() public view override returns (ProtocolFeesCollector) {
         return _protocolFeesCollector;
     }
 
     /**
-     * @dev Returns the percentage protocol swap fee.
+     * @dev Returns the protocol swap fee percentage.
      */
-    function _getProtocolSwapFee() internal view returns (uint256) {
-        return _protocolFeesCollector.getSwapFee();
+    function _getProtocolSwapFeePercentage() internal view returns (uint256) {
+        return getProtocolFeesCollector().getSwapFeePercentage();
     }
 
     /**
-     * @dev Returns the protocol fee to charge for a flash loan of `amount`.
+     * @dev Returns the protocol fee amount to charge for a flash loan of `amount`.
      */
-    function _calculateFlashLoanFee(uint256 amount) internal view returns (uint256) {
-        return _calculateFee(amount, _protocolFeesCollector.getFlashLoanFee());
-    }
-
-    function _calculateFee(uint256 amount, uint256 pct) internal pure returns (uint256) {
+    function _calculateFlashLoanFeeAmount(uint256 amount) internal view returns (uint256) {
         // Fixed point multiplication introduces error: we round up, which means in certain scenarios the charged
         // percentage can be slightly higher than intended.
-        return FixedPoint.mulUp(amount, pct);
+        uint256 percentage = getProtocolFeesCollector().getFlashLoanFeePercentage();
+        return FixedPoint.mulUp(amount, percentage);
     }
 
-    function _payFee(IERC20 token, uint256 amount) internal {
+    function _payFeeAmount(IERC20 token, uint256 amount) internal {
         if (amount > 0) {
-            token.safeTransfer(address(_protocolFeesCollector), amount);
+            token.safeTransfer(address(getProtocolFeesCollector()), amount);
         }
     }
 }

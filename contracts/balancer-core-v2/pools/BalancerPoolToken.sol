@@ -14,9 +14,10 @@
 
 pragma solidity ^0.7.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import "../lib/math/Math.sol";
+import "../lib/openzeppelin/IERC20.sol";
+import "../lib/openzeppelin/IERC20Permit.sol";
+import "../lib/openzeppelin/EIP712.sol";
 
 /**
  * @title Highly opinionated token implementation
@@ -31,7 +32,7 @@ import "../lib/math/Math.sol";
  *   without first setting allowance
  * - Emits 'Approval' events whenever allowance is changed by `transferFrom`
  */
-contract BalancerPoolToken is IERC20 {
+contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
     using Math for uint256;
 
     // State variables
@@ -45,9 +46,16 @@ contract BalancerPoolToken is IERC20 {
     string private _name;
     string private _symbol;
 
+    mapping(address => uint256) private _nonces;
+
+    // solhint-disable-next-line var-name-mixedcase
+    bytes32 private immutable _PERMIT_TYPE_HASH = keccak256(
+        "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+    );
+
     // Function declarations
 
-    constructor(string memory tokenName, string memory tokenSymbol) {
+    constructor(string memory tokenName, string memory tokenSymbol) EIP712(tokenName, "1") {
         _name = tokenName;
         _symbol = tokenSymbol;
     }
@@ -103,11 +111,36 @@ contract BalancerPoolToken is IERC20 {
         _move(sender, recipient, amount);
 
         if (msg.sender != sender && currentAllowance != uint256(-1)) {
-            _require(currentAllowance >= amount, Errors.INSUFFICIENT_ALLOWANCE);
+            // Because of the previous require, we know that if msg.sender != sender then currentAllowance >= amount
             _setAllowance(sender, msg.sender, currentAllowance - amount);
         }
 
         return true;
+    }
+
+    function permit(
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public virtual override {
+        // solhint-disable-next-line not-rely-on-time
+        _require(block.timestamp <= deadline, Errors.EXPIRED_PERMIT);
+
+        uint256 nonce = _nonces[owner];
+
+        bytes32 structHash = keccak256(abi.encode(_PERMIT_TYPE_HASH, owner, spender, value, nonce, deadline));
+
+        bytes32 hash = _hashTypedDataV4(structHash);
+
+        address signer = ecrecover(hash, v, r, s);
+        _require((signer != address(0)) && (signer == owner), Errors.INVALID_SIGNATURE);
+
+        _nonces[owner] = nonce + 1;
+        _setAllowance(owner, spender, value);
     }
 
     // Public functions
@@ -126,6 +159,15 @@ contract BalancerPoolToken is IERC20 {
 
     function totalSupply() public view override returns (uint256) {
         return _totalSupply;
+    }
+
+    function nonces(address owner) external view override returns (uint256) {
+        return _nonces[owner];
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function DOMAIN_SEPARATOR() external view override returns (bytes32) {
+        return _domainSeparatorV4();
     }
 
     // Internal functions
@@ -152,6 +194,9 @@ contract BalancerPoolToken is IERC20 {
     ) internal {
         uint256 currentBalance = _balance[sender];
         _require(currentBalance >= amount, Errors.INSUFFICIENT_BALANCE);
+        // Prohibit transfers to the zero address to avoid confusion with the
+        // Transfer event emitted by `_burnPoolTokens`
+        _require(recipient != address(0), Errors.ERC20_TRANSFER_TO_ZERO_ADDRESS);
 
         _balance[sender] = currentBalance - amount;
         _balance[recipient] = _balance[recipient].add(amount);

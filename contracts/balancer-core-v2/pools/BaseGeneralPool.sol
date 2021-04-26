@@ -18,15 +18,21 @@ pragma experimental ABIEncoderV2;
 import "./BasePool.sol";
 import "../vault/interfaces/IGeneralPool.sol";
 
+/**
+ * @dev Extension of `BasePool`, adding a handler for `IGeneralPool.onSwap`.
+ *
+ * Derived contracts must implement `_onSwapGivenIn` and `_onSwapGivenOut` along with `BasePool`'s virtual functions.
+ */
 abstract contract BaseGeneralPool is IGeneralPool, BasePool {
     constructor(
         IVault vault,
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256 swapFee,
-        uint256 emergencyPeriod,
-        uint256 emergencyPeriodCheckExtension
+        uint256 swapFeePercentage,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration,
+        address owner
     )
         BasePool(
             vault,
@@ -34,9 +40,10 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
             name,
             symbol,
             tokens,
-            swapFee,
-            emergencyPeriod,
-            emergencyPeriodCheckExtension
+            swapFeePercentage,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            owner
         )
     {
         // solhint-disable-previous-line no-empty-blocks
@@ -50,7 +57,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256 indexIn,
         uint256 indexOut
     ) external view virtual override returns (uint256) {
-        _validateIndexes(indexIn, indexOut, _totalTokens);
+        _validateIndexes(indexIn, indexOut, _getTotalTokens());
         uint256[] memory scalingFactors = _scalingFactors();
 
         return
@@ -66,8 +73,8 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256 indexOut,
         uint256[] memory scalingFactors
     ) internal view returns (uint256) {
-        // Fees are subtracted before scaling happens, to reduce complexity of rounding direction analysis.
-        swapRequest.amount = _subtractSwapFee(swapRequest.amount);
+        // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
+        swapRequest.amount = _subtractSwapFeeAmount(swapRequest.amount);
 
         _upscaleArray(balances, scalingFactors);
         swapRequest.amount = _upscale(swapRequest.amount, scalingFactors[indexIn]);
@@ -90,13 +97,24 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
 
         uint256 amountIn = _onSwapGivenOut(swapRequest, balances, indexIn, indexOut);
 
-        // amountIn are tokens entering the Pool, so we round up.
+        // amountIn tokens are entering the Pool, so we round up.
         amountIn = _downscaleUp(amountIn, scalingFactors[indexIn]);
 
-        // Fees are added after scaling happens, to reduce complexity of rounding direction analysis.
-        return _addSwapFee(amountIn);
+        // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
+        return _addSwapFeeAmount(amountIn);
     }
 
+    /*
+     * @dev Called when a swap with the Pool occurs, where the amount of tokens entering the Pool is known.
+     *
+     * Returns the amount of tokens that will be taken from the Pool in return.
+     *
+     * All amounts inside `swapRequest` and `balances` are upscaled. The swap fee has already been deducted from
+     * `swapRequest.amount`.
+     *
+     * The return value is also considered upscaled, and will be downscaled (rounding down) before returning it to the
+     * Vault.
+     */
     function _onSwapGivenIn(
         SwapRequest memory swapRequest,
         uint256[] memory balances,
@@ -104,6 +122,16 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256 indexOut
     ) internal view virtual returns (uint256);
 
+    /*
+     * @dev Called when a swap with the Pool occurs, where the amount of tokens exiting the Pool is known.
+     *
+     * Returns the amount of tokens that will be granted to the Pool in return.
+     *
+     * All amounts inside `swapRequest` and `balances` are upscaled.
+     *
+     * The return value is also considered upscaled, and will be downscaled (rounding up) before applying the swap fee
+     * and returning it to the Vault.
+     */
     function _onSwapGivenOut(
         SwapRequest memory swapRequest,
         uint256[] memory balances,

@@ -51,7 +51,7 @@ contract BalancerHelpers is AssetHelpers {
         IVault.JoinPoolRequest memory request
     ) external returns (uint256 bptOut, uint256[] memory amountsIn) {
         (address pool, ) = vault.getPool(poolId);
-        (uint256[] memory balances, uint256 latestBlockNumber) = _validateAssetsAndGetBalances(poolId, request.assets);
+        (uint256[] memory balances, uint256 lastChangeBlock) = _validateAssetsAndGetBalances(poolId, request.assets);
         ProtocolFeesCollector feesCollector = vault.getProtocolFeesCollector();
 
         (bptOut, amountsIn) = BasePool(pool).queryJoin(
@@ -59,8 +59,8 @@ contract BalancerHelpers is AssetHelpers {
             sender,
             recipient,
             balances,
-            latestBlockNumber,
-            feesCollector.getSwapFee(),
+            lastChangeBlock,
+            feesCollector.getSwapFeePercentage(),
             request.userData
         );
     }
@@ -72,7 +72,7 @@ contract BalancerHelpers is AssetHelpers {
         IVault.ExitPoolRequest memory request
     ) external returns (uint256 bptIn, uint256[] memory amountsOut) {
         (address pool, ) = vault.getPool(poolId);
-        (uint256[] memory balances, uint256 latestBlockNumber) = _validateAssetsAndGetBalances(poolId, request.assets);
+        (uint256[] memory balances, uint256 lastChangeBlock) = _validateAssetsAndGetBalances(poolId, request.assets);
         ProtocolFeesCollector feesCollector = vault.getProtocolFeesCollector();
 
         (bptIn, amountsOut) = BasePool(pool).queryExit(
@@ -80,8 +80,8 @@ contract BalancerHelpers is AssetHelpers {
             sender,
             recipient,
             balances,
-            latestBlockNumber,
-            feesCollector.getSwapFee(),
+            lastChangeBlock,
+            feesCollector.getSwapFeePercentage(),
             request.userData
         );
     }
@@ -89,20 +89,17 @@ contract BalancerHelpers is AssetHelpers {
     function _validateAssetsAndGetBalances(bytes32 poolId, IAsset[] memory expectedAssets)
         internal
         view
-        returns (uint256[] memory balances, uint256 latestBlockNumberUsed)
+        returns (uint256[] memory balances, uint256 lastChangeBlock)
     {
         IERC20[] memory actualTokens;
         IERC20[] memory expectedTokens = _translateToIERC20(expectedAssets);
 
-        latestBlockNumberUsed = 0;
-        (actualTokens, balances) = vault.getPoolTokens(poolId);
+        (actualTokens, balances, lastChangeBlock) = vault.getPoolTokens(poolId);
         InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
 
         for (uint256 i = 0; i < actualTokens.length; ++i) {
             IERC20 token = actualTokens[i];
             _require(token == expectedTokens[i], Errors.TOKENS_MISMATCH);
-            (, , uint256 blockNumber, ) = vault.getPoolTokenInfo(poolId, token);
-            latestBlockNumberUsed = Math.max(latestBlockNumberUsed, blockNumber);
         }
     }
 }

@@ -13,24 +13,25 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
 
-import "../vault/interfaces/IVault.sol";
-import "../vault/interfaces/IBasePool.sol";
-
-abstract contract BasePoolFactory {
-    IVault public immutable vault;
-
-    event PoolRegistered(address indexed pool);
-
-    constructor(IVault _vault) {
-        vault = _vault;
-    }
+/**
+ * @dev Interface for the TemporarilyPausable helper.
+ */
+interface ITemporarilyPausable {
+    /**
+     * @dev Emitted every time the pause state changes by `_setPaused`.
+     */
+    event PausedStateChanged(bool paused);
 
     /**
-     * @dev Registers a new created pool. Emits a `PoolRegistered` event.
+     * @dev Returns the current paused state.
      */
-    function _register(address pool) internal {
-        emit PoolRegistered(pool);
-    }
+    function getPausedState()
+        external
+        view
+        returns (
+            bool paused,
+            uint256 pauseWindowEndTime,
+            uint256 bufferPeriodEndTime
+        );
 }

@@ -47,7 +47,7 @@ export async function deployConvergentCurvePool(
   );
 
   // grab last poolId from last event
-  const newPools = vaultContract.filters.PoolRegistered(null);
+  const newPools = vaultContract.filters.PoolRegistered(null, null, null);
   const results = await vaultContract.queryFilter(newPools);
   const poolIds: string[] = results.map((result) => result.args?.poolId);
   const poolId = poolIds[poolIds.length - 1];

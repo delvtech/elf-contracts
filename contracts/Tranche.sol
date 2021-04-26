@@ -29,7 +29,7 @@ contract Tranche is ERC20Permit, ITranche {
     // The amount of slippage allowed on the Principal token redemption [0.1 basis points]
     uint256 internal constant _SLIPPAGE_BP = 1e13;
     // The speedbump variable records the first timestamp where redemption was attempted to be
-    // preformed on a tranche where loss occurred. It blocks redemptions for 48 hours after
+    // performed on a tranche where loss occurred. It blocks redemptions for 48 hours after
     // it is triggered in order to (1) prevent atomic flash loan price manipulation (2)
     // give 48 hours to remediate any other loss scenario before allowing withdraws
     uint256 public speedbump;

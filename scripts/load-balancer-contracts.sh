@@ -1,4 +1,5 @@
-# Dirrectly cloned from the script in elf frontend
+#!/bin/bash
+# Directly cloned from the script in elf frontend
 #!/bin/bash
 rm -rf balancer-core-v2
 

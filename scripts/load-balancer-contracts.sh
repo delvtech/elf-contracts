@@ -19,6 +19,6 @@ mv balancer-core-v2/contracts contracts/balancer-core-v2
 mv contracts/contracts contracts/balancer-core-v2
 
 echo "Removing unused balancer code"
-rm -r balancer-core-v2
+rm -rf balancer-core-v2
 
 echo "Done!"

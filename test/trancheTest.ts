@@ -17,6 +17,8 @@ describe("Tranche", () => {
   let user2Address: string;
   let expiration: number;
   const initialBalance = ethers.BigNumber.from("2000000000"); // 2e9
+  const forty_eight_hours = 172800;
+  const errorTolerance = 0.0000001;
 
   before(async () => {
     const time = await getCurrentTimestamp(provider);
@@ -32,8 +34,8 @@ describe("Tranche", () => {
     user2Address = await user2.getAddress();
 
     // Mint for the users
-    await fixture.usdc.connect(user1).setBalance(user1Address, 2e9);
-    await fixture.usdc.connect(user2).setBalance(user2Address, 2e9);
+    await fixture.usdc.connect(user1).setBalance(user1Address, initialBalance);
+    await fixture.usdc.connect(user2).setBalance(user2Address, initialBalance);
     // Set approvals on the tranche
     await fixture.usdc.connect(user1).approve(fixture.tranche.address, 2e10);
     await fixture.usdc.connect(user2).approve(fixture.tranche.address, 2e10);
@@ -130,7 +132,7 @@ describe("Tranche", () => {
         interestSubtracted
       );
     });
-    it("should correctly handle deposits with negative interest", async () => {
+    it("should block deposits with negative interest", async () => {
       const initialUnderlying = await fixture.positionStub.underlyingUnitValue();
 
       await fixture.tranche
@@ -142,22 +144,19 @@ describe("Tranche", () => {
         bnFloatMultiplier(initialUnderlying, 0.1)
       );
 
-      await fixture.tranche
+      const tx = fixture.tranche
         .connect(user2)
         .deposit(initialBalance, user2Address);
+      await expect(tx).to.be.revertedWith("E:NEG_INT");
 
       advanceTime(provider, expiration);
 
       const principalBalanceU1 = await fixture.tranche.balanceOf(user1Address);
-      const principalBalanceU2 = await fixture.tranche.balanceOf(user2Address);
 
       // When there's negative interest principals are not given a bonus for minting
-      expect(principalBalanceU1).to.equal(principalBalanceU2);
+      expect(principalBalanceU1).to.equal(initialBalance);
 
       expect(await fixture.interestToken.balanceOf(user1Address)).to.equal(
-        initialBalance
-      );
-      expect(await fixture.interestToken.balanceOf(user2Address)).to.equal(
         initialBalance
       );
     });
@@ -327,14 +326,14 @@ describe("Tranche", () => {
         .connect(user1)
         .deposit(initialBalance, user1Address);
 
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, user2Address);
+
       // set pool interest accumulated to -20%
       await fixture.positionStub.setSharesToUnderlying(
         bnFloatMultiplier(initialUnderlying, 0.2)
       );
-
-      await fixture.tranche
-        .connect(user2)
-        .deposit(initialBalance, user2Address);
 
       advanceTime(provider, expiration);
 
@@ -366,36 +365,196 @@ describe("Tranche", () => {
         .connect(user1)
         .deposit(initialBalance, user1Address);
 
-      // set pool interest accumulated to -50%
+      // set pool interest accumulated to 10%
       await fixture.positionStub.setSharesToUnderlying(
-        bnFloatMultiplier(initialUnderlying, 0.5)
+        bnFloatMultiplier(initialUnderlying, 1.1)
       );
 
       await fixture.tranche
         .connect(user2)
         .deposit(initialBalance, user2Address);
 
+      // set pool interest accumulated to -50%
+      await fixture.positionStub.setSharesToUnderlying(
+        bnFloatMultiplier(initialUnderlying, 0.5)
+      );
+
       advanceTime(provider, expiration);
+
+      await fixture.tranche.hitSpeedbump();
+
+      advanceTime(provider, expiration + forty_eight_hours);
 
       const principalBalanceU1 = await fixture.tranche.balanceOf(user1Address);
       const principalBalanceU2 = await fixture.tranche.balanceOf(user2Address);
 
-      expect(principalBalanceU1).to.equal(principalBalanceU2);
+      expect(principalBalanceU1).to.equal(initialBalance);
+      // We allow some rounding error
+      expect(principalBalanceU2).to.be.least(
+        bnFloatMultiplier(initialBalance, 0.9 - errorTolerance)
+      );
+      expect(principalBalanceU2).to.be.most(
+        bnFloatMultiplier(initialBalance, 0.9 + errorTolerance)
+      );
 
+      const totalPrincipal = principalBalanceU1.add(principalBalanceU2);
+      const contractHoldings1 = await fixture.positionStub.balanceOfUnderlying(
+        fixture.tranche.address
+      );
       await fixture.tranche
         .connect(user1)
         .withdrawPrincipal(principalBalanceU1, user1Address);
-      // NOTE - This case is the failure race in the case of loss of interest rates
-      const tx = fixture.tranche
+      const contractHoldings2 = await fixture.positionStub.balanceOfUnderlying(
+        fixture.tranche.address
+      );
+      await fixture.tranche
         .connect(user2)
         .withdrawPrincipal(principalBalanceU2, user2Address);
-      // The underflow reverts with empty error
-      expect(tx).to.be.revertedWith("");
 
       const backingBalanceU1 = await fixture.usdc.balanceOf(user1Address);
+      const backingBalanceU2 = await fixture.usdc.balanceOf(user2Address);
 
-      expect(backingBalanceU1).to.equal(initialBalance);
+      // Tries first one
+      const u1Expected = contractHoldings1
+        .mul(initialBalance)
+        .div(totalPrincipal);
+      // For small rounding errors
+      expect(backingBalanceU1).to.be.least(
+        bnFloatMultiplier(u1Expected, 1 - errorTolerance)
+      );
+      expect(backingBalanceU1).to.be.most(
+        bnFloatMultiplier(u1Expected, 1 + errorTolerance)
+      );
+
+      // In this case the multiplication and division cancel out
+      const u2Expected = contractHoldings2;
+      expect(backingBalanceU2).to.be.least(
+        bnFloatMultiplier(u2Expected, 1 - errorTolerance)
+      );
+      expect(backingBalanceU2).to.be.most(
+        bnFloatMultiplier(u2Expected, 1 + errorTolerance)
+      );
     });
+
+    it("should correctly handle Principal Token withdrawals with falsely reported negative interest", async () => {
+      const initialUnderlying = await fixture.positionStub.underlyingUnitValue();
+
+      // Deposit across interest rates
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, user1Address);
+
+      // set pool interest accumulated to 10%
+      await fixture.positionStub.setSharesToUnderlying(
+        bnFloatMultiplier(initialUnderlying, 1.1)
+      );
+
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, user2Address);
+
+      // Check that the deposits work as expected
+      const principalBalanceU1 = await fixture.tranche.balanceOf(user1Address);
+      const principalBalanceU2 = await fixture.tranche.balanceOf(user2Address);
+
+      expect(principalBalanceU1).to.equal(initialBalance);
+      // We allow some rounding error
+      expect(principalBalanceU2).to.be.least(
+        bnFloatMultiplier(initialBalance, 0.9 - errorTolerance)
+      );
+      expect(principalBalanceU2).to.be.most(
+        bnFloatMultiplier(initialBalance, 0.9 + errorTolerance)
+      );
+
+      // set pool interest accumulated to -50%
+      await fixture.positionStub.setSharesToUnderlying(
+        bnFloatMultiplier(initialUnderlying, 0.5)
+      );
+
+      // Move past tranche expiration
+      advanceTime(provider, expiration);
+
+      // Falsely report negative interest
+      await fixture.tranche.hitSpeedbump();
+
+      // Reset to properly reported interest
+      await fixture.positionStub.setSharesToUnderlying(
+        bnFloatMultiplier(initialUnderlying, 1.1)
+      );
+
+      // Do withdraws
+      await fixture.tranche
+        .connect(user1)
+        .withdrawPrincipal(principalBalanceU1, user1Address);
+      const contractHoldings2 = await fixture.positionStub.balanceOfUnderlying(
+        fixture.tranche.address
+      );
+      await fixture.tranche
+        .connect(user2)
+        .withdrawPrincipal(principalBalanceU2, user2Address);
+
+      // Load the usdc balance after
+      const backingBalanceU1 = await fixture.usdc.balanceOf(user1Address);
+      const backingBalanceU2 = await fixture.usdc.balanceOf(user2Address);
+
+      // Check that we get back within rounding error of the correct amounts
+      expect(backingBalanceU1).to.be.least(
+        bnFloatMultiplier(initialBalance, 1 - errorTolerance)
+      );
+      expect(backingBalanceU1).to.be.most(
+        bnFloatMultiplier(initialBalance, 1 + errorTolerance)
+      );
+
+      expect(backingBalanceU2).to.be.least(
+        bnFloatMultiplier(principalBalanceU2, 1 - errorTolerance)
+      );
+      expect(backingBalanceU2).to.be.most(
+        bnFloatMultiplier(principalBalanceU2, 1 + errorTolerance)
+      );
+    });
+
+    it("Should only allow setting speedbump once and after expiration", async () => {
+      const initialUnderlying = await fixture.positionStub.underlyingUnitValue();
+
+      // Deposit so it's possible to make a loss
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, user1Address);
+      // set pool interest accumulated to -50%
+      await fixture.positionStub.setSharesToUnderlying(
+        bnFloatMultiplier(initialUnderlying, 0.5)
+      );
+      // No pre redemption speedbump
+      await expect(fixture.tranche.hitSpeedbump()).to.be.revertedWith(
+        "E:Not Expired"
+      );
+      // Allow setting it
+      advanceTime(provider, expiration);
+      await fixture.tranche.hitSpeedbump();
+      // It cannot be set again
+      await expect(fixture.tranche.hitSpeedbump()).to.be.revertedWith(
+        "E:AlreadySet"
+      );
+      advanceTime(provider, forty_eight_hours);
+      // It cannot be set again even after it's not active
+      await expect(fixture.tranche.hitSpeedbump()).to.be.revertedWith(
+        "E:AlreadySet"
+      );
+    });
+
+    it("Should only allow setting the speedbump when there is a real loss", async () => {
+      // Deposit so it's possible to make a loss
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, user1Address);
+      // Allow setting it
+      advanceTime(provider, expiration);
+      // Try setting without a loss
+      await expect(fixture.tranche.hitSpeedbump()).to.be.revertedWith(
+        "E:NoLoss"
+      );
+    });
+
     it("should correctly handle full withdrawals with no accrued interest - withdraw Interest Token, then Principal Token", async () => {
       await fixture.tranche
         .connect(user1)
@@ -561,9 +720,9 @@ describe("Tranche", () => {
         .connect(user1)
         .deposit(initialBalance, user1Address);
 
-      // set pool interest accumulated to 100%
+      // set pool interest accumulated to 50%
       await fixture.positionStub.setSharesToUnderlying(
-        bnFloatMultiplier(initialUnderlying, 2)
+        bnFloatMultiplier(initialUnderlying, 1.5)
       );
 
       await fixture.tranche
@@ -594,7 +753,7 @@ describe("Tranche", () => {
         .connect(user2)
         .withdrawInterest(interestTokenBalanceU2, user2Address);
 
-      const interestAdjusted = bnFloatMultiplier(initialBalance, 2);
+      const interestAdjusted = bnFloatMultiplier(initialBalance, 1.5);
       expect(await fixture.usdc.balanceOf(user1Address)).to.be.least(
         subError(interestAdjusted)
       );
@@ -622,11 +781,63 @@ describe("Tranche", () => {
 
       await expect(
         fixture.tranche.connect(user1).withdrawInterest(1, user1Address)
-      ).to.be.revertedWith("not expired");
+      ).to.be.revertedWith("E:Not Expired");
       await expect(
         fixture.tranche.connect(user1).withdrawPrincipal(1, user1Address)
-      ).to.be.revertedWith("not expired");
+      ).to.be.revertedWith("E:Not Expired");
     });
+    it("should prevent withdraw of principal tokens when the interest rate is negative and speedbump hasn't been hit", async () => {
+      const initialUnderlying = await fixture.positionStub.underlyingUnitValue();
+
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, user1Address);
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, user1Address);
+
+      // set pool interest accumulated to -50%
+      await fixture.positionStub.setSharesToUnderlying(
+        bnFloatMultiplier(initialUnderlying, 0.5)
+      );
+
+      advanceTime(provider, expiration);
+
+      await expect(
+        fixture.tranche
+          .connect(user1)
+          .withdrawPrincipal(initialBalance, user1Address)
+      ).to.be.revertedWith("E:NEG_INT");
+    });
+
+    it("should prevent withdraw of principal tokens when the interest rate is negative and speedbump was hit less than 48 hours ago", async () => {
+      const initialUnderlying = await fixture.positionStub.underlyingUnitValue();
+
+      await fixture.tranche
+        .connect(user1)
+        .deposit(initialBalance, user1Address);
+      await fixture.tranche
+        .connect(user2)
+        .deposit(initialBalance, user1Address);
+
+      // set pool interest accumulated to -50%
+      await fixture.positionStub.setSharesToUnderlying(
+        bnFloatMultiplier(initialUnderlying, 0.5)
+      );
+
+      advanceTime(provider, expiration);
+
+      await fixture.tranche.hitSpeedbump();
+
+      advanceTime(provider, forty_eight_hours / 2);
+
+      await expect(
+        fixture.tranche
+          .connect(user1)
+          .withdrawPrincipal(initialBalance, user1Address)
+      ).to.be.revertedWith("E:Early");
+    });
+
     it("should prevent withdrawal of more Principal Tokens and Interest Tokens than the user has", async () => {
       await fixture.tranche
         .connect(user1)
@@ -647,6 +858,15 @@ describe("Tranche", () => {
           .connect(user1)
           .withdrawPrincipal(user1PrincipalTokenBalance.add(1), user1Address)
       ).to.be.reverted;
+    });
+
+    it("Should assign names and symbols correctly", async () => {
+      expect(await fixture.tranche.symbol()).to.be.eq(
+        "eP:TestWrappedPosition:20-NOV-86-GMT"
+      );
+      expect(await fixture.tranche.name()).to.be.eq(
+        "Principal Token TestWrappedPosition:20-NOV-86-GMT"
+      );
     });
   });
 });

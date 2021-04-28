@@ -12,7 +12,7 @@ contract TestDate {
         returns (string memory)
     {
         // Will encode and store the result
-        DateString.timestampToDateString(timestamp, testString);
+        DateString._timestampToDateString(timestamp, testString);
         // We load and return the result
         return testString;
     }
@@ -23,7 +23,7 @@ contract TestDate {
         returns (string memory)
     {
         // Will encode and store the result
-        DateString.encodeAndWriteTimestamp(prefix, timestamp, testString);
+        DateString._encodeAndWriteTimestamp(prefix, timestamp, testString);
         // We load and return the result
         return testString;
     }

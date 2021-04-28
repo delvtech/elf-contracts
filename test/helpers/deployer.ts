@@ -25,6 +25,7 @@ import { TrancheFactory } from "typechain/TrancheFactory";
 import { TestUserProxy } from "typechain/TestUserProxy";
 import { InterestToken } from "typechain/InterestToken";
 import { YVaultAssetProxy } from "typechain/YVaultAssetProxy";
+import { DateString__factory } from "typechain/factories/DateString__factory";
 
 import data from "../../artifacts/contracts/Tranche.sol/Tranche.json";
 
@@ -103,7 +104,12 @@ const deployInterestTokenFactory = async (signer: Signer) => {
 const deployTrancheFactory = async (signer: Signer) => {
   const interestTokenFactory = await deployInterestTokenFactory(signer);
   const deployer = new TrancheFactory__factory(signer);
-  const deployTx = await deployer.deploy(interestTokenFactory.address);
+  const dateLibFactory = new DateString__factory(signer);
+  const dateLib = await dateLibFactory.deploy();
+  const deployTx = await deployer.deploy(
+    interestTokenFactory.address,
+    dateLib.address
+  );
   return deployTx;
 };
 
@@ -248,7 +254,7 @@ export async function loadUsdcPoolMainnetFixture() {
 export async function loadTestTrancheFixture() {
   const [signer] = await ethers.getSigners();
   const testTokenDeployer = new TestERC20__factory(signer);
-  const usdc = await testTokenDeployer.deploy("test token", "TEST", 18);
+  const usdc = await testTokenDeployer.deploy("test token", "TEST", 6);
 
   const positionStub: TestWrappedPosition = await deployTestWrappedPosition(
     signer,

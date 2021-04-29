@@ -126,13 +126,13 @@ describe("UserProxyTests", function () {
       ethers.BigNumber.from(utils.parseEther("1")),
       []
     );
-    expect(tx).to.be.revertedWith("Non weth token");
+    await expect(tx).to.be.revertedWith("Non weth token");
   });
 
   describe("Deprecation function", async () => {
     it("Blocks deprecation by non owners", async () => {
       const tx = proxy.connect(signers[1]).deprecate();
-      expect(tx).to.be.revertedWith("Sender not owner");
+      await expect(tx).to.be.revertedWith("Sender not owner");
     });
     it("Allows deprecation by the owner", async () => {
       const deployer = new CodeSizeChecker__factory(signers[0]);
@@ -298,13 +298,13 @@ describe("UserProxyTests", function () {
       const tx = wethFixture.proxy
         .connect(users[1].user)
         .withdrawWeth(1e10, wethFixture.position.address, 0, 0, []);
-      expect(tx).to.be.revertedWith("Invalid withdraw");
+      await expect(tx).to.be.revertedWith("Invalid withdraw");
     });
     it("Blocks non weth incoming eth transfers", async () => {
       const senderFactory = new TestEthSender__factory(users[0].user);
       const sender = await senderFactory.deploy();
       const tx = sender.sendEth(wethFixture.proxy.address, { value: 1 });
-      expect(tx).to.be.revertedWith("");
+      await expect(tx).to.be.revertedWith("");
     });
   });
 

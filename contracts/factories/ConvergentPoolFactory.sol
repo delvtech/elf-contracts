@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.7.0;
 
-import "../balancer-core-v2/pools/BasePoolFactory.sol";
+import "../balancer-core-v2/pools/factories/BasePoolFactory.sol";
 import "../libraries/Authorizable.sol";
 import "../ConvergentCurvePool.sol";
 
@@ -18,7 +18,7 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
     /// @notice This event tracks pool creations from this factory
     /// @param pool the address of the pool
     /// @param bondToken The token of the bond token in this pool
-    event PoolCreated(address indexed pool, address indexed bondToken);
+    event CCPoolCreated(address indexed pool, address indexed bondToken);
 
     /// @notice This function constructs the pool
     /// @param _vault The balancer v2 vault
@@ -57,7 +57,7 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
                 IERC20(_bond),
                 _expiration,
                 _unitSeconds,
-                vault,
+                getVault(),
                 _percentFee,
                 percentFeeGov,
                 governance,
@@ -68,7 +68,7 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
         // Register the pool with the vault
         _register(pool);
         // Emit a creation event
-        emit PoolCreated(pool, _bond);
+        emit CCPoolCreated(pool, _bond);
         return pool;
     }
 

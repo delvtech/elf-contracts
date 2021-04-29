@@ -2,7 +2,6 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IERC20Decimals.sol";
 import "./balancer-core-v2/lib/math/LogExpMath.sol";
 import "./balancer-core-v2/lib/math/FixedPoint.sol";
@@ -128,17 +127,6 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     }
 
     // Balancer Interface required Getters
-
-    /// @dev A function which is intended to measure the increase
-    ///      in lp share price overtime. However for our pool the
-    ///      invariant cannot be relied on for this and methods with
-    ///      trade rates are vulnerable to flash loan manipulation.
-    ///      For this reason we return one no mater the circumstances
-    ///      WARNING - This may break balancer LP compatibility with some
-    ///      onchain protocols.
-    function getRate() external override view returns (uint256) {
-        return FixedPoint.ONE;
-    }
 
     /// @dev Returns the vault for this pool
     /// @return The vault for this pool
@@ -273,10 +261,10 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             ) = _mintGovernanceLP(currentBalances);
             dueProtocolFeeAmounts = new uint256[](2);
 
-            dueProtocolFeeAmounts[baseIndex] = localFeeUnderlying.mul(
+            dueProtocolFeeAmounts[baseIndex] = localFeeUnderlying.mulDown(
                 protocolSwapFee
             );
-            dueProtocolFeeAmounts[bondIndex] = localFeeBond.mul(
+            dueProtocolFeeAmounts[bondIndex] = localFeeBond.mulDown(
                 protocolSwapFee
             );
         }
@@ -344,10 +332,10 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
 
             // Calculate the amount of fees for balancer to collect
             dueProtocolFeeAmounts = new uint256[](2);
-            dueProtocolFeeAmounts[baseIndex] = localFeeUnderlying.mul(
+            dueProtocolFeeAmounts[baseIndex] = localFeeUnderlying.mulDown(
                 protocolSwapFee
             );
-            dueProtocolFeeAmounts[bondIndex] = localFeeBond.mul(
+            dueProtocolFeeAmounts[bondIndex] = localFeeBond.mulDown(
                 protocolSwapFee
             );
         }
@@ -421,7 +409,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         // Will revert with underflow here if the liquidity isn't enough for the trade
         uint256 yAfter = (xBeforePowA + yBeforePowA).sub(xAfterPowA);
         // Note that this call is to FixedPoint Div so works as intended
-        yAfter = LogExpMath.pow(yAfter, uint256(FixedPoint.ONE).div(a));
+        yAfter = LogExpMath.pow(yAfter, uint256(FixedPoint.ONE).divDown(a));
         // The amount of Y token to send is (reserveY_before - reserveY_after)
         return out ? reserveY.sub(yAfter) : yAfter.sub(reserveY);
     }
@@ -448,7 +436,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             // Then it splits again on which token is the bond
             if (outputToken == bond) {
                 // If the output is bond the implied yield is out - in
-                uint256 impliedYieldFee = percentFee.mul(
+                uint256 impliedYieldFee = percentFee.mulDown(
                     amountOut.sub(amountIn)
                 );
                 // we record that fee collected from the underlying
@@ -457,7 +445,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                 return amountIn.add(impliedYieldFee);
             } else {
                 // If the input token is bond the implied yield is in - out
-                uint256 impliedYieldFee = percentFee.mul(
+                uint256 impliedYieldFee = percentFee.mulDown(
                     amountIn.sub(amountOut)
                 );
                 // we record that collected fee from the input bond
@@ -468,7 +456,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         } else {
             if (outputToken == bond) {
                 // If the output is bond the implied yield is out - in
-                uint256 impliedYieldFee = percentFee.mul(
+                uint256 impliedYieldFee = percentFee.mulDown(
                     amountOut.sub(amountIn)
                 );
                 // we record that fee collected from the bond output
@@ -477,7 +465,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                 return amountOut.sub(impliedYieldFee);
             } else {
                 // If the output is underlying the implied yield is in - out
-                uint256 impliedYieldFee = percentFee.mul(
+                uint256 impliedYieldFee = percentFee.mulDown(
                     amountIn.sub(amountOut)
                 );
                 // we record the collected underlying fee
@@ -520,30 +508,28 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         }
         // Get the reserve ratio, the say how many underlying per bond in the reserve
         // (input underlying / reserve underlying) is the percent increase caused by deposit
-        uint256 underlyingPerBond = reserveUnderlying.div(reserveBond);
+        uint256 underlyingPerBond = reserveUnderlying.divDown(reserveBond);
         // Use the underlying per bond to get the needed number of input underlying
-        uint256 neededUnderlying = underlyingPerBond.mul(inputBond);
+        uint256 neededUnderlying = underlyingPerBond.mulDown(inputBond);
 
         // If the user can't provide enough underlying
         if (neededUnderlying > inputUnderlying) {
             // The increase in total supply is the input underlying
             // as a ratio to reserve
-            uint256 mintAmount = (inputUnderlying.mul(localTotalSupply)).div(
-                reserveUnderlying
-            );
+            uint256 mintAmount = (inputUnderlying.mulDown(localTotalSupply))
+                .divDown(reserveUnderlying);
             // We mint a new amount of as the the percent increase given
             // by the ratio of the input underlying to the reserve underlying
             _mintPoolTokens(recipient, mintAmount);
             // In this case we use the whole input of underlying
             // and consume (inputUnderlying/underlyingPerBond) bonds
             amountsIn[baseIndex] = inputUnderlying;
-            amountsIn[bondIndex] = inputUnderlying.div(underlyingPerBond);
+            amountsIn[bondIndex] = inputUnderlying.divDown(underlyingPerBond);
         } else {
             // We calculate the percent increase in the reserves from contributing
             // all of the bond
-            uint256 mintAmount = (neededUnderlying.mul(localTotalSupply)).div(
-                reserveUnderlying
-            );
+            uint256 mintAmount = (neededUnderlying.mulDown(localTotalSupply))
+                .divDown(reserveUnderlying);
             // We then mint an amount of pool token which corresponds to that increase
             _mintPoolTokens(recipient, mintAmount);
             // The indicate we consumed the input bond and (inputBond*underlyingPerBond)
@@ -575,32 +561,33 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
 
         uint256 localTotalSupply = totalSupply();
         // Calculate the ratio of the minOutputUnderlying to reserve
-        uint256 underlyingPerBond = reserveUnderlying.div(reserveBond);
+        uint256 underlyingPerBond = reserveUnderlying.divDown(reserveBond);
         // If the ratio won't produce enough bond
-        if (minOutputUnderlying > minOutputBond.mul(underlyingPerBond)) {
+        if (minOutputUnderlying > minOutputBond.mulDown(underlyingPerBond)) {
             // In this case we burn enough tokens to output 'minOutputUnderlying'
             // which will be the total supply times the percent of the underlying
             // reserve which this amount of underlying is.
-            uint256 burned = (minOutputUnderlying.mul(localTotalSupply)).div(
-                reserveUnderlying
-            );
+            uint256 burned = (minOutputUnderlying.mulDown(localTotalSupply))
+                .divDown(reserveUnderlying);
             _burnPoolTokens(source, burned);
             // We return that we released 'minOutputUnderlying' and the number of bonds that
             // preserves the reserve ratio
             amountsReleased[baseIndex] = minOutputUnderlying;
-            amountsReleased[bondIndex] = minOutputUnderlying.div(
+            amountsReleased[bondIndex] = minOutputUnderlying.divDown(
                 underlyingPerBond
             );
         } else {
             // Then the amount burned is the ratio of the minOutputBond
             // to the reserve of bond times the total supply
-            uint256 burned = (minOutputBond.mul(localTotalSupply)).div(
+            uint256 burned = (minOutputBond.mulDown(localTotalSupply)).divDown(
                 reserveBond
             );
             _burnPoolTokens(source, burned);
             // We return that we released all of the minOutputBond
             // and the number of underlying which preserves the reserve ratio
-            amountsReleased[baseIndex] = minOutputBond.mul(underlyingPerBond);
+            amountsReleased[baseIndex] = minOutputBond.mulDown(
+                underlyingPerBond
+            );
             amountsReleased[bondIndex] = minOutputBond;
         }
     }
@@ -630,8 +617,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
 
         // Calculate the gov fee which is the assigned fees times the
         // percent
-        uint256 govFeeUnderlying = localFeeUnderlying.mul(percentFeeGov);
-        uint256 govFeeBond = localFeeBond.mul(percentFeeGov);
+        uint256 govFeeUnderlying = localFeeUnderlying.mulDown(percentFeeGov);
+        uint256 govFeeBond = localFeeBond.mulDown(percentFeeGov);
         // Mint the actual LP for gov address
         uint256[] memory consumed = _mintLP(
             govFeeUnderlying,
@@ -640,15 +627,17 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             governance
         );
         // We calculate the actual fees used
-        uint256 usedFeeUnderlying = (consumed[baseIndex]).div(percentFeeGov);
-        uint256 usedFeeBond = (consumed[bondIndex]).div(percentFeeGov);
+        uint256 usedFeeUnderlying = (consumed[baseIndex]).divDown(
+            percentFeeGov
+        );
+        uint256 usedFeeBond = (consumed[bondIndex]).divDown(percentFeeGov);
         // Calculate the remaining fees, note due to rounding errors they are likely to
         // be true that usedFees + remainingFees > originalFees by a very small rounding error
         // this is safe as with a bounded gov fee it never consumes LP funds.
         uint256 remainingUnderlying = govFeeUnderlying
             .sub(consumed[baseIndex])
-            .div(percentFeeGov);
-        uint256 remainingBond = govFeeBond.sub(consumed[bondIndex]).div(
+            .divDown(percentFeeGov);
+        uint256 remainingBond = govFeeBond.sub(consumed[bondIndex]).divDown(
             percentFeeGov
         );
         // Emit fee tracking event
@@ -674,7 +663,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             : 0;
         timeTillExpiry *= 1e18;
         // timeTillExpiry now contains the a fixed point of the years remaining
-        timeTillExpiry = timeTillExpiry.div(unitSeconds * 1e18);
+        timeTillExpiry = timeTillExpiry.divDown(unitSeconds * 1e18);
         uint256 result = uint256(FixedPoint.ONE).sub(timeTillExpiry);
         // Sanity Check
         require(result != 0);

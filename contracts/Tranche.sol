@@ -28,15 +28,25 @@ contract Tranche is ERC20Permit, ITranche {
     uint256 public immutable unlockTimestamp;
     // The amount of slippage allowed on the Principal token redemption [0.1 basis points]
     uint256 internal constant _SLIPPAGE_BP = 1e13;
+    // The speedbump variable records the first timestamp where redemption was attempted to be
+    // performed on a tranche where loss occurred. It blocks redemptions for 48 hours after
+    // it is triggered in order to (1) prevent atomic flash loan price manipulation (2)
+    // give 48 hours to remediate any other loss scenario before allowing withdraws
+    uint256 public speedbump;
+    // Const which is 48 hours in seconds
+    uint256 internal constant _FORTY_EIGHT_HOURS = 172800;
+    // An event to listen for when negative interest withdraw are triggered
+    event SpeedBumpHit(uint256 timestamp);
 
     /// @notice Constructs this contract
-    constructor() ERC20Permit("Element Principal Token", "eP:") {
+    constructor() ERC20Permit("Principal Token ", "eP:") {
         // Assume the caller is the Tranche factory.
         ITrancheFactory trancheFactory = ITrancheFactory(msg.sender);
         (
             address wpAddress,
             uint256 expiration,
-            IInterestToken interestTokenTemp
+            IInterestToken interestTokenTemp,
+            address dateLib
         ) = trancheFactory.getData();
         interestToken = interestTokenTemp;
 
@@ -55,9 +65,44 @@ contract Tranche is ERC20Permit, ITranche {
         // And set this contract to have the same
         _setupDecimals(localUnderlyingDecimals);
 
-        // Write the strategySymbol  and expiration time to name and symbol
-        DateString.encodeAndWriteTimestamp(strategySymbol, expiration, name);
-        DateString.encodeAndWriteTimestamp(strategySymbol, expiration, symbol);
+        // Write the strategySymbol and expiration time to name and symbol
+
+        // This logic was previously encoded as calling a library "DateString"
+        // in line and directly. However even though this code is only in the constructor
+        // it both made the code of this contract much bigger and made the factory
+        // un deployable. So we needed to use the library as an external contract
+        // but solidity does not have support for address to library conversions
+        // or other support for working directly with libraries in a type safe way.
+        // For that reason we have to use this ugly and non type safe hack to make these
+        // contracts deployable. Since the library is an immutable in the factory
+        // the security profile is quite similar to a standard external linked library.
+
+        // We load the real storage slots of the symbol and name storage variables
+        uint256 namePtr;
+        uint256 symbolPtr;
+        assembly {
+            namePtr := name.slot
+            symbolPtr := symbol.slot
+        }
+        // We then call the 'encodeAndWriteTimestamp' function on our library contract
+        (bool success1, ) = dateLib.delegatecall(
+            abi.encodeWithSelector(
+                DateString.encodeAndWriteTimestamp.selector,
+                strategySymbol,
+                expiration,
+                namePtr
+            )
+        );
+        (bool success2, ) = dateLib.delegatecall(
+            abi.encodeWithSelector(
+                DateString.encodeAndWriteTimestamp.selector,
+                strategySymbol,
+                expiration,
+                symbolPtr
+            )
+        );
+        // Assert that both calls succeeded
+        assert(success1 && success2);
     }
 
     /// @notice An aliasing of the getter for valueSupplied to improve ERC20 compatibility
@@ -122,6 +167,9 @@ contract Tranche is ERC20Permit, ITranche {
             uint256(valueSupplied),
             uint256(interestSupply)
         );
+        // We block deposits in negative interest rate regimes
+        require(_valueSupplied <= holdingsValue, "E:NEG_INT");
+
         uint256 adjustedAmount;
         // Have to split on the initialization case and negative interest case
         if (_valueSupplied > 0 && holdingsValue > _valueSupplied) {
@@ -151,8 +199,8 @@ contract Tranche is ERC20Permit, ITranche {
     @param _destination The address to send the underlying too
     @return The number of underlying tokens released
     @dev This method will return 1 underlying for 1 principal except when interest
-         is negative, in that case liquidity might run out and some principal token may
-         not be redeemable.
+         is negative, in which case the principal tokens is redeemable pro rata for
+         the assets controlled by this vault.
          Also note: Redemption has the possibility of at most _SLIPPAGE_BP
          numerical error on each redemption so each principal token may occasionally redeem
          for less than 1 unit of underlying. Max loss defaults to 0.1 BP ie 0.001% loss
@@ -163,13 +211,87 @@ contract Tranche is ERC20Permit, ITranche {
         returns (uint256)
     {
         // No redemptions before unlock
-        require(block.timestamp >= unlockTimestamp, "not expired");
+        require(block.timestamp >= unlockTimestamp, "E:Not Expired");
+        // If the speedbump == 0 it's never been hit so we don't need
+        // to change the withdraw rate.
+        uint256 localSpeedbump = speedbump;
+        uint256 withdrawAmount = _amount;
+        uint256 localSupply = uint256(valueSupplied);
+        if (localSpeedbump != 0) {
+            // Load the assets we have in this vault
+            uint256 holdings = position.balanceOfUnderlying(address(this));
+            // If we check and the interest rate is no longer negative then we
+            // allow normal 1 to 1 withdraws [even if the speedbump was hit less
+            // than 48 hours ago, to prevent possible griefing]
+            if (holdings < localSupply) {
+                // We allow the user to only withdraw their percent of holdings
+                // NOTE - Because of the discounting mechanics this causes account loss
+                //        percentages to be slightly perturbed from overall loss.
+                //        ie: tokens holders who join when interest has accumulated
+                //        will get slightly higher percent loss than those who joined earlier
+                //        in the case of loss at the end of the period. Biases are very
+                //        small except in extreme cases.
+                withdrawAmount = (_amount * holdings) / localSupply;
+                // If the interest rate is still negative and we are not 48 hours after
+                // speedbump being set we revert
+                require(
+                    localSpeedbump + _FORTY_EIGHT_HOURS < block.timestamp,
+                    "E:Early"
+                );
+            }
+        }
         // Burn from the sender
         _burn(msg.sender, _amount);
         // Remove these principal token from the interest calculations for future interest redemptions
-        valueSupplied -= uint128(_amount);
-        uint256 minOutput = _amount - (_amount * _SLIPPAGE_BP) / 1e18;
-        return position.withdrawUnderlying(_destination, _amount, minOutput);
+        valueSupplied = uint128(localSupply) - uint128(_amount);
+        // Load the share balance of the vault before withdrawing [gas note - both the smart
+        // contract and share value is warmed so this is actually quite a cheap lookup]
+        uint256 shareBalanceBefore = position.balanceOf(address(this));
+        // Calculate the min output
+        uint256 minOutput = withdrawAmount -
+            (withdrawAmount * _SLIPPAGE_BP) /
+            1e18;
+        // We make the actual withdraw from the position.
+        (uint256 actualWithdraw, uint256 sharesBurned) = position
+            .withdrawUnderlying(_destination, withdrawAmount, minOutput);
+
+        // At this point we check that the implied contract holdings before this withdraw occurred
+        // are more than enough to redeem all of the principal tokens for underlying ie that no
+        // loss has happened.
+        uint256 balanceBefore = (shareBalanceBefore * actualWithdraw) /
+            sharesBurned;
+        if (balanceBefore < localSupply) {
+            // Require that that the speedbump has been set.
+            require(localSpeedbump != 0, "E:NEG_INT");
+            // This assert should be very difficult to hit because it is checked above
+            // but may be possible with  complex reentrancy.
+            assert(localSpeedbump + _FORTY_EIGHT_HOURS < block.timestamp);
+        }
+        return (actualWithdraw);
+    }
+
+    /// @notice This function allows someone to trigger the speedbump and eventually allow
+    ///         pro rata withdraws
+    function hitSpeedbump() external {
+        // We only allow setting the speedbump once
+        require(speedbump == 0, "E:AlreadySet");
+        // We only allow setting it when withdraws can happen
+        require(block.timestamp >= unlockTimestamp, "E:Not Expired");
+        // We require that the total holds are less than the supply of
+        // principal token we need to redeem
+        uint256 totalHoldings = position.balanceOfUnderlying(address(this));
+        if (totalHoldings < valueSupplied) {
+            // We emit a notification so that if a speedbump is hit the community
+            // can investigate.
+            // Note - this is a form of defense mechanism because any flash loan
+            //        attack must be public for at least 48 hours before it has
+            //        affects.
+            emit SpeedBumpHit(block.timestamp);
+            // Set the speedbump
+            speedbump = block.timestamp;
+        } else {
+            revert("E:NoLoss");
+        }
     }
 
     /**
@@ -185,7 +307,7 @@ contract Tranche is ERC20Permit, ITranche {
         override
         returns (uint256)
     {
-        require(block.timestamp >= unlockTimestamp, "not expired");
+        require(block.timestamp >= unlockTimestamp, "E:Not Expired");
         // Burn tokens from the sender
         interestToken.burn(msg.sender, _amount);
         // Load the underlying value of this contract
@@ -209,11 +331,11 @@ contract Tranche is ERC20Permit, ITranche {
         // Store that we reduced the supply
         interestSupply = uint128(_interestSupply - _amount);
         // Redeem position tokens for underlying
-        return
-            position.withdrawUnderlying(
-                _destination,
-                redemptionAmount,
-                minRedemption
-            );
+        (uint256 redemption, ) = position.withdrawUnderlying(
+            _destination,
+            redemptionAmount,
+            minRedemption
+        );
+        return (redemption);
     }
 }

@@ -14,14 +14,14 @@
 
 pragma solidity ^0.7.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../openzeppelin/IERC20.sol";
 
 import "../../vault/interfaces/IAsset.sol";
 import "../../vault/interfaces/IWETH.sol";
 
 abstract contract AssetHelpers {
     // solhint-disable-next-line var-name-mixedcase
-    IWETH internal immutable _WETH;
+    IWETH private immutable _weth;
 
     // Sentinel value used to indicate WETH with wrapping/unwrapping semantics. The zero address is a good choice for
     // multiple reasons: it is cheap to pass as a calldata argument, it is a known invalid token and non-contract, and
@@ -29,7 +29,12 @@ abstract contract AssetHelpers {
     address private constant _ETH = address(0);
 
     constructor(IWETH weth) {
-        _WETH = weth;
+        _weth = weth;
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function _WETH() internal view returns (IWETH) {
+        return _weth;
     }
 
     /**
@@ -44,17 +49,18 @@ abstract contract AssetHelpers {
      * to the WETH contract.
      */
     function _translateToIERC20(IAsset asset) internal view returns (IERC20) {
-        return _isETH(asset) ? _WETH : _asIERC20(asset);
+        return _isETH(asset) ? _WETH() : _asIERC20(asset);
     }
 
     /**
      * @dev Same as `_translateToIERC20(IAsset)`, but for an entire array.
      */
-    function _translateToIERC20(IAsset[] memory assets) internal view returns (IERC20[] memory tokens) {
-        tokens = new IERC20[](assets.length);
+    function _translateToIERC20(IAsset[] memory assets) internal view returns (IERC20[] memory) {
+        IERC20[] memory tokens = new IERC20[](assets.length);
         for (uint256 i = 0; i < assets.length; ++i) {
             tokens[i] = _translateToIERC20(assets[i]);
         }
+        return tokens;
     }
 
     /**

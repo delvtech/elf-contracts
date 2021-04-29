@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../lib/openzeppelin/IERC20.sol";
 
 import "../vault/interfaces/IVault.sol";
 import "../lib/helpers/InputHelpers.sol";
@@ -35,20 +35,31 @@ contract MockInternalBalanceRelayer {
     ) public {
         InputHelpers.ensureInputLengthMatch(depositAmounts.length, withdrawAmounts.length);
         for (uint256 i = 0; i < depositAmounts.length; i++) {
-            IVault.AssetBalanceTransfer[] memory deposit = _buildBalanceTransfer(sender, asset, depositAmounts[i]);
-            vault.depositToInternalBalance(deposit);
+            IVault.UserBalanceOp[] memory deposit = _buildUserBalanceOp(
+                IVault.UserBalanceOpKind.DEPOSIT_INTERNAL,
+                sender,
+                asset,
+                depositAmounts[i]
+            );
+            vault.manageUserBalance(deposit);
 
-            IVault.AssetBalanceTransfer[] memory withdraw = _buildBalanceTransfer(sender, asset, withdrawAmounts[i]);
-            vault.withdrawFromInternalBalance(withdraw);
+            IVault.UserBalanceOp[] memory withdraw = _buildUserBalanceOp(
+                IVault.UserBalanceOpKind.WITHDRAW_INTERNAL,
+                sender,
+                asset,
+                withdrawAmounts[i]
+            );
+            vault.manageUserBalance(withdraw);
         }
     }
 
-    function _buildBalanceTransfer(
+    function _buildUserBalanceOp(
+        IVault.UserBalanceOpKind kind,
         address payable sender,
         IAsset asset,
         uint256 amount
-    ) internal pure returns (IVault.AssetBalanceTransfer[] memory transfers) {
-        transfers = new IVault.AssetBalanceTransfer[](1);
-        transfers[0] = IVault.AssetBalanceTransfer({ asset: asset, amount: amount, sender: sender, recipient: sender });
+    ) internal pure returns (IVault.UserBalanceOp[] memory ops) {
+        ops = new IVault.UserBalanceOp[](1);
+        ops[0] = IVault.UserBalanceOp({ asset: asset, amount: amount, sender: sender, recipient: sender, kind: kind });
     }
 }

@@ -1,5 +1,5 @@
-# Dirrectly cloned from the script in elf frontend
 #!/bin/bash
+# Directly cloned from the script in elf frontend
 rm -rf balancer-core-v2
 
 echo "Downloading contracts..."
@@ -14,10 +14,9 @@ fi
 rm -rf contracts/balancer-core-v2
 
 echo "Copying latest contracts..."
-cp -R balancer-core-v2/contracts contracts
-mv contracts/contracts contracts/balancer-core-v2
+mv balancer-core-v2/contracts contracts/balancer-core-v2
 
 echo "Removing unused balancer code"
-rm -r balancer-core-v2
+rm -rf balancer-core-v2
 
 echo "Done!"

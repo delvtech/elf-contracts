@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../InterestToken.sol";
+import "../libraries/DateString.sol";
 
 interface ITrancheFactory {
     function getData()
@@ -9,6 +10,7 @@ interface ITrancheFactory {
         returns (
             address,
             uint256,
-            InterestToken
+            InterestToken,
+            address
         );
 }

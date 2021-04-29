@@ -24,8 +24,12 @@ contract InterestToken is ERC20Permit, IInterestToken {
         tranche = ITranche(_tranche);
         _setupDecimals(_decimals);
         // Write the strategySymbol and expiration time to name and symbol
-        DateString.encodeAndWriteTimestamp(_strategySymbol, _timestamp, name);
-        DateString.encodeAndWriteTimestamp(_strategySymbol, _timestamp, symbol);
+        DateString._encodeAndWriteTimestamp(_strategySymbol, _timestamp, name);
+        DateString._encodeAndWriteTimestamp(
+            _strategySymbol,
+            _timestamp,
+            symbol
+        );
     }
 
     /// @dev Aliasing of the lookup method for the supply of yield tokens which

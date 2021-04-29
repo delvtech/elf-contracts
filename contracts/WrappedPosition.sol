@@ -135,25 +135,25 @@ abstract contract WrappedPosition is ERC20Permit, IWrappedPosition {
     /// @param _destination The address to send the output to
     /// @param _amount The amount of underlying to try to redeem for
     /// @param _minUnderlying The minium underlying to receive
-    /// @return The amount of underlying released
+    /// @return The amount of underlying released, and shares used
     function withdrawUnderlying(
         address _destination,
         uint256 _amount,
         uint256 _minUnderlying
-    ) external override returns (uint256) {
+    ) external override returns (uint256, uint256) {
         // First we load the number of underlying per unit of Wrapped Position token
         uint256 oneUnit = 10**decimals;
         uint256 underlyingPerShare = _underlying(oneUnit);
         // Then we calculate the number of shares we need
         uint256 shares = (_amount * oneUnit) / underlyingPerShare;
         // Using this we call the normal withdraw function
-        return
-            _positionWithdraw(
-                _destination,
-                shares,
-                _minUnderlying,
-                underlyingPerShare
-            );
+        uint256 underlyingReceived = _positionWithdraw(
+            _destination,
+            shares,
+            _minUnderlying,
+            underlyingPerShare
+        );
+        return (underlyingReceived, shares);
     }
 
     /// @notice This internal function allows the caller to provide a precomputed 'underlyingPerShare'

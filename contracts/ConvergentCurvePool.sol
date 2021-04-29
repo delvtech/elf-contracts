@@ -47,9 +47,6 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     uint256 internal immutable bondIndex;
     /* solhint-enable private-vars-leading-underscore */
 
-    // This is an error factor allowed in some fixed point operations
-    // Equivalent to 10^-6 ie 0.0001% in 18 point fixed.
-    uint256 public constant EPSILON = 1e12;
     // The max percent fee for governance, immutable after compilation
     uint256 public constant FEE_BOUND = 3e17;
 
@@ -229,7 +226,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     /// @dev Hook for joining the pool that must be called from the vault.
     ///      It mints a proportional number of tokens compared to current LP pool,
     ///      based on the maximum input the user indicates.
-    // @param poolId Unused by this pool but in interface
+    /// @param poolId The balancer pool id, checked to ensure non erroneous vault call
     // @param sender Unused by this pool but in interface
     /// @param recipient The address which will receive lp tokens.
     /// @param currentBalances The current pool balances, sorted by address low to high.  length 2
@@ -240,7 +237,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     /// @return amountsIn The actual amounts of token the vault should move to this pool
     /// @return dueProtocolFeeAmounts The amounts of each token to pay as protocol fees
     function onJoinPool(
-        bytes32, // poolId
+        bytes32 poolId,
         address, // sender
         address recipient,
         uint256[] calldata currentBalances,
@@ -257,6 +254,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     {
         // Default checks
         require(msg.sender == address(_vault), "Non Vault caller");
+        require(poolId == _poolId, "Wrong pool id");
         uint256[] memory maxAmountsIn = abi.decode(userData, (uint256[]));
         require(
             currentBalances.length == 2 && maxAmountsIn.length == 2,
@@ -298,7 +296,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     /// @dev Hook for leaving the pool that must be called from the vault.
     ///      It burns a proportional number of tokens compared to current LP pool,
     ///      based on the minium output the user wants.
-    // @param poolId Unused by this pool but in interface
+    /// @param poolId The balancer pool id, checked to ensure non erroneous vault call
     // @param sender Unused by this pool but in interface
     /// @param recipient The address which will receive the withdraw tokens.
     /// @param currentBalances The current pool balances, sorted by address low to high.  length 2
@@ -309,7 +307,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     /// @return amountsOut The number of each token to send to the caller
     /// @return dueProtocolFeeAmounts The amounts of each token to pay as protocol fees
     function onExitPool(
-        bytes32,
+        bytes32 poolId,
         address,
         address recipient,
         uint256[] calldata currentBalances,
@@ -326,6 +324,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     {
         // Default checks
         require(msg.sender == address(_vault), "Non Vault caller");
+        require(poolId == _poolId, "Wrong pool id");
         uint256[] memory minAmountsOut = abi.decode(userData, (uint256[]));
         require(
             currentBalances.length == 2 && minAmountsOut.length == 2,

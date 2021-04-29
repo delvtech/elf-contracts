@@ -213,6 +213,12 @@ abstract contract ERC20Permit is IERC20Permit {
             deadline == 0 || block.timestamp <= deadline,
             "ERC20: permit-expired"
         );
+        // Format the signature to the default format
+        require(
+            uint256(s) <=
+                0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0,
+            "ERC20: invalid signature 's' value"
+        );
         // Increment the signature nonce to prevent replay
         nonces[owner]++;
         // Set the allowance to the new value

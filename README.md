@@ -39,6 +39,7 @@ git clone git@github.com:element-fi/elf-contracts.git
 ```
 cd elf-contracts
 npm install
+npm run load-contracts
 ```
 
 ### 3. Build

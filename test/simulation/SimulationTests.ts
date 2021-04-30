@@ -114,7 +114,7 @@ describe("ConvergentCurvePoolErrSim", function () {
             // Misc data
             poolId:
               "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
-            latestBlockNumberUsed: BigNumber.from(0),
+            lastChangeBlock: BigNumber.from(0),
             from: fakeAddress,
             to: fakeAddress,
             userData: "0x",

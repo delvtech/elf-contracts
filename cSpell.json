@@ -76,7 +76,8 @@
         "Yasset",
         "ytoken",
         "yusdc",
-        "yweth"
+        "yweth",
+        "speedbump"
     ],
     "enabledLanguageIds": [
         "asciidoc",

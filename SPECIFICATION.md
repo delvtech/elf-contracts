@@ -12,11 +12,11 @@ The YVaultAssetProxy contract is the implementation of a wrapped yearn position,
 
 ## Tranche
 
-The Tranche contract facilitates the locking and splitting functionality of the protocol, underlying tokens are deposited into it and the tranche mints Principal tokens and Yield tokens to an account indicated by the depositor. The Tranche contract also inherits an ERC20 library and is the Principal token address. It will have a symbol of `ELF:$wrapped_position_symbol$:$expiration time$ eg. ELF:wyUSDC:16-FEB-21`.
+The Tranche contract facilitates the locking and splitting functionality of the protocol, underlying tokens are deposited into it and the tranche mints Principal tokens and Yield tokens to an account indicated by the depositor. The Tranche contract also inherits an ERC20 library and is the Principal token address. It will have a symbol of `eP:$wrapped_position_symbol$:$expiration time$ eg. eP:wyUSDC:16-FEB-21-GMT`.
 
 Deposits are open at any time before the expiration of the Tranche but late entries will receive fewer Principal tokens to pay for outstanding yield. The formula for the discount per unit deposited is the accumulated yield divided by the number of Yield tokens. Deposits cannot be made to Tranches that have accumulated more than 100% yield as it is not possible to discount the Principal token enough to pay for accumulated yield. Deposits also cannot be made after the Tranche unlock timestamp has passed.
 
-*Important Note:* the Tranche contract does not handle the case of negative return gracefully. Do not integrate it with any yield strategy which can lose funds.
+*Important Note:* If the tranche contract's underlying has accumulated negative interest (ie lost money) the tranche cannot process withdraws until a function called speedbump is called. Once the speedbump has been hit the tranche can only process negative interest rate redemptions 48 hours after the speedbump was hit, but can continue to process any positive interest rate redemptions. If the speedbump is hit and it has been 48 hours and the yield position still has a loss, then principal tokens can be redeemed pro rata for any remaining funds. The speedbump can only be hit once. No integration should incur losses as part of a normal course of operations.
 
 ### Tranche Factory
 
@@ -24,7 +24,7 @@ The Tranche contract is deployed via [create2](https://eips.ethereum.org/EIPS/ei
 
 ### Yield Token
 
-The Yield token contract is deployed by the tranche contract and is a standard ERC20 except that the Tranche contract can mint or burn from it. It will have a symbol of `ELV:$wrapped_position_symbol$:$expiration time$ eg. ELV:wyUSDC:16-FEB-21`. Please note that in the code, the Yield token is referred to as Interest Token.
+The Yield token contract is deployed by the tranche contract and is a standard ERC20 except that the Tranche contract can mint or burn from it. It will have a symbol of `eY:$wrapped_position_symbol$:$expiration` time$ eg. `eY:wyUSDC:16-FEB-21-GMT`. Please note that in the code, the Yield token is referred to as Interest Token.
 
 ## User Proxy
 

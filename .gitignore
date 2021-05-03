@@ -10,3 +10,5 @@ coverage.json
 coverage/
 contracts/balancer-core-v2
 balancer-core-v2
+test/simulation/analysis/
+testTrades.json

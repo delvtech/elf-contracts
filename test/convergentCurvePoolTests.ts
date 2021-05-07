@@ -3,7 +3,7 @@ import "module-alias/register";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import chai, { expect } from "chai";
 import chaiAlmost from "chai-almost";
-import { BigNumber, providers } from "ethers";
+import { BigNumber, BigNumberish, providers } from "ethers";
 import { formatEther } from "ethers/lib/utils";
 import { ethers, network, waffle } from "hardhat";
 import { deployBalancerVault } from "test/helpers/deployBalancerVault";
@@ -620,23 +620,37 @@ describe("ConvergentCurvePool", function () {
       const poolId = await poolContract.getPoolId();
       // First create some pretend fees
       const ten = ethers.utils.parseUnits("10", 18);
-      const five = ethers.utils.parseUnits("5", 18);
       // Mint some lp to avoid init case
       await poolContract.setLPBalance(tokenSigner.address, 1);
       // We set the accumulated fees
       await poolContract.setFees(ten, ten);
+
+      const bondFirst = BigNumber.from(bondAssetContract.address).lt(
+        BigNumber.from(baseAssetContract.address)
+      );
+      const bondIndex = bondFirst ? 0 : 1;
+      const baseIndex = bondFirst ? 1 : 0;
+      const reserves: BigNumberish[] = [0, 0];
+      reserves[bondIndex] = ethers.utils.parseUnits("50", BOND_DECIMALS);
+      reserves[baseIndex] = ethers.utils.parseUnits("100", BASE_DECIMALS);
+      const lp_deposit: BigNumberish[] = [0, 0];
+      lp_deposit[bondIndex] = ethers.utils.parseUnits("5", BOND_DECIMALS);
+      lp_deposit[baseIndex] = ethers.utils.parseUnits("10", BASE_DECIMALS);
+
       // Mint some LP
       let data = await aliasedVault.callStatic.onJoinPool(
         poolId,
         fakeAddress,
         tokenSigner.address,
         // Pool reserves are [100, 50]
-        [ten.mul(10), five.mul(10)],
+        reserves,
         0,
         ethers.utils.parseEther("0.1"),
-        ethers.utils.defaultAbiCoder.encode(
-          ["uint256[]"],
-          [[ten.mul(10), five.mul(10)]]
+        ethers.utils.defaultAbiCoder.encode(["uint256[]"], [lp_deposit])
+      );
+      console.log(
+        BigNumber.from(bondAssetContract.address).lt(
+          BigNumber.from(baseAssetContract.address)
         )
       );
       // Check the returned fees
@@ -644,19 +658,17 @@ describe("ConvergentCurvePool", function () {
       expect(data[1][1]).to.be.eq(
         ethers.utils.parseUnits("0.5", BOND_DECIMALS)
       );
+      console.log("passed check 1");
       // We run the call but state changing
       await aliasedVault.onJoinPool(
         poolId,
         fakeAddress,
         tokenSigner.address,
         // Pool reserves are [100, 50]
-        [ten.mul(10), five.mul(10)],
+        reserves,
         0,
         ethers.utils.parseEther("0.1"),
-        ethers.utils.defaultAbiCoder.encode(
-          ["uint256[]"],
-          [[ten.mul(10), five.mul(10)]]
-        )
+        ethers.utils.defaultAbiCoder.encode(["uint256[]"], [lp_deposit])
       );
       // We check the state
       expect(await poolContract.feesUnderlying()).to.be.eq(0);
@@ -669,14 +681,11 @@ describe("ConvergentCurvePool", function () {
         poolId,
         fakeAddress,
         tokenSigner.address,
-        // Pool reserves are [100, 25]
-        [ten.mul(10), five.mul(10)],
+        // Pool reserves are [100, 50]
+        reserves,
         0,
         ethers.utils.parseEther("0.1"),
-        ethers.utils.defaultAbiCoder.encode(
-          ["uint256[]"],
-          [[ten.mul(10), five.mul(10)]]
-        )
+        ethers.utils.defaultAbiCoder.encode(["uint256[]"], [lp_deposit])
       );
       // Check the returned fees
       expect(data[1][0]).to.be.eq(0);

@@ -17,6 +17,8 @@ import { TestUserProxy__factory } from "typechain/factories/TestUserProxy__facto
 import { InterestToken__factory } from "typechain/factories/InterestToken__factory";
 import { InterestTokenFactory__factory } from "typechain/factories/InterestTokenFactory__factory";
 import { YVaultAssetProxy__factory } from "typechain/factories/YVaultAssetProxy__factory";
+import { ZapYearnShares__factory } from "typechain/factories/ZapYearnShares__factory";
+import { ZapYearnShares } from "typechain/ZapYearnShares";
 import { IERC20 } from "typechain/IERC20";
 import { IWETH } from "typechain/IWETH";
 import { IYearnVault } from "typechain/IYearnVault";
@@ -64,6 +66,15 @@ export interface TrancheTestFixture {
   positionStub: TestWrappedPosition;
   tranche: Tranche;
   interestToken: InterestToken;
+}
+
+export interface YearnShareZapInterface {
+  sharesZapper: ZapYearnShares;
+  signer: Signer;
+  usdc: IERC20;
+  yusdc: IYearnVault;
+  position: YVaultAssetProxy;
+  tranche: Tranche;
 }
 
 const deployTestWrappedPosition = async (signer: Signer, address: string) => {
@@ -251,6 +262,7 @@ export async function loadUsdcPoolMainnetFixture() {
     proxy,
   };
 }
+
 export async function loadTestTrancheFixture() {
   const [signer] = await ethers.getSigners();
   const testTokenDeployer = new TestERC20__factory(signer);
@@ -280,5 +292,47 @@ export async function loadTestTrancheFixture() {
     positionStub,
     tranche,
     interestToken,
+  };
+}
+export async function loadYearnShareZapFixture() {
+  const usdcAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+  const yusdcAddress = "0x5f18C75AbDAe578b483E5F43f12a39cF75b973a9";
+  const [signer] = await ethers.getSigners();
+
+  const usdc = IERC20__factory.connect(usdcAddress, signer);
+  const yusdc = IYearnVault__factory.connect(yusdcAddress, signer);
+  const position = await deployYasset(
+    signer,
+    yusdc.address,
+    usdc.address,
+    "Element Yearn USDC",
+    "eyUSDC"
+  );
+  // deploy and fetch tranche contract
+  const trancheFactory = await deployTrancheFactory(signer);
+  await trancheFactory.deployTranche(1e10, position.address);
+  const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
+  const events = await trancheFactory.queryFilter(eventFilter);
+  const trancheAddress = events[0] && events[0].args && events[0].args[0];
+  const tranche = Tranche__factory.connect(trancheAddress, signer);
+  // Setup the proxy
+  const bytecodehash = ethers.utils.solidityKeccak256(
+    ["bytes"],
+    [data.bytecode]
+  );
+
+  const deployer = new ZapYearnShares__factory(signer);
+  const sharesZapper = await deployer.deploy(
+    trancheFactory.address,
+    bytecodehash
+  );
+
+  return {
+    sharesZapper,
+    signer,
+    usdc,
+    yusdc,
+    position,
+    tranche,
   };
 }

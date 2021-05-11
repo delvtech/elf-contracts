@@ -49,6 +49,9 @@ abstract contract ERC20Permit is IERC20Permit {
         balanceOf[address(0)] = type(uint256).max;
         balanceOf[address(this)] = type(uint256).max;
 
+        // Optional extra state manipulation
+        extraConstruction();
+
         // Computes the EIP 712 domain separator which prevents user signed messages for
         // this contract to be replayed in other contracts.
         // https://eips.ethereum.org/EIPS/eip-712
@@ -64,6 +67,9 @@ abstract contract ERC20Permit is IERC20Permit {
             )
         );
     }
+
+    /// @notice An optional override function to execute and change state before immutable assignment
+    function _extraConstruction() internal virtual {}
 
     // --- Token ---
     /// @notice Allows a token owner to send tokens to another address

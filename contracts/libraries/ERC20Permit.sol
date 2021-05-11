@@ -50,7 +50,7 @@ abstract contract ERC20Permit is IERC20Permit {
         balanceOf[address(this)] = type(uint256).max;
 
         // Optional extra state manipulation
-        extraConstruction();
+        _extraConstruction();
 
         // Computes the EIP 712 domain separator which prevents user signed messages for
         // this contract to be replayed in other contracts.

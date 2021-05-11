@@ -16,7 +16,7 @@ import data from "../artifacts/contracts/Tranche.sol/Tranche.json";
 
 const { provider } = waffle;
 
-describe.only("zapYearnShares", () => {
+describe("zapYearnShares", () => {
   let users: { user: Signer; address: string }[];
   let fixture: YearnShareZapInterface;
 

@@ -5,7 +5,6 @@ import "../interfaces/IYearnVaultV2.sol";
 import "../libraries/Authorizable.sol";
 import "../interfaces/IERC20.sol";
 import "../interfaces/ITranche.sol";
-import "hardhat/console.sol";
 
 contract ZapYearnShares is Authorizable {
     // Store the accessibility state of the contract
@@ -51,7 +50,8 @@ contract ZapYearnShares is Authorizable {
         IYearnVault _vault,
         uint256 _amount,
         uint256 _expiration,
-        address _position
+        address _position,
+        uint256 _ptExpected
     ) external notFrozen() returns (uint256, uint256) {
         _vault.transferFrom(msg.sender, address(this), _amount);
         _vault.withdraw(_amount, _position, 0);
@@ -62,7 +62,8 @@ contract ZapYearnShares is Authorizable {
         (uint256 ptMinted, uint256 ytMinted) = tranche.prefundedDeposit(
             msg.sender
         );
-        require(ytMinted >= balance, "Not enough minted");
+        require(ytMinted >= balance, "Not enough YT minted");
+        require(ptMinted >= _ptExpected, "Not enough PT minted");
         return (ptMinted, ytMinted);
     }
 

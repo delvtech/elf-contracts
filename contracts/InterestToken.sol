@@ -20,16 +20,52 @@ contract InterestToken is ERC20Permit, IInterestToken {
         string memory _strategySymbol,
         uint256 _timestamp,
         uint8 _decimals
-    ) ERC20Permit("Element Yield Token ", "eY:") {
+    )
+        ERC20Permit(
+            _processName("Element Yield Token ", _strategySymbol, _timestamp),
+            _processSymbol("eY:", _strategySymbol, _timestamp)
+        )
+    {
         tranche = ITranche(_tranche);
         _setupDecimals(_decimals);
-        // Write the strategySymbol and expiration time to name and symbol
+    }
+
+    /// @notice We use this function to add the date to the name string
+    /// @param _name start of the name
+    /// @param _strategySymbol the strategy symbol
+    /// @param _timestamp the unix second timestamp to be encoded and added to the end of the string
+    function _processName(
+        string memory _name,
+        string memory _strategySymbol,
+        uint256 _timestamp
+    ) internal returns (string memory) {
+        // Set the name in the super
+        name = _name;
+        // Use the library to write the rest
         DateString._encodeAndWriteTimestamp(_strategySymbol, _timestamp, name);
+        // load and return the name
+        return name;
+    }
+
+    /// @notice We use this function to add the date to the name string
+    /// @param _symbol start of the symbol
+    /// @param _strategySymbol the strategy symbol
+    /// @param _timestamp the unix second timestamp to be encoded and added to the end of the string
+    function _processSymbol(
+        string memory _symbol,
+        string memory _strategySymbol,
+        uint256 _timestamp
+    ) internal returns (string memory) {
+        // Set the symbol in the super
+        symbol = _symbol;
+        // Use the library to write the rest
         DateString._encodeAndWriteTimestamp(
             _strategySymbol,
             _timestamp,
             symbol
         );
+        // load and return the name
+        return symbol;
     }
 
     /// @dev Aliasing of the lookup method for the supply of yield tokens which

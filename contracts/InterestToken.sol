@@ -15,6 +15,7 @@ contract InterestToken is ERC20Permit, IInterestToken {
     /// @param _tranche The tranche contract address
     /// @param _strategySymbol The symbol of the associated WrappedPosition contract
     /// @param _timestamp The unlock time on the tranche
+    /// @param _decimals The decimal encoding for this token
     constructor(
         address _tranche,
         string memory _strategySymbol,

@@ -63,7 +63,7 @@ describe("zapYearnShares", () => {
     afterEach(async () => {
       await restoreSnapshot(provider);
     });
-    it("should correctly zap shares in", async () => {
+    it("should fail with incorrect PT expected", async () => {
       // deposit value directly into the yearn vault
       await fixture.usdc
         .connect(users[1].user)
@@ -78,6 +78,32 @@ describe("zapYearnShares", () => {
       await fixture.yusdc
         .connect(users[1].user)
         .approve(fixture.sharesZapper.address, shares);
+      const tx = fixture.sharesZapper
+        .connect(users[1].user)
+        .zapSharesIn(
+          fixture.usdc.address,
+          fixture.yusdc.address,
+          shares,
+          expiration,
+          fixture.position.address,
+          shares.mul(2)
+        );
+      await expect(tx).to.be.revertedWith("Not enough PT minted");
+    });
+    it("should correctly zap shares in", async () => {
+      // deposit value directly into the yearn vault
+      await fixture.usdc
+        .connect(users[1].user)
+        .approve(fixture.yusdc.address, 2e11);
+      await fixture.yusdc
+        .connect(users[1].user)
+        .deposit(2e11, users[1].address);
+      const shares = await fixture.yusdc.balanceOf(users[1].address);
+      // zap shares into PT and YT
+      const expiration = (await fixture.tranche.unlockTimestamp()).toNumber();
+      await fixture.yusdc
+        .connect(users[1].user)
+        .approve(fixture.sharesZapper.address, shares);
       await fixture.sharesZapper
         .connect(users[1].user)
         .zapSharesIn(
@@ -86,9 +112,8 @@ describe("zapYearnShares", () => {
           shares,
           expiration,
           fixture.position.address,
-          0
+          shares
         );
-
       const pricePerFullShare = await fixture.yusdc.pricePerShare();
       const balance = (
         await (await fixture.yusdc.balanceOf(fixture.position.address)).mul(

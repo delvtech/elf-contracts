@@ -45,18 +45,16 @@ contract ZapYearnShares is Authorizable {
     /// @param _amount The amount of yearn shares to turn into tokens
     /// @param _expiration The expiration time of the Tranche contract.
     /// @param _position The contract which manages pooled deposits.
-    /// @param _maxLoss The maximum acceptable loss to sustain on withdrawal.
     /// @return returns the minted amounts of principal and yield tokens (PT and YT)
     function zapSharesIn(
         IERC20 _underlying,
         IYearnVault _vault,
         uint256 _amount,
         uint256 _expiration,
-        address _position,
-        uint256 _maxLoss
+        address _position
     ) external notFrozen() returns (uint256, uint256) {
         _vault.transferFrom(msg.sender, address(this), _amount);
-        _vault.withdraw(_amount, address(this), _maxLoss);
+        _vault.withdraw(_amount, address(this), 0);
 
         ITranche tranche = _deriveTranche(address(_position), _expiration);
         uint256 balance = _underlying.balanceOf(address(this));

@@ -54,13 +54,10 @@ contract ZapYearnShares is Authorizable {
         address _position
     ) external notFrozen() returns (uint256, uint256) {
         _vault.transferFrom(msg.sender, address(this), _amount);
-        _vault.withdraw(_amount, address(this), 0);
+        _vault.withdraw(_amount, _position, 0);
 
         ITranche tranche = _deriveTranche(address(_position), _expiration);
-        uint256 balance = _underlying.balanceOf(address(this));
-
-        // ETH vault returns WETH so no need to ETH-specific logic.
-        _underlying.transfer(address(_position), balance);
+        uint256 balance = _underlying.balanceOf(_position);
 
         (uint256 ptMinted, uint256 ytMinted) = tranche.prefundedDeposit(
             msg.sender

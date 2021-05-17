@@ -16,7 +16,7 @@ For a technical contract overview please read our [specification](https://github
 
 The code in this repository's main branch is deployed to the Ethereum blockchain and cannot be changed. Despite that, the Element community is engaged in the active development of new features and code fixes which are an extension of this code. If you have a suggestion for a new feature, extension, or cool use case and want to help the community, drop by the dev channel in our [discord](https://discord.com/invite/JpctS728r9) to discuss and you will have a warm welcome!
 
-For non-security-critical bugs, you can open a public issue on this repository, but please follow our issue guidelines. For any security-related critical bugs please report to security@element.fi and follow responsible disclosure standards since these contracts are likely to hold high-value cryptocurrency. If you do find a bug there is a Bug Bounty program funded by Element Finance [here](https://element.fi/security). 
+For non-security-critical bugs, you can open a public issue on this repository, but please follow our issue guidelines. For any security-related critical bugs please report to security@element.fi and follow responsible disclosure standards since these contracts are likely to hold high-value cryptocurrency. If you do find a bug there is a Bug Bounty program funded by Element Finance [here](https://element.fi/security). Additionally, the Element Finance Bug Bounty program has been extended to the [Immunefi platform](https://immunefi.com/bounty/elementfinance/).
 
 ## Integrations and Code Contributions
 

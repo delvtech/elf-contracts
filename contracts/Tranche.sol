@@ -46,14 +46,14 @@ contract Tranche is ERC20Permit, ITranche {
             address wpAddress,
             uint256 expiration,
             IInterestToken interestTokenTemp,
-            address dateLib
+            // solhint-disable-next-line
+            address unused
         ) = trancheFactory.getData();
         interestToken = interestTokenTemp;
 
         IWrappedPosition wpContract = IWrappedPosition(wpAddress);
         position = wpContract;
 
-        string memory strategySymbol = wpContract.symbol();
         // Store the immutable time variables
         unlockTimestamp = expiration;
         // We use local because immutables are not readable in construction
@@ -64,6 +64,22 @@ contract Tranche is ERC20Permit, ITranche {
         _underlyingDecimals = localUnderlyingDecimals;
         // And set this contract to have the same
         _setupDecimals(localUnderlyingDecimals);
+    }
+
+    /// @notice We override the optional extra construction function from ERC20 to change names
+    function _extraConstruction() internal override {
+        // Assume the caller is the Tranche factory and that this is called from constructor
+        // We have to do this double load because of the lack of flexibility in constructor ordering
+        ITrancheFactory trancheFactory = ITrancheFactory(msg.sender);
+        (
+            address wpAddress,
+            uint256 expiration,
+            // solhint-disable-next-line
+            IInterestToken unused,
+            address dateLib
+        ) = trancheFactory.getData();
+
+        string memory strategySymbol = IWrappedPosition(wpAddress).symbol();
 
         // Write the strategySymbol and expiration time to name and symbol
 

@@ -648,17 +648,11 @@ describe("ConvergentCurvePool", function () {
         ethers.utils.parseEther("0.1"),
         ethers.utils.defaultAbiCoder.encode(["uint256[]"], [lp_deposit])
       );
-      console.log(
-        BigNumber.from(bondAssetContract.address).lt(
-          BigNumber.from(baseAssetContract.address)
-        )
-      );
       // Check the returned fees
       expect(data[1][0]).to.be.eq(ethers.utils.parseUnits("1", BASE_DECIMALS));
       expect(data[1][1]).to.be.eq(
         ethers.utils.parseUnits("0.5", BOND_DECIMALS)
       );
-      console.log("passed check 1");
       // We run the call but state changing
       await aliasedVault.onJoinPool(
         poolId,

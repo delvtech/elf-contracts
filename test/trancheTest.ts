@@ -6,6 +6,8 @@ import { loadTestTrancheFixture, TrancheTestFixture } from "./helpers/deployer";
 import { bnFloatMultiplier, subError } from "./helpers/math";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 import { advanceTime, getCurrentTimestamp } from "./helpers/time";
+import { getPermitSignature } from "./helpers/signatures";
+import { ERC20Permit } from "typechain/ERC20Permit";
 
 const { provider } = waffle;
 
@@ -43,6 +45,62 @@ describe("Tranche", () => {
   after(async () => {
     // revert back to initial state after all tests pass
     await restoreSnapshot(provider);
+  });
+  describe("permit", () => {
+    it("pt allows valid permit call", async () => {
+      const erc20Tranche = fixture.tranche as ERC20Permit;
+      const signerAddress = await user1.getAddress();
+      const spenderAddress = await user2.getAddress();
+      const sig = await getPermitSignature(
+        erc20Tranche,
+        signerAddress,
+        spenderAddress,
+        ethers.constants.MaxUint256,
+        "1"
+      );
+
+      await fixture.tranche
+        .connect(user2)
+        .permit(
+          signerAddress,
+          spenderAddress,
+          ethers.constants.MaxUint256,
+          ethers.constants.MaxUint256,
+          sig.v,
+          sig.r,
+          sig.s
+        );
+      expect(
+        await fixture.tranche.allowance(signerAddress, spenderAddress)
+      ).to.be.eq(ethers.constants.MaxUint256);
+    });
+    it("yt allows valid permit call", async () => {
+      const erc20YT = fixture.interestToken as ERC20Permit;
+      const signerAddress = await user1.getAddress();
+      const spenderAddress = await user2.getAddress();
+      const sig = await getPermitSignature(
+        erc20YT,
+        signerAddress,
+        spenderAddress,
+        ethers.constants.MaxUint256,
+        "1"
+      );
+
+      await fixture.interestToken
+        .connect(user2)
+        .permit(
+          signerAddress,
+          spenderAddress,
+          ethers.constants.MaxUint256,
+          ethers.constants.MaxUint256,
+          sig.v,
+          sig.r,
+          sig.s
+        );
+      expect(
+        await fixture.interestToken.allowance(signerAddress, spenderAddress)
+      ).to.be.eq(ethers.constants.MaxUint256);
+    });
   });
   describe("deposit", () => {
     beforeEach(async () => {

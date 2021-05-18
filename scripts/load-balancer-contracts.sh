@@ -8,6 +8,9 @@ if [ ! -z "$1" ] && [ $1="local" ]; then
     ln -sf ../../balancer-core-v2 .
 else
     git clone https://github.com/balancer-labs/balancer-core-v2.git
+    cd balancer-core-v2 \
+    && git checkout f153c38c5ee8911680363eaf52aad0d691896a75 \
+    && cd ..
 fi
 
 # blow away old-contracts

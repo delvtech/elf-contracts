@@ -44,6 +44,7 @@ contract ZapYearnShares is Authorizable {
     /// @param _amount The amount of yearn shares to turn into tokens
     /// @param _expiration The expiration time of the Tranche contract.
     /// @param _position The contract which manages pooled deposits.
+    /// @param _ptExpected The minimum amount of principal tokens to mint.
     /// @return returns the minted amounts of principal and yield tokens (PT and YT)
     function zapSharesIn(
         IERC20 _underlying,

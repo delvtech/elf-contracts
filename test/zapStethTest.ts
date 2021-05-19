@@ -13,7 +13,7 @@ import { subError, bnFloatMultiplier } from "./helpers/math";
 
 const { provider } = waffle;
 
-describe.only("zap-stethCRV-Mainnet", () => {
+describe("zap-stethCRV-Mainnet", () => {
   let users: { user: Signer; address: string }[];
   let fixture: StethPoolMainnetInterface;
   let stethSigner: Signer;
@@ -53,16 +53,6 @@ describe.only("zap-stethCRV-Mainnet", () => {
       .connect(users[1].user)
       .approve(fixture.zapper.address, ethers.constants.MaxUint256);
   });
-  // after(async () => {
-  //     // revert back to initial state after all tests pass
-  //     await restoreSnapshot(provider);
-  // });
-  // beforeEach(async () => {
-  //     await createSnapshot(provider);
-  // });
-  // afterEach(async () => {
-  //     await restoreSnapshot(provider);
-  // });
 
   describe("zapEthIn", () => {
     beforeEach(async () => {
@@ -153,37 +143,6 @@ describe.only("zap-stethCRV-Mainnet", () => {
     });
     afterEach(async () => {
       await restoreSnapshot(provider);
-    });
-    it("should fail if slippage is too high", async () => {
-      // const inputValue = ethers.utils.parseEther("50")
-      // await fixture.zapper.connect(users[1].user).zapEthIn(
-      //     inputValue,
-      //     1e10,
-      //     fixture.position.address,
-      //     500,
-      //     { value: inputValue }
-      // )
-      // const trancheValue = await fixture.tranche.balanceOf(users[1].address);
-      // // fast forward so we can withdraw
-      // advanceTime(provider, 1e10);
-      // await fixture.tranche.connect(users[1].user).transfer(fixture.zapper.address, trancheValue)
-      // const inputValue = ethers.utils.parseEther("300")
-      // await fixture.steth.connect(stethSigner).transfer(users[1].address, inputValue);
-      // await fixture.zapper.connect(users[1].user).zapStEthIn(
-      //     inputValue,
-      //     1e10,
-      //     fixture.position.address,
-      //     500
-      // )
-      // const trancheValue = await fixture.tranche.balanceOf(users[1].address);
-      // // fast forward so we can withdraw
-      // advanceTime(provider, 1e10);
-      // await fixture.tranche.hitSpeedbump()
-      // advanceTime(provider, 1e8);
-      // await fixture.tranche.connect(users[1].user).approve(fixture.zapper.address, trancheValue)
-      // await expect(
-      //     fixture.zapper.connect(users[1].user).zapOutEth(trancheValue, 1e10, fixture.position.address, 0, 0)
-      // ).to.be.revertedWith("TOO MUCH SLIPPAGE");
     });
     it("should correctly convert principal tokens to ETH using zapOutPrincipalEth", async () => {
       const inputValue = ethers.utils.parseEther("2");

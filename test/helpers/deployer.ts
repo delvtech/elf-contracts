@@ -19,6 +19,10 @@ import { InterestTokenFactory__factory } from "typechain/factories/InterestToken
 import { YVaultAssetProxy__factory } from "typechain/factories/YVaultAssetProxy__factory";
 import { ZapYearnShares__factory } from "typechain/factories/ZapYearnShares__factory";
 import { ZapYearnShares } from "typechain/ZapYearnShares";
+import { ZapSteth } from "typechain/ZapSteth";
+import { ZapSteth__factory } from "typechain/factories/ZapSteth__factory";
+import { ICurveFi } from "typechain/ICurveFi";
+import { ICurveFi__factory } from "typechain/factories/ICurveFi__factory";
 import { IERC20 } from "typechain/IERC20";
 import { IWETH } from "typechain/IWETH";
 import { IYearnVault } from "typechain/IYearnVault";
@@ -75,6 +79,17 @@ export interface YearnShareZapInterface {
   yusdc: IYearnVault;
   position: YVaultAssetProxy;
   tranche: Tranche;
+}
+
+export interface StethPoolMainnetInterface {
+  stableSwap: ICurveFi;
+  curveLp: IERC20;
+  steth: IERC20;
+  yvstecrv: IYearnVault;
+  position: YVaultAssetProxy;
+  tranche: Tranche;
+  zapper: ZapSteth;
+  interestToken: InterestToken;
 }
 
 const deployTestWrappedPosition = async (signer: Signer, address: string) => {
@@ -334,5 +349,60 @@ export async function loadYearnShareZapFixture() {
     yusdc,
     position,
     tranche,
+  };
+}
+export async function loadStethPoolMainnetFixture() {
+  const stETHaddress = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
+  const yvstecrvAddress = "0xdCD90C7f6324cfa40d7169ef80b12031770B4325";
+  const stethStableSwap = "0xDC24316b9AE028F1497c275EB9192a3Ea0f67022";
+  const lpTokenAddress = "0x06325440D014e39736583c165C2963BA99fAf14E";
+  const [signer] = await ethers.getSigners();
+
+  const stableSwap = ICurveFi__factory.connect(stethStableSwap, signer);
+
+  const curveLp = IERC20__factory.connect(lpTokenAddress, signer);
+
+  const steth = IERC20__factory.connect(stETHaddress, signer);
+  const yvstecrv = IYearnVault__factory.connect(yvstecrvAddress, signer);
+  const deployer = new ZapSteth__factory(signer);
+  const position = await deployYasset(
+    signer,
+    yvstecrv.address,
+    "0x06325440D014e39736583c165C2963BA99fAf14E",
+    "Element Yearn stETH",
+    "yvsteCRV"
+  );
+  // deploy tranche contract
+  const trancheFactory = await deployTrancheFactory(signer);
+  await trancheFactory.deployTranche(1e10, position.address);
+
+  const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
+  const events = await trancheFactory.queryFilter(eventFilter);
+
+  // fetch tranche contract
+  const trancheAddress = events[0] && events[0].args && events[0].args[0];
+  const tranche = Tranche__factory.connect(trancheAddress, signer);
+  // fetch yield token
+  const interestTokenAddress = await tranche.interestToken();
+  const interestToken = InterestToken__factory.connect(
+    interestTokenAddress,
+    signer
+  );
+
+  const bytecodehash = ethers.utils.solidityKeccak256(
+    ["bytes"],
+    [data.bytecode]
+  );
+  // Setup the zapper
+  const zapper = await deployer.deploy(trancheFactory.address, bytecodehash);
+  return {
+    stableSwap,
+    curveLp,
+    steth,
+    yvstecrv,
+    position,
+    tranche,
+    zapper,
+    interestToken,
   };
 }

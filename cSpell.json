@@ -44,6 +44,7 @@
         "nomiclabs",
         "Numberish",
         "openzepplin",
+        "pausable",
         "permissionless",
         "pool",
         "prefunded",
@@ -61,6 +62,7 @@
         "SPDX",
         "sstore",
         "staticcall",
+        "steth",
         "streetsidesoftware",
         "struct",
         "structs",
@@ -76,6 +78,7 @@
         "Yasset",
         "ytoken",
         "yusdc",
+        "yvstecrv",
         "yweth",
         "speedbump"
     ],

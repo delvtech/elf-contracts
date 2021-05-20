@@ -66,20 +66,20 @@ describe("zap-stethCRV-Mainnet", () => {
       await expect(
         fixture.zapper
           .connect(users[1].user)
-          .zapEthIn(inputValue, 1e10, fixture.position.address, 50, {
+          .zapEthIn(inputValue, 1e10, fixture.position.address, inputValue, {
             value: inputValue.add(1),
           })
       ).to.be.revertedWith("Incorrect amount provided");
     });
-    it("should fail if slippage is too high", async () => {
+    it("should fail if insufficient tokens were minted", async () => {
       const inputValue = ethers.utils.parseEther("10");
       await expect(
         fixture.zapper
           .connect(users[1].user)
-          .zapEthIn(inputValue, 1e10, fixture.position.address, 1, {
+          .zapEthIn(inputValue, 1e10, fixture.position.address, inputValue, {
             value: inputValue,
           })
-      ).to.be.revertedWith("TOO MUCH SLIPPAGE");
+      ).to.be.revertedWith("Not enough PT minted");
     });
     it("should correctly convert ETH to yvsteCRV principal/interest tokens using zapEthIn", async () => {
       const inputValue = 10000000000;
@@ -87,7 +87,7 @@ describe("zap-stethCRV-Mainnet", () => {
       expect(trancheValue).to.equal(0);
       await fixture.zapper
         .connect(users[1].user)
-        .zapEthIn(inputValue, 1e10, fixture.position.address, 500, {
+        .zapEthIn(inputValue, 1e10, fixture.position.address, 1, {
           value: inputValue,
         });
       trancheValue = await fixture.tranche.balanceOf(users[1].address);
@@ -108,7 +108,7 @@ describe("zap-stethCRV-Mainnet", () => {
           .zapStEthIn(0, 1e10, fixture.position.address, 500)
       ).to.be.revertedWith("0 stETH");
     });
-    it("should fail if slippage is too high", async () => {
+    it("should fail if insufficient tokens were minted", async () => {
       const inputValue = ethers.utils.parseEther("10");
       await fixture.steth
         .connect(stethSigner)
@@ -118,8 +118,8 @@ describe("zap-stethCRV-Mainnet", () => {
       await expect(
         fixture.zapper
           .connect(users[1].user)
-          .zapStEthIn(stethValue, 1e10, fixture.position.address, 1)
-      ).to.be.revertedWith("TOO MUCH SLIPPAGE");
+          .zapStEthIn(stethValue, 1e10, fixture.position.address, stethValue)
+      ).to.be.revertedWith("Not enough PT minted");
     });
     it("should correctly convert stETH to yvsteCRV principal/interest tokens using zapStEthIn", async () => {
       const inputValue = ethers.utils.parseEther("1");
@@ -132,7 +132,7 @@ describe("zap-stethCRV-Mainnet", () => {
       expect(trancheValue).to.equal(0);
       await fixture.zapper
         .connect(users[1].user)
-        .zapStEthIn(stethValue, 1e10, fixture.position.address, 500);
+        .zapStEthIn(stethValue, 1e10, fixture.position.address, 1);
       trancheValue = await fixture.tranche.balanceOf(users[1].address);
       expect(trancheValue).to.be.at.least(1);
     });
@@ -144,11 +144,11 @@ describe("zap-stethCRV-Mainnet", () => {
     afterEach(async () => {
       await restoreSnapshot(provider);
     });
-    it("should correctly convert principal tokens to ETH using zapOutPrincipalEth", async () => {
+    it("should fail with incorrect expected output", async () => {
       const inputValue = ethers.utils.parseEther("2");
       await fixture.zapper
         .connect(users[1].user)
-        .zapEthIn(inputValue, 1e10, fixture.position.address, 500, {
+        .zapEthIn(inputValue, 1e10, fixture.position.address, 1, {
           value: inputValue,
         });
       const trancheValue = await fixture.tranche.balanceOf(users[1].address);
@@ -157,15 +157,42 @@ describe("zap-stethCRV-Mainnet", () => {
       await fixture.tranche.hitSpeedbump();
       advanceTime(provider, 1e8);
 
-      const initalBalance = await provider.getBalance(users[1].address);
       await fixture.tranche
         .connect(users[1].user)
         .approve(fixture.zapper.address, trancheValue);
-
+      await expect(
+        fixture.zapper
+          .connect(users[1].user)
+          .zapOutStEth(
+            1e10,
+            fixture.position.address,
+            trancheValue,
+            0,
+            inputValue.mul(2)
+          )
+      ).to.be.revertedWith("Insufficient Output");
+    });
+    it("should correctly convert principal tokens to ETH using zapOutPrincipalEth", async () => {
+      const inputValue = ethers.utils.parseEther("2");
       await fixture.zapper
         .connect(users[1].user)
-        .zapOutEth(trancheValue, 1e10, fixture.position.address, 50, 0);
-      const finalBalance = await provider.getBalance(users[1].address);
+        .zapEthIn(inputValue, 1e10, fixture.position.address, 1, {
+          value: inputValue,
+        });
+      const trancheValue = await fixture.tranche.balanceOf(users[1].address);
+      // fast forward so we can withdraw
+      advanceTime(provider, 1e10);
+      await fixture.tranche.hitSpeedbump();
+      advanceTime(provider, 1e8);
+
+      await fixture.tranche
+        .connect(users[1].user)
+        .approve(fixture.zapper.address, trancheValue);
+      const initalBalance = await fixture.steth.balanceOf(users[1].address);
+      await fixture.zapper
+        .connect(users[1].user)
+        .zapOutStEth(1e10, fixture.position.address, trancheValue, 0, 0);
+      const finalBalance = await fixture.steth.balanceOf(users[1].address);
 
       expect(finalBalance).to.be.at.least(
         initalBalance.add(ethers.utils.parseEther("1.9"))
@@ -179,6 +206,34 @@ describe("zap-stethCRV-Mainnet", () => {
     afterEach(async () => {
       await restoreSnapshot(provider);
     });
+    it("should fail with incorrect expected output", async () => {
+      const inputValue = ethers.utils.parseEther("2");
+      await fixture.zapper
+        .connect(users[1].user)
+        .zapEthIn(inputValue, 1e10, fixture.position.address, 1, {
+          value: inputValue,
+        });
+      const trancheValue = await fixture.tranche.balanceOf(users[1].address);
+      // fast forward so we can withdraw
+      advanceTime(provider, 1e10);
+      await fixture.tranche.hitSpeedbump();
+      advanceTime(provider, 1e8);
+
+      await fixture.tranche
+        .connect(users[1].user)
+        .approve(fixture.zapper.address, trancheValue);
+      await expect(
+        fixture.zapper
+          .connect(users[1].user)
+          .zapOutEth(
+            1e10,
+            fixture.position.address,
+            trancheValue,
+            0,
+            inputValue.mul(2)
+          )
+      ).to.be.revertedWith("Insufficient Output");
+    });
     it("should correctly convert principal tokens to ETH using zapOutPrincipalEth", async () => {
       const inputValue = ethers.utils.parseEther("2");
       await fixture.zapper
@@ -199,7 +254,7 @@ describe("zap-stethCRV-Mainnet", () => {
 
       await fixture.zapper
         .connect(users[1].user)
-        .zapOutEth(trancheValue, 1e10, fixture.position.address, 50, 0);
+        .zapOutEth(1e10, fixture.position.address, trancheValue, 0, 0);
       const finalBalance = await provider.getBalance(users[1].address);
 
       expect(finalBalance).to.be.at.least(
@@ -214,27 +269,38 @@ describe("zap-stethCRV-Mainnet", () => {
     afterEach(async () => {
       await restoreSnapshot(provider);
     });
-    it.skip("should fail if slippage is too high", async () => {
-      const inputValue = ethers.utils.parseEther("300");
+    it("should fail if slippage is too high", async () => {
+      const inputValue = ethers.utils.parseEther("2");
       await fixture.zapper
         .connect(users[1].user)
         .zapEthIn(inputValue, 1e10, fixture.position.address, 500, {
           value: inputValue,
         });
-      const trancheValue = await fixture.tranche.balanceOf(users[1].address);
+
+      const trancheValue = await fixture.interestToken.balanceOf(
+        users[1].address
+      );
+      await fixture.interestToken.connect(users[1].user);
+
+      yearnInterestSim(ethers.utils.parseEther("40"));
       // fast forward so we can withdraw
       advanceTime(provider, 1e10);
-      await fixture.tranche.hitSpeedbump();
-      advanceTime(provider, 1e8);
 
-      await fixture.tranche
+      await fixture.interestToken
         .connect(users[1].user)
         .approve(fixture.zapper.address, trancheValue);
+
       await expect(
         fixture.zapper
           .connect(users[1].user)
-          .zapOutStEth(trancheValue, 1e10, fixture.position.address, 0, 0)
-      ).to.be.revertedWith("TOO MUCH SLIPPAGE");
+          .zapOutStEth(
+            1e10,
+            fixture.position.address,
+            0,
+            trancheValue,
+            inputValue
+          )
+      ).to.be.revertedWith("Insufficient Output");
     });
     it("should correctly convert interest tokens to stETH using zapOutStEth", async () => {
       const inputValue = ethers.utils.parseEther("2");
@@ -260,7 +326,7 @@ describe("zap-stethCRV-Mainnet", () => {
       const initalBalance = await fixture.steth.balanceOf(users[1].address);
       await fixture.zapper
         .connect(users[1].user)
-        .zapOutStEth(trancheValue, 1e10, fixture.position.address, 50, 1);
+        .zapOutStEth(1e10, fixture.position.address, 0, trancheValue, 0);
       const finalBalance = await fixture.steth.balanceOf(users[1].address);
 
       const ytBalance = await fixture.interestToken
@@ -277,6 +343,39 @@ describe("zap-stethCRV-Mainnet", () => {
     });
     afterEach(async () => {
       await restoreSnapshot(provider);
+    });
+    it("should fail if slippage is too high", async () => {
+      const inputValue = ethers.utils.parseEther("2");
+      await fixture.zapper
+        .connect(users[1].user)
+        .zapEthIn(inputValue, 1e10, fixture.position.address, 500, {
+          value: inputValue,
+        });
+
+      const trancheValue = await fixture.interestToken.balanceOf(
+        users[1].address
+      );
+      await fixture.interestToken.connect(users[1].user);
+
+      yearnInterestSim(ethers.utils.parseEther("40"));
+      // fast forward so we can withdraw
+      advanceTime(provider, 1e10);
+
+      await fixture.interestToken
+        .connect(users[1].user)
+        .approve(fixture.zapper.address, trancheValue);
+
+      await expect(
+        fixture.zapper
+          .connect(users[1].user)
+          .zapOutEth(
+            1e10,
+            fixture.position.address,
+            0,
+            trancheValue,
+            inputValue
+          )
+      ).to.be.revertedWith("Insufficient Output");
     });
     it("should correctly convert interest tokens to ETH using zapOutEth", async () => {
       const inputValue = ethers.utils.parseEther("2");
@@ -302,7 +401,195 @@ describe("zap-stethCRV-Mainnet", () => {
       const initalBalance = await provider.getBalance(users[1].address);
       await fixture.zapper
         .connect(users[1].user)
-        .zapOutEth(trancheValue, 1e10, fixture.position.address, 50, 1);
+        .zapOutEth(1e10, fixture.position.address, 0, trancheValue, 0);
+      const finalBalance = await provider.getBalance(users[1].address);
+
+      const ytBalance = await fixture.interestToken
+        .connect(users[1].user)
+        .balanceOf(users[1].address);
+
+      expect(ytBalance).to.be.equal(0);
+      expect(finalBalance).to.be.least(initalBalance.add(1));
+    });
+  });
+  describe("zapOut - stETH - principal + interest", () => {
+    beforeEach(async () => {
+      await createSnapshot(provider);
+    });
+    afterEach(async () => {
+      await restoreSnapshot(provider);
+    });
+    it("should fail if slippage is too high", async () => {
+      const inputValue = ethers.utils.parseEther("2");
+      await fixture.zapper
+        .connect(users[1].user)
+        .zapEthIn(inputValue, 1e10, fixture.position.address, 500, {
+          value: inputValue,
+        });
+
+      const trancheValueInterest = await fixture.interestToken.balanceOf(
+        users[1].address
+      );
+      const trancheValuePrincipal = await fixture.tranche.balanceOf(
+        users[1].address
+      );
+
+      await fixture.interestToken.connect(users[1].user);
+
+      yearnInterestSim(ethers.utils.parseEther("40"));
+      // fast forward so we can withdraw
+      advanceTime(provider, 1e10);
+
+      await fixture.interestToken
+        .connect(users[1].user)
+        .approve(fixture.zapper.address, trancheValueInterest);
+      await fixture.tranche
+        .connect(users[1].user)
+        .approve(fixture.zapper.address, trancheValuePrincipal);
+      await expect(
+        fixture.zapper
+          .connect(users[1].user)
+          .zapOutStEth(
+            1e10,
+            fixture.position.address,
+            trancheValuePrincipal,
+            trancheValueInterest,
+            inputValue.mul(2)
+          )
+      ).to.be.revertedWith("Insufficient Output");
+    });
+    it("should correctly convert principal and interest tokens to stETH using zapOutStEth", async () => {
+      const inputValue = ethers.utils.parseEther("2");
+      await fixture.zapper
+        .connect(users[1].user)
+        .zapEthIn(inputValue, 1e10, fixture.position.address, 500, {
+          value: inputValue,
+        });
+
+      const trancheValueInterest = await fixture.interestToken.balanceOf(
+        users[1].address
+      );
+      const trancheValuePrincipal = await fixture.tranche.balanceOf(
+        users[1].address
+      );
+
+      await fixture.interestToken.connect(users[1].user);
+
+      yearnInterestSim(ethers.utils.parseEther("40"));
+      // fast forward so we can withdraw
+      advanceTime(provider, 1e10);
+
+      await fixture.interestToken
+        .connect(users[1].user)
+        .approve(fixture.zapper.address, trancheValueInterest);
+      await fixture.tranche
+        .connect(users[1].user)
+        .approve(fixture.zapper.address, trancheValuePrincipal);
+      const initalBalance = await fixture.steth.balanceOf(users[1].address);
+      await fixture.zapper
+        .connect(users[1].user)
+        .zapOutStEth(
+          1e10,
+          fixture.position.address,
+          trancheValuePrincipal,
+          trancheValueInterest,
+          0
+        );
+
+      const finalBalance = await fixture.steth.balanceOf(users[1].address);
+
+      const ytBalance = await fixture.interestToken
+        .connect(users[1].user)
+        .balanceOf(users[1].address);
+
+      expect(ytBalance).to.be.equal(0);
+      expect(finalBalance).to.be.least(initalBalance.add(1));
+    });
+  });
+  describe("zapOut - ETH - principal + interest", () => {
+    beforeEach(async () => {
+      await createSnapshot(provider);
+    });
+    afterEach(async () => {
+      await restoreSnapshot(provider);
+    });
+    it("should fail if slippage is too high", async () => {
+      const inputValue = ethers.utils.parseEther("2");
+      await fixture.zapper
+        .connect(users[1].user)
+        .zapEthIn(inputValue, 1e10, fixture.position.address, 500, {
+          value: inputValue,
+        });
+
+      const trancheValueInterest = await fixture.interestToken.balanceOf(
+        users[1].address
+      );
+      const trancheValuePrincipal = await fixture.tranche.balanceOf(
+        users[1].address
+      );
+
+      await fixture.interestToken.connect(users[1].user);
+
+      yearnInterestSim(ethers.utils.parseEther("40"));
+      // fast forward so we can withdraw
+      advanceTime(provider, 1e10);
+
+      await fixture.interestToken
+        .connect(users[1].user)
+        .approve(fixture.zapper.address, trancheValueInterest);
+      await fixture.tranche
+        .connect(users[1].user)
+        .approve(fixture.zapper.address, trancheValuePrincipal);
+      await expect(
+        fixture.zapper
+          .connect(users[1].user)
+          .zapOutEth(
+            1e10,
+            fixture.position.address,
+            trancheValuePrincipal,
+            trancheValueInterest,
+            inputValue.mul(2)
+          )
+      ).to.be.revertedWith("Insufficient Output");
+    });
+    it("should correctly convert principal and interest tokens to ETH using zapOutStEth", async () => {
+      const inputValue = ethers.utils.parseEther("2");
+      await fixture.zapper
+        .connect(users[1].user)
+        .zapEthIn(inputValue, 1e10, fixture.position.address, 500, {
+          value: inputValue,
+        });
+
+      const trancheValueInterest = await fixture.interestToken.balanceOf(
+        users[1].address
+      );
+      const trancheValuePrincipal = await fixture.tranche.balanceOf(
+        users[1].address
+      );
+
+      await fixture.interestToken.connect(users[1].user);
+
+      yearnInterestSim(ethers.utils.parseEther("40"));
+      // fast forward so we can withdraw
+      advanceTime(provider, 1e10);
+
+      await fixture.interestToken
+        .connect(users[1].user)
+        .approve(fixture.zapper.address, trancheValueInterest);
+      await fixture.tranche
+        .connect(users[1].user)
+        .approve(fixture.zapper.address, trancheValuePrincipal);
+      const initalBalance = await provider.getBalance(users[1].address);
+      await fixture.zapper
+        .connect(users[1].user)
+        .zapOutEth(
+          1e10,
+          fixture.position.address,
+          trancheValuePrincipal,
+          trancheValueInterest,
+          0
+        );
+
       const finalBalance = await provider.getBalance(users[1].address);
 
       const ytBalance = await fixture.interestToken

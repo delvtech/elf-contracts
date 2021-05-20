@@ -50,21 +50,29 @@ contract ZapSteth is Authorizable {
     // This is constant as long as Tranche does not implement non-constant constructor arguments.
     bytes32 internal immutable _trancheBytecodeHash;
     // stETH token address
-    ISteth public stETH = ISteth(
+    ISteth public constant stETH = ISteth(
         address(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84)
     );
     // curve stable swap address
-    ICurveFi public StableSwapSTETH = ICurveFi(
+    ICurveFi public constant StableSwapSTETH = ICurveFi(
         address(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022)
     );
     // curve LP token address
-    IERC20 public want = IERC20(
+    IERC20 public constant want = IERC20(
         address(0x06325440D014e39736583c165C2963BA99fAf14E)
     );
 
-    //slippage allowance is out of 1000. 50 is 5%
-    uint256 public constant DEFAULT_SLIPPAGE = 50;
     bool private _noReentry = false;
+
+    /// @dev Prevents contract reentrancy.
+    /// @notice reentrancyGuarded functions should be external
+    /// since they don't support calling themselves
+    modifier reentrancyGuard() {
+        require(!_noReentry);
+        _noReentry = true;
+        _;
+        _noReentry = false;
+    }
 
     /// @notice Constructs this contract
     /// @param __trancheFactory Address of the TrancheFactory contract
@@ -79,6 +87,7 @@ contract ZapSteth is Authorizable {
         stETH.approve(address(StableSwapSTETH), type(uint256).max);
     }
 
+    /// @notice Payable function so this contract can receive ETH.
     receive() external payable {}
 
     /// @notice This function takes ETH and converts it into yield and principal tokens
@@ -87,34 +96,30 @@ contract ZapSteth is Authorizable {
     /// @param _amount Amount of ETH to convert.
     /// @param _expiration Expiration of the target tranche.
     /// @param _position The wrapped position contract address.
-    /// @param _slippageAllowance The slippage allowed for the internal curve stable-swap call.
+    /// @param _ptExpected The minimum amount of principal tokens to mint.
+    /// @return returns the minted amounts of principal and yield tokens (PT and YT)
     function zapEthIn(
         uint256 _amount,
         uint256 _expiration,
         address _position,
-        uint256 _slippageAllowance
-    ) external payable {
-        if (_noReentry) {
-            return;
-        }
+        uint256 _ptExpected
+    ) external payable reentrancyGuard returns (uint256, uint256) {
         require(msg.value == _amount, "Incorrect amount provided");
         ITranche tranche = _deriveTranche(address(_position), _expiration);
 
         uint256 balanceBegin = address(this).balance;
-        if (balanceBegin < 2) return;
+        if (balanceBegin < 2) return (0, 0);
 
         uint256 halfBal = balanceBegin / 2;
-
+        // this is 0 if we do not buy stETH
+        uint256 balance2;
         //test if we should buy instead of mint
         uint256 out = StableSwapSTETH.get_dy(0, 1, halfBal);
         if (out < halfBal) {
-            stETH.submit{ value: halfBal }(owner);
+            balance2 = stETH.submit{ value: halfBal }(owner);
         }
 
         uint256 balanceMid = address(this).balance;
-
-        // this is 0 if we did not buy STETH
-        uint256 balance2 = stETH.balanceOf(address(this));
 
         //add liquidity with no minimum mint
         StableSwapSTETH.add_liquidity{ value: balanceMid }(
@@ -124,12 +129,15 @@ contract ZapSteth is Authorizable {
 
         uint256 outAmount = want.balanceOf(address(this));
 
-        require(
-            (outAmount * (_slippageAllowance + 10000)) / 10000 >= balanceBegin,
-            "TOO MUCH SLIPPAGE"
-        );
         want.transfer(address(_position), outAmount);
-        tranche.prefundedDeposit(msg.sender);
+
+        (uint256 ptMinted, uint256 ytMinted) = tranche.prefundedDeposit(
+            msg.sender
+        );
+
+        require(ytMinted >= outAmount, "Not enough YT minted");
+        require(ptMinted >= _ptExpected, "Not enough PT minted");
+        return (ptMinted, ytMinted);
     }
 
     /// @notice This function takes stETH and converts it into yield and principal tokens
@@ -137,13 +145,14 @@ contract ZapSteth is Authorizable {
     /// @param _amount Amount of stETH to convert.
     /// @param _expiration Expiration of the target tranche.
     /// @param _position The wrapped position contract address.
-    /// @param _slippageAllowance The slippage allowed for the internal curve stable-swap call.
+    /// @param _ptExpected The minimum amount of principal tokens to mint.
+    /// @return returns the minted amounts of principal and yield tokens (PT and YT)
     function zapStEthIn(
         uint256 _amount,
         uint256 _expiration,
         address _position,
-        uint256 _slippageAllowance
-    ) external {
+        uint256 _ptExpected
+    ) external reentrancyGuard returns (uint256, uint256) {
         require(_amount != 0, "0 stETH");
         ITranche tranche = _deriveTranche(address(_position), _expiration);
         stETH.transferFrom(msg.sender, address(this), _amount);
@@ -156,58 +165,59 @@ contract ZapSteth is Authorizable {
 
         uint256 outAmount = want.balanceOf(address(this));
 
-        require(
-            (outAmount * (_slippageAllowance + 10000)) / 10000 >= balanceBegin,
-            "TOO MUCH SLIPPAGE"
-        );
-
         want.transfer(address(_position), outAmount);
 
-        tranche.prefundedDeposit(msg.sender);
+        (uint256 ptMinted, uint256 ytMinted) = tranche.prefundedDeposit(
+            msg.sender
+        );
+
+        require(ytMinted >= outAmount, "Not enough YT minted");
+        require(ptMinted >= _ptExpected, "Not enough PT minted");
+        return (ptMinted, ytMinted);
     }
 
     /// @notice This function takes principal or yield tokens and redeems them for ETH.
-    /// @param _amount Amount of PT or YT to withdraw.
     /// @param _expiration Expiration of the target tranche.
     /// @param _position The wrapped position contract address.
-    /// @param _slippageAllowance The slippage allowed for the internal curve stable-swap call.
-    /// @param _zeroIfPrincipal Zero if the assets to redeem are principal tokens.
+    /// @param _amountPt Amount of principal tokens to redeem.
+    /// @param _amountYt Amount of yield tokens to redeem.
+    /// @param _outputExpected Minimum amount of ETH or STETH to return
     function zapOutEth(
-        uint256 _amount,
         uint256 _expiration,
         address _position,
-        uint256 _slippageAllowance,
-        int128 _zeroIfPrincipal
-    ) external {
+        uint256 _amountPt,
+        uint256 _amountYt,
+        uint256 _outputExpected
+    ) external reentrancyGuard {
         _zapOut(
-            _amount,
             _expiration,
             _position,
-            _slippageAllowance,
-            _zeroIfPrincipal,
+            _amountPt,
+            _amountYt,
+            _outputExpected,
             0
         );
     }
 
     /// @notice This function takes principal or yield tokens and redeems them for stETH.
-    /// @param _amount Amount of PT or YT to withdraw.
     /// @param _expiration Expiration of the target tranche.
     /// @param _position The wrapped position contract address.
-    /// @param _slippageAllowance The slippage allowed for the internal curve stable-swap call.
-    /// @param _zeroIfPrincipal Zero if the assets to redeem are principal tokens.
+    /// @param _amountPt Amount of principal tokens to redeem.
+    /// @param _amountYt Amount of yield tokens to redeem.
+    /// @param _outputExpected Minimum amount of ETH or STETH to return
     function zapOutStEth(
-        uint256 _amount,
         uint256 _expiration,
         address _position,
-        uint256 _slippageAllowance,
-        int128 _zeroIfPrincipal
-    ) external {
+        uint256 _amountPt,
+        uint256 _amountYt,
+        uint256 _outputExpected
+    ) external reentrancyGuard {
         _zapOut(
-            _amount,
             _expiration,
             _position,
-            _slippageAllowance,
-            _zeroIfPrincipal,
+            _amountPt,
+            _amountYt,
+            _outputExpected,
             1
         );
     }
@@ -228,42 +238,41 @@ contract ZapSteth is Authorizable {
     }
 
     /// @notice Helper function that takes principal or yield tokens and redeems them for ETH or stETH.
-    /// @param _amount Amount of PT or YT to withdraw.
     /// @param _expiration Expiration of the target tranche.
     /// @param _position The wrapped position contract address.
-    /// @param _slippageAllowance The slippage allowed for the internal curve stable-swap call.
-    /// @param _zeroIfPrincipal Zero if the assets to redeem are principal tokens.
+    /// @param _amountPt Amount of principal tokens to redeem.
+    /// @param _amountYt Amount of yield tokens to redeem.
+    /// @param _outputExpected Minimum amount of ETH or STETH to return
     /// @param _zeroIfEth Zero if the assets to redeem for is ETH. otherwise it will be stETH.
     function _zapOut(
-        uint256 _amount,
         uint256 _expiration,
         address _position,
-        uint256 _slippageAllowance,
-        int128 _zeroIfPrincipal,
+        uint256 _amountPt,
+        uint256 _amountYt,
+        uint256 _outputExpected,
         int128 _zeroIfEth
     ) internal {
         ITranche tranche = _deriveTranche(address(_position), _expiration);
-
-        if (_zeroIfPrincipal == 0) {
-            tranche.transferFrom(msg.sender, address(this), _amount);
-            tranche.approve(address(tranche), _amount);
-            tranche.withdrawPrincipal(_amount, address(this));
-        } else {
-            IERC20 yt = IERC20(tranche.interestToken());
-            yt.transferFrom(msg.sender, address(this), _amount);
-            yt.approve(address(tranche), _amount);
-            tranche.withdrawInterest(_amount, address(this));
+        IERC20 yt;
+        if (_amountPt > 0) {
+            tranche.transferFrom(msg.sender, address(this), _amountPt);
+            tranche.approve(address(tranche), _amountPt);
+            tranche.withdrawPrincipal(_amountPt, address(this));
+        }
+        if (_amountYt > 0) {
+            yt = IERC20(tranche.interestToken());
+            yt.transferFrom(msg.sender, address(this), _amountYt);
+            yt.approve(address(tranche), _amountYt);
+            tranche.withdrawInterest(_amountYt, address(this));
         }
 
         uint256 balance = want.balanceOf(address(this));
         require(balance > 0, "no balance");
 
-        _noReentry = true;
         // balance - burn amount
         // _zeroIfEth - coin withdraw index
         // 0 - minimum amount of coin to receive
         StableSwapSTETH.remove_liquidity_one_coin(balance, _zeroIfEth, 0);
-        _noReentry = false;
 
         uint256 endBalance;
         if (_zeroIfEth == 0) {
@@ -273,14 +282,18 @@ contract ZapSteth is Authorizable {
             endBalance = stETH.balanceOf(address(this));
             stETH.transfer(msg.sender, endBalance);
         }
-        require(
-            (endBalance * (_slippageAllowance + 10000)) / 10000 >= balance,
-            "TOO MUCH SLIPPAGE"
-        );
+        require(endBalance >= _outputExpected, "Insufficient Output");
 
-        uint256 leftover = tranche.balanceOf(address(this));
-        if (leftover > 0) {
-            tranche.transfer(msg.sender, endBalance);
+        // send any leftovers back
+        uint256 leftoverPt = tranche.balanceOf(address(this));
+        if (leftoverPt > 0) {
+            tranche.transfer(msg.sender, leftoverPt);
+        }
+        if (_amountYt > 0) {
+            uint256 leftoverYt = yt.balanceOf(address(this));
+            if (leftoverPt > 0) {
+                yt.transfer(msg.sender, leftoverYt);
+            }
         }
     }
 

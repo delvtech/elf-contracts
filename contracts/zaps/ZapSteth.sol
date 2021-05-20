@@ -61,6 +61,8 @@ contract ZapSteth is Authorizable {
     IERC20 public constant want = IERC20(
         address(0x06325440D014e39736583c165C2963BA99fAf14E)
     );
+    // Store the accessibility state of the contract
+    bool public isFrozen = false;
 
     bool private _noReentry = false;
 
@@ -72,6 +74,18 @@ contract ZapSteth is Authorizable {
         _noReentry = true;
         _;
         _noReentry = false;
+    }
+
+    /// @dev Requires that the contract is not frozen
+    modifier notFrozen() {
+        require(!isFrozen, "Contract frozen");
+        _;
+    }
+
+    /// @dev Allows an authorized address to freeze or unfreeze this contract
+    /// @param _newState True for frozen and false for unfrozen
+    function setIsFrozen(bool _newState) external onlyAuthorized() {
+        isFrozen = _newState;
     }
 
     /// @notice Constructs this contract
@@ -103,7 +117,7 @@ contract ZapSteth is Authorizable {
         uint256 _expiration,
         address _position,
         uint256 _ptExpected
-    ) external payable reentrancyGuard returns (uint256, uint256) {
+    ) external payable reentrancyGuard notFrozen returns (uint256, uint256) {
         require(msg.value == _amount, "Incorrect amount provided");
         ITranche tranche = _deriveTranche(address(_position), _expiration);
 
@@ -152,7 +166,7 @@ contract ZapSteth is Authorizable {
         uint256 _expiration,
         address _position,
         uint256 _ptExpected
-    ) external reentrancyGuard returns (uint256, uint256) {
+    ) external reentrancyGuard notFrozen returns (uint256, uint256) {
         require(_amount != 0, "0 stETH");
         ITranche tranche = _deriveTranche(address(_position), _expiration);
         stETH.transferFrom(msg.sender, address(this), _amount);
@@ -188,7 +202,7 @@ contract ZapSteth is Authorizable {
         uint256 _amountPt,
         uint256 _amountYt,
         uint256 _outputExpected
-    ) external reentrancyGuard {
+    ) external reentrancyGuard notFrozen {
         _zapOut(
             _expiration,
             _position,
@@ -211,7 +225,7 @@ contract ZapSteth is Authorizable {
         uint256 _amountPt,
         uint256 _amountYt,
         uint256 _outputExpected
-    ) external reentrancyGuard {
+    ) external reentrancyGuard notFrozen {
         _zapOut(
             _expiration,
             _position,

@@ -47,6 +47,7 @@ contract ZapTrancheHop is Authorizable {
     /// @param _amountPt Amount of principal tokens to redeem and deposit into the new tranche.
     /// @param _amountYt Amount of yield tokens to redeem and deposit into the new tranche.
     /// @param _ptExpected The minimum amount of principal tokens to mint.
+    /// @param _ytExpected The minimum amount of yield tokens to mint.
     /// @return returns the minted amounts of principal and yield tokens (PT and YT)
     function hopToTranche(
         IERC20 _underlying,
@@ -56,7 +57,8 @@ contract ZapTrancheHop is Authorizable {
         uint256 _expirationTo,
         uint256 _amountPt,
         uint256 _amountYt,
-        uint256 _ptExpected
+        uint256 _ptExpected,
+        uint256 _ytExpected
     ) public returns (uint256, uint256) {
         ITranche trancheFrom = _deriveTranche(
             address(_positionFrom),
@@ -86,7 +88,10 @@ contract ZapTrancheHop is Authorizable {
             msg.sender
         );
 
-        require(ytMinted >= balance, "Not enough YT minted");
+        require(
+            ytMinted >= balance && ytMinted >= _ytExpected,
+            "Not enough YT minted"
+        );
         require(ptMinted >= _ptExpected, "Not enough PT minted");
         return (ptMinted, ytMinted);
     }

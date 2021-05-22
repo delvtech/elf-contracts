@@ -59,7 +59,7 @@ contract ZapTrancheHop is Authorizable {
         uint256 _amountYt,
         uint256 _ptExpected,
         uint256 _ytExpected
-    ) public returns (uint256, uint256) {
+    ) public notFrozen returns (uint256, uint256) {
         ITranche trancheFrom = _deriveTranche(
             address(_positionFrom),
             _expirationFrom
@@ -69,20 +69,17 @@ contract ZapTrancheHop is Authorizable {
             _expirationTo
         );
 
+        uint256 balance;
         if (_amountPt > 0) {
             trancheFrom.transferFrom(msg.sender, address(this), _amountPt);
-            trancheFrom.approve(address(trancheFrom), _amountPt);
-            trancheFrom.withdrawPrincipal(_amountPt, _positionTo);
+            balance += trancheFrom.withdrawPrincipal(_amountPt, _positionTo);
         }
 
         if (_amountYt > 0) {
             IERC20 yt = IERC20(trancheFrom.interestToken());
             yt.transferFrom(msg.sender, address(this), _amountYt);
-            yt.approve(address(trancheFrom), _amountYt);
-            trancheFrom.withdrawInterest(_amountYt, _positionTo);
+            balance += trancheFrom.withdrawInterest(_amountYt, _positionTo);
         }
-
-        uint256 balance = _underlying.balanceOf(_positionTo);
 
         (uint256 ptMinted, uint256 ytMinted) = trancheTo.prefundedDeposit(
             msg.sender

@@ -395,7 +395,7 @@ export async function loadStethPoolMainnetFixture(toAuth: string) {
   );
   // Setup the zapper
   const zapper = await deployer.deploy(trancheFactory.address, bytecodehash);
-  await zapper.connect(signer).authorize(toAuth);
+  await zapper.connect(signer).setOwner(toAuth);
 
   return {
     stableSwap,

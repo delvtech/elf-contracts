@@ -13,7 +13,7 @@ import { subError, bnFloatMultiplier } from "./helpers/math";
 
 const { provider } = waffle;
 
-describe.only("zap-stethCRV-Mainnet", () => {
+describe("zap-stethCRV-Mainnet", () => {
   let users: { user: Signer; address: string }[];
   let fixture: StethPoolMainnetInterface;
   let stethSigner: Signer;
@@ -54,7 +54,45 @@ describe.only("zap-stethCRV-Mainnet", () => {
       .connect(users[1].user)
       .approve(fixture.zapper.address, ethers.constants.MaxUint256);
   });
-
+  describe("rescueTokens", () => {
+    beforeEach(async () => {
+      await createSnapshot(provider);
+    });
+    afterEach(async () => {
+      await restoreSnapshot(provider);
+    });
+    it("should correctly rescue ETH", async () => {
+      await users[2].user.sendTransaction({
+        to: fixture.zapper.address,
+        value: ethers.utils.parseEther("2"),
+      });
+      const initialBalance = await provider.getBalance(users[1].address);
+      // send 2 eth to the zapper and attempt to rescue it
+      await fixture.zapper
+        .connect(users[1].user)
+        .rescueTokens(
+          "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+          ethers.utils.parseEther("2")
+        );
+      const finalBalance = await provider.getBalance(users[1].address);
+      expect(finalBalance).to.be.at.least(
+        initialBalance.add(ethers.utils.parseEther("1.9"))
+      );
+    });
+    it("should correctly rescue ERC20", async () => {
+      const inputValue = ethers.utils.parseEther("10");
+      await fixture.steth
+        .connect(stethSigner)
+        .transfer(fixture.zapper.address, inputValue);
+      const initialBalance = await fixture.steth.balanceOf(users[1].address);
+      // send 2 eth to the zapper and attempt to rescue it
+      await fixture.zapper
+        .connect(users[1].user)
+        .rescueTokens(fixture.steth.address, inputValue);
+      const finalBalance = await fixture.steth.balanceOf(users[1].address);
+      expect(finalBalance).to.be.at.least(initialBalance.add(10));
+    });
+  });
   describe("zapEthIn", () => {
     beforeEach(async () => {
       await createSnapshot(provider);
@@ -200,14 +238,14 @@ describe.only("zap-stethCRV-Mainnet", () => {
       await fixture.tranche
         .connect(users[1].user)
         .approve(fixture.zapper.address, trancheValue);
-      const initalBalance = await fixture.steth.balanceOf(users[1].address);
+      const initialBalance = await fixture.steth.balanceOf(users[1].address);
       await fixture.zapper
         .connect(users[1].user)
         .zapOutStEth(1e10, fixture.position.address, trancheValue, 0, 0);
       const finalBalance = await fixture.steth.balanceOf(users[1].address);
 
       expect(finalBalance).to.be.at.least(
-        initalBalance.add(ethers.utils.parseEther("1.9"))
+        initialBalance.add(ethers.utils.parseEther("1.9"))
       );
     });
   });
@@ -259,7 +297,7 @@ describe.only("zap-stethCRV-Mainnet", () => {
       await fixture.tranche.hitSpeedbump();
       advanceTime(provider, 1e8);
 
-      const initalBalance = await provider.getBalance(users[1].address);
+      const initialBalance = await provider.getBalance(users[1].address);
       await fixture.tranche
         .connect(users[1].user)
         .approve(fixture.zapper.address, trancheValue);
@@ -270,7 +308,7 @@ describe.only("zap-stethCRV-Mainnet", () => {
       const finalBalance = await provider.getBalance(users[1].address);
 
       expect(finalBalance).to.be.at.least(
-        initalBalance.add(ethers.utils.parseEther("1.9"))
+        initialBalance.add(ethers.utils.parseEther("1.9"))
       );
     });
   });
@@ -335,7 +373,7 @@ describe.only("zap-stethCRV-Mainnet", () => {
         .connect(users[1].user)
         .approve(fixture.zapper.address, trancheValue);
 
-      const initalBalance = await fixture.steth.balanceOf(users[1].address);
+      const initialBalance = await fixture.steth.balanceOf(users[1].address);
       await fixture.zapper
         .connect(users[1].user)
         .zapOutStEth(1e10, fixture.position.address, 0, trancheValue, 0);
@@ -346,7 +384,7 @@ describe.only("zap-stethCRV-Mainnet", () => {
         .balanceOf(users[1].address);
 
       expect(ytBalance).to.be.equal(0);
-      expect(finalBalance).to.be.least(initalBalance.add(1));
+      expect(finalBalance).to.be.least(initialBalance.add(1));
     });
   });
   describe("zapOut - ETH - interest", () => {
@@ -410,7 +448,7 @@ describe.only("zap-stethCRV-Mainnet", () => {
         .connect(users[1].user)
         .approve(fixture.zapper.address, trancheValue);
 
-      const initalBalance = await provider.getBalance(users[1].address);
+      const initialBalance = await provider.getBalance(users[1].address);
       await fixture.zapper
         .connect(users[1].user)
         .zapOutEth(1e10, fixture.position.address, 0, trancheValue, 0);
@@ -421,7 +459,7 @@ describe.only("zap-stethCRV-Mainnet", () => {
         .balanceOf(users[1].address);
 
       expect(ytBalance).to.be.equal(0);
-      expect(finalBalance).to.be.least(initalBalance.add(1));
+      expect(finalBalance).to.be.least(initialBalance.add(1));
     });
   });
   describe("zapOut - stETH - principal + interest", () => {
@@ -497,7 +535,7 @@ describe.only("zap-stethCRV-Mainnet", () => {
       await fixture.tranche
         .connect(users[1].user)
         .approve(fixture.zapper.address, trancheValuePrincipal);
-      const initalBalance = await fixture.steth.balanceOf(users[1].address);
+      const initialBalance = await fixture.steth.balanceOf(users[1].address);
       await fixture.zapper
         .connect(users[1].user)
         .zapOutStEth(
@@ -515,7 +553,7 @@ describe.only("zap-stethCRV-Mainnet", () => {
         .balanceOf(users[1].address);
 
       expect(ytBalance).to.be.equal(0);
-      expect(finalBalance).to.be.least(initalBalance.add(1));
+      expect(finalBalance).to.be.least(initialBalance.add(1));
     });
   });
   describe("zapOut - ETH - principal + interest", () => {
@@ -591,7 +629,7 @@ describe.only("zap-stethCRV-Mainnet", () => {
       await fixture.tranche
         .connect(users[1].user)
         .approve(fixture.zapper.address, trancheValuePrincipal);
-      const initalBalance = await provider.getBalance(users[1].address);
+      const initialBalance = await provider.getBalance(users[1].address);
       await fixture.zapper
         .connect(users[1].user)
         .zapOutEth(
@@ -609,7 +647,7 @@ describe.only("zap-stethCRV-Mainnet", () => {
         .balanceOf(users[1].address);
 
       expect(ytBalance).to.be.equal(0);
-      expect(finalBalance).to.be.least(initalBalance.add(1));
+      expect(finalBalance).to.be.least(initialBalance.add(1));
     });
   });
 });

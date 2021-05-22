@@ -319,7 +319,7 @@ describe("zap-stethCRV-Mainnet", () => {
     afterEach(async () => {
       await restoreSnapshot(provider);
     });
-    it("should fail if slippage is too high", async () => {
+    it("should fail with incorrect expected output", async () => {
       const inputValue = ethers.utils.parseEther("2");
       await fixture.zapper
         .connect(users[1].user)
@@ -394,7 +394,7 @@ describe("zap-stethCRV-Mainnet", () => {
     afterEach(async () => {
       await restoreSnapshot(provider);
     });
-    it("should fail if slippage is too high", async () => {
+    it("should fail with incorrect expected output", async () => {
       const inputValue = ethers.utils.parseEther("2");
       await fixture.zapper
         .connect(users[1].user)
@@ -469,7 +469,7 @@ describe("zap-stethCRV-Mainnet", () => {
     afterEach(async () => {
       await restoreSnapshot(provider);
     });
-    it("should fail if slippage is too high", async () => {
+    it("should fail with incorrect expected output", async () => {
       const inputValue = ethers.utils.parseEther("2");
       await fixture.zapper
         .connect(users[1].user)
@@ -563,7 +563,7 @@ describe("zap-stethCRV-Mainnet", () => {
     afterEach(async () => {
       await restoreSnapshot(provider);
     });
-    it("should fail if slippage is too high", async () => {
+    it("should fail with incorrect expected output", async () => {
       const inputValue = ethers.utils.parseEther("2");
       await fixture.zapper
         .connect(users[1].user)

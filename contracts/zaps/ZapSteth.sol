@@ -270,13 +270,11 @@ contract ZapSteth is Authorizable {
         IERC20 yt;
         if (_amountPt > 0) {
             tranche.transferFrom(msg.sender, address(this), _amountPt);
-            tranche.approve(address(tranche), _amountPt);
             tranche.withdrawPrincipal(_amountPt, address(this));
         }
         if (_amountYt > 0) {
             yt = IERC20(tranche.interestToken());
             yt.transferFrom(msg.sender, address(this), _amountYt);
-            yt.approve(address(tranche), _amountYt);
             tranche.withdrawInterest(_amountYt, address(this));
         }
 

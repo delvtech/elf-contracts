@@ -268,17 +268,17 @@ contract ZapSteth is Authorizable {
     ) internal {
         ITranche tranche = _deriveTranche(address(_position), _expiration);
         IERC20 yt;
+        uint256 balance;
         if (_amountPt > 0) {
             tranche.transferFrom(msg.sender, address(this), _amountPt);
-            tranche.withdrawPrincipal(_amountPt, address(this));
+            balance += tranche.withdrawPrincipal(_amountPt, address(this));
         }
         if (_amountYt > 0) {
             yt = IERC20(tranche.interestToken());
             yt.transferFrom(msg.sender, address(this), _amountYt);
-            tranche.withdrawInterest(_amountYt, address(this));
+            balance += tranche.withdrawInterest(_amountYt, address(this));
         }
 
-        uint256 balance = want.balanceOf(address(this));
         require(balance > 0, "no balance");
 
         // balance - burn amount

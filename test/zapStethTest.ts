@@ -13,7 +13,7 @@ import { subError, bnFloatMultiplier } from "./helpers/math";
 
 const { provider } = waffle;
 
-describe("zap-stethCRV-Mainnet", () => {
+describe.only("zap-stethCRV-Mainnet", () => {
   let users: { user: Signer; address: string }[];
   let fixture: StethPoolMainnetInterface;
   let stethSigner: Signer;
@@ -32,7 +32,6 @@ describe("zap-stethCRV-Mainnet", () => {
     await createSnapshot(provider);
 
     // load all related contracts
-    fixture = await loadStethPoolMainnetFixture();
 
     // begin to populate the user array by assigning each index a signer
     users = ((await ethers.getSigners()) as Signer[]).map(function (user) {
@@ -46,6 +45,8 @@ describe("zap-stethCRV-Mainnet", () => {
         userInfo.address = await user.getAddress();
       })
     );
+    fixture = await loadStethPoolMainnetFixture(users[1].address);
+
     const stethHolderAddress = "0x62e41b1185023bcc14a465d350e1dde341557925";
     impersonate(stethHolderAddress);
     stethSigner = await ethers.provider.getSigner(stethHolderAddress);
@@ -60,6 +61,17 @@ describe("zap-stethCRV-Mainnet", () => {
     });
     afterEach(async () => {
       await restoreSnapshot(provider);
+    });
+    it("should fail if contract is frozen", async () => {
+      await fixture.zapper.connect(users[1].user).setIsFrozen(true);
+      const inputValue = ethers.utils.parseEther("1");
+      await expect(
+        fixture.zapper
+          .connect(users[1].user)
+          .zapEthIn(inputValue, 1e10, fixture.position.address, inputValue, {
+            value: inputValue.add(1),
+          })
+      ).to.be.revertedWith("Contract frozen");
     });
     it("should fail with incorrect amount", async () => {
       const inputValue = ethers.utils.parseEther("1");

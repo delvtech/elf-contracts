@@ -351,7 +351,7 @@ export async function loadYearnShareZapFixture() {
     tranche,
   };
 }
-export async function loadStethPoolMainnetFixture() {
+export async function loadStethPoolMainnetFixture(toAuth: string) {
   const stETHaddress = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
   const yvstecrvAddress = "0xdCD90C7f6324cfa40d7169ef80b12031770B4325";
   const stethStableSwap = "0xDC24316b9AE028F1497c275EB9192a3Ea0f67022";
@@ -395,6 +395,8 @@ export async function loadStethPoolMainnetFixture() {
   );
   // Setup the zapper
   const zapper = await deployer.deploy(trancheFactory.address, bytecodehash);
+  await zapper.connect(signer).authorize(toAuth);
+
   return {
     stableSwap,
     curveLp,

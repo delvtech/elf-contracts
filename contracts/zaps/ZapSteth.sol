@@ -295,18 +295,6 @@ contract ZapSteth is Authorizable {
             stETH.transfer(msg.sender, endBalance);
         }
         require(endBalance >= _outputExpected, "Insufficient Output");
-
-        // send any leftovers back
-        uint256 leftoverPt = tranche.balanceOf(address(this));
-        if (leftoverPt > 0) {
-            tranche.transfer(msg.sender, leftoverPt);
-        }
-        if (_amountYt > 0) {
-            uint256 leftoverYt = yt.balanceOf(address(this));
-            if (leftoverPt > 0) {
-                yt.transfer(msg.sender, leftoverYt);
-            }
-        }
     }
 
     /// @dev This internal function produces the deterministic create2

@@ -93,6 +93,17 @@ contract ZapTrancheHop is Authorizable {
         return (ptMinted, ytMinted);
     }
 
+    /// @notice There should never be any tokens in this contract.
+    /// This function can rescue any possible ERC20 tokens.
+    /// @dev This function does not rescue ETH. There is no fallback function so getting
+    /// ETH stuck here would be a very deliberate act.
+    /// @param token The token to rescue.
+    /// @param amount The amount to rescue.
+    function rescueTokens(address token, uint256 amount) external onlyOwner {
+        IERC20 want = IERC20(token);
+        want.transfer(msg.sender, amount);
+    }
+
     /// @dev This internal function produces the deterministic create2
     ///      address of the Tranche contract from a wrapped position contract and expiration
     /// @param _position The wrapped position contract address

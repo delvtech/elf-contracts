@@ -70,7 +70,7 @@ describe("zapTrancheHop", () => {
         .connect(users[1].user)
         .transfer(fixture.trancheHop.address, inputValue);
       const initialBalance = await fixture.usdc.balanceOf(users[1].address);
-      // send 2 eth to the zapper and attempt to rescue it
+      // send 100 USDC to the zapper and attempt to rescue it
       await fixture.trancheHop
         .connect(users[1].user)
         .rescueTokens(fixture.usdc.address, inputValue);

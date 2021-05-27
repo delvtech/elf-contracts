@@ -23,6 +23,8 @@ import { ZapSteth } from "typechain/ZapSteth";
 import { ZapSteth__factory } from "typechain/factories/ZapSteth__factory";
 import { ICurveFi } from "typechain/ICurveFi";
 import { ICurveFi__factory } from "typechain/factories/ICurveFi__factory";
+import { ZapTrancheHop__factory } from "typechain/factories/ZapTrancheHop__factory";
+import { ZapTrancheHop } from "typechain/ZapTrancheHop";
 import { IERC20 } from "typechain/IERC20";
 import { IWETH } from "typechain/IWETH";
 import { IYearnVault } from "typechain/IYearnVault";
@@ -90,6 +92,18 @@ export interface StethPoolMainnetInterface {
   tranche: Tranche;
   zapper: ZapSteth;
   interestToken: InterestToken;
+}
+
+export interface TrancheHopInterface {
+  trancheHop: ZapTrancheHop;
+  signer: Signer;
+  usdc: IERC20;
+  yusdc: IYearnVault;
+  position: YVaultAssetProxy;
+  tranche1: Tranche;
+  tranche2: Tranche;
+  interestToken1: InterestToken;
+  interestToken2: InterestToken;
 }
 
 const deployTestWrappedPosition = async (signer: Signer, address: string) => {
@@ -408,5 +422,68 @@ export async function loadStethPoolMainnetFixture(toAuth: string) {
     tranche,
     zapper,
     interestToken,
+  };
+}
+
+export async function loadTrancheHopFixture(toAuth: string) {
+  const usdcAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+  const yusdcAddress = "0x5f18C75AbDAe578b483E5F43f12a39cF75b973a9";
+  const [signer] = await ethers.getSigners();
+
+  const usdc = IERC20__factory.connect(usdcAddress, signer);
+  const yusdc = IYearnVault__factory.connect(yusdcAddress, signer);
+  const position = await deployYasset(
+    signer,
+    yusdc.address,
+    usdc.address,
+    "Element Yearn USDC",
+    "eyUSDC"
+  );
+  // deploy and fetch tranche contract
+  const trancheFactory = await deployTrancheFactory(signer);
+  await trancheFactory.deployTranche(1e10, position.address);
+  await trancheFactory.deployTranche(2e10, position.address);
+  const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
+  const events = await trancheFactory.queryFilter(eventFilter);
+  const trancheAddress1 = events[0] && events[0].args && events[0].args[0];
+  const trancheAddress2 = events[1] && events[1].args && events[1].args[0];
+
+  const tranche1 = Tranche__factory.connect(trancheAddress1, signer);
+  const tranche2 = Tranche__factory.connect(trancheAddress2, signer);
+
+  const interestTokenAddress1 = await tranche1.interestToken();
+  const interestToken1 = InterestToken__factory.connect(
+    interestTokenAddress1,
+    signer
+  );
+  const interestTokenAddress2 = await tranche2.interestToken();
+  const interestToken2 = InterestToken__factory.connect(
+    interestTokenAddress2,
+    signer
+  );
+  // Setup the proxy
+  const bytecodehash = ethers.utils.solidityKeccak256(
+    ["bytes"],
+    [data.bytecode]
+  );
+
+  const deployer = new ZapTrancheHop__factory(signer);
+  const trancheHop = await deployer.deploy(
+    trancheFactory.address,
+    bytecodehash
+  );
+
+  await trancheHop.connect(signer).authorize(toAuth);
+
+  return {
+    trancheHop,
+    signer,
+    usdc,
+    yusdc,
+    position,
+    tranche1,
+    tranche2,
+    interestToken1,
+    interestToken2,
   };
 }

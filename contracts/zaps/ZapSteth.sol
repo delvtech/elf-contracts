@@ -172,7 +172,6 @@ contract ZapSteth is Authorizable {
         stETH.transferFrom(msg.sender, address(this), _amount);
 
         uint256 balanceBegin = stETH.balanceOf(address(this));
-        require(balanceBegin + 1 >= _amount, "NOT ALL stETH RECEIVED");
 
         // add liquidity with no minimum mint
         StableSwapSTETH.add_liquidity([0, balanceBegin], 0);

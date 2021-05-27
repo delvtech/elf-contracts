@@ -107,7 +107,7 @@ describe("zap-stethCRV-Mainnet", () => {
         fixture.zapper
           .connect(users[1].user)
           .zapEthIn(inputValue, 1e10, fixture.position.address, inputValue, {
-            value: inputValue.add(1),
+            value: inputValue,
           })
       ).to.be.revertedWith("Contract frozen");
     });
@@ -384,7 +384,7 @@ describe("zap-stethCRV-Mainnet", () => {
         .balanceOf(users[1].address);
 
       expect(ytBalance).to.be.equal(0);
-      expect(finalBalance).to.be.least(initialBalance.add(1));
+      expect(finalBalance).to.be.least(initialBalance);
     });
   });
   describe("zapOut - ETH - interest", () => {
@@ -459,7 +459,7 @@ describe("zap-stethCRV-Mainnet", () => {
         .balanceOf(users[1].address);
 
       expect(ytBalance).to.be.equal(0);
-      expect(finalBalance).to.be.least(initialBalance.add(1));
+      expect(finalBalance).to.be.least(initialBalance);
     });
   });
   describe("zapOut - stETH - principal + interest", () => {
@@ -553,7 +553,7 @@ describe("zap-stethCRV-Mainnet", () => {
         .balanceOf(users[1].address);
 
       expect(ytBalance).to.be.equal(0);
-      expect(finalBalance).to.be.least(initialBalance.add(1));
+      expect(finalBalance).to.be.least(initialBalance);
     });
   });
   describe("zapOut - ETH - principal + interest", () => {
@@ -647,7 +647,7 @@ describe("zap-stethCRV-Mainnet", () => {
         .balanceOf(users[1].address);
 
       expect(ytBalance).to.be.equal(0);
-      expect(finalBalance).to.be.least(initialBalance.add(1));
+      expect(finalBalance).to.be.least(initialBalance);
     });
   });
 });

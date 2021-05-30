@@ -57,7 +57,27 @@ describe("zapTrancheHop", () => {
   afterEach(async () => {
     await restoreSnapshot(provider);
   });
-
+  describe("rescueTokens", () => {
+    beforeEach(async () => {
+      await createSnapshot(provider);
+    });
+    afterEach(async () => {
+      await restoreSnapshot(provider);
+    });
+    it("should correctly rescue ERC20", async () => {
+      const inputValue = 100000000;
+      await fixture.usdc
+        .connect(users[1].user)
+        .transfer(fixture.trancheHop.address, inputValue);
+      const initialBalance = await fixture.usdc.balanceOf(users[1].address);
+      // send 100 USDC to the zapper and attempt to rescue it
+      await fixture.trancheHop
+        .connect(users[1].user)
+        .rescueTokens(fixture.usdc.address, inputValue);
+      const finalBalance = await fixture.usdc.balanceOf(users[1].address);
+      expect(finalBalance).to.be.at.least(initialBalance.add(inputValue));
+    });
+  });
   describe("hopToTranche", () => {
     beforeEach(async () => {
       await createSnapshot(provider);

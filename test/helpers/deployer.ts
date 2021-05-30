@@ -472,8 +472,8 @@ export async function loadTrancheHopFixture(toAuth: string) {
     trancheFactory.address,
     bytecodehash
   );
-
   await trancheHop.connect(signer).authorize(toAuth);
+  await trancheHop.connect(signer).setOwner(toAuth);
 
   return {
     trancheHop,

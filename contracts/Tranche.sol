@@ -174,7 +174,7 @@ contract Tranche is ERC20Permit, ITranche {
         // is underlying per share and balanceBefore is the balance of this contract
         // in position tokens before this deposit. Uses a rounding up div to avoid
         // an error when the tranche assets have not accumulated interest.
-        uint256 holdingsValue = _divUp(balanceBefore * usedUnderlying, shares);
+        uint256 holdingsValue = (balanceBefore * usedUnderlying) / shares;
         // This formula is inputUnderlying - inputUnderlying*interestPerUnderlying
         // Accumulated interest has its value in the interest tokens so we have to mint less
         // principal tokens to account for that.
@@ -185,7 +185,12 @@ contract Tranche is ERC20Permit, ITranche {
             uint256(interestSupply)
         );
         // We block deposits in negative interest rate regimes
-        require(_valueSupplied <= holdingsValue, "E:NEG_INT");
+        // The +2 allows for very small rounding errors which occur when
+        // depositing into a tranche which is attached to a wp which has
+        // accrued interest but the tranche has not yet accrued interest
+        // and the first deposit into the tranche is substantially smaller
+        // than following ones.
+        require(_valueSupplied <= holdingsValue + 2, "E:NEG_INT");
 
         uint256 adjustedAmount;
         // Have to split on the initialization case and negative interest case
@@ -354,20 +359,5 @@ contract Tranche is ERC20Permit, ITranche {
             minRedemption
         );
         return (redemption);
-    }
-
-    /// @notice A division function which rounds up instead of rounding down
-    ///         Code adapted from the balancer v2 math library
-    /// @param a the number to be divided
-    /// @param b the number to divide by
-    /// @return ceil(a/b)
-    /// @dev This produces a result which is at most 1 higher than the real
-    ///      result so is less impactful for tokens with more decimals.
-    function _divUp(uint256 a, uint256 b) internal pure returns (uint256) {
-        if (a == 0) {
-            return 0;
-        } else {
-            return 1 + (a - 1) / b;
-        }
     }
 }

@@ -91,15 +91,6 @@ export interface TrancheHopInterface {
   interestToken2: InterestToken;
 }
 
-export interface RealisticTestTranche {
-  signer: Signer;
-  usdc: TestERC20;
-  wp: YVaultAssetProxy;
-  yusdc: TestYVault;
-  tranche: Tranche;
-  interestToken: InterestToken;
-}
-
 const deployTestWrappedPosition = async (signer: Signer, address: string) => {
   const deployer = new TestWrappedPosition__factory(signer);
   return await deployer.deploy(address);
@@ -421,42 +412,5 @@ export async function loadTrancheHopFixture(toAuth: string) {
     tranche2,
     interestToken1,
     interestToken2,
-  };
-}
-export async function realisticTestTranche() {
-  const [signer] = await ethers.getSigners();
-  const testTokenDeployer = new TestERC20__factory(signer);
-  const usdc = await testTokenDeployer.deploy("test token", "TEST", 6);
-  const yusdc = await deployYusdc(signer, usdc.address, 6);
-
-  const wp = await deployYasset(
-    signer,
-    yusdc.address,
-    usdc.address,
-    "y test",
-    "yTest"
-  );
-
-  // deploy and fetch tranche contract
-  const trancheFactory = await deployTrancheFactory(signer);
-  await trancheFactory.deployTranche(1e10, wp.address);
-  const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
-  const events = await trancheFactory.queryFilter(eventFilter);
-  const trancheAddress = events[0] && events[0].args && events[0].args[0];
-  const tranche = Tranche__factory.connect(trancheAddress, signer);
-
-  const interestTokenAddress = await tranche.interestToken();
-  const interestToken = InterestToken__factory.connect(
-    interestTokenAddress,
-    signer
-  );
-
-  return {
-    signer,
-    usdc,
-    wp,
-    yusdc,
-    tranche,
-    interestToken,
   };
 }

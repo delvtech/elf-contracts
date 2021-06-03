@@ -172,8 +172,7 @@ contract Tranche is ERC20Permit, ITranche {
         // The implied current value of the holding of this contract in underlying
         // is the balanceBefore*(usedUnderlying/shares) since (usedUnderlying/shares)
         // is underlying per share and balanceBefore is the balance of this contract
-        // in position tokens before this deposit. Uses a rounding up div to avoid
-        // an error when the tranche assets have not accumulated interest.
+        // in position tokens before this deposit.
         uint256 holdingsValue = (balanceBefore * usedUnderlying) / shares;
         // This formula is inputUnderlying - inputUnderlying*interestPerUnderlying
         // Accumulated interest has its value in the interest tokens so we have to mint less

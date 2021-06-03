@@ -174,7 +174,7 @@ contract Tranche is ERC20Permit, ITranche {
         // is underlying per share and balanceBefore is the balance of this contract
         // in position tokens before this deposit. Uses a rounding up div to avoid
         // an error when the tranche assets have not accumulated interest.
-        uint256 holdingsValue = divUp(balanceBefore * usedUnderlying, shares);
+        uint256 holdingsValue = _divUp(balanceBefore * usedUnderlying, shares);
         // This formula is inputUnderlying - inputUnderlying*interestPerUnderlying
         // Accumulated interest has its value in the interest tokens so we have to mint less
         // principal tokens to account for that.
@@ -363,7 +363,7 @@ contract Tranche is ERC20Permit, ITranche {
     /// @return ceil(a/b)
     /// @dev This produces a result which is at most 1 higher than the real
     ///      result so is less impactful for tokens with more decimals.
-    function divUp(uint256 a, uint256 b) internal pure returns (uint256) {
+    function _divUp(uint256 a, uint256 b) internal pure returns (uint256) {
         if (a == 0) {
             return 0;
         } else {

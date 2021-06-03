@@ -434,7 +434,7 @@ export async function realisticTestTranche() {
     yusdc.address,
     usdc.address,
     "y test",
-    "ytesst"
+    "yTest"
   );
 
   // deploy and fetch tranche contract

@@ -239,7 +239,10 @@ contract ZapSteth is Authorizable {
     /// This function can rescue any possible leftovers.
     /// @param token The token to rescue.
     /// @param amount The amount to rescue.
-    function rescueTokens(address token, uint256 amount) external onlyOwner {
+    function rescueTokens(address token, uint256 amount)
+        external
+        onlyAuthorized()
+    {
         if (token == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
             amount = Math.min(address(this).balance, amount);
             payable(msg.sender).transfer(amount);

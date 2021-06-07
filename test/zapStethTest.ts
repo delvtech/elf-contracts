@@ -218,7 +218,8 @@ describe("zap-stethCRV-Mainnet", () => {
             fixture.position.address,
             trancheValue,
             0,
-            inputValue.mul(2)
+            inputValue.mul(2),
+            []
           )
       ).to.be.revertedWith("Insufficient Output");
     });
@@ -241,7 +242,7 @@ describe("zap-stethCRV-Mainnet", () => {
       const initialBalance = await fixture.steth.balanceOf(users[1].address);
       await fixture.zapper
         .connect(users[1].user)
-        .zapOutStEth(1e10, fixture.position.address, trancheValue, 0, 0);
+        .zapOutStEth(1e10, fixture.position.address, trancheValue, 0, 0, []);
       const finalBalance = await fixture.steth.balanceOf(users[1].address);
 
       expect(finalBalance).to.be.at.least(
@@ -280,7 +281,8 @@ describe("zap-stethCRV-Mainnet", () => {
             fixture.position.address,
             trancheValue,
             0,
-            inputValue.mul(2)
+            inputValue.mul(2),
+            []
           )
       ).to.be.revertedWith("Insufficient Output");
     });
@@ -304,7 +306,7 @@ describe("zap-stethCRV-Mainnet", () => {
 
       await fixture.zapper
         .connect(users[1].user)
-        .zapOutEth(1e10, fixture.position.address, trancheValue, 0, 0);
+        .zapOutEth(1e10, fixture.position.address, trancheValue, 0, 0, []);
       const finalBalance = await provider.getBalance(users[1].address);
 
       expect(finalBalance).to.be.at.least(
@@ -348,7 +350,8 @@ describe("zap-stethCRV-Mainnet", () => {
             fixture.position.address,
             0,
             trancheValue,
-            inputValue
+            inputValue,
+            []
           )
       ).to.be.revertedWith("Insufficient Output");
     });
@@ -376,7 +379,7 @@ describe("zap-stethCRV-Mainnet", () => {
       const initialBalance = await fixture.steth.balanceOf(users[1].address);
       await fixture.zapper
         .connect(users[1].user)
-        .zapOutStEth(1e10, fixture.position.address, 0, trancheValue, 0);
+        .zapOutStEth(1e10, fixture.position.address, 0, trancheValue, 0, []);
       const finalBalance = await fixture.steth.balanceOf(users[1].address);
 
       const ytBalance = await fixture.interestToken
@@ -423,7 +426,8 @@ describe("zap-stethCRV-Mainnet", () => {
             fixture.position.address,
             0,
             trancheValue,
-            inputValue
+            inputValue,
+            []
           )
       ).to.be.revertedWith("Insufficient Output");
     });
@@ -451,7 +455,7 @@ describe("zap-stethCRV-Mainnet", () => {
       const initialBalance = await provider.getBalance(users[1].address);
       await fixture.zapper
         .connect(users[1].user)
-        .zapOutEth(1e10, fixture.position.address, 0, trancheValue, 0);
+        .zapOutEth(1e10, fixture.position.address, 0, trancheValue, 0, []);
       const finalBalance = await provider.getBalance(users[1].address);
 
       const ytBalance = await fixture.interestToken
@@ -504,7 +508,8 @@ describe("zap-stethCRV-Mainnet", () => {
             fixture.position.address,
             trancheValuePrincipal,
             trancheValueInterest,
-            inputValue.mul(2)
+            inputValue.mul(2),
+            []
           )
       ).to.be.revertedWith("Insufficient Output");
     });
@@ -543,7 +548,8 @@ describe("zap-stethCRV-Mainnet", () => {
           fixture.position.address,
           trancheValuePrincipal,
           trancheValueInterest,
-          0
+          0,
+          []
         );
 
       const finalBalance = await fixture.steth.balanceOf(users[1].address);
@@ -598,7 +604,8 @@ describe("zap-stethCRV-Mainnet", () => {
             fixture.position.address,
             trancheValuePrincipal,
             trancheValueInterest,
-            inputValue.mul(2)
+            inputValue.mul(2),
+            []
           )
       ).to.be.revertedWith("Insufficient Output");
     });
@@ -637,7 +644,8 @@ describe("zap-stethCRV-Mainnet", () => {
           fixture.position.address,
           trancheValuePrincipal,
           trancheValueInterest,
-          0
+          0,
+          []
         );
 
       const finalBalance = await provider.getBalance(users[1].address);

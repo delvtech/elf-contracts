@@ -154,6 +154,49 @@ contract ZapSteth is Authorizable {
         return (ptMinted, ytMinted);
     }
 
+    // Memory encoding of the permit data
+    struct PermitData {
+        IERC20Permit tokenContract;
+        address who;
+        uint256 amount;
+        uint256 expiration;
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+    }
+
+    /// @dev Takes the input permit calls and executes them
+    /// @param data The array which encodes the set of permit calls to make
+    modifier preApproval(PermitData[] memory data) {
+        // If permit calls are provided we make try to make them
+        if (data.length != 0) {
+            // We make permit calls for each indicated call
+            for (uint256 i = 0; i < data.length; i++) {
+                _permitCall(data[i]);
+            }
+        }
+        _;
+    }
+
+    /// @dev Makes permit calls indicated by a struct
+    /// @param data the struct which has the permit calldata
+    function _permitCall(PermitData memory data) internal {
+        // Make the permit call to the token in the data field using
+        // the fields provided.
+        // Security note - This fairly open call is safe because it cannot
+        // call 'transferFrom' or other sensitive methods despite the open
+        // scope. Do not make more general without security review.
+        data.tokenContract.permit(
+            msg.sender,
+            data.who,
+            data.amount,
+            data.expiration,
+            data.v,
+            data.r,
+            data.s
+        );
+    }
+
     /// @notice This function takes stETH and converts it into yield and principal tokens
     /// of a specified tranche.
     /// @param _amount Amount of stETH to convert.
@@ -200,8 +243,9 @@ contract ZapSteth is Authorizable {
         address _position,
         uint256 _amountPt,
         uint256 _amountYt,
-        uint256 _outputExpected
-    ) external reentrancyGuard notFrozen {
+        uint256 _outputExpected,
+        PermitData[] calldata _permitCallData
+    ) external reentrancyGuard notFrozen preApproval(_permitCallData) {
         _zapOut(
             _expiration,
             _position,
@@ -223,8 +267,9 @@ contract ZapSteth is Authorizable {
         address _position,
         uint256 _amountPt,
         uint256 _amountYt,
-        uint256 _outputExpected
-    ) external reentrancyGuard notFrozen {
+        uint256 _outputExpected,
+        PermitData[] calldata _permitCallData
+    ) external reentrancyGuard notFrozen preApproval(_permitCallData) {
         _zapOut(
             _expiration,
             _position,

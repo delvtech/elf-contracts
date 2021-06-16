@@ -920,10 +920,10 @@ describe("Tranche", () => {
 
     it("Should assign names and symbols correctly", async () => {
       expect(await fixture.tranche.symbol()).to.be.eq(
-        "eP:TestWrappedPosition:20-NOV-86-GMT"
+        "ePTestWrappedPosition-20NOV86"
       );
       expect(await fixture.tranche.name()).to.be.eq(
-        "Element Principal Token TestWrappedPosition:20-NOV-86-GMT"
+        "Principal Token TestWrappedPosition-20NOV86"
       );
     });
   });

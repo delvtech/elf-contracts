@@ -85,8 +85,8 @@ library DateString {
         for (uint256 i = 0; i < bytePrefix.length; i++) {
             bytesOutput.push(bytePrefix[i]);
         }
-        // Add a ':' to the string to separate the prefix from the the date
-        bytesOutput.push(bytes1(":"));
+        // Add a '-' to the string to separate the prefix from the the date
+        bytesOutput.push(bytes1("-"));
         // Add the date string
         timestampToDateString(_timestamp, _output);
     }
@@ -125,7 +125,6 @@ library DateString {
             // add it to the string
             output.push(bytes1(uint8(bytes1("0")) + uint8(secondDigit)));
         }
-        output.push(bytes1("-"));
         // Next we encode the month string and add it
         if (month == 1) {
             stringPush(output, "J", "A", "N");
@@ -154,7 +153,6 @@ library DateString {
         } else {
             revert("date decoding error");
         }
-        output.push(bytes1("-"));
         // We take the last two digits of the year
         // Hopefully that's enough
         {
@@ -168,10 +166,6 @@ library DateString {
             // add it to the string
             output.push(bytes1(uint8(bytes1("0")) + uint8(secondDigit)));
         }
-
-        // Add a timezone tag
-        output.push(bytes1("-"));
-        stringPush(output, "G", "M", "T");
     }
 
     function stringPush(

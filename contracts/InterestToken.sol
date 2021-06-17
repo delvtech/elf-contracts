@@ -24,7 +24,7 @@ contract InterestToken is ERC20Permit, IInterestToken {
     )
         ERC20Permit(
             _processName("Element Yield Token ", _strategySymbol, _timestamp),
-            _processSymbol("eY:", _strategySymbol, _timestamp)
+            _processSymbol("eY", _strategySymbol, _timestamp)
         )
     {
         tranche = ITranche(_tranche);

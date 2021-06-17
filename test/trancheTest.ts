@@ -923,7 +923,7 @@ describe("Tranche", () => {
         "ePTestWrappedPosition-20NOV86"
       );
       expect(await fixture.tranche.name()).to.be.eq(
-        "Principal Token TestWrappedPosition-20NOV86"
+        "Element Principal Token TestWrappedPosition-20NOV86"
       );
     });
   });

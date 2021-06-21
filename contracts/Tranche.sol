@@ -39,7 +39,7 @@ contract Tranche is ERC20Permit, ITranche {
     event SpeedBumpHit(uint256 timestamp);
 
     /// @notice Constructs this contract
-    constructor() ERC20Permit("Principal Token ", "eP:") {
+    constructor() ERC20Permit("Element Principal Token ", "eP") {
         // Assume the caller is the Tranche factory.
         ITrancheFactory trancheFactory = ITrancheFactory(msg.sender);
         (

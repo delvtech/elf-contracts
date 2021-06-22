@@ -2,9 +2,7 @@ import { ethers } from "hardhat";
 import { BigNumber } from "ethers";
 
 export const bnFloatMultiplier = (number: BigNumber, multiplier: number) => {
-  return ethers.BigNumber.from(
-    Math.round(number.toNumber() * multiplier).toString()
-  );
+  return number.mul(Math.round(1e10 * multiplier)).div(1e10);
 };
 
 export const subError = (amount: BigNumber) => {

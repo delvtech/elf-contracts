@@ -308,6 +308,7 @@ export async function loadTestTrancheFixture() {
     interestToken,
   };
 }
+
 export async function loadYearnShareZapFixture() {
   const usdcAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
   const yusdcAddress = "0x5f18C75AbDAe578b483E5F43f12a39cF75b973a9";

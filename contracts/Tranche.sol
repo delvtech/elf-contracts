@@ -184,7 +184,12 @@ contract Tranche is ERC20Permit, ITranche {
             uint256(interestSupply)
         );
         // We block deposits in negative interest rate regimes
-        require(_valueSupplied <= holdingsValue, "E:NEG_INT");
+        // The +2 allows for very small rounding errors which occur when
+        // depositing into a tranche which is attached to a wp which has
+        // accrued interest but the tranche has not yet accrued interest
+        // and the first deposit into the tranche is substantially smaller
+        // than following ones.
+        require(_valueSupplied <= holdingsValue + 2, "E:NEG_INT");
 
         uint256 adjustedAmount;
         // Have to split on the initialization case and negative interest case

@@ -45,8 +45,15 @@ contract YVaultAssetProxy is WrappedPosition {
             uint8(_token.decimals()) == localVaultDecimals,
             "Inconsistent decimals"
         );
+        // We check that this is a compatible yearn version
+        versionCheck(IYearnVault(vault_));
+    }
 
-        string memory apiVersion = IYearnVault(vault_).apiVersion();
+    /// @notice An override-able version checking function, reverts if the vault has the wrong version
+    /// @param _vault The yearn vault address
+    /// @dev This function can be overridden by an inheriting upgrade contract
+    function versionCheck(IYearnVault _vault) internal virtual view {
+        string memory apiVersion = _vault.apiVersion();
         require(
             _stringEq(apiVersion, "0.3.0") ||
                 _stringEq(apiVersion, "0.3.1") ||
@@ -85,9 +92,7 @@ contract YVaultAssetProxy is WrappedPosition {
         (uint256 localUnderlying, uint256 localShares) = _getReserves();
         // Calculate the total reserve value
         uint256 totalValue = localUnderlying;
-        uint256 yearnTotalSupply = vault.totalSupply();
-        uint256 yearnTotalAssets = vault.totalAssets();
-        totalValue += ((yearnTotalAssets * localShares) / yearnTotalSupply);
+        totalValue += _yearnDepositConverter(localShares, true);
         // If this is the first deposit we need different logic
         uint256 localReserveSupply = reserveSupply;
         uint256 mintAmount;
@@ -154,11 +159,7 @@ contract YVaultAssetProxy is WrappedPosition {
             amount -= 1;
         }
         // Calculate the amount of shares the amount deposited is worth
-        // Note - to get a realistic reading and avoid rounding errors we
-        // use the method of the yearn vault instead of '_pricePerShare'
-        uint256 yearnTotalSupply = vault.totalSupply();
-        uint256 yearnTotalAssets = vault.totalAssets();
-        uint256 neededShares = (amount * yearnTotalSupply) / yearnTotalAssets;
+        uint256 neededShares = _yearnDepositConverter(amount, false);
 
         // If we have enough in local reserves we don't call out for deposits
         if (localShares > neededShares) {
@@ -266,5 +267,33 @@ contract YVaultAssetProxy is WrappedPosition {
     ) internal {
         reserveUnderlying = uint128(_newReserveUnderlying);
         reserveShares = uint128(_newReserveShares);
+    }
+
+    /// @notice Converts an input of shares to it's output of underlying or an input
+    ///      of underlying to an output of shares, using yearn 's deposit pricing
+    /// @param amount the amount of input, shares if 'sharesIn == true' underlying if not
+    /// @param sharesIn true to convert from yearn shares to underlying, false to convert from
+    ///                 underlying to yearn shares
+    /// @dev WARNING - In yearn 0.3.1 - 0.3.5 this is an exact match for deposit logic
+    ///                but not withdraw logic in versions 0.3.2-0.3.5. In versions 0.4.0+
+    ///                it is not a match for yearn deposit ratios.
+    function _yearnDepositConverter(uint256 amount, bool sharesIn)
+        internal
+        virtual
+        view
+        returns (uint256)
+    {
+        // Load the yearn total supply and assets
+        uint256 yearnTotalSupply = vault.totalSupply();
+        uint256 yearnTotalAssets = vault.totalAssets();
+        // If we are converted shares to underlying
+        if (sharesIn) {
+            // then we get the fraction of yearn shares this is and multiply by assets
+            return (yearnTotalAssets * amount) / yearnTotalSupply;
+        } else {
+            // otherwise we figure out the faction of yearn assets this is and see how
+            // many assets we get out.
+            return (yearnTotalSupply * amount) / yearnTotalAssets;
+        }
     }
 }

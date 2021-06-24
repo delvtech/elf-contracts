@@ -48,12 +48,12 @@ contract YVaultAssetProxy is WrappedPosition {
 
         string memory apiVersion = IYearnVault(vault_).apiVersion();
         require(
-            stringEq(apiVersion, "0.3.0") ||
-                stringEq(apiVersion, "0.3.1") ||
-                stringEq(apiVersion, "0.3.2") ||
-                stringEq(apiVersion, "0.3.3") ||
-                stringEq(apiVersion, "0.3.4") ||
-                stringEq(apiVersion, "0.3.5"),
+            _stringEq(apiVersion, "0.3.0") ||
+                _stringEq(apiVersion, "0.3.1") ||
+                _stringEq(apiVersion, "0.3.2") ||
+                _stringEq(apiVersion, "0.3.3") ||
+                _stringEq(apiVersion, "0.3.4") ||
+                _stringEq(apiVersion, "0.3.5"),
             "Unsupported Version"
         );
     }
@@ -62,7 +62,7 @@ contract YVaultAssetProxy is WrappedPosition {
     /// @param s1 string one
     /// @param s2 string two
     /// @return bool weather they are equal
-    function stringEq(string memory s1, string memory s2)
+    function _stringEq(string memory s1, string memory s2)
         internal
         pure
         returns (bool)

@@ -47,14 +47,14 @@ contract YVaultV4AssetProxy is WrappedPosition {
         );
 
         string memory apiVersion = IYearnVault(vault_).apiVersion();
-        require(stringEq(apiVersion, "0.4.2"), "Unsupported Version");
+        require(_stringEq(apiVersion, "0.4.2"), "Unsupported Version");
     }
 
     /// @notice checks if two strings are equal
     /// @param s1 string one
     /// @param s2 string two
     /// @return bool weather they are equal
-    function stringEq(string memory s1, string memory s2)
+    function _stringEq(string memory s1, string memory s2)
         internal
         pure
         returns (bool)

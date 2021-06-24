@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.0;
 
-import "../interfaces/IYearnVaultV2.sol";
+import "../interfaces/IYearnVault.sol";
 import "../libraries/Authorizable.sol";
 import "../interfaces/IERC20.sol";
 import "../interfaces/ITranche.sol";

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-// WARNING: This has been validated for yearn vaults up to version 0.2.11.
-// Using this code with any later version can be unsafe.
+// WARNING: This has been validated for yearn vaults version 4.2, do not use for lower or higher
+//          versions without review
 pragma solidity ^0.8.0;
 
 import "./interfaces/IERC20.sol";
@@ -8,8 +8,8 @@ import "./interfaces/IYearnVault.sol";
 import "./WrappedPosition.sol";
 
 /// @author Element Finance
-/// @title Yearn Vault v1 Asset Proxy
-contract YVaultAssetProxy is WrappedPosition {
+/// @title Yearn Vault Asset Proxy
+contract YVaultV4AssetProxy is WrappedPosition {
     IYearnVault public immutable vault;
     uint8 public immutable vaultDecimals;
 
@@ -47,15 +47,7 @@ contract YVaultAssetProxy is WrappedPosition {
         );
 
         string memory apiVersion = IYearnVault(vault_).apiVersion();
-        require(
-            stringEq(apiVersion, "0.3.0") ||
-                stringEq(apiVersion, "0.3.1") ||
-                stringEq(apiVersion, "0.3.2") ||
-                stringEq(apiVersion, "0.3.3") ||
-                stringEq(apiVersion, "0.3.4") ||
-                stringEq(apiVersion, "0.3.5"),
-            "Unsupported Version"
-        );
+        require(stringEq(apiVersion, "0.4.2"), "Unsupported Version");
     }
 
     /// @notice checks if two strings are equal
@@ -85,9 +77,8 @@ contract YVaultAssetProxy is WrappedPosition {
         (uint256 localUnderlying, uint256 localShares) = _getReserves();
         // Calculate the total reserve value
         uint256 totalValue = localUnderlying;
-        uint256 yearnTotalSupply = vault.totalSupply();
-        uint256 yearnTotalAssets = vault.totalAssets();
-        totalValue += ((yearnTotalAssets * localShares) / yearnTotalSupply);
+        uint256 pricePerShare = _pricePerShare();
+        totalValue += ((localShares * pricePerShare) / 10**vaultDecimals);
         // If this is the first deposit we need different logic
         uint256 localReserveSupply = reserveSupply;
         uint256 mintAmount;
@@ -154,11 +145,8 @@ contract YVaultAssetProxy is WrappedPosition {
             amount -= 1;
         }
         // Calculate the amount of shares the amount deposited is worth
-        // Note - to get a realistic reading and avoid rounding errors we
-        // use the method of the yearn vault instead of '_pricePerShare'
-        uint256 yearnTotalSupply = vault.totalSupply();
-        uint256 yearnTotalAssets = vault.totalAssets();
-        uint256 neededShares = (amount * yearnTotalSupply) / yearnTotalAssets;
+        uint256 pricePerShare = _pricePerShare();
+        uint256 neededShares = (amount * pricePerShare) / 10**vaultDecimals;
 
         // If we have enough in local reserves we don't call out for deposits
         if (localShares > neededShares) {
@@ -195,7 +183,7 @@ contract YVaultAssetProxy is WrappedPosition {
         // We load the reserves
         (uint256 localUnderlying, uint256 localShares) = _getReserves();
         // Calculate the amount of shares the amount deposited is worth
-        uint256 needed = (_shares * _pricePerShare()) / (10**vaultDecimals);
+        uint256 needed = _underlying(_shares);
         // If we have enough underlying we don't have to actually withdraw
         if (needed < localUnderlying) {
             // We set the reserves to be the new reserves

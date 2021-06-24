@@ -46,13 +46,13 @@ contract YVaultAssetProxy is WrappedPosition {
             "Inconsistent decimals"
         );
         // We check that this is a compatible yearn version
-        versionCheck(IYearnVault(vault_));
+        _versionCheck(IYearnVault(vault_));
     }
 
     /// @notice An override-able version checking function, reverts if the vault has the wrong version
     /// @param _vault The yearn vault address
     /// @dev This function can be overridden by an inheriting upgrade contract
-    function versionCheck(IYearnVault _vault) internal virtual view {
+    function _versionCheck(IYearnVault _vault) internal virtual view {
         string memory apiVersion = _vault.apiVersion();
         require(
             _stringEq(apiVersion, "0.3.0") ||

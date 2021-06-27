@@ -247,7 +247,7 @@ contract ZapCrvERC20Generic is Authorizable {
 
         // if there are more than 1 pools, assume the second one is a 3crv.
         // if the output token is a 3crv lp, balance tracks the target token output amount
-        if (_data.pools.length > 1) {
+        if (_data.pools.length == 2) {
             balance = _data.pools[1].remove_liquidity_one_coin(
                 balance,
                 _data.indices[1],

@@ -5,16 +5,6 @@ import "../libraries/Authorizable.sol";
 import "../interfaces/IERC20.sol";
 import "../interfaces/ITranche.sol";
 
-library Math {
-    function max(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a >= b ? a : b;
-    }
-
-    function min(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a < b ? a : b;
-    }
-}
-
 interface ICurveFi {
     function add_liquidity(uint256[2] calldata amounts, uint256 min_mint_amount)
         external

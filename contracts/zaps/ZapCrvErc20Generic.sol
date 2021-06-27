@@ -44,30 +44,30 @@ contract ZapCrvERC20Generic is Authorizable {
         IERC20 targetLp;
         // amount of input token to deposit
         uint256 amount;
-        // array of pools. [target lp pool, optional 3pool]
-        // a 3pool pool address can be used if the input token is part of a 3pool,
-        // and the 3pool lp is the input token to the targetLp pool.
+        // array of pools. [target lp pool, optional 3crv]
+        // a 3crv pool address can be used if the input token is part of a 3crv,
+        // and the 3crv lp is the input token to the targetLp pool.
         // array should be max length 2
         ICurveFi[] pools;
         // indices of the target tokens in each pool
-        // [target lp pool input token index, optional 3pool input token index]
+        // [target lp pool input token index, optional 3crv input token index]
         uint256[] indices;
-        // true if the input token is part of a 3pool, and the 3pool lp is the input token
+        // true if the input token is part of a 3crv, and the 3crv lp is the input token
         // to the targetLp pool.
         // each pool must have a corresponding token index.
-        bool in3pool;
+        bool in3crv;
     }
 
     struct ZapOut {
         // target output token to zap out to.
         IERC20 outputToken;
-        // array of pools. [base lp pool, optional 3pool]
-        // a 3pool pool address can be used if the output token is part of a 3pool,
-        // and the 3pool lp is the input token to the base lp pool.
+        // array of pools. [base lp pool, optional 3crv]
+        // a 3crv pool address can be used if the output token is part of a 3crv,
+        // and the 3crv lp is the input token to the base lp pool.
         // array should be max length 2
         ICurveFi[] pools;
         // indices of the target tokens in each pool
-        // [target lp pool input token index, optional 3pool input token index]
+        // [target lp pool input token index, optional 3crv input token index]
         // each pool must have a corresponding token index.
         int128[] indices;
     }
@@ -178,12 +178,12 @@ contract ZapCrvERC20Generic is Authorizable {
         require(_data.pools.length == _data.indices.length, "array mismatch");
         uint256 amount = _data.amount;
 
-        // if there are more than 1 pools, assume the second one is a 3pool
+        // if there are more than 1 pools, assume the second one is a 3crv
         if (_data.pools.length == 2) {
             // build the funding array
             uint256[3] memory positions;
             positions[uint256(_data.indices[1])] = _data.amount;
-            // the new amount will be the 3pool lp tokens received
+            // the new amount will be the 3crv lp tokens received
             amount = _data.pools[1].add_liquidity(positions, 0);
         }
 
@@ -245,8 +245,8 @@ contract ZapCrvERC20Generic is Authorizable {
             0
         );
 
-        // if there are more than 1 pools, assume the second one is a 3pool.
-        // if the output token is a 3pool lp, balance tracks the target token output amount
+        // if there are more than 1 pools, assume the second one is a 3crv.
+        // if the output token is a 3crv lp, balance tracks the target token output amount
         if (_data.pools.length > 1) {
             balance = _data.pools[1].remove_liquidity_one_coin(
                 balance,
@@ -270,8 +270,7 @@ contract ZapCrvERC20Generic is Authorizable {
         onlyAuthorized()
     {
         IERC20 want = IERC20(token);
-        amount = Math.min(want.balanceOf(address(this)), amount);
-        want.transfer(msg.sender, amount);
+        want.transfer(msg.sender, want.balanceOf(address(this)));
     }
 
     /// @dev This internal function produces the deterministic create2

@@ -51,7 +51,7 @@ contract YVaultV4AssetProxy is YVaultAssetProxy {
             return (pricePerShare * amount) / 10**vaultDecimals;
         } else {
             // If the input is in underlying we divide by price per share
-            return (amount * 10**vaultDecimals) / pricePerShare;
+            return (amount * 10**vaultDecimals) / (pricePerShare + 1);
         }
     }
 }

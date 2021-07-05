@@ -277,6 +277,7 @@ contract YVaultAssetProxy is WrappedPosition {
     /// @dev WARNING - In yearn 0.3.1 - 0.3.5 this is an exact match for deposit logic
     ///                but not withdraw logic in versions 0.3.2-0.3.5. In versions 0.4.0+
     ///                it is not a match for yearn deposit ratios.
+    /// @return The converted output of either underlying or yearn shares
     function _yearnDepositConverter(uint256 amount, bool sharesIn)
         internal
         virtual

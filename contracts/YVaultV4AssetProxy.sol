@@ -37,6 +37,7 @@ contract YVaultV4AssetProxy is YVaultAssetProxy {
     /// @param sharesIn true to convert from yearn shares to underlying, false to convert from
     ///                 underlying to yearn shares
     /// @dev WARNING - Fails for 0.3.2-0.3.5, please only use with 0.4.2
+    /// @return The converted output of either underlying or yearn shares
     function _yearnDepositConverter(uint256 amount, bool sharesIn)
         internal
         override

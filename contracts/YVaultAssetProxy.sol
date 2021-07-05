@@ -68,7 +68,7 @@ contract YVaultAssetProxy is WrappedPosition {
     /// @notice checks if two strings are equal
     /// @param s1 string one
     /// @param s2 string two
-    /// @return bool weather they are equal
+    /// @return bool whether they are equal
     function _stringEq(string memory s1, string memory s2)
         internal
         pure

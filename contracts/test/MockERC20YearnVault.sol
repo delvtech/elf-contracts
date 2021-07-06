@@ -1,5 +1,5 @@
 pragma solidity ^0.8.0;
-import "../interfaces/IYearnVaultV2.sol";
+import "../interfaces/IYearnVault.sol";
 import "../libraries/Authorizable.sol";
 import "../libraries/ERC20Permit.sol";
 
@@ -36,6 +36,10 @@ contract MockERC20YearnVault is IYearnVault, Authorizable, ERC20Permit {
         // 6 hours in blocks
         // 6*60*60 ~= 1e6 / 46
         lockedProfitDegradation = (DEGRADATION_COEFFICIENT * 46) / 1e6;
+    }
+
+    function apiVersion() external override pure returns (string memory) {
+        return ("0.3.2");
     }
 
     /**

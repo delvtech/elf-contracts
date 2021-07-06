@@ -22,4 +22,6 @@ interface IYearnVault is IERC20 {
     function totalSupply() external view returns (uint256);
 
     function totalAssets() external view returns (uint256);
+
+    function apiVersion() external view returns (string memory);
 }

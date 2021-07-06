@@ -4,7 +4,7 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/IERC20.sol";
-import "./interfaces/IYearnVaultV2.sol";
+import "./interfaces/IYearnVault.sol";
 import "./WrappedPosition.sol";
 
 /// @author Element Finance
@@ -45,6 +45,38 @@ contract YVaultAssetProxy is WrappedPosition {
             uint8(_token.decimals()) == localVaultDecimals,
             "Inconsistent decimals"
         );
+        // We check that this is a compatible yearn version
+        _versionCheck(IYearnVault(vault_));
+    }
+
+    /// @notice An override-able version checking function, reverts if the vault has the wrong version
+    /// @param _vault The yearn vault address
+    /// @dev This function can be overridden by an inheriting upgrade contract
+    function _versionCheck(IYearnVault _vault) internal virtual view {
+        string memory apiVersion = _vault.apiVersion();
+        require(
+            _stringEq(apiVersion, "0.3.0") ||
+                _stringEq(apiVersion, "0.3.1") ||
+                _stringEq(apiVersion, "0.3.2") ||
+                _stringEq(apiVersion, "0.3.3") ||
+                _stringEq(apiVersion, "0.3.4") ||
+                _stringEq(apiVersion, "0.3.5"),
+            "Unsupported Version"
+        );
+    }
+
+    /// @notice checks if two strings are equal
+    /// @param s1 string one
+    /// @param s2 string two
+    /// @return bool whether they are equal
+    function _stringEq(string memory s1, string memory s2)
+        internal
+        pure
+        returns (bool)
+    {
+        bytes32 h1 = keccak256(abi.encodePacked(s1));
+        bytes32 h2 = keccak256(abi.encodePacked(s2));
+        return (h1 == h2);
     }
 
     /// @notice This function allows a user to deposit to the reserve
@@ -60,9 +92,7 @@ contract YVaultAssetProxy is WrappedPosition {
         (uint256 localUnderlying, uint256 localShares) = _getReserves();
         // Calculate the total reserve value
         uint256 totalValue = localUnderlying;
-        uint256 yearnTotalSupply = vault.totalSupply();
-        uint256 yearnTotalAssets = vault.totalAssets();
-        totalValue += ((yearnTotalAssets * localShares) / yearnTotalSupply);
+        totalValue += _yearnDepositConverter(localShares, true);
         // If this is the first deposit we need different logic
         uint256 localReserveSupply = reserveSupply;
         uint256 mintAmount;
@@ -129,11 +159,7 @@ contract YVaultAssetProxy is WrappedPosition {
             amount -= 1;
         }
         // Calculate the amount of shares the amount deposited is worth
-        // Note - to get a realistic reading and avoid rounding errors we
-        // use the method of the yearn vault instead of '_pricePerShare'
-        uint256 yearnTotalSupply = vault.totalSupply();
-        uint256 yearnTotalAssets = vault.totalAssets();
-        uint256 neededShares = (amount * yearnTotalSupply) / yearnTotalAssets;
+        uint256 neededShares = _yearnDepositConverter(amount, false);
 
         // If we have enough in local reserves we don't call out for deposits
         if (localShares > neededShares) {
@@ -241,5 +267,34 @@ contract YVaultAssetProxy is WrappedPosition {
     ) internal {
         reserveUnderlying = uint128(_newReserveUnderlying);
         reserveShares = uint128(_newReserveShares);
+    }
+
+    /// @notice Converts an input of shares to it's output of underlying or an input
+    ///      of underlying to an output of shares, using yearn 's deposit pricing
+    /// @param amount the amount of input, shares if 'sharesIn == true' underlying if not
+    /// @param sharesIn true to convert from yearn shares to underlying, false to convert from
+    ///                 underlying to yearn shares
+    /// @dev WARNING - In yearn 0.3.1 - 0.3.5 this is an exact match for deposit logic
+    ///                but not withdraw logic in versions 0.3.2-0.3.5. In versions 0.4.0+
+    ///                it is not a match for yearn deposit ratios.
+    /// @return The converted output of either underlying or yearn shares
+    function _yearnDepositConverter(uint256 amount, bool sharesIn)
+        internal
+        virtual
+        view
+        returns (uint256)
+    {
+        // Load the yearn total supply and assets
+        uint256 yearnTotalSupply = vault.totalSupply();
+        uint256 yearnTotalAssets = vault.totalAssets();
+        // If we are converted shares to underlying
+        if (sharesIn) {
+            // then we get the fraction of yearn shares this is and multiply by assets
+            return (yearnTotalAssets * amount) / yearnTotalSupply;
+        } else {
+            // otherwise we figure out the faction of yearn assets this is and see how
+            // many assets we get out.
+            return (yearnTotalSupply * amount) / yearnTotalAssets;
+        }
     }
 }

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/IERC20.sol";
-import "../interfaces/IYearnVaultV2.sol";
+import "../interfaces/IYearnVault.sol";
 
 import "../libraries/ERC20PermitWithSupply.sol";
 
@@ -23,10 +23,19 @@ contract TestYVault is ERC20PermitWithSupply {
         external
         returns (uint256)
     {
-        uint256 _shares = (_amount * (10**decimals)) / pricePerShare(); // calculate shares
+        uint256 _shares;
+        if (totalSupply == 0) {
+            _shares = _amount;
+        } else {
+            _shares = (_amount * (10**decimals)) / pricePerShare(); // calculate shares
+        }
         IERC20(token).transferFrom(msg.sender, address(this), _amount); // pull deposit from sender
         _mint(destination, _shares); // mint shares for sender
         return _shares;
+    }
+
+    function apiVersion() external virtual pure returns (string memory) {
+        return ("0.3.2");
     }
 
     function withdraw(

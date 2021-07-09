@@ -210,11 +210,10 @@ interface Vault {
 
     /*
      * @inv sharePrice() >= buyPrice() >= sellPrice()
-     */
-
-    /*
-     * In Yearn v0.3.x: @inv sharePrice() == buyPrice() >= sellPrice()
-     * In Yearn v0.4.x: @inv sharePrice() >= buyPrice() == sellPrice()
+     *
+     * Specifically,
+     * - for Yearn v0.3.x: @inv sharePrice() == buyPrice() >= sellPrice()
+     * - for Yearn v0.4.x: @inv sharePrice() >= buyPrice() == sellPrice()
      */
 
     // buy shares

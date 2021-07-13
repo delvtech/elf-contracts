@@ -10,7 +10,7 @@ spec Tranche {
     mapping(address => num) it; // interest tokens // code.InterestToken.balanceOf
 
     /* until expiration, we have:
-     * - forall x, pt[x] >= it[x]
+     * - sum(pt) <= sum(it)
      * - sum(it) is equal to the total deposits
      */
 

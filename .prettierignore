@@ -6,3 +6,4 @@ lib/
 contracts/balancer-core-v2/
 typechain/
 coverage/
+specs/

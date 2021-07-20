@@ -28,7 +28,10 @@ contract YVaultV4AssetProxy is YVaultAssetProxy {
     /// @dev This function can be overridden by an inheriting upgrade contract
     function _versionCheck(IYearnVault _vault) internal override view {
         string memory apiVersion = _vault.apiVersion();
-        require(_stringEq(apiVersion, "0.4.2"), "Unsupported Version");
+        require(
+            _stringEq(apiVersion, "0.4.2") || _stringEq(apiVersion, "0.4.3"),
+            "Unsupported Version"
+        );
     }
 
     /// @notice Converts an input of shares to it's output of underlying or an input

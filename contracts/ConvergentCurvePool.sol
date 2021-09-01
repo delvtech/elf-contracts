@@ -285,19 +285,19 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     ///      It burns a proportional number of tokens compared to current LP pool,
     ///      based on the minium output the user wants.
     /// @param poolId The balancer pool id, checked to ensure non erroneous vault call
-    // @param sender Unused by this pool but in interface
-    /// @param recipient The address which will receive the withdraw tokens.
+    /// @param sender The address which is the source of the LP token
+    // @param recipient Unused by this pool but in interface
     /// @param currentBalances The current pool balances, sorted by address low to high.  length 2
     // @param latestBlockNumberUsed last block number unused in this pool
     /// @param protocolSwapFee The percent of pool fees to be paid to the Balancer Protocol
-    /// @param userData Abi encoded fixed length 2 array containing min outputs also sorted by
-    ///                 address low to high
+    /// @param userData Abi encoded uint256 which is the number of LP tokens the user wants to
+    ///                 withdraw
     /// @return amountsOut The number of each token to send to the caller
     /// @return dueProtocolFeeAmounts The amounts of each token to pay as protocol fees
     function onExitPool(
         bytes32 poolId,
+        address sender,
         address,
-        address recipient,
         uint256[] memory currentBalances,
         uint256,
         uint256 protocolSwapFee,
@@ -313,14 +313,10 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         // Default checks
         require(msg.sender == address(_vault), "Non Vault caller");
         require(poolId == _poolId, "Wrong pool id");
-        uint256[] memory minAmountsOut = abi.decode(userData, (uint256[]));
-        require(
-            currentBalances.length == 2 && minAmountsOut.length == 2,
-            "Invalid format"
-        );
+        uint256 lpOut = abi.decode(userData, (uint256));
+
         // We have to convert to 18 decimals
         _normalizeSortedArray(currentBalances);
-        _normalizeSortedArray(minAmountsOut);
 
         // Mint LP for the governance address.
         // {} zones to help solidity figure out the stack
@@ -340,12 +336,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             );
         }
 
-        amountsOut = _burnLP(
-            minAmountsOut[baseIndex],
-            minAmountsOut[bondIndex],
-            currentBalances,
-            recipient
-        );
+        amountsOut = _burnLP(lpOut, currentBalances, sender);
 
         // We need to convert the balancer outputs to token decimals instead of 18
         _denormalizeSortedArray(amountsOut);
@@ -538,16 +529,14 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         }
     }
 
-    /// @dev Burns at least enough LP tokens from the sender to produce
-    ///      as set of minium outputs.
-    /// @param minOutputUnderlying The minimum output in underlying
-    /// @param minOutputBond The minimum output in the bond
+    /// @dev Burns a number of LP tokens and returns the percent of the pool
+    ///      they represent
+    /// @param lpOut The minimum output in underlying
     /// @param currentBalances The current pool balances, sorted by address low to high.  length 2
     /// @param source The address to burn from.
     /// @return amountsReleased in address sorted order
     function _burnLP(
-        uint256 minOutputUnderlying,
-        uint256 minOutputBond,
+        uint256 lpOut,
         uint256[] memory currentBalances,
         address source
     ) internal returns (uint256[] memory amountsReleased) {
@@ -560,36 +549,16 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         );
 
         uint256 localTotalSupply = totalSupply();
-        // Calculate the ratio of the minOutputUnderlying to reserve
-        uint256 underlyingPerBond = reserveUnderlying.divDown(reserveBond);
-        // If the ratio won't produce enough bond
-        if (minOutputUnderlying > minOutputBond.mulDown(underlyingPerBond)) {
-            // In this case we burn enough tokens to output 'minOutputUnderlying'
-            // which will be the total supply times the percent of the underlying
-            // reserve which this amount of underlying is.
-            uint256 burned = (minOutputUnderlying.mulDown(localTotalSupply))
-                .divDown(reserveUnderlying);
-            _burnPoolTokens(source, burned);
-            // We return that we released 'minOutputUnderlying' and the number of bonds that
-            // preserves the reserve ratio
-            amountsReleased[baseIndex] = minOutputUnderlying;
-            amountsReleased[bondIndex] = minOutputUnderlying.divDown(
-                underlyingPerBond
-            );
-        } else {
-            // Then the amount burned is the ratio of the minOutputBond
-            // to the reserve of bond times the total supply
-            uint256 burned = (minOutputBond.mulDown(localTotalSupply)).divDown(
-                reserveBond
-            );
-            _burnPoolTokens(source, burned);
-            // We return that we released all of the minOutputBond
-            // and the number of underlying which preserves the reserve ratio
-            amountsReleased[baseIndex] = minOutputBond.mulDown(
-                underlyingPerBond
-            );
-            amountsReleased[bondIndex] = minOutputBond;
-        }
+        // Burn the LP tokens from the user
+        _burnPoolTokens(source, lpOut);
+        // They get a percent ratio of the pool, div down will cause a very small
+        // rounding error loss.
+        amountsReleased[baseIndex] = (reserveUnderlying.mulDown(lpOut)).divDown(
+            localTotalSupply
+        );
+        amountsReleased[bondIndex] = (reserveBond.mulDown(lpOut)).divDown(
+            localTotalSupply
+        );
     }
 
     /// @dev Mints LP tokens from a percentage of the stored fees and then updates them

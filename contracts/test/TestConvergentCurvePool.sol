@@ -37,17 +37,11 @@ contract TestConvergentCurvePool is ConvergentCurvePool {
 
     // Allows tests to burn LP tokens directly
     function burnLP(
-        uint256 outputUnderlying,
-        uint256 outputBond,
+        uint256 lpBurn,
         uint256[] memory currentBalances,
         address source
     ) public {
-        uint256[] memory outputs = _burnLP(
-            outputUnderlying,
-            outputBond,
-            currentBalances,
-            source
-        );
+        uint256[] memory outputs = _burnLP(lpBurn, currentBalances, source);
         // We use this to return because returndata from state changing tx isn't easily accessible.
         emit UIntReturn(outputs[baseIndex]);
         emit UIntReturn(outputs[bondIndex]);

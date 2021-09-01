@@ -324,36 +324,7 @@ describe("ConvergentCurvePool", function () {
   });
 
   // We test the mint functionality where the bond should be fully consumed
-  it("Internally Mints LP correctly for the bond max", async function () {
-    await resetPool();
-    const oneThousand = ethers.utils.parseUnits("1000", 18);
-    // Set the current total supply to 1000 lp tokens
-    await mineTx(poolContract.setLPBalance(accounts[0].address, oneThousand));
-    // We want a min of 500 underlying and 100 bond
-    const fiveHundred = ethers.utils.parseUnits("500", 18);
-    const result = await mineTx(
-      poolContract.burnLP(
-        fiveHundred,
-        fiveHundred.div(5),
-        [oneThousand, fiveHundred],
-        accounts[0].address
-      )
-    );
-    // The call should have released 500 underlying and 250 bond
-    const returned = result.events.filter(
-      (event) => event.event == "UIntReturn"
-    );
-    expect(returned[0].data).to.be.eq(fiveHundred);
-    expect(returned[1].data).to.be.eq(fiveHundred.div(2));
-    // The call should have burned 50% of the LP tokens to produce this
-    const balance = await poolContract.balanceOf(accounts[0].address);
-    expect(balance).to.be.eq(fiveHundred);
-    const totalSupply = await poolContract.totalSupply();
-    expect(totalSupply).to.be.eq(fiveHundred);
-  });
-
-  // We test the mint functionality where the bond should be fully consumed
-  it("Internally Mints LP correctly for the underlying max", async function () {
+  it("Internally Burns LP correctly for the underlying max", async function () {
     await resetPool();
     const oneThousand = ethers.utils.parseUnits("1000", 18);
     // Set the current total supply to 1000 lp tokens
@@ -363,8 +334,7 @@ describe("ConvergentCurvePool", function () {
     const twoFifty = fiveHundred.div(2);
     const result = await mineTx(
       poolContract.burnLP(
-        twoFifty,
-        twoFifty,
+        fiveHundred,
         [oneThousand, fiveHundred],
         accounts[0].address
       )

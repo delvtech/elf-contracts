@@ -53,3 +53,11 @@ npm run build
 ```
 npm run test
 ```
+
+## Contract Addresses
+
+Deployed contract addresses can be found in the [changelog site](https://element-fi.github.io/elf-deploy).
+
+> Note: The highest release version will always contain the latest list of contract addresses.
+
+Additionally, the latest deployed contract addresses for Goerli and Mainnet can be found [here](https://github.com/element-fi/elf-deploy/blob/main/addresses/goerli.json) and [here](https://github.com/element-fi/elf-deploy/blob/main/addresses/mainnet.json) respectively.

@@ -65,11 +65,6 @@ contract TestConvergentCurvePool is ConvergentCurvePool {
         emit UIntReturn(amountsIn[bondIndex]);
     }
 
-    // Allows tests to access mint gov LP
-    function mintGovLP(uint256[] memory currentReserves) public {
-        _mintGovernanceLP(currentReserves);
-    }
-
     // Allows tests to access the trade fee calculator
     function assignTradeFee(
         uint256 amountIn,

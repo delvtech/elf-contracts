@@ -227,7 +227,7 @@ contract ZapTrancheLp is Authorizable {
         _vault.joinPool(
             _ptInInfo.poolId,
             address(this),
-            payable(msg.sender), // hardcode for security
+            payable(msg.sender), // hard-code for security
             _ptInInfo.request
         );
         uint256 ptLpBalanceAfter = ptPool.balanceOf(msg.sender);

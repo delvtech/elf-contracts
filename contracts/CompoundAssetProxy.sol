@@ -1,16 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-// WARNING: This has been validated for yearn vaults up to version 0.2.11.
-// Using this code with any later version can be unsafe.
+
 pragma solidity ^0.8.0;
 
 import "./interfaces/IERC20.sol";
-import "./interfaces/IYearnVault.sol";
 import "./WrappedPosition.sol";
 
 /// @author Element Finance
 /// @title Compound Asset Proxy
 contract CompoundAssetProxy is WrappedPosition {
-    IYearnVault public immutable vault;
+    // vault;
     uint8 public immutable vaultDecimals;
 
     // The following mapping tracks those non-transferable deposits
@@ -33,16 +31,7 @@ contract CompoundAssetProxy is WrappedPosition {
         IERC20 _token,
         string memory _name,
         string memory _symbol
-    ) WrappedPosition(_token, _name, _symbol) {
-        vault = IYearnVault(vault_);
-        _token.approve(vault_, type(uint256).max);
-        uint8 localVaultDecimals = IERC20(vault_).decimals();
-        vaultDecimals = localVaultDecimals;
-        require(
-            uint8(_token.decimals()) == localVaultDecimals,
-            "Inconsistent decimals"
-        );
-    }
+    ) WrappedPosition(_token, _name, _symbol) {}
 
     /// @notice This function allows a user to deposit to the reserve
     /// @param _amount The amount of underlying to deposit
@@ -67,7 +56,6 @@ contract CompoundAssetProxy is WrappedPosition {
             amount -= 1;
         }
         // Calculate the amount of shares the amount deposited is worth
-        uint256 neededShares = _yearnDepositConverter(amount, false);
 
         // If we have enough in local reserves we don't call out for deposits
         if (localShares > neededShares) {

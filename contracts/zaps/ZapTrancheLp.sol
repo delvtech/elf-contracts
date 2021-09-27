@@ -57,6 +57,8 @@ contract ZapTrancheLp is Authorizable {
     // The balancer Vault contract
     IVault internal _vault;
 
+    /// @notice Constructs by setting the balancer vault to use.
+    /// @param __vault The balancer vault contract address
     constructor(address __vault) Authorizable() {
         _authorize(msg.sender);
         _vault = IVault(__vault);
@@ -88,7 +90,7 @@ contract ZapTrancheLp is Authorizable {
     /// @dev Takes the input permit calls and executes them
     /// @param data The array which encodes the set of permit calls to make
     modifier preApproval(PermitData[] memory data) {
-        // If permit calls are provided we make try to make them
+        // If permit calls are provided we try to make them
         if (data.length != 0) {
             // We make permit calls for each indicated call
             for (uint256 i = 0; i < data.length; i++) {
@@ -128,45 +130,52 @@ contract ZapTrancheLp is Authorizable {
         IVault.JoinPoolRequest request;
     }
 
+    struct ZapInput {
+        // The amount of underlying to mint with in the new tranche.
+        uint256 toMint;
+        // Out struct with info to exit the lp position for the pt.
+        Out ptOutInfo;
+        // Out struct with info to exit the lp position for the yt.
+        Out ytOutInfo;
+        // In struct with info to enter the new lp position for the pt
+        In ptInInfo;
+        // In struct with info to enter the new lp position for the yt
+        In ytInInfo;
+        // This can be set to true to avoid any yt actions.
+        bool onlyPrincipal;
+    }
+
     /// @notice Removes PT + YT liquidity from balancer pools, withdraws the PT + YT,
     /// deposits into a new Tranche, and joins new PT and YT liquidity pools.
-    /// @dev The
-    /// @param _toMint The amount of underlying to mint with in the new tranche.
-    /// @param _ptOutInfo Out struct with info to exit the lp position for the pt.
-    /// @param _ytOutInfo Out struct with info to exit the lp position for the yt.
-    /// @param _ptInInfo In struct with info to enter the new lp position for the pt.
-    /// @param _ytInInfo In struct with info to enter the new lp position for the yt.
-    /// @param _onlyPrincipal This can be set to true to avoid any yt actions.
     /// @param _permitCallData Encoded array of permit calls to make prior to minting
     ///                        the data should be encoded with abi.encode(data, "PermitData[]")
     ///                        each PermitData struct provided will be executed as a call.
     ///                        An example use of this is if using a token with permit like USDC
     ///                        to encode a permit which gives this contract allowance before minting.
-    function hopToTranche(
-        uint256 _toMint,
-        Out memory _ptOutInfo,
-        Out memory _ytOutInfo,
-        In memory _ptInInfo,
-        In memory _ytInInfo,
-        bool _onlyPrincipal,
+    function zapTrancheLp(
+        ZapInput memory _input,
         PermitData[] calldata _permitCallData
-    ) public notFrozen {
+    ) public notFrozen preApproval(_permitCallData) {
         IERC20 ytPool;
-        // get tranches
+        // get tranches. Tranche address derivation method used by balancer.
+        // https://github.com/balancer-labs/balancer-v2-monorepo/blob/26a1dc64e17996c53cfda8ffb4fe42159ef535fa/pkg/vault/contracts/PoolRegistry.sol#L137
         ITrancheExt trancheFrom = ITrancheExt(
-            IPool(address(uint160(uint256(_ptOutInfo.poolId)) >> (12 * 8)))
+            IPool(
+                address(uint160(uint256(_input.ptOutInfo.poolId) >> (12 * 8)))
+            )
                 .bond()
         );
 
         ITrancheExt trancheTo = ITrancheExt(
-            IPool(address(uint160(uint256(_ptInInfo.poolId)) >> (12 * 8)))
+            IPool(address(uint160(uint256(_input.ptInInfo.poolId) >> (12 * 8))))
                 .bond()
         );
 
         // transfer pt lp tokens
         IERC20 ptPool = IERC20(
-            address(uint160(uint256(_ptOutInfo.poolId)) >> (12 * 8))
+            address(uint160(uint256(_input.ptOutInfo.poolId) >> (12 * 8)))
         );
+
         ptPool.transferFrom(
             msg.sender,
             address(this),
@@ -175,10 +184,10 @@ contract ZapTrancheLp is Authorizable {
 
         // exit PT position
         _vault.exitPool(
-            _ptOutInfo.poolId,
+            _input.ptOutInfo.poolId,
             address(this),
             payable(address(this)),
-            _ptOutInfo.request
+            _input.ptOutInfo.request
         );
 
         // withdraw principal here. This should accumulate underlying.
@@ -187,26 +196,25 @@ contract ZapTrancheLp is Authorizable {
             address(this)
         );
 
-        if (!_onlyPrincipal) {
+        if (!_input.onlyPrincipal) {
             // transfer yt lp tokens
             ytPool = IERC20(
-                address(uint160(uint256(_ytOutInfo.poolId)) >> (12 * 8))
+                address(uint160(uint256(_input.ytOutInfo.poolId) >> (12 * 8)))
             );
             ytPool.transferFrom(
                 msg.sender,
                 address(this),
                 ytPool.balanceOf(msg.sender)
             );
-
             // exit YT position
             _vault.exitPool(
-                _ytOutInfo.poolId,
+                _input.ytOutInfo.poolId,
                 address(this),
                 payable(address(this)),
-                _ytOutInfo.request
+                _input.ytOutInfo.request
             );
 
-            // withdraw interest to the new tranche to prep a pre-funded deposit
+            // withdraw interest
             trancheFrom.withdrawInterest(
                 IERC20(address(trancheFrom.interestToken())).balanceOf(
                     address(this)
@@ -215,57 +223,89 @@ contract ZapTrancheLp is Authorizable {
             );
         }
 
-        // transfer required amount and run prefunded deposit
+        // mint correct proportion in preparation for next deposit
         trancheFrom.underlying().transfer(
             address(trancheTo.position()),
-            _toMint
+            _input.toMint
         );
+
         trancheTo.prefundedDeposit(address(this));
 
-        uint256 ptLpBalanceBefore = ptPool.balanceOf(msg.sender);
         // enter new PT position
         _vault.joinPool(
-            _ptInInfo.poolId,
+            _input.ptInInfo.poolId,
             address(this),
             payable(msg.sender), // hard-code for security
-            _ptInInfo.request
+            _input.ptInInfo.request
         );
-        uint256 ptLpBalanceAfter = ptPool.balanceOf(msg.sender);
+
+        // get the msg.sender's balance of the target PT LP
+        uint256 PtLpBalanceCheck = IERC20(
+            address(uint160(uint256(_input.ptInInfo.poolId) >> (12 * 8)))
+        )
+            .balanceOf(msg.sender);
 
         require(
-            ptLpBalanceAfter - ptLpBalanceBefore >= _ptInInfo.lpCheck,
+            PtLpBalanceCheck >= _input.ptInInfo.lpCheck,
             "not enough PT LP minted"
         );
 
-        if (!_onlyPrincipal) {
-            uint256 ytLpBalanceBefore = ytPool.balanceOf(msg.sender);
+        if (!_input.onlyPrincipal) {
             // enter new YT position
             _vault.joinPool(
-                _ytInInfo.poolId,
+                _input.ytInInfo.poolId,
                 address(this),
                 payable(msg.sender),
-                _ytInInfo.request
+                _input.ytInInfo.request
             );
-            uint256 ytLpBalanceAfter = ptPool.balanceOf(msg.sender);
+            // get the msg.sender's balance of the target YT LP
+            uint256 ytLpBalanceCheck = IERC20(
+                address(uint160(uint256(_input.ytInInfo.poolId) >> (12 * 8)))
+            )
+                .balanceOf(msg.sender);
+
             require(
-                ytLpBalanceAfter - ytLpBalanceBefore >= _ytInInfo.lpCheck,
-                "not enough PT LP minted"
+                ytLpBalanceCheck >= _input.ytInInfo.lpCheck,
+                "not enough YT LP minted"
             );
         }
 
         // recover any dust
-        IERC20 yt = IERC20(address(trancheFrom.interestToken()));
-        IERC20 t1 = IERC20(address(_ptOutInfo.request.assets[0]));
-        IERC20 t2 = IERC20(address(_ptOutInfo.request.assets[1]));
+        IERC20 ytTo = IERC20(address(trancheTo.interestToken()));
+        IERC20 t1 = IERC20(address(_input.ptInInfo.request.assets[0]));
+        IERC20 t2 = IERC20(address(_input.ptInInfo.request.assets[1]));
+        IERC20 ptPoolOut = IERC20(
+            address(uint160(uint256(_input.ptOutInfo.poolId) >> (12 * 8)))
+        );
+        IERC20 ytPoolOut = IERC20(
+            address(uint160(uint256(_input.ytOutInfo.poolId) >> (12 * 8)))
+        );
+        uint256 ytToBalance = ytTo.balanceOf(address(this));
+        uint256 t1Balance = t1.balanceOf(address(this));
+        uint256 t2Balance = t2.balanceOf(address(this));
+        uint256 ptLpBalance = ptPoolOut.balanceOf(address(this));
+        uint256 ytLpBalance = ytPoolOut.balanceOf(address(this));
 
-        yt.transfer(msg.sender, yt.balanceOf(address(this)));
-        t1.transfer(msg.sender, t1.balanceOf(address(this)));
-        t2.transfer(msg.sender, t2.balanceOf(address(this)));
+        if (ytToBalance > 0) {
+            ytTo.transfer(msg.sender, ytToBalance);
+        }
+        if (t1Balance > 0) {
+            t1.transfer(msg.sender, t1Balance);
+        }
+        if (t2Balance > 0) {
+            t2.transfer(msg.sender, t2Balance);
+        }
+        if (ptLpBalance > 0) {
+            ptPoolOut.transfer(msg.sender, ptLpBalance);
+        }
+        if (ytLpBalance > 0) {
+            ytPoolOut.transfer(msg.sender, ytLpBalance);
+        }
     }
 
     /// @notice Approve token addresses here once so they only need to be approved once.
     /// @param _tokens Tokens to approve.
-    /// @param _tokens Targets for each token approval.
+    /// @param _targets Targets for each token approval.
     function tokenApproval(IERC20[] memory _tokens, address[] memory _targets)
         external
         onlyAuthorized

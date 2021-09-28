@@ -123,7 +123,12 @@ describe("zapLp", function () {
     await restoreSnapshot(provider);
     setBlock(initBlock);
   });
-
+  beforeEach(async () => {
+    await createSnapshot(provider);
+  });
+  afterEach(async () => {
+    await restoreSnapshot(provider);
+  });
   describe("zapTrancheLp", async () => {
     let lpOutPt: BigNumber;
     let lpOutYt: BigNumber;
@@ -200,12 +205,6 @@ describe("zapLp", function () {
         .transfer(wallet.address, lpOutYt);
 
       impersonate(wallet.address);
-      await trancheBeforePtLp
-        .connect(walletSigner)
-        .approve(zapLp.address, ethers.constants.MaxUint256);
-      await trancheBeforeYtLp
-        .connect(walletSigner)
-        .approve(zapLp.address, ethers.constants.MaxUint256);
     });
     it("correctly zaps PT only", async () => {
       const ptPermitInput = await permitHandler(
@@ -264,7 +263,7 @@ describe("zapLp", function () {
       const walletAddress = await wallet.getAddress();
       const balanceBefore = await trancheBeforePtLp.balanceOf(walletAddress);
 
-      await zapLp.connect(walletSigner).zapTrancheLp(zapInput, []);
+      await zapLp.connect(walletSigner).zapTrancheLp(zapInput, [ptPermitInput]);
 
       const balanceAfter = await trancheBeforePtLp.balanceOf(walletAddress);
       const balanceDifference = balanceBefore.sub(balanceAfter);
@@ -278,6 +277,12 @@ describe("zapLp", function () {
       const ptPermitInput = await permitHandler(
         trancheBeforePtLp,
         "LP Element Principal Token yvCurveLUSD-28SEP21",
+        zapLp.address,
+        wallet
+      );
+      const ytPermitInput = await permitHandler(
+        trancheBeforeYtLp,
+        "LP Element Yield Token yvCurveLUSD-28SEP21",
         zapLp.address,
         wallet
       );
@@ -330,13 +335,15 @@ describe("zapLp", function () {
 
       const walletAddress = await wallet.getAddress();
 
-      await zapLp.connect(walletSigner).zapTrancheLp(zapInput, []);
+      await zapLp
+        .connect(walletSigner)
+        .zapTrancheLp(zapInput, [ptPermitInput, ytPermitInput]);
 
       const finalLpBalance = await trancheAfterYtLp.balanceOf(walletAddress);
 
       expect(finalLpBalance).to.be.gt(inputLp);
     });
-    it("correctly zaps PT only", async () => {
+    it("reverts with insufficient pt lp minted", async () => {
       const ptPermitInput = await permitHandler(
         trancheBeforePtLp,
         "LP Element Principal Token yvCurveLUSD-28SEP21",
@@ -391,14 +398,20 @@ describe("zapLp", function () {
       };
 
       await expect(
-        zapLp.connect(walletSigner).zapTrancheLp(zapInput, [])
+        zapLp.connect(walletSigner).zapTrancheLp(zapInput, [ptPermitInput])
       ).to.be.revertedWith("not enough PT LP minted");
     });
-    it("correctly zaps PT and YT", async () => {
+    it("reverts with insufficient yt lp minted", async () => {
       const inputLp = ethers.utils.parseEther("100000");
       const ptPermitInput = await permitHandler(
         trancheBeforePtLp,
         "LP Element Principal Token yvCurveLUSD-28SEP21",
+        zapLp.address,
+        wallet
+      );
+      const ytPermitInput = await permitHandler(
+        trancheBeforeYtLp,
+        "LP Element Yield Token yvCurveLUSD-28SEP21",
         zapLp.address,
         wallet
       );
@@ -450,7 +463,9 @@ describe("zapLp", function () {
       };
 
       await expect(
-        zapLp.connect(walletSigner).zapTrancheLp(zapInput, [])
+        zapLp
+          .connect(walletSigner)
+          .zapTrancheLp(zapInput, [ptPermitInput, ytPermitInput])
       ).to.be.revertedWith("not enough YT LP minted");
     });
   });

@@ -468,5 +468,59 @@ describe("zapLp", function () {
           .zapTrancheLp(zapInput, [ptPermitInput, ytPermitInput])
       ).to.be.revertedWith("not enough YT LP minted");
     });
+    it("reverts if contract is frozen", async () => {
+      await zapLp.connect(signers[0]).setIsFrozen(true);
+
+      const beforePtAssets = await vault.getPoolTokens(trancheBeforePtPoolId);
+      const afterPtAssets = await vault.getPoolTokens(trancheAfterPtPoolId);
+      const beforeYtAssets = await vault.getPoolTokens(trancheBeforeYtPoolId);
+      const afterYtAssets = await vault.getPoolTokens(trancheAfterYtPoolId);
+      const ptOutInfoRequest = await ccPoolExitRequest(
+        beforePtAssets[0],
+        "100000"
+      ); // 100k chosen arbitrarily.
+      const ptInInfoRequest = await ccPoolJoinRequest(
+        afterPtAssets[0],
+        "348251"
+      );
+      const ytOutInfoRequest = await weightedPoolExitRequest(
+        1,
+        beforeYtAssets[0],
+        ["1", "1"],
+        ethers.BigNumber.from("1")
+      );
+      const ytInInfoRequest = await weightedPoolJoinRequest(
+        1,
+        afterYtAssets[0],
+        ["1", "1"]
+      );
+
+      const zapInput = {
+        toMint: ethers.utils.parseEther("356037"),
+        ptOutInfo: {
+          poolId: trancheBeforePtPoolId,
+          request: ptOutInfoRequest,
+        },
+        ytOutInfo: {
+          poolId: trancheBeforeYtPoolId,
+          request: ytOutInfoRequest,
+        },
+        ptInInfo: {
+          lpCheck: 0,
+          poolId: trancheAfterPtPoolId,
+          request: ptInInfoRequest,
+        },
+        ytInInfo: {
+          lpCheck: 0,
+          poolId: trancheAfterYtPoolId,
+          request: ytInInfoRequest,
+        },
+        onlyPrincipal: true,
+      };
+
+      await expect(
+        zapLp.connect(walletSigner).zapTrancheLp(zapInput, [])
+      ).to.be.revertedWith("Contract frozen");
+    });
   });
 });

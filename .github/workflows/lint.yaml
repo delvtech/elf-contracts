@@ -1,12 +1,13 @@
 name: Lint
 
-on:
-  push:
-    branches:
-    - main
-  pull_request:
-    branches:
-    - main
+on: [pull_request]
+# on:
+#   push:
+#     branches:
+#     - main
+#   pull_request:
+#     branches:
+#     - main
 
 jobs:
     lint:

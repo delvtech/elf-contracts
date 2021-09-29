@@ -1,53 +1,53 @@
 name: Tests
 
 on: [pull_request]
-# on:
-#   push:
-#     branches:
-#     - main
-#   pull_request:
-#     branches:
-#     - main
 
 jobs:
     unit:
-      runs-on: ubuntu-latest
-      steps:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Check out github repository
+              uses: actions/checkout@v2
+              with:
+                  node-version: "13.x"
+
+            - name: setup ssh-agent
+              uses: webfactory/ssh-agent@v0.5.3
+              with:
+                  ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+            - name: Install dependencies
+              run: npm ci && npm run load-contracts
+
+            - name: compile
+              run: npx hardhat compile
+
+            - name: test
+              run: npm run test
+
+    sim:
+        runs-on: ubuntu-latest
+
+        steps:
         - name: Check out github repository
-        - uses: actions/checkout@v2
+          uses: actions/checkout@v2
           with:
-            node-version: "13.x"
-        - uses: webfactory/ssh-agent@v0.5.3
+              node-version: "13.x"
+
+        - name: setup ssh-agent
+          uses: webfactory/ssh-agent@v0.5.3
           with:
-            ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+              ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
         - name: Install dependencies
-          run: npm ci && npm run load-contracts
+          run: pip3 install numpy && npm ci && npm run load-contracts
 
         - name: compile
           run: npx hardhat compile
 
-        - name: test
-          run: npm run test
-    # sim:
-    #   runs-on: ubuntu-latest
-    #   steps:
-    #     - name: Check out github repository
-    #     - uses: actions/checkout@v2
-    #       with:
-    #         node-version: "13.x"
-    #     - uses: webfactory/ssh-agent@v0.5.3
-    #       with:
-    #         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-    #     - name: Install dependencies
-    #       run: pip3 install numpy && npm ci && npm run load-contracts
-
-    #     - name: compile
-    #       run: npx hardhat compile
-
-    #     - name: simulation
-    #       run: npm run sim
+        - name: simulation
+          run: npm run sim
 
 
 

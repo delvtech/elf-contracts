@@ -1,36 +1,31 @@
 name: Lint
 
 on: [pull_request]
-# on:
-#   push:
-#     branches:
-#     - main
-#   pull_request:
-#     branches:
-#     - main
 
 jobs:
     lint:
-      runs-on: ubuntu-latest
+        runs-on: ubuntu-latest
 
-      steps:
-      - name: check out github repository
-        uses: actions/checkout@v2
-        with:
-          node-version: "13.x"
-          fetch-depth: 1
-      - uses: webfactory/ssh-agent@v0.5.3
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+        steps:
+            - name: check out github repository
+              uses: actions/checkout@v2
+              with:
+                  node-version: "13.x"
+                  fetch-depth: 1
 
-      - name: init
-        run: npm ci && npm run load-contracts
+            - name: setup ssh-agent
+              uses: webfactory/ssh-agent@v0.5.3
+              with:
+                  ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Style Check
-        run: npm run style-check
+            - name: init
+              run: npm ci && npm run load-contracts
 
-      - name: Solhint
-        run: npm run solhint
+            - name: Style Check
+              run: npm run style-check
 
-      - name: Spell Check
-        run: npm run spell-check
+            - name: Solhint
+              run: npm run solhint
+
+            - name: Spell Check
+              run: npm run spell-check

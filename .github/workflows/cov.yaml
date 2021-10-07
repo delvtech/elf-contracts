@@ -10,6 +10,11 @@ jobs:
             - name: check out github repository
               uses: actions/checkout@v2
 
+            - name: setup ssh-agent
+              uses: webfactory/ssh-agent@v0.5.3
+              with:
+                  ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
             - name: setup node
               uses: actions/setup-node@v2
               with:

@@ -21,7 +21,7 @@ jobs:
                   node-version: "13.x"
 
             - name: Install dependencies
-              run: npm install && npm run load-contracts
+              run: npm ci && npm run load-contracts
 
             - name: Coverage
               run: npm run build && npm run coverage

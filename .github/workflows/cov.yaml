@@ -4,7 +4,7 @@ on: [pull_request]
 
 jobs:
     coverage:
-        runs-on: ubuntu-latest
+        runs-on: macos-11
 
         steps:
             - name: check out github repository

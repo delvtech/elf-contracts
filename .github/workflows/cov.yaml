@@ -24,7 +24,7 @@ jobs:
               run: npm ci && npm run load-contracts
 
             - name: Coverage
-              run: npm run build && node --max-old-space-size=4096 `which npm` run coverage
+              run: npm run build && node --max-old-space-size=8192 `which npm` run coverage
 
             - name: Edit lcov.info
               run: cat coverage/lcov.info | sed '/.*\/balancer-core-v2\/.*/,/TN:/d' | sed '/.*\/test\/.*/,/TN:/d' > coverage/tmp.info && mv coverage/tmp.info coverage/lcov.info

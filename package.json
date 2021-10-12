@@ -11,7 +11,7 @@
     "build": "npx hardhat compile && rm ./typechain/index.ts",
     "test": "npx hardhat compile && rm ./typechain/index.ts && npx hardhat test --config hardhat.config.test.ts ./test/*.ts",
     "sim": "sh scripts/load-sim-data.sh && npx hardhat test --config hardhat.config.test.ts ./test/simulation/*.ts",
-    "coverage": "COVERAGE=true npx hardhat coverage --solcoverjs \".solcover.js\" --testfiles \"./test/*.ts\"",
+    "coverage": "COVERAGE=true && NODE_OPTIONS=--max_old_space_size=8192 npx hardhat coverage --solcoverjs \".solcover.js\" --testfiles \"./test/*.ts\"",
     "test:quick": "npx hardhat test --config hardhat.config.test.ts ./test/*.ts --no-compile",
     "load-contracts": "sh scripts/load-balancer-contracts.sh"
   },

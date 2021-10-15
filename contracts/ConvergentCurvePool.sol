@@ -253,6 +253,10 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             currentBalances.length == 2 && maxAmountsIn.length == 2,
             "Invalid format"
         );
+        require(
+            recipient != governance,
+            "Governance address LP would be locked"
+        );
         // We must normalize the inputs to 18 point
         _normalizeSortedArray(currentBalances);
         _normalizeSortedArray(maxAmountsIn);

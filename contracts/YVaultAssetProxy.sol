@@ -1,6 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// WARNING: This has been validated for yearn vaults up to version 0.2.11.
-// Using this code with any later version can be unsafe.
 pragma solidity ^0.8.0;
 
 import "./interfaces/IERC20.sol";

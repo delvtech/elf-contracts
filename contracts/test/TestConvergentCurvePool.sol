@@ -152,7 +152,7 @@ contract TestConvergentCurvePool is ConvergentCurvePool {
     }
 
     // Allows the error measurement test to set the time
-    function _getYieldExponent() internal override view returns (uint256) {
+    function _getYieldExponent() internal view override returns (uint256) {
         // Load the stored time if it's set use that instead
         if (time > 0) {
             return uint256(FixedPoint.ONE).sub(time);

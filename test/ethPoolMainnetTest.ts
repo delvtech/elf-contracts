@@ -94,9 +94,9 @@ describe("ETHPool-Mainnet", () => {
 
       let pricePerFullShare = await fixture.yweth.pricePerShare();
       const balance = (
-        await (await fixture.yweth.balanceOf(fixture.position.address)).mul(
-          pricePerFullShare
-        )
+        await (
+          await fixture.yweth.balanceOf(fixture.position.address)
+        ).mul(pricePerFullShare)
       ).div(utils.parseEther("1"));
       expect(balance.add(ethers.BigNumber.from("5"))).to.be.at.least(
         ethers.BigNumber.from("1000000000000")

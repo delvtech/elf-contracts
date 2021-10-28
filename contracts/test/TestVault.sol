@@ -9,7 +9,11 @@ contract TestVault {
         pool = _pool;
     }
 
-    enum PoolSpecialization { GENERAL, MINIMAL_SWAP_INFO, TWO_TOKEN }
+    enum PoolSpecialization {
+        GENERAL,
+        MINIMAL_SWAP_INFO,
+        TWO_TOKEN
+    }
 
     function registerPool(PoolSpecialization) external returns (bytes32) {
         pool = msg.sender;

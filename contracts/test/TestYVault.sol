@@ -34,7 +34,7 @@ contract TestYVault is ERC20PermitWithSupply {
         return _shares;
     }
 
-    function apiVersion() external virtual pure returns (string memory) {
+    function apiVersion() external pure virtual returns (string memory) {
         return ("0.3.2");
     }
 

@@ -12,8 +12,8 @@ interface ICompoundVault is IERC20 {
         uint256
     ) external returns (uint256);
 
-    // Returns the amount of underlying per each unit [1e18] of yearn shares
-    function pricePerShare() external view returns (uint256);
+    // Returns the amount of underlying per each unit [1e18] of compound shares
+    function balanceOfUnderlying() external view returns (uint256);
 
     function governance() external view returns (address);
 

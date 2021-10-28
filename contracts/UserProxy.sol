@@ -27,9 +27,8 @@ contract UserProxy is Authorizable {
     // This is constant as long as Tranche does not implement non-constant constructor arguments.
     bytes32 internal immutable _trancheBytecodeHash;
     // A constant which represents ether
-    address internal constant _ETH_CONSTANT = address(
-        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
-    );
+    address internal constant _ETH_CONSTANT =
+        address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
     /// @dev Marks the msg.sender as authorized and sets them
     ///      as the owner in authorization library
@@ -55,7 +54,7 @@ contract UserProxy is Authorizable {
 
     /// @dev Allows an authorized address to freeze or unfreeze this contract
     /// @param _newState True for frozen and false for unfrozen
-    function setIsFrozen(bool _newState) external onlyAuthorized() {
+    function setIsFrozen(bool _newState) external onlyAuthorized {
         isFrozen = _newState;
     }
 
@@ -127,7 +126,7 @@ contract UserProxy is Authorizable {
     )
         external
         payable
-        notFrozen()
+        notFrozen
         preApproval(_permitCallData)
         returns (uint256, uint256)
     {
@@ -169,7 +168,7 @@ contract UserProxy is Authorizable {
         uint256 _amountPT,
         uint256 _amountYT,
         PermitData[] calldata _permitCallData
-    ) external notFrozen() preApproval(_permitCallData) {
+    ) external notFrozen preApproval(_permitCallData) {
         // Post the Berlin hardfork this call warms the address so only cost ~100 gas overall
         require(IWrappedPosition(_position).token() == weth, "Non weth token");
         // Only allow access if the user is actually attempting to withdraw
@@ -245,8 +244,8 @@ contract UserProxy is Authorizable {
     /// @return The derived Tranche contract
     function _deriveTranche(address _position, uint256 _expiration)
         internal
-        virtual
         view
+        virtual
         returns (ITranche)
     {
         bytes32 salt = keccak256(abi.encodePacked(_position, _expiration));
@@ -265,7 +264,7 @@ contract UserProxy is Authorizable {
     ///      it should be removed so that users do not have to remove allowances.
     ///      Note - onlyOwner is a stronger check than onlyAuthorized, many addresses can be
     ///      authorized to freeze or unfreeze the contract but only the owner address can kill
-    function deprecate() external onlyOwner() {
+    function deprecate() external onlyOwner {
         selfdestruct(payable(msg.sender));
     }
 }

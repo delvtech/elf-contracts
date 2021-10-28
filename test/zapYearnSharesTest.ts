@@ -116,9 +116,9 @@ describe("zapYearnShares", () => {
         );
       const pricePerFullShare = await fixture.yusdc.pricePerShare();
       const balance = (
-        await (await fixture.yusdc.balanceOf(fixture.position.address)).mul(
-          pricePerFullShare
-        )
+        await (
+          await fixture.yusdc.balanceOf(fixture.position.address)
+        ).mul(pricePerFullShare)
       ).div(ethers.utils.parseUnits("1", 6));
       // Allows a 0.01% conversion error
       expect(balance).to.be.at.least(subError(ethers.BigNumber.from(1e11)));

@@ -45,15 +45,15 @@ abstract contract WrappedPosition is ERC20Permit, IWrappedPosition {
     /// @dev Converts between an internal balance representation
     ///      and underlying tokens.
     /// @return The amount of underlying the input is worth
-    function _underlying(uint256) internal virtual view returns (uint256);
+    function _underlying(uint256) internal view virtual returns (uint256);
 
     /// @notice Get the underlying balance of an address
     /// @param _who The address to query
     /// @return The underlying token balance of the address
     function balanceOfUnderlying(address _who)
         external
-        override
         view
+        override
         returns (uint256)
     {
         return _underlying(balanceOf[_who]);
@@ -64,8 +64,8 @@ abstract contract WrappedPosition is ERC20Permit, IWrappedPosition {
     /// @return The value of underlying assets for the given shares
     function getSharesToUnderlying(uint256 _shares)
         external
-        override
         view
+        override
         returns (uint256)
     {
         return _underlying(_shares);

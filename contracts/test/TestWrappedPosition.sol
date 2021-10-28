@@ -42,8 +42,8 @@ contract TestWrappedPosition is WrappedPosition {
 
     function _underlying(uint256 _shares)
         internal
-        override
         view
+        override
         returns (uint256)
     {
         return _shares * underlyingUnitValue;

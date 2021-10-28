@@ -35,19 +35,19 @@ contract Authorizable {
 
     /// @dev Privileged function authorize an address
     /// @param who the address to authorize
-    function authorize(address who) external onlyOwner() {
+    function authorize(address who) external onlyOwner {
         _authorize(who);
     }
 
     /// @dev Privileged function to de authorize an address
     /// @param who The address to remove authorization from
-    function deauthorize(address who) external onlyOwner() {
+    function deauthorize(address who) external onlyOwner {
         authorized[who] = false;
     }
 
     /// @dev Function to change owner
     /// @param who The new owner address
-    function setOwner(address who) public onlyOwner() {
+    function setOwner(address who) public onlyOwner {
         owner = who;
     }
 

@@ -26,7 +26,7 @@ contract YVaultV4AssetProxy is YVaultAssetProxy {
     /// @notice Overrides the version checking to check for 0.4.2 instead
     /// @param _vault The yearn vault address
     /// @dev This function can be overridden by an inheriting upgrade contract
-    function _versionCheck(IYearnVault _vault) internal override view {
+    function _versionCheck(IYearnVault _vault) internal view override {
         string memory apiVersion = _vault.apiVersion();
         require(
             _stringEq(apiVersion, "0.4.2") || _stringEq(apiVersion, "0.4.3"),
@@ -43,8 +43,8 @@ contract YVaultV4AssetProxy is YVaultAssetProxy {
     /// @return The converted output of either underlying or yearn shares
     function _yearnDepositConverter(uint256 amount, bool sharesIn)
         internal
-        override
         view
+        override
         returns (uint256)
     {
         // Load the yearn price per share

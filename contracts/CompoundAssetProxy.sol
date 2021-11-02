@@ -5,12 +5,14 @@ pragma solidity ^0.8.0;
 import "./interfaces/IERC20.sol";
 import "./interfaces/ICompoundVault.sol";
 import "./WrappedPosition.sol";
+import "./interfaces/CTokenInterfaces.sol";
 
 /// @author Element Finance
 /// @title Compound Asset Proxy
 contract CompoundAssetProxy is WrappedPosition {
     ICompoundVault public immutable vault;
     uint8 public immutable vaultDecimals;
+    CTokenInterface public immutable ctoken;
 
     constructor(
         address vault_,
@@ -34,6 +36,8 @@ contract CompoundAssetProxy is WrappedPosition {
         );
     }
 
+    /// @notice Makes the actual deposit into the vault
+    /// @return Tuple (the shares minted, amount underlying used)
     function _deposit() internal override returns (uint256, uint256) {
         // load balance of contract
         uint256 amount = token.balanceOf(address(this));
@@ -45,6 +49,11 @@ contract CompoundAssetProxy is WrappedPosition {
         return (share, amount);
     }
 
+    /// @notice Withdraw the number of shares
+    /// @param _shares The number of shares to withdraw
+    /// @param _destination The address to send the output funds
+    /// @param _underlyingPerShare The possibly precomputed underlying per share
+    /// @return returns the amount of funds freed by doing a withdraw
     function _withdraw(
         uint256 _shares,
         address _destination,
@@ -86,10 +95,42 @@ contract CompoundAssetProxy is WrappedPosition {
     //     return balance;
     // }
 
+    //https://github.com/compound-finance/compound-protocol/blob/fcf067f6fa50a93ff9125f5f0abae0ae98d1e8b0/contracts/Comptroller.sol#L1287
+    // /**
+    //  * @notice Claim all comp accrued by the holders
+    //  * @param holders The addresses to claim COMP for
+    //  * @param cTokens The list of markets to claim COMP in
+    //  * @param borrowers Whether or not to claim COMP earned by borrowing
+    //  * @param suppliers Whether or not to claim COMP earned by supplying
+    //  */
+    // function claimComp(address[] memory holders, CToken[] memory cTokens, bool borrowers, bool suppliers) public {
+    //     for (uint i = 0; i < cTokens.length; i++) {
+    //         CToken cToken = cTokens[i];
+    //         require(markets[address(cToken)].isListed, "market must be listed");
+    //         if (borrowers == true) {
+    //             Exp memory borrowIndex = Exp({mantissa: cToken.borrowIndex()});
+    //             updateCompBorrowIndex(address(cToken), borrowIndex);
+    //             for (uint j = 0; j < holders.length; j++) {
+    //                 distributeBorrowerComp(address(cToken), holders[j], borrowIndex);
+    //             }
+    //         }
+    //         if (suppliers == true) {
+    //             updateCompSupplyIndex(address(cToken));
+    //             for (uint j = 0; j < holders.length; j++) {
+    //                 distributeSupplierComp(address(cToken), holders[j]);
+    //             }
+    //         }
+    //     }
+    //     for (uint j = 0; j < holders.length; j++) {
+    //         compAccrued[holders[j]] = grantCompInternal(holders[j], compAccrued[holders[j]]);
+    //     }
+    // }
+
     /// @notice Get the price per share in the vault
     /// @return The price per share in units of underlying;
     function _balanceOfUnderlying() internal view returns (uint256) {
         // TODO: add exchange rate details
+        uint256 exchangeRate = ctoken.exchangeRateCurrent();
 
         return vault.balanceOfUnderlying();
     }

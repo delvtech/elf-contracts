@@ -23,7 +23,6 @@ contract CompoundAssetProxy is WrappedPosition {
         // I'm not confident this is how the vault is going to work
         vault = ICompoundVault(vault_);
 
-        // not sure what this approve step does, why we're using max
         _token.approve(vault_, type(uint256).max);
 
         // I'm not entirely sure if this should be IERC20 from our interfaces or some
@@ -40,10 +39,10 @@ contract CompoundAssetProxy is WrappedPosition {
         uint256 amount = token.balanceOf(address(this));
 
         // deposit into compound
-        uint256 userShare = vault.deposit(amount, address(this));
+        uint256 share = vault.deposit(amount, address(this));
 
         // Return the amount of shares the user has produced, and the amount of underlying used for it.
-        return (userShare, amount);
+        return (share, amount);
     }
 
     function _withdraw(
@@ -90,6 +89,8 @@ contract CompoundAssetProxy is WrappedPosition {
     /// @notice Get the price per share in the vault
     /// @return The price per share in units of underlying;
     function _balanceOfUnderlying() internal view returns (uint256) {
+        // TODO: add exchange rate details
+
         return vault.balanceOfUnderlying();
     }
 }

@@ -78,7 +78,10 @@ contract CompoundAssetProxy is WrappedPosition {
         view
         returns (uint256)
     {
-        return (_amount * _balanceOfUnderlying()) / (10**vaultDecimals);
+        // TODO: dont' think that input param is right
+        return
+            (_amount * _balanceOfUnderlying(address(this))) /
+            (10**vaultDecimals);
     }
 
     //https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol#L184-L195
@@ -128,9 +131,14 @@ contract CompoundAssetProxy is WrappedPosition {
 
     /// @notice Get the price per share in the vault
     /// @return The price per share in units of underlying;
-    function _balanceOfUnderlying() internal view returns (uint256) {
+    function _balanceOfUnderlying(address owner)
+        internal
+        view
+        returns (uint256)
+    {
         // TODO: add exchange rate details
         uint256 exchangeRate = ctoken.exchangeRateCurrent();
+        // TODO: it looks like the balanceOfUnderlying might already do the exchange rate?
 
         return vault.balanceOfUnderlying();
     }

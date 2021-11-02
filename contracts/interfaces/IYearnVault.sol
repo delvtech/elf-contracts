@@ -4,8 +4,10 @@ pragma solidity ^0.8.0;
 import "./IERC20.sol";
 
 interface IYearnVault is IERC20 {
+    // mint?
     function deposit(uint256, address) external returns (uint256);
 
+    // redeem
     function withdraw(
         uint256,
         address,

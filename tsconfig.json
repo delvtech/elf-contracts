@@ -10,8 +10,8 @@
         "test": ["./test"],
         "test/*": ["./test/*"],
         "typechain": ["./typechain"],
-        "typechain/*": ["./typechain/*"],
-      },
+        "typechain/*": ["./typechain/*"]
+      }
     },
     "include": [
       "./scripts",

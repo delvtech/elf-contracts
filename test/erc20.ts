@@ -105,7 +105,7 @@ describe("erc20", function () {
           r,
           s
         );
-      await expect(tx).to.be.revertedWith("revert ERC20: invalid-permit");
+      await expect(tx).to.be.revertedWith("ERC20: invalid-permit");
     });
   });
 

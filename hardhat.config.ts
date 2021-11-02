@@ -1,12 +1,23 @@
 import "@nomiclabs/hardhat-waffle";
-import "hardhat-typechain";
+import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 
-import { HardhatUserConfig } from "hardhat/config";
+import { HardhatUserConfig } from "hardhat/types";
 
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
+  paths: {
+    sources: "./contracts",
+    tests: "./test",
+    cache: "./cache",
+    artifacts: "./artifacts",
+  },
+  typechain: {
+    outDir: "typechain/",
+    target: "ethers-v5",
+    alwaysGenerateOverloads: true,
+  },
   solidity: {
     compilers: [
       {
@@ -54,7 +65,7 @@ const config: HardhatUserConfig = {
     hardhat: {
       forking: {
         url: "https://eth-mainnet.alchemyapi.io/v2/kwjMP-X-Vajdk1ItCfU-56Uaq1wwhamK",
-        blockNumber: 11853372,
+        blockNumber: 13538251,
       },
       accounts: {
         accountsBalance: "100000000000000000000000", // 100000 ETH

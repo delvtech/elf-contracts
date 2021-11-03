@@ -1,8 +1,8 @@
 import { BigNumber, ethers, Signer } from "ethers";
 import { parseEther } from "ethers/lib/utils";
-import { TestERC20 } from "typechain";
+import { TestERC20 } from "typechain/TestERC20";
 import { Tranche } from "typechain/Tranche";
-import { Vault } from "typechain/Vault";
+import { JoinPoolRequestStruct, Vault } from "typechain/Vault";
 
 /**
  * the erc20 allowance() method takes a unit256, therefore the max you can approve is 2^256 - 1
@@ -47,17 +47,20 @@ export async function initializeConvergentCurvePool(
 
   // Balancer V2 vault allows userData as a way to pass props through to pool contracts.  In our
   // case we need to pass the maxAmountsIn.
-
   const userData = ethers.utils.defaultAbiCoder.encode(["uint256[]"], amounts);
+
+  const joinRequest: JoinPoolRequestStruct = {
+    assets: tokens,
+    maxAmountsIn,
+    userData,
+    fromInternalBalance,
+  };
 
   const joinReceipt = await vaultContract.joinPool(
     poolId,
     elementAddress,
     elementAddress,
-    tokens,
-    maxAmountsIn,
-    fromInternalBalance,
-    userData
+    joinRequest
   );
 
   await joinReceipt.wait(1);

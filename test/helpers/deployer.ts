@@ -32,6 +32,7 @@ import { YVaultAssetProxy } from "typechain/YVaultAssetProxy";
 import { DateString__factory } from "typechain/factories/DateString__factory";
 
 import data from "../../artifacts/contracts/Tranche.sol/Tranche.json";
+import { InterestTokenFactory } from "typechain/InterestTokenFactory";
 
 export interface FixtureInterface {
   signer: Signer;
@@ -127,7 +128,8 @@ const deployInterestTokenFactory = async (signer: Signer) => {
 };
 
 const deployTrancheFactory = async (signer: Signer) => {
-  const interestTokenFactory = await deployInterestTokenFactory(signer);
+  const interestTokenFactory: InterestTokenFactory =
+    await deployInterestTokenFactory(signer);
   const deployer = new TrancheFactory__factory(signer);
   const dateLibFactory = new DateString__factory(signer);
   const dateLib = await dateLibFactory.deploy();
@@ -178,6 +180,7 @@ export async function loadFixture() {
     trancheFactory.address,
     bytecodehash
   );
+
   return {
     signer,
     usdc,

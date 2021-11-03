@@ -7,6 +7,7 @@ import "./interfaces/ICompoundVault.sol";
 import "./WrappedPosition.sol";
 import "./interfaces/CTokenInterfaces.sol";
 import "./interfaces/ComptrollerInterface.sol";
+import "./libraries/Authorizable.sol";
 
 /// @author Element Finance
 /// @title Compound Asset Proxy
@@ -47,7 +48,6 @@ contract CompoundAssetProxy is WrappedPosition {
         uint256 afterBalance = ctoken.balanceOf(address(this));
 
         // Compound doesn't return this value, so we calculate it manually
-
         uint256 share = beforeBalance - afterBalance;
         // Return the amount of shares the user has produced, and the amount of underlying used for it.
         return (share, amount);
@@ -93,5 +93,26 @@ contract CompoundAssetProxy is WrappedPosition {
         uint256 exchangeRate = ctoken.exchangeRateStored();
         return // multiply _amount by exchange rate & correct for decimals
         ((_amount * exchangeRate) / (10**(26 - underlyingDecimals)));
+    }
+
+    function collectRewards(address _to) external onlyAuthorized() {
+        // collect rewards
+        uint256 beforeBalance = ctoken.balanceOf(address(this));
+
+        // set up input params
+        address[] memory holder = new address[](1);
+        holder[1] = address(this);
+        CTokenInterface[] memory cTokens = new CTokenInterface[](1);
+        cTokens[1] = ctoken;
+
+        // TODO: This function isn't present in the interface
+        // https://github.com/compound-finance/compound-protocol/blob/fcf067f6fa50a93ff9125f5f0abae0ae98d1e8b0/contracts/Comptroller.sol#L1287
+
+        comptroller.claimComp();
+        uint256 afterBalance = ctoken.balanceOf(address(this));
+        uint256 rewardAmount = afterBalance - beforeBalance;
+
+        // send those to an address
+        token.transfer(_to, rewardAmount);
     }
 }

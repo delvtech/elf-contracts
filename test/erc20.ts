@@ -59,7 +59,7 @@ describe("erc20", function () {
       );
       // impersonate wallet to get Signer for connection
       impersonate(wallet.address);
-      const walletSigner = await ethers.provider.getSigner(wallet.address);
+      const walletSigner = ethers.provider.getSigner(wallet.address);
       await token
         .connect(walletSigner)
         .permit(
@@ -93,7 +93,7 @@ describe("erc20", function () {
       );
       // impersonate wallet to get Signer for connection
       impersonate(wallet.address);
-      const walletSigner = await ethers.provider.getSigner(wallet.address);
+      const walletSigner = ethers.provider.getSigner(wallet.address);
       const tx = token
         .connect(walletSigner)
         .permit(

@@ -9,8 +9,8 @@ import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 import { advanceTime, getCurrentTimestamp } from "./helpers/time";
 import { impersonate, stopImpersonating } from "./helpers/impersonate";
 import { subError, bnFloatMultiplier } from "./helpers/math";
-import { ZapYearnShares__factory } from "../typechain/factories/ZapYearnShares__factory";
-import { ZapYearnShares } from "../typechain/ZapYearnShares";
+import { ZapYearnShares__factory } from "../typechain-types/factories/ZapYearnShares__factory";
+import { ZapYearnShares } from "../typechain-types/ZapYearnShares";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import data from "../artifacts/contracts/Tranche.sol/Tranche.json";
 

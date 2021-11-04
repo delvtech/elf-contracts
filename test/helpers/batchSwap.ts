@@ -1,8 +1,8 @@
 import { BytesLike } from "@ethersproject/bytes";
 import { BigNumberish } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
-import { ERC20 } from "typechain/ERC20";
-import { Vault } from "typechain/Vault";
+import { ERC20 } from "typechain-types/ERC20";
+import { Vault } from "typechain-types/Vault";
 
 import { ONE_DAY_IN_SECONDS } from "./time";
 

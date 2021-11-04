@@ -4,5 +4,5 @@
 *.yaml
 lib/
 contracts/balancer-core-v2/
-typechain/
+typechain-types/
 coverage/

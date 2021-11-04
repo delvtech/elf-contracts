@@ -1,5 +1,5 @@
 import "@nomiclabs/hardhat-waffle";
-import "hardhat-typechain";
+import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 
@@ -7,6 +7,12 @@ import { HardhatUserConfig } from "hardhat/config";
 
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
+  typechain: {
+    outDir: "typechain-types/",
+    target: "ethers-v5",
+    alwaysGenerateOverloads: false,
+    externalArtifacts: ["externalArtifacts/*.json"],
+  },
   solidity: {
     compilers: [
       {

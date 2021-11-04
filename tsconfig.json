@@ -6,17 +6,18 @@
       "esModuleInterop": true,
       "outDir": "dist",
       "resolveJsonModule": true,
+      "baseUrl": "./",
       "paths": {
         "test": ["./test"],
         "test/*": ["./test/*"],
-        "typechain": ["./typechain"],
-        "typechain/*": ["./typechain/*"],
-      },
+        "typechain-types": ["./typechain-types"],
+        "typechain-types/*": ["./typechain-types/*"]
+      }
     },
     "include": [
       "./scripts",
       "./test",
-      "./typechain"
+      "./typechain-types"
     ],
     "files": ["./hardhat.config.ts", "./hardhat.config.test.ts"]
   }

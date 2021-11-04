@@ -2,7 +2,11 @@ import { BytesLike } from "@ethersproject/bytes";
 import { BigNumberish } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import { ERC20 } from "typechain-types/ERC20";
-import { Vault } from "typechain-types/Vault";
+import {
+  BatchSwapStepStruct,
+  FundManagementStruct,
+  Vault,
+} from "typechain-types/Vault";
 
 import { ONE_DAY_IN_SECONDS } from "./time";
 
@@ -11,40 +15,15 @@ export enum SwapKind {
   GIVEN_OUT,
 }
 
-interface SwapIn {
-  poolId: BytesLike;
-  tokenInIndex: BigNumberish;
-  tokenOutIndex: BigNumberish;
-  amountIn: BigNumberish;
-  userData: BytesLike;
-}
-
-interface FundManagement {
-  sender: string;
-  fromInternalBalance: boolean;
-  recipient: string;
-  toInternalBalance: boolean;
-}
-
 export async function queryBatchSwapIn(
   tokenInContract: ERC20,
   tokenOutContract: ERC20,
-  poolId: string,
+  poolId: BytesLike,
   sender: string,
   balancerVaultContract: Vault,
   swapInAmount: string
 ) {
-  const {
-    swaps,
-    tokens,
-    funds,
-  }: {
-    swaps: SwapIn[];
-    tokens: string[];
-    funds: FundManagement;
-    limits: BigNumberish[];
-    deadline: number;
-  } = await getBatchSwapArgs(
+  const { swaps, tokens, funds } = await getBatchSwapArgs(
     tokenInContract,
     tokenOutContract,
     swapInAmount,
@@ -54,8 +33,7 @@ export async function queryBatchSwapIn(
 
   const swapReceipt = await balancerVaultContract.queryBatchSwap(
     SwapKind.GIVEN_IN,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    swaps as any,
+    swaps,
     tokens,
     funds
   );
@@ -67,24 +45,12 @@ export async function queryBatchSwapIn(
 export async function batchSwapIn(
   tokenInContract: ERC20,
   tokenOutContract: ERC20,
-  poolId: string,
+  poolId: BytesLike,
   sender: string,
   balancerVaultContract: Vault,
   swapInAmount: string
 ) {
-  const {
-    swaps,
-    tokens,
-    funds,
-    limits,
-    deadline,
-  }: {
-    swaps: SwapIn[];
-    tokens: string[];
-    funds: FundManagement;
-    limits: BigNumberish[];
-    deadline: number;
-  } = await getBatchSwapArgs(
+  const { swaps, tokens, funds, limits, deadline } = await getBatchSwapArgs(
     tokenInContract,
     tokenOutContract,
     swapInAmount,
@@ -92,7 +58,8 @@ export async function batchSwapIn(
     sender
   );
 
-  const swapReceipt = await balancerVaultContract.batchSwapGivenIn(
+  const swapReceipt = await balancerVaultContract.batchSwap(
+    SwapKind.GIVEN_IN,
     swaps,
     tokens,
     funds,
@@ -108,30 +75,28 @@ async function getBatchSwapArgs(
   tokenInContract: ERC20,
   tokenOutContract: ERC20,
   swapInAmount: string,
-  poolId: string,
+  poolId: BytesLike,
   sender: string
 ) {
   const tokens: string[] = [tokenInContract.address, tokenOutContract.address];
   const tokenInDecimals = await tokenInContract.decimals();
-  const amountIn = parseUnits(swapInAmount, tokenInDecimals);
-  // have to set this to something
-  const userData: BytesLike = poolId;
+  const amount = parseUnits(swapInAmount, tokenInDecimals);
 
   // the series of swaps to perform, only one in this case.
-  const swaps: SwapIn[] = [
+  const swaps: BatchSwapStepStruct[] = [
     {
       poolId,
       // indices from 'tokens', putting FYTs in, getting base asset out.
-      tokenInIndex: 0,
-      tokenOutIndex: 1,
-      amountIn,
-      userData,
+      assetInIndex: 0,
+      assetOutIndex: 1,
+      amount,
+      userData: poolId,
     },
   ];
 
   // trading with ourselves.  internal balance means internal to balancer.  we don't have anything
   // in there to start, but we'll keep whatever base assets we get from swapping in the balancer vault.
-  const funds: FundManagement = {
+  const funds: FundManagementStruct = {
     sender,
     fromInternalBalance: false,
     recipient: sender,
@@ -139,10 +104,10 @@ async function getBatchSwapArgs(
   };
 
   // the user is sending this one, so the delta will be negative, so just set a limit of zero.
-  const limitTokenIn = amountIn;
+  const limitTokenIn = amount;
 
-  // performing a SwapIn, so we can specify exactly how much in and set the limit to that.
-  const limitTokenOut = amountIn;
+  // swapping in, so we can specify exactly how much in and set the limit to that.
+  const limitTokenOut = amount;
 
   // limits of how much of each token is allowed to be traded.  order must be the same as 'tokens'
   const limits: BigNumberish[] = [limitTokenIn, limitTokenOut];

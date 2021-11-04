@@ -11,7 +11,7 @@ abstract contract ERC20PermitWithSupply is ERC20Permit {
 
     /// @notice This function overrides the ERC20Permit Library's _mint and causes it
     ///          to track total supply.
-    /// @param account the account to addd tokens to
+    /// @param account the account to add tokens to
     /// @param amount the amount of tokens to add
     function _mint(address account, uint256 amount) internal override {
         // Increase account balance

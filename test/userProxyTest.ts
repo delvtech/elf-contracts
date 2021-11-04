@@ -2,7 +2,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { MockProvider } from "ethereum-waffle";
 import { ecsign } from "ethereumjs-util";
-import { BigNumber, Contract, Signer, utils } from "ethers";
+import { Contract, Signer, utils } from "ethers";
 import { ethers, waffle } from "hardhat";
 import { ERC20Permit } from "typechain/ERC20Permit";
 import { CodeSizeChecker__factory } from "typechain/factories/CodeSizeChecker__factory";

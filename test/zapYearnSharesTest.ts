@@ -1,18 +1,13 @@
 import { expect } from "chai";
-import { Signer, BigNumber } from "ethers";
+import { Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
 import {
   loadYearnShareZapFixture,
   YearnShareZapInterface,
 } from "./helpers/deployer";
-import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
-import { advanceTime, getCurrentTimestamp } from "./helpers/time";
 import { impersonate, stopImpersonating } from "./helpers/impersonate";
-import { subError, bnFloatMultiplier } from "./helpers/math";
-import { ZapYearnShares__factory } from "../typechain-types/factories/ZapYearnShares__factory";
-import { ZapYearnShares } from "../typechain-types/ZapYearnShares";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
-import data from "../artifacts/contracts/Tranche.sol/Tranche.json";
+import { subError } from "./helpers/math";
+import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 
 const { provider } = waffle;
 
@@ -40,7 +35,7 @@ describe("zapYearnShares", () => {
     // get USDC
     const usdcWhaleAddress = "0xAe2D4617c862309A3d75A0fFB358c7a5009c673F";
     impersonate(usdcWhaleAddress);
-    const usdcWhale = await ethers.provider.getSigner(usdcWhaleAddress);
+    const usdcWhale = ethers.provider.getSigner(usdcWhaleAddress);
     await fixture.usdc.connect(usdcWhale).transfer(users[1].address, 2e11); // 200k usdc
     stopImpersonating(usdcWhaleAddress);
   });
@@ -115,11 +110,9 @@ describe("zapYearnShares", () => {
           shares
         );
       const pricePerFullShare = await fixture.yusdc.pricePerShare();
-      const balance = (
-        await (
-          await fixture.yusdc.balanceOf(fixture.position.address)
-        ).mul(pricePerFullShare)
-      ).div(ethers.utils.parseUnits("1", 6));
+      const balance = (await fixture.yusdc.balanceOf(fixture.position.address))
+        .mul(pricePerFullShare)
+        .div(ethers.utils.parseUnits("1", 6));
       // Allows a 0.01% conversion error
       expect(balance).to.be.at.least(subError(ethers.BigNumber.from(1e11)));
     });

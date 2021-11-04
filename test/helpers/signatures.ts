@@ -14,10 +14,11 @@ export const PERMIT_TYPEHASH = keccak256(
   )
 );
 
+// TODO tokenName and tokenAddress unnecessary?
 export function getDigest(
-  tokenName: string,
+  _: string,
   domainSeparator: string,
-  tokenAddress: string,
+  __: string,
   owner: string,
   spender: string,
   value: BigNumberish,

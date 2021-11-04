@@ -8,8 +8,8 @@
     "style-check": "npx prettier --check .",
     "prettier": "npx prettier --write .",
     "lint": "npm run solhint & npm run style-check & npm run spell-check",
-    "build": "npx hardhat compile && rm -rf ./typechain/index.ts",
-    "test": "npx hardhat compile && rm -rf ./typechain/index.ts && npx hardhat test --config hardhat.config.test.ts --tsconfig tsconfig.json ./test/*.ts",
+    "build": "npx hardhat compile && rm -rf ./typechain-types/index.ts",
+    "test": "npx hardhat compile && rm -rf ./typechain-types/index.ts && npx hardhat test --config hardhat.config.test.ts --tsconfig tsconfig.json ./test/*.ts",
     "typecheck": "tsc --noEmit",
     "sim": "sh scripts/load-sim-data.sh && npx hardhat test --config hardhat.config.test.ts ./test/simulation/*.ts",
     "coverage": "COVERAGE=true npx hardhat coverage --solcoverjs \".solcover.js\" --testfiles \"./test/*.ts\"",
@@ -34,10 +34,6 @@
       "eslint --fix",
       "npx prettier --write"
     ]
-  },
-  "engines": {
-    "npm": ">=6.0.0",
-    "node": ">=14.0.0"
   },
   "author": "",
   "license": "ISC",

@@ -92,7 +92,6 @@ describe("UserProxyTests", function () {
     );
     // Mint for the first time
     receipt = await receipt.wait();
-    console.log("First Mint", receipt.gasUsed.toNumber());
     receipt = await proxy.mint(
       ethers.utils.parseUnits("1", 6),
       underlying.address,
@@ -101,7 +100,6 @@ describe("UserProxyTests", function () {
       []
     );
     receipt = await receipt.wait();
-    console.log("Repeat Mint", receipt.gasUsed.toNumber());
     // Set an approval for the new user
     await underlying.connect(signers[1]).approve(proxy.address, lots);
     receipt = await proxy
@@ -114,7 +112,6 @@ describe("UserProxyTests", function () {
         []
       );
     receipt = await receipt.wait();
-    console.log("New User First mint", receipt.gasUsed.toNumber());
   });
 
   it("Blocks Weth withdraw function when using USDC", async function () {

@@ -1,6 +1,8 @@
-pragma solidity ^0.5.16;
+pragma solidity >=0.5.16;
 
-contract ComptrollerInterface {
+import "./CTokenInterfaces.sol";
+
+abstract contract ComptrollerInterface {
     /// @notice Indicator that this is a Comptroller contract (for inspection)
     bool public constant isComptroller = true;
 
@@ -8,9 +10,10 @@ contract ComptrollerInterface {
 
     function enterMarkets(address[] calldata cTokens)
         external
+        virtual
         returns (uint256[] memory);
 
-    function exitMarket(address cToken) external returns (uint256);
+    function exitMarket(address cToken) external virtual returns (uint256);
 
     /*** Policy Hooks ***/
 
@@ -18,46 +21,46 @@ contract ComptrollerInterface {
         address cToken,
         address minter,
         uint256 mintAmount
-    ) external returns (uint256);
+    ) external virtual returns (uint256);
 
     function mintVerify(
         address cToken,
         address minter,
         uint256 mintAmount,
         uint256 mintTokens
-    ) external;
+    ) external virtual;
 
     function redeemAllowed(
         address cToken,
         address redeemer,
         uint256 redeemTokens
-    ) external returns (uint256);
+    ) external virtual returns (uint256);
 
     function redeemVerify(
         address cToken,
         address redeemer,
         uint256 redeemAmount,
         uint256 redeemTokens
-    ) external;
+    ) external virtual;
 
     function borrowAllowed(
         address cToken,
         address borrower,
         uint256 borrowAmount
-    ) external returns (uint256);
+    ) external virtual returns (uint256);
 
     function borrowVerify(
         address cToken,
         address borrower,
         uint256 borrowAmount
-    ) external;
+    ) external virtual;
 
     function repayBorrowAllowed(
         address cToken,
         address payer,
         address borrower,
         uint256 repayAmount
-    ) external returns (uint256);
+    ) external virtual returns (uint256);
 
     function repayBorrowVerify(
         address cToken,
@@ -65,7 +68,7 @@ contract ComptrollerInterface {
         address borrower,
         uint256 repayAmount,
         uint256 borrowerIndex
-    ) external;
+    ) external virtual;
 
     function liquidateBorrowAllowed(
         address cTokenBorrowed,
@@ -73,7 +76,7 @@ contract ComptrollerInterface {
         address liquidator,
         address borrower,
         uint256 repayAmount
-    ) external returns (uint256);
+    ) external virtual returns (uint256);
 
     function liquidateBorrowVerify(
         address cTokenBorrowed,
@@ -82,7 +85,7 @@ contract ComptrollerInterface {
         address borrower,
         uint256 repayAmount,
         uint256 seizeTokens
-    ) external;
+    ) external virtual;
 
     function seizeAllowed(
         address cTokenCollateral,
@@ -90,7 +93,7 @@ contract ComptrollerInterface {
         address liquidator,
         address borrower,
         uint256 seizeTokens
-    ) external returns (uint256);
+    ) external virtual returns (uint256);
 
     function seizeVerify(
         address cTokenCollateral,
@@ -98,21 +101,21 @@ contract ComptrollerInterface {
         address liquidator,
         address borrower,
         uint256 seizeTokens
-    ) external;
+    ) external virtual;
 
     function transferAllowed(
         address cToken,
         address src,
         address dst,
         uint256 transferTokens
-    ) external returns (uint256);
+    ) external virtual returns (uint256);
 
     function transferVerify(
         address cToken,
         address src,
         address dst,
         uint256 transferTokens
-    ) external;
+    ) external virtual;
 
     /*** Liquidity/Liquidation Calculations ***/
 
@@ -120,5 +123,12 @@ contract ComptrollerInterface {
         address cTokenBorrowed,
         address cTokenCollateral,
         uint256 repayAmount
-    ) external view returns (uint256, uint256);
+    ) external virtual view returns (uint256, uint256);
+
+    function claimComp(
+        address[] memory holders,
+        CErc20Interface[] memory cTokens,
+        bool borrowers,
+        bool suppliers
+    ) external virtual;
 }

@@ -6,7 +6,7 @@ import {
 } from "ethers/lib/utils";
 import { BigNumberish, BigNumber } from "ethers";
 import { ethers } from "hardhat";
-import { ERC20Permit } from "typechain-types/ERC20Permit";
+import { ERC20Permit } from "typechain/ERC20Permit";
 
 export const PERMIT_TYPEHASH = keccak256(
   toUtf8Bytes(

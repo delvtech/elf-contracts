@@ -1,8 +1,8 @@
 import { BigNumber, ethers, Signer } from "ethers";
 import { BytesLike, parseEther } from "ethers/lib/utils";
-import { TestERC20 } from "typechain-types";
-import { Tranche } from "typechain-types/Tranche";
-import { JoinPoolRequestStruct, Vault } from "typechain-types/Vault";
+import { TestERC20 } from "typechain";
+import { Tranche } from "typechain/Tranche";
+import { JoinPoolRequestStruct, Vault } from "typechain/Vault";
 
 /**
  * the erc20 allowance() method takes a unit256, therefore the max you can approve is 2^256 - 1

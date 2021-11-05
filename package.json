@@ -9,15 +9,14 @@
     "prettier": "npx prettier --write .",
     "lint": "npm run solhint & npm run style-check & npm run spell-check",
     "build": "npx hardhat compile",
-    "test": "npx hardhat compile && npx hardhat test --config hardhat.config.test.ts --tsconfig tsconfig.json ./test/*.ts",
+    "test": "npx hardhat compile && npx hardhat test --config hardhat.config.test.ts ./test/*.ts",
     "sim": "sh scripts/load-sim-data.sh && npx hardhat test --config hardhat.config.test.ts ./test/simulation/*.ts",
     "coverage": "COVERAGE=true npx hardhat coverage --solcoverjs \".solcover.js\" --testfiles \"./test/*.ts\"",
     "test:quick": "npx hardhat test --config hardhat.config.test.ts ./test/*.ts --no-compile",
     "load-contracts": "sh scripts/load-balancer-contracts.sh"
   },
   "_moduleAliases": {
-    "test": "./test",
-    "typechain-types": "./typechain-types"
+    "test": "./test"
   },
   "husky": {
     "hooks": {
@@ -65,6 +64,7 @@
     "solidity-coverage": "^0.7.17",
     "ts-generator": "^0.1.1",
     "ts-node": "^10.4.0",
+    "tsconfig-paths": "^3.11.0",
     "typechain": "^6.0.2",
     "typescript": "^4.4.4"
   },

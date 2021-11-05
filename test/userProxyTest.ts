@@ -4,12 +4,12 @@ import { MockProvider } from "ethereum-waffle";
 import { ecsign } from "ethereumjs-util";
 import { Contract, Signer, utils } from "ethers";
 import { ethers, waffle } from "hardhat";
-import { ERC20Permit } from "typechain-types/ERC20Permit";
-import { CodeSizeChecker__factory } from "typechain-types/factories/CodeSizeChecker__factory";
-import { ERC20Permit__factory } from "typechain-types/factories/ERC20Permit__factory";
-import { IWETH__factory } from "typechain-types/factories/IWETH__factory";
-import { TestEthSender__factory } from "typechain-types/factories/TestEthSender__factory";
-import { IWETH } from "typechain-types/IWETH";
+import { ERC20Permit } from "typechain/ERC20Permit";
+import { CodeSizeChecker__factory } from "typechain/factories/CodeSizeChecker__factory";
+import { ERC20Permit__factory } from "typechain/factories/ERC20Permit__factory";
+import { IWETH__factory } from "typechain/factories/IWETH__factory";
+import { TestEthSender__factory } from "typechain/factories/TestEthSender__factory";
+import { IWETH } from "typechain/IWETH";
 import {
   EthPoolMainnetInterface,
   loadEthPoolMainnetFixture,

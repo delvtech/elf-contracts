@@ -1,12 +1,12 @@
 import { BytesLike } from "@ethersproject/bytes";
 import { BigNumberish } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
-import { ERC20 } from "typechain-types/ERC20";
+import { ERC20 } from "typechain/ERC20";
 import {
   BatchSwapStepStruct,
   FundManagementStruct,
   Vault,
-} from "typechain-types/Vault";
+} from "typechain/Vault";
 
 import { ONE_DAY_IN_SECONDS } from "./time";
 

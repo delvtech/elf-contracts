@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-      "target": "es5",
+      "target": "es2018",
       "module": "commonjs",
       "strict": true,
       "esModuleInterop": true,
@@ -10,14 +10,13 @@
       "paths": {
         "test": ["./test"],
         "test/*": ["./test/*"],
-        "typechain-types": ["./typechain-types"],
-        "typechain-types/*": ["./typechain-types/*"]
+        "typechain/*": ["./typechain/*"]
       }
     },
     "include": [
       "./scripts",
       "./test",
-      "./typechain-types"
+      "./typechain"
     ],
     "files": ["./hardhat.config.ts", "./hardhat.config.test.ts"]
   }

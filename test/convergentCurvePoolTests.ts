@@ -12,15 +12,15 @@ import {
   EthPoolMainnetInterface,
   loadEthPoolMainnetFixture,
 } from "test/helpers/deployer";
-import { ConvergentPoolFactory } from "typechain-types/ConvergentPoolFactory";
-import { ConvergentPoolFactory__factory } from "typechain-types/factories/ConvergentPoolFactory__factory";
-import { TestERC20__factory } from "typechain-types/factories/TestERC20__factory";
-import { TestVault__factory } from "typechain-types/factories/TestVault__factory";
-import { TestConvergentCurvePool } from "typechain-types/TestConvergentCurvePool";
-import { TestERC20 } from "typechain-types/TestERC20";
-import { Vault } from "typechain-types/Vault";
+import { ConvergentPoolFactory } from "typechain/ConvergentPoolFactory";
+import { ConvergentPoolFactory__factory } from "typechain/factories/ConvergentPoolFactory__factory";
+import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
+import { TestVault__factory } from "typechain/factories/TestVault__factory";
+import { TestConvergentCurvePool } from "typechain/TestConvergentCurvePool";
+import { TestERC20 } from "typechain/TestERC20";
+import { Vault } from "typechain/Vault";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
-import { TestConvergentCurvePool__factory } from "typechain-types/factories/TestConvergentCurvePool__factory";
+import { TestConvergentCurvePool__factory } from "typechain/factories/TestConvergentCurvePool__factory";
 import { impersonate, stopImpersonating } from "./helpers/impersonate";
 
 const { provider } = waffle;

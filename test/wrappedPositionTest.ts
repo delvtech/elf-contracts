@@ -303,7 +303,6 @@ describe("Wrapped Position", () => {
       expect(balance).to.be.eq(BigNumber.from(1e6));
       // Do a deposit to convert to shares
       await wpV4.connect(users[1].user).deposit(users[1].address, 1e6);
-      console.log(await fixture.usdc.balanceOf(vaultV4.address));
       // We want to change deposit rate
       await fixture.usdc.transfer(vaultV4.address, 5e5);
       // Now we deposit and check the price of deposit

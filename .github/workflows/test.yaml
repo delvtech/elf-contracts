@@ -18,7 +18,7 @@ jobs:
         - name: compile
           run: npx hardhat compile
         - name: typecheck
-          run: npx run typecheck
+          run: npm run typecheck
         - name: test
           run: npm run test
     sim:

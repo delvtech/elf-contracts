@@ -18,7 +18,7 @@ jobs:
         - name: compile
           run: npx hardhat compile
         - name: typecheck
-          run: npx run typecheck
+          run: npm run typecheck
         - name: test
           run: npm run test
     sim:
@@ -31,7 +31,13 @@ jobs:
           run: npx hardhat compile
         - name: simulation
           run: npm run sim
-
-
-
-
+    typecheck:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v2
+        - name: Install dependencies
+          run: npm ci && npm run load-contracts
+        - name: compile
+          run: npx hardhat compile
+        - name: typecheck
+          run: npm run typecheck

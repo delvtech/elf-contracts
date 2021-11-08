@@ -1,6 +1,7 @@
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-ethers";
 import "@typechain/hardhat";
+import "@typechain/ethers-v5";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "tsconfig-paths/register";
@@ -13,6 +14,7 @@ const config: HardhatUserConfig = {
     outDir: "typechain/",
     target: "ethers-v5",
     alwaysGenerateOverloads: true,
+    externalArtifacts: ["externalArtifacts/*.json"],
   },
   solidity: {
     compilers: [

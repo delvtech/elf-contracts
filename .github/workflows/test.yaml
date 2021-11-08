@@ -17,6 +17,8 @@ jobs:
           run: npm ci && npm run load-contracts
         - name: compile
           run: npx hardhat compile
+        - name: typecheck
+          run: npx run typecheck
         - name: test
           run: npm run test
     sim:

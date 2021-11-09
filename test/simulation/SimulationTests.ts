@@ -62,7 +62,7 @@ describe("ConvergentCurvePoolErrSim", function () {
       startTimestamp + SECONDS_IN_YEAR,
       SECONDS_IN_YEAR,
       vault.address.toString(),
-      ethers.utils.parseEther(testTrades.init.percent_fee.toString()),
+      ethers.utils.parseEther((testTrades as any).init.percent_fee.toString()),
       fakeAddress,
       "ConvergentCurveBPT",
       "BPT"
@@ -76,7 +76,7 @@ describe("ConvergentCurvePoolErrSim", function () {
   });
 
   // This dynamically generated test uses each case in the vector
-  testTrades.trades.forEach(function (trade: TradeData) {
+  (testTrades as any).trades.forEach(function (trade: TradeData) {
     const description = `correctly trades ${trade.input.amount_in.toString()} ${
       trade.input.token_in
     } for ${trade.input.token_out}. direction: ${trade.input.direction}`;

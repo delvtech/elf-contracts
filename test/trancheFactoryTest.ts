@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-
 import { expect } from "chai";
 import { Signer } from "ethers";
 import { ethers, waffle } from "hardhat";

@@ -6,7 +6,7 @@ export const impersonate = async (address: string) => {
     method: "hardhat_impersonateAccount",
     params: [address],
   });
-  const signer = await ethers.provider.getSigner(address);
+  const signer = ethers.provider.getSigner(address);
   return signer;
 };
 

@@ -552,9 +552,6 @@ describe("Tranche", () => {
       await fixture.tranche
         .connect(user1)
         .withdrawPrincipal(principalBalanceU1, user1Address);
-      const contractHoldings2 = await fixture.positionStub.balanceOfUnderlying(
-        fixture.tranche.address
-      );
       await fixture.tranche
         .connect(user2)
         .withdrawPrincipal(principalBalanceU2, user2Address);

@@ -1,17 +1,18 @@
 {
     "compilerOptions": {
-      "target": "es5",
+      "target": "es2018",
       "module": "commonjs",
       "strict": true,
       "esModuleInterop": true,
       "outDir": "dist",
       "resolveJsonModule": true,
+      "skipLibCheck": true,
+      "baseUrl": "./",
       "paths": {
         "test": ["./test"],
         "test/*": ["./test/*"],
-        "typechain": ["./typechain"],
-        "typechain/*": ["./typechain/*"],
-      },
+        "typechain/*": ["./typechain/*"]
+      }
     },
     "include": [
       "./scripts",

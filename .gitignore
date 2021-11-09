@@ -2,7 +2,7 @@ out/
 node_modules/
 .sethrc
 artifacts/
-typechain/
+typechain-types/
 cache/
 gasReporterOutput.json
 .DS_Store

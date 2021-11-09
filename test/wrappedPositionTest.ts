@@ -5,8 +5,8 @@ import { ethers, waffle } from "hardhat";
 import { FixtureInterface, loadFixture } from "./helpers/deployer";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 
-import { TestYVaultV4 } from "typechain/TestYVaultV4";
-import { YVaultV4AssetProxy } from "typechain/YVaultV4AssetProxy";
+import { TestYVaultV4 } from "typechain-types/TestYVaultV4";
+import { YVaultV4AssetProxy } from "typechain-types/YVaultV4AssetProxy";
 
 const { provider } = waffle;
 

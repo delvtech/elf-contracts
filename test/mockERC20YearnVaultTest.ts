@@ -1,12 +1,13 @@
 import { expect } from "chai";
-import { BigNumber, Signer } from "ethers";
+import { Signer, BigNumber, BigNumberish } from "ethers";
+import { bnFloatMultiplier, subError } from "./helpers/math";
 import { ethers, waffle } from "hardhat";
-import { MockERC20YearnVault__factory } from "typechain/factories/MockERC20YearnVault__factory";
-import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
-import { MockERC20YearnVault } from "typechain/MockERC20YearnVault";
-import { TestERC20 } from "typechain/TestERC20";
+import { TestERC20 } from "typechain-types/TestERC20";
+import { TestERC20__factory } from "typechain-types/factories/TestERC20__factory";
+import { MockERC20YearnVault } from "typechain-types/MockERC20YearnVault";
+import { MockERC20YearnVault__factory } from "typechain-types/factories/MockERC20YearnVault__factory";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
-import { advanceTime } from "./helpers/time";
+import { advanceTime, getCurrentTimestamp } from "./helpers/time";
 
 const { provider } = waffle;
 
@@ -16,6 +17,7 @@ describe("MockERC20YearnVault", function () {
   let vault: MockERC20YearnVault;
   let userBalance: BigNumber;
   let depositValue: BigNumber;
+  const [wallet] = provider.getWallets();
   before(async function () {
     await createSnapshot(provider);
     // begin to populate the user array by assigning each index a signer

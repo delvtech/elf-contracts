@@ -1,9 +1,9 @@
 import { Signer } from "ethers";
 import { parseEther } from "ethers/lib/utils";
 import { THIRTY_DAYS_IN_SECONDS } from "test/helpers/time";
-import { TestConvergentCurvePool__factory } from "typechain/factories/TestConvergentCurvePool__factory";
-import { TestERC20 } from "typechain/TestERC20";
-import { Vault } from "typechain/Vault";
+import { TestConvergentCurvePool__factory } from "typechain-types/factories/TestConvergentCurvePool__factory";
+import { TestERC20 } from "typechain-types/TestERC20";
+import { Vault } from "typechain-types/Vault";
 
 const defaultOptions = {
   swapFee: ".003",

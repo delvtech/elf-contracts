@@ -1,19 +1,16 @@
 import "@nomiclabs/hardhat-waffle";
-import "@nomiclabs/hardhat-ethers";
 import "@typechain/hardhat";
-import "@typechain/ethers-v5";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
-import "tsconfig-paths/register";
 
 import { HardhatUserConfig } from "hardhat/config";
 
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
   typechain: {
-    outDir: "typechain/",
+    outDir: "typechain-types/",
     target: "ethers-v5",
-    alwaysGenerateOverloads: true,
+    alwaysGenerateOverloads: false,
     externalArtifacts: ["externalArtifacts/*.json"],
   },
   solidity: {
@@ -56,16 +53,6 @@ const config: HardhatUserConfig = {
           },
         },
       },
-      "contracts/balancer-core-v2/pools/weighted/WeightedPool2TokensFactory.sol":
-        {
-          version: "0.7.1",
-          settings: {
-            optimizer: {
-              enabled: true,
-              runs: 800,
-            },
-          },
-        },
     },
   },
   mocha: { timeout: 0 },

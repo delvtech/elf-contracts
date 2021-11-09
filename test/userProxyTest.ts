@@ -2,14 +2,15 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { expect } from "chai";
 import { MockProvider } from "ethereum-waffle";
 import { ecsign } from "ethereumjs-util";
-import { Contract, Signer, utils } from "ethers";
+import { BigNumber, Contract, Signer, utils } from "ethers";
 import { ethers, waffle } from "hardhat";
-import { ERC20Permit } from "typechain/ERC20Permit";
-import { CodeSizeChecker__factory } from "typechain/factories/CodeSizeChecker__factory";
-import { ERC20Permit__factory } from "typechain/factories/ERC20Permit__factory";
-import { IWETH__factory } from "typechain/factories/IWETH__factory";
-import { TestEthSender__factory } from "typechain/factories/TestEthSender__factory";
-import { IWETH } from "typechain/IWETH";
+import { ERC20Permit } from "typechain-types/ERC20Permit";
+import { CodeSizeChecker__factory } from "typechain-types/factories/CodeSizeChecker__factory";
+import { ERC20Permit__factory } from "typechain-types/factories/ERC20Permit__factory";
+import { IWETH__factory } from "typechain-types/factories/IWETH__factory";
+import { TestEthSender__factory } from "typechain-types/factories/TestEthSender__factory";
+import { IWETH } from "typechain-types/IWETH";
+
 import {
   EthPoolMainnetInterface,
   loadEthPoolMainnetFixture,
@@ -40,7 +41,7 @@ describe("UserProxyTests", function () {
     ({ proxy } = usdcFixture);
     const underlyingAddress = await usdcFixture.position.token();
     impersonate(usdcWhaleAddress);
-    const usdcWhale = ethers.provider.getSigner(usdcWhaleAddress);
+    const usdcWhale = await ethers.provider.getSigner(usdcWhaleAddress);
     // Get the signers
     signers = await ethers.getSigners();
     underlying = ERC20Permit__factory.connect(underlyingAddress, signers[0]);
@@ -92,6 +93,7 @@ describe("UserProxyTests", function () {
     );
     // Mint for the first time
     receipt = await receipt.wait();
+    console.log("First Mint", receipt.gasUsed.toNumber());
     receipt = await proxy.mint(
       ethers.utils.parseUnits("1", 6),
       underlying.address,
@@ -100,6 +102,7 @@ describe("UserProxyTests", function () {
       []
     );
     receipt = await receipt.wait();
+    console.log("Repeat Mint", receipt.gasUsed.toNumber());
     // Set an approval for the new user
     await underlying.connect(signers[1]).approve(proxy.address, lots);
     receipt = await proxy
@@ -112,6 +115,7 @@ describe("UserProxyTests", function () {
         []
       );
     receipt = await receipt.wait();
+    console.log("New User First mint", receipt.gasUsed.toNumber());
   });
 
   it("Blocks Weth withdraw function when using USDC", async function () {
@@ -318,7 +322,7 @@ describe("UserProxyTests", function () {
       });
       // transfer usdc to wallet address
       impersonate(usdcWhaleAddress);
-      const tokenHolder = ethers.provider.getSigner(usdcWhaleAddress);
+      const tokenHolder = await ethers.provider.getSigner(usdcWhaleAddress);
       await usdcFixture.usdc.connect(tokenHolder).transfer(wallet.address, 100);
       const underlyingAddress = await usdcFixture.position.token();
       underlying = ERC20Permit__factory.connect(underlyingAddress, signers[0]);
@@ -345,7 +349,7 @@ describe("UserProxyTests", function () {
       );
       // impersonate wallet to get Signer for connection
       impersonate(wallet.address);
-      const walletSigner = ethers.provider.getSigner(wallet.address);
+      const walletSigner = await ethers.provider.getSigner(wallet.address);
       await usdcFixture.proxy
         .connect(walletSigner)
         .mint(100, underlying.address, 1e10, usdcFixture.position.address, [

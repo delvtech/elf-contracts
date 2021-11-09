@@ -31,7 +31,7 @@ const { provider } = waffle;
 // TODO: figure out if we can only apply tolerance to the coverage tests.
 // const DEFAULT_CHAI_ALMOST_TOLERANCE = 10e-4;
 // const tolerance = process.env.COVERAGE ? DEFAULT_CHAI_ALMOST_TOLERANCE : 0;
-chai.use(chaiAlmost(10e-4));
+chai.use(chaiAlmost(20e-4));
 
 describe("ConvergentCurvePool", function () {
   const BOND_DECIMALS = 17;

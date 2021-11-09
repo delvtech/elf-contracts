@@ -1,36 +1,38 @@
-import "module-alias/register";
-
 import { Signer } from "ethers";
 import { ethers } from "hardhat";
-import { TestERC20 } from "typechain/TestERC20";
-import { TestYVault } from "typechain/TestYVault";
-import { TestWrappedPosition } from "typechain/TestWrappedPosition";
-import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
-import { TestYVault__factory } from "typechain/factories/TestYVault__factory";
-import { TestWrappedPosition__factory } from "typechain/factories/TestWrappedPosition__factory";
+import "module-alias/register";
+import { DateString__factory } from "typechain/factories/DateString__factory";
 import { IERC20__factory } from "typechain/factories/IERC20__factory";
+import { InterestTokenFactory__factory } from "typechain/factories/InterestTokenFactory__factory";
+import { InterestToken__factory } from "typechain/factories/InterestToken__factory";
 import { IWETH__factory } from "typechain/factories/IWETH__factory";
 import { IYearnVault__factory } from "typechain/factories/IYearnVault__factory";
-import { Tranche__factory } from "typechain/factories/Tranche__factory";
-import { TrancheFactory__factory } from "typechain/factories/TrancheFactory__factory";
+import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
 import { TestUserProxy__factory } from "typechain/factories/TestUserProxy__factory";
-import { InterestToken__factory } from "typechain/factories/InterestToken__factory";
-import { InterestTokenFactory__factory } from "typechain/factories/InterestTokenFactory__factory";
+import { TestWrappedPosition__factory } from "typechain/factories/TestWrappedPosition__factory";
+import { TestYVault__factory } from "typechain/factories/TestYVault__factory";
+import { TrancheFactory__factory } from "typechain/factories/TrancheFactory__factory";
+import { Tranche__factory } from "typechain/factories/Tranche__factory";
+import { Vault__factory } from "typechain/factories/Vault__factory";
 import { YVaultAssetProxy__factory } from "typechain/factories/YVaultAssetProxy__factory";
-import { ZapYearnShares__factory } from "typechain/factories/ZapYearnShares__factory";
-import { ZapYearnShares } from "typechain/ZapYearnShares";
+import { ZapTokenToPt__factory } from "typechain/factories/ZapTokenToPt__factory";
 import { ZapTrancheHop__factory } from "typechain/factories/ZapTrancheHop__factory";
-import { ZapTrancheHop } from "typechain/ZapTrancheHop";
+import { ZapYearnShares__factory } from "typechain/factories/ZapYearnShares__factory";
 import { IERC20 } from "typechain/IERC20";
+import { InterestToken } from "typechain/InterestToken";
 import { IWETH } from "typechain/IWETH";
 import { IYearnVault } from "typechain/IYearnVault";
+import { TestERC20 } from "typechain/TestERC20";
+import { TestUserProxy } from "typechain/TestUserProxy";
+import { TestWrappedPosition } from "typechain/TestWrappedPosition";
+import { TestYVault } from "typechain/TestYVault";
 import { Tranche } from "typechain/Tranche";
 import { TrancheFactory } from "typechain/TrancheFactory";
-import { TestUserProxy } from "typechain/TestUserProxy";
-import { InterestToken } from "typechain/InterestToken";
+import { Vault } from "typechain/Vault";
 import { YVaultAssetProxy } from "typechain/YVaultAssetProxy";
-import { DateString__factory } from "typechain/factories/DateString__factory";
-
+import { ZapTokenToPt } from "typechain/ZapTokenToPt";
+import { ZapTrancheHop } from "typechain/ZapTrancheHop";
+import { ZapYearnShares } from "typechain/ZapYearnShares";
 import data from "../../artifacts/contracts/Tranche.sol/Tranche.json";
 
 export interface FixtureInterface {
@@ -91,6 +93,19 @@ export interface TrancheHopInterface {
   interestToken2: InterestToken;
 }
 
+export interface TokenToPtZapInterface {
+  zapEthToPt: ZapTokenToPt;
+  signer: Signer;
+  stETH: IERC20;
+  stCRV: IERC20;
+  yvCurve_stEth: IERC20;
+  ePyvcrvSTETH: IERC20;
+  balancerVault: Vault;
+  position: YVaultAssetProxy;
+  tranche: Tranche;
+  interestToken: InterestToken;
+  bytecodehash: string;
+}
 const deployTestWrappedPosition = async (signer: Signer, address: string) => {
   const deployer = new TestWrappedPosition__factory(signer);
   return await deployer.deploy(address);
@@ -412,5 +427,81 @@ export async function loadTrancheHopFixture(toAuth: string) {
     tranche2,
     interestToken1,
     interestToken2,
+  };
+}
+
+export async function loadTokenToPtZapFixture(toAuth: string) {
+  const balancerVaultAddress = "0xBA12222222228d8Ba445958a75a0704d566BF2C8";
+
+  const stEthAddress = "0xae7ab96520de3a18e5e111b5eaab095312d7fe84";
+  const stCrvAddress = "0x06325440D014e39736583c165C2963BA99fAf14E";
+
+  const yvCurve_stEthAddress = "0xdCD90C7f6324cfa40d7169ef80b12031770B4325";
+  const ePyvcrvSTETHAddress = "0x2361102893CCabFb543bc55AC4cC8d6d0824A67E";
+
+  const [signer] = await ethers.getSigners();
+
+  const stETH = IERC20__factory.connect(stEthAddress, signer);
+  const stCRV = IERC20__factory.connect(stCrvAddress, signer);
+  const ePyvcrvSTETH = IERC20__factory.connect(ePyvcrvSTETHAddress, signer);
+
+  const balancerVault = Vault__factory.connect(balancerVaultAddress, signer);
+
+  const yvCurve_stEth = IYearnVault__factory.connect(
+    yvCurve_stEthAddress,
+    signer
+  );
+  const position = await deployYasset(
+    signer,
+    yvCurve_stEth.address,
+    stCRV.address,
+    "Element Yearn Curve stETH",
+    "yvcrvSTETH"
+  );
+
+  // deploy and fetch tranche contract
+  const trancheFactory = await deployTrancheFactory(signer);
+  await trancheFactory.deployTranche(1e10, position.address);
+
+  const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
+  const events = await trancheFactory.queryFilter(eventFilter);
+  const trancheAddress = events[0] && events[0].args && events[0].args[0];
+
+  const tranche = Tranche__factory.connect(trancheAddress, signer);
+
+  const interestTokenAddress = await tranche.interestToken();
+  const interestToken = InterestToken__factory.connect(
+    interestTokenAddress,
+    signer
+  );
+
+  // Setup the proxy
+  const bytecodehash = ethers.utils.solidityKeccak256(
+    ["bytes"],
+    [data.bytecode]
+  );
+
+  console.log(bytecodehash);
+  const deployer = new ZapTokenToPt__factory(signer);
+  const zapEthToPt = await deployer.deploy(
+    trancheFactory.address,
+    bytecodehash
+  );
+
+  await zapEthToPt.connect(signer).authorize(toAuth);
+  await zapEthToPt.connect(signer).setOwner(toAuth);
+
+  return {
+    zapEthToPt,
+    signer,
+    stETH,
+    stCRV,
+    yvCurve_stEth,
+    ePyvcrvSTETH,
+    balancerVault,
+    position,
+    tranche,
+    interestToken,
+    bytecodehash,
   };
 }

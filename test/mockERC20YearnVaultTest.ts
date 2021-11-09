@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import { BigNumber, Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
-import { MockERC20YearnVault__factory } from "typechain-types/factories/MockERC20YearnVault__factory";
-import { TestERC20__factory } from "typechain-types/factories/TestERC20__factory";
-import { MockERC20YearnVault } from "typechain-types/MockERC20YearnVault";
-import { TestERC20 } from "typechain-types/TestERC20";
+import { MockERC20YearnVault__factory } from "typechain/factories/MockERC20YearnVault__factory";
+import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
+import { MockERC20YearnVault } from "typechain/MockERC20YearnVault";
+import { TestERC20 } from "typechain/TestERC20";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 import { advanceTime } from "./helpers/time";
 

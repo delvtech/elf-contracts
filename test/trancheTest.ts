@@ -7,7 +7,7 @@ import { bnFloatMultiplier, subError } from "./helpers/math";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 import { advanceTime, getCurrentTimestamp } from "./helpers/time";
 import { getPermitSignature } from "./helpers/signatures";
-import { ERC20Permit } from "typechain-types/ERC20Permit";
+import { ERC20Permit } from "typechain/ERC20Permit";
 
 const { provider } = waffle;
 

@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { Contract, BigNumber } from "ethers";
 import { impersonate, stopImpersonating } from "../helpers/impersonate";
-import { TestConvergentCurvePool } from "typechain-types/TestConvergentCurvePool";
+import { TestConvergentCurvePool } from "typechain/TestConvergentCurvePool";
 
 import testTrades from "./testTrades.json";
 

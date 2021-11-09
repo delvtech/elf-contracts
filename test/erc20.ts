@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { ethers, waffle } from "hardhat";
-import { TestERC20 } from "typechain-types/TestERC20";
-import { TestERC20__factory } from "typechain-types/factories/TestERC20__factory";
+import { TestERC20 } from "typechain/TestERC20";
+import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
 import { PERMIT_TYPEHASH } from "./helpers/signatures";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 import { getDigest } from "./helpers/signatures";

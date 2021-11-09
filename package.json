@@ -39,7 +39,7 @@
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
-    "@typechain/ethers-v5": "^8.0.1",
+    "@typechain/ethers-v5": "^8.0.2",
     "@typechain/hardhat": "^3.0.0",
     "@types/chai-almost": "^1.0.1",
     "@types/mocha": "^8.2.3",

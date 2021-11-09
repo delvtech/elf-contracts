@@ -6,6 +6,7 @@
       "esModuleInterop": true,
       "outDir": "dist",
       "resolveJsonModule": true,
+      "skipLibCheck": true,
       "baseUrl": "./",
       "paths": {
         "test": ["./test"],

@@ -92,20 +92,6 @@ export interface TrancheHopInterface {
   interestToken1: InterestToken;
   interestToken2: InterestToken;
 }
-
-export interface TokenToPtZapInterface {
-  zapEthToPt: ZapTokenToPt;
-  signer: Signer;
-  stETH: IERC20;
-  stCRV: IERC20;
-  yvCurve_stEth: IERC20;
-  ePyvcrvSTETH: IERC20;
-  balancerVault: Vault;
-  position: YVaultAssetProxy;
-  tranche: Tranche;
-  interestToken: InterestToken;
-  bytecodehash: string;
-}
 const deployTestWrappedPosition = async (signer: Signer, address: string) => {
   const deployer = new TestWrappedPosition__factory(signer);
   return await deployer.deploy(address);
@@ -430,78 +416,50 @@ export async function loadTrancheHopFixture(toAuth: string) {
   };
 }
 
+export interface TokenToPtZapInterface {
+  zapTokenToPt: ZapTokenToPt;
+  ePyvcrvSTETH: Tranche;
+  balancerVault: Vault;
+  stETH: IERC20;
+}
+
 export async function loadTokenToPtZapFixture(toAuth: string) {
-  const balancerVaultAddress = "0xBA12222222228d8Ba445958a75a0704d566BF2C8";
-
-  const stEthAddress = "0xae7ab96520de3a18e5e111b5eaab095312d7fe84";
-  const stCrvAddress = "0x06325440D014e39736583c165C2963BA99fAf14E";
-
-  const yvCurve_stEthAddress = "0xdCD90C7f6324cfa40d7169ef80b12031770B4325";
-  const ePyvcrvSTETHAddress = "0x2361102893CCabFb543bc55AC4cC8d6d0824A67E";
-
   const [signer] = await ethers.getSigners();
 
-  const stETH = IERC20__factory.connect(stEthAddress, signer);
-  const stCRV = IERC20__factory.connect(stCrvAddress, signer);
-  const ePyvcrvSTETH = IERC20__factory.connect(ePyvcrvSTETHAddress, signer);
-
-  const balancerVault = Vault__factory.connect(balancerVaultAddress, signer);
-
-  const yvCurve_stEth = IYearnVault__factory.connect(
-    yvCurve_stEthAddress,
+  const stETH = IERC20__factory.connect(
+    "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
     signer
   );
-  const position = await deployYasset(
-    signer,
-    yvCurve_stEth.address,
-    stCRV.address,
-    "Element Yearn Curve stETH",
-    "yvcrvSTETH"
+
+  const ePyvcrvSTETH = Tranche__factory.connect(
+    "0x2361102893CCabFb543bc55AC4cC8d6d0824A67E",
+    signer
+  );
+  const balancerVault = Vault__factory.connect(
+    "0xBA12222222228d8Ba445958a75a0704d566BF2C8",
+    signer
   );
 
-  // deploy and fetch tranche contract
   const trancheFactory = await deployTrancheFactory(signer);
-  await trancheFactory.deployTranche(1e10, position.address);
-
-  const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
-  const events = await trancheFactory.queryFilter(eventFilter);
-  const trancheAddress = events[0] && events[0].args && events[0].args[0];
-
-  const tranche = Tranche__factory.connect(trancheAddress, signer);
-
-  const interestTokenAddress = await tranche.interestToken();
-  const interestToken = InterestToken__factory.connect(
-    interestTokenAddress,
-    signer
-  );
-
-  // Setup the proxy
   const bytecodehash = ethers.utils.solidityKeccak256(
     ["bytes"],
     [data.bytecode]
   );
 
-  console.log(bytecodehash);
   const deployer = new ZapTokenToPt__factory(signer);
-  const zapEthToPt = await deployer.deploy(
+  const zapTokenToPt = await deployer.deploy(
     trancheFactory.address,
-    bytecodehash
+    bytecodehash,
+    balancerVault.address
   );
 
-  await zapEthToPt.connect(signer).authorize(toAuth);
-  await zapEthToPt.connect(signer).setOwner(toAuth);
+  await zapTokenToPt.connect(signer).authorize(toAuth);
+  await zapTokenToPt.connect(signer).setOwner(toAuth);
 
   return {
-    zapEthToPt,
-    signer,
-    stETH,
-    stCRV,
-    yvCurve_stEth,
+    zapTokenToPt,
     ePyvcrvSTETH,
     balancerVault,
-    position,
-    tranche,
-    interestToken,
-    bytecodehash,
+    stETH,
   };
 }

@@ -89,8 +89,7 @@ contract ZapTokenToPt is Authorizable {
     constructor(
         address __trancheFactory,
         bytes32 __trancheBytecodeHash,
-        IVault __balancer,
-        address[] tokens
+        IVault __balancer
     ) Authorizable() {
         _authorize(msg.sender);
         _trancheFactory = __trancheFactory;
@@ -110,9 +109,14 @@ contract ZapTokenToPt is Authorizable {
         _noReentry = false;
     }
 
-    // function setApprovalFor(address[] tokens, address[] crvPools) external onlyAuthorized {
-    //     // maxApproval for each
-    // }
+    function setApprovalsFor(address[] memory tokens, address[] memory crvPools)
+        external
+        onlyAuthorized
+    {
+        for (uint256 i = 0; i < tokens.length; i++) {
+            IERC20(tokens[i]).approve(crvPools[i], type(uint256).max);
+        }
+    }
 
     /// @dev Requires that the contract is not frozen
     modifier notFrozen() {
@@ -126,16 +130,13 @@ contract ZapTokenToPt is Authorizable {
         isFrozen = _newState;
     }
 
-    // struct ZapCurveLp {
-    //     ICurveFi curvePool;
-    //     uint256[] amounts;
-    //     address[] tokens;
-    // }
-
-    struct ZapCurveIn {
+    struct ZapCurveLp {
         ICurveFi curvePool;
         uint256[] amounts;
-        address[] tokens;
+        address[] roots;
+    }
+
+    struct ZapPtInfo {
         bytes32 balancerPoolId;
         address payable recipient;
         address principalToken;
@@ -143,139 +144,75 @@ contract ZapTokenToPt is Authorizable {
         uint256 deadline;
     }
 
-    function _zapCurveInThree(ZapCurveIn memory _zap)
+    function _zapTwoRootsToCurveLp(ZapCurveLp memory _zap)
         internal
-        returns (uint256 baseTokenAmount)
+        returns (uint256 crvLpAmount)
     {
-        uint256[3] memory crvInputCtx;
-
-        bool validAmountsFlag = false;
+        uint256[2] memory ctx;
         for (uint256 i = 0; i < _zap.amounts.length; i++) {
-            require(
-                _zap.curvePool.coins(i) == _zap.tokens[i],
-                "incorrect token address"
-            );
-            if (_zap.tokens[i] == _ETH_CONSTANT) {
-                require(
-                    msg.value == _zap.amounts[i],
-                    "incorrect amount provided"
-                );
+            if (_zap.roots[i] == _ETH_CONSTANT) {
+                require(msg.value == _zap.amounts[i], "incorrect value");
+                ctx[i] = _zap.amounts[i];
             } else {
-                IERC20(_zap.tokens[i]).approve(
-                    address(_zap.curvePool),
-                    _zap.amounts[i]
-                );
-            }
-
-            if (!validAmountsFlag && _zap.amounts[i] > 0) {
-                validAmountsFlag = true;
-            }
-            crvInputCtx[i] = _zap.amounts[i];
-        }
-
-        baseTokenAmount = _zap.curvePool.add_liquidity{ value: msg.value }(
-            crvInputCtx,
-            0
-        );
-    }
-
-    function _zapCurveInTwo(ZapCurveIn memory _zap)
-        internal
-        returns (uint256 baseTokenAmount)
-    {
-        uint256[2] memory crvInputCtx;
-
-        bool validAmountsFlag = false;
-        for (uint256 i = 0; i < _zap.amounts.length; i++) {
-            require(
-                _zap.curvePool.coins(i) == _zap.tokens[i],
-                "incorrect token address"
-            );
-            if (_zap.tokens[i] == _ETH_CONSTANT) {
-                require(
-                    msg.value == _zap.amounts[i],
-                    "incorrect amount provided"
-                );
-            } else {
-                uint256 allowance = IERC20(_zap.tokens[i]).allowance(
-                    msg.sender,
-                    address(this)
-                );
-                console.log("allowance: %s", allowance);
-                require(allowance >= _zap.amounts[i], "allowance not set");
-                IERC20(_zap.tokens[i]).transferFrom(
+                IERC20(_zap.roots[i]).transferFrom(
                     msg.sender,
                     address(this),
                     _zap.amounts[i]
                 );
-
-                IERC20(_zap.tokens[i]).approve(
-                    address(_zap.curvePool),
-                    IERC20(_zap.tokens[i]).balanceOf(address(this))
-                );
-
-                console.log(
-                    "%s :: %s",
-                    _zap.tokens[i],
-                    IERC20(_zap.tokens[i]).balanceOf(address(this))
-                );
+                ctx[i] = IERC20(_zap.roots[i]).balanceOf(address(this));
             }
-
-            if (!validAmountsFlag && _zap.amounts[i] > 0) {
-                validAmountsFlag = true;
-            }
-            crvInputCtx[i] = _zap.amounts[i];
         }
-
-        require(validAmountsFlag, "invalid amounts");
-
-        console.log("curveInputs: %s %s", crvInputCtx[0], crvInputCtx[1]);
-        baseTokenAmount = _zap.curvePool.add_liquidity{ value: msg.value }(
-            crvInputCtx,
-            0
-        );
+        crvLpAmount = _zap.curvePool.add_liquidity{ value: msg.value }(ctx, 0);
     }
 
-    // function processCrvLp(ZapLpIn crv) internal {
-    //      if (_zap.amounts.length == 2) {
-    //         baseTokenAmount = _zapCurveInTwo(_zap);
-    //     } else if (_zap.amounts.length == 3) {
-    //         baseTokenAmount = _zapCurveInThree(_zap);
-    //     } else {
-    //         revert("!(2 >= numAmounts <= 3)");
-    //     }
-
-    // }
-
-    // function zapCurveIn(ZapLpIn f, hasSecondLayer, ZapLpIn g)
-    //     external
-    //     payable
-    //     reentrancyGuard
-    //     notFrozen
-    //     returns (uint256 ptAmount)
-    // {
-
-    function zapCurveIn(ZapCurveIn _zap)
-        external
-        payable
-        reentrancyGuard
-        notFrozen
-        returns (uint256 ptAmount)
+    function _zapThreeRootsToCurveLp(ZapCurveLp memory _zap)
+        internal
+        returns (uint256 crvLpAmount)
     {
-        // uint256 baseTokenAmount;
-        // if (hasSecondLayer) {
-        //     process(g)
-        // }
-
-        // process(f)
-
-        if (_zap.amounts.length == 2) {
-            baseTokenAmount = _zapCurveInTwo(_zap);
-        } else if (_zap.amounts.length == 3) {
-            baseTokenAmount = _zapCurveInThree(_zap);
-        } else {
-            revert("!(2 >= numAmounts <= 3)");
+        uint256[3] memory ctx;
+        for (uint256 i = 0; i < _zap.amounts.length; i++) {
+            if (_zap.roots[i] == _ETH_CONSTANT) {
+                require(msg.value == _zap.amounts[i], "incorrect value");
+                ctx[i] = _zap.amounts[i];
+            } else {
+                IERC20(_zap.roots[i]).transferFrom(
+                    msg.sender,
+                    address(this),
+                    _zap.amounts[i]
+                );
+                ctx[i] = IERC20(_zap.roots[i]).balanceOf(address(this));
+            }
         }
+        crvLpAmount = _zap.curvePool.add_liquidity{ value: msg.value }(ctx, 0);
+    }
+
+    function _zapCurveLp(ZapCurveLp memory _zap)
+        internal
+        returns (uint256 crvLpAmount)
+    {
+        if (_zap.amounts.length == 2) {
+            crvLpAmount = _zapTwoRootsToCurveLp(_zap);
+        } else if (_zap.amounts.length == 3) {
+            crvLpAmount = _zapThreeRootsToCurveLp(_zap);
+        } else {
+            revert("!(2 >= amounts.length <= 3)");
+        }
+    }
+
+    function zapCurveIn(
+        ZapPtInfo memory _ptInfo,
+        ZapCurveLp memory _zap,
+        bool _zapHasCrvLpRoot,
+        ZapCurveLp memory _rootZap,
+        uint256 _rootZapIdx
+    ) external payable reentrancyGuard notFrozen returns (uint256 ptAmount) {
+        console.log("knknk");
+        if (_zapHasCrvLpRoot) {
+            uint256 crvRootLpAmount = _zapCurveLp(_rootZap);
+            _zap.amounts[_rootZapIdx] += crvRootLpAmount;
+        }
+
+        uint256 baseTokenAmount = _zapCurveLp(_zap);
         console.log(baseTokenAmount);
 
         // uint256[2] memory crvPoolInputCtx;

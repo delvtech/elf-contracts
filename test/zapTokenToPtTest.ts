@@ -1,24 +1,28 @@
 import { Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
-import { ZapCurveInStruct } from "typechain/ZapTokenToPt";
-import { _ETH_CONSTANT } from "./helpers/constants";
 import {
-  loadTokenToPtZapFixture,
-  TokenToPtZapInterface,
+  ZapCurveLpStruct,
+  ZapPtInfoStruct,
+  ZapTokenToPt,
+} from "typechain/ZapTokenToPt";
+import { ONE_ETH, ZERO } from "./helpers/constants";
+import {
+  IZapCurveTokenToPt,
+  loadCurveTokenToPtZapFixture,
 } from "./helpers/deployer";
+import { impersonate, stopImpersonating } from "./helpers/impersonate";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 import { ONE_DAY_IN_SECONDS } from "./helpers/time";
-
-import { impersonate, stopImpersonating } from "./helpers/impersonate";
 
 const { provider } = waffle;
 
 describe.only("zapTokenToPt", () => {
   let users: { user: Signer; address: string }[];
 
-  let fixture: TokenToPtZapInterface;
+  let zapTokenToPt: ZapTokenToPt;
+  let eP_yvcrvSTETH: IZapCurveTokenToPt["eP_yvcrvSTETH"];
 
-  let zap: ZapCurveInStruct;
+  const deadline = Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS;
 
   before(async () => {
     await createSnapshot(provider);
@@ -34,7 +38,9 @@ describe.only("zapTokenToPt", () => {
       })
     );
 
-    fixture = await loadTokenToPtZapFixture(users[1].address);
+    ({ zapTokenToPt, eP_yvcrvSTETH } = await loadCurveTokenToPtZapFixture(
+      users[1].address
+    ));
   });
 
   after(async () => {
@@ -49,43 +55,72 @@ describe.only("zapTokenToPt", () => {
   });
 
   describe("ETH:STETH -> eP:yvcrvSTETH", () => {
+    let zapEthStethPtInfo: ZapPtInfoStruct;
+    let zapEthStethCurveLp: ZapCurveLpStruct;
+
     before(async () => {
-      const stEthWhaleAddress = "0x62e41b1185023bcc14a465d350e1dde341557925";
-      const stEthWhale = ethers.provider.getSigner(stEthWhaleAddress);
+      const { whaleSTETH, balancerPoolId, principalToken, curvePool, roots } =
+        eP_yvcrvSTETH;
 
-      impersonate(stEthWhaleAddress);
-      await fixture.stETH
-        .connect(stEthWhale)
-        .transfer(users[1].address, ethers.utils.parseEther("1"));
+      impersonate(whaleSTETH._address);
 
-      zap = {
-        curvePool: "0xDC24316b9AE028F1497c275EB9192a3Ea0f67022",
-        balancerPoolId:
-          "0xb03c6b351a283bc1cd26b9cf6d7b0c4556013bdb0002000000000000000000ab",
-        amounts: [ethers.utils.parseEther("1"), "0"],
-        tokens: [_ETH_CONSTANT, fixture.stETH.address],
+      await eP_yvcrvSTETH.STETH.connect(whaleSTETH).transfer(
+        users[1].address,
+        ONE_ETH
+      );
+
+      zapEthStethPtInfo = {
+        balancerPoolId,
         recipient: users[1].address,
-        principalToken: fixture.ePyvcrvSTETH.address, // eP:yvcrvSTETH
-        minPtAmount: "0",
-        deadline: Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS,
+        principalToken: principalToken.address,
+        minPtAmount: ZERO,
+        deadline,
       };
+
+      zapEthStethCurveLp = {
+        curvePool: curvePool,
+        amounts: [ZERO, ZERO],
+        roots,
+      };
+
+      stopImpersonating(whaleSTETH._address);
     });
 
-    it("should swap ETH for eP:yvcrvSTETH", async () => {
-      await fixture.zapTokenToPt.connect(users[1].user).zapCurveIn(zap, {
-        value: zap.amounts[0],
-      });
-      const ptBalance = await fixture.ePyvcrvSTETH.balanceOf(users[1].address);
+    it.only("should swap ETH for eP:yvcrvSTETH", async () => {
+      console.log(zapEthStethPtInfo, zapEthStethCurveLp);
+      await zapTokenToPt.connect(users[1].user).zapCurveIn(
+        zapEthStethPtInfo,
+        {
+          ...zapEthStethCurveLp,
+          amounts: [ethers.utils.parseEther("1"), ZERO],
+        },
+        false,
+        zapEthStethCurveLp,
+        0,
+        {
+          value: ethers.utils.parseEther("1"),
+        }
+      );
+      const ptBalance = await eP_yvcrvSTETH.principalToken.balanceOf(
+        users[1].address
+      );
     });
 
-    it.only("should swap stETH for eP:yvcrvSTETH", async () => {
-      await fixture.stETH
+    it("should swap stETH for eP:yvcrvSTETH", async () => {
+      await eP_yvcrvSTETH.STETH.connect(users[1].user).approve(
+        zapTokenToPt.address,
+        ONE_ETH
+      );
+
+      await zapTokenToPt
         .connect(users[1].user)
-        .approve(fixture.zapTokenToPt.address, ethers.constants.MaxUint256);
-      await fixture.zapTokenToPt.connect(users[1].user).zapCurveIn({
-        ...zap,
-        amounts: ["0", ethers.utils.parseEther("0.5")],
-      });
+        .zapCurveIn(
+          zapEthStethPtInfo,
+          { ...zapEthStethCurveLp, amounts: [ZERO, ONE_ETH] },
+          false,
+          zapEthStethCurveLp,
+          0
+        );
     });
   });
 });

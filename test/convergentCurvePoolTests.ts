@@ -817,7 +817,8 @@ describe("ConvergentCurvePool", function () {
         SECONDS_IN_YEAR,
         1,
         "fake pool",
-        "FP"
+        "FP",
+        elementSigner.address
       );
     });
     it("Allows changing fees", async () => {
@@ -836,6 +837,60 @@ describe("ConvergentCurvePool", function () {
     it("Blocks non owner changes to governance address", async () => {
       const tx = poolFactory.connect(accounts[1]).setGov(fakeAddress);
       await expect(tx).to.be.revertedWith("Sender not owner");
+    });
+  });
+
+  describe("Pause function", async () => {
+    beforeEach(async () => {
+      createSnapshot(provider);
+    });
+    afterEach(async () => {
+      restoreSnapshot(provider);
+    });
+    it("Only lets gov set pause status", async () => {
+      await poolContract.setPauser(balancerSigner.address, true);
+      const tx = poolContract
+        .connect(balancerSigner)
+        .setPauser(balancerSigner.address, true);
+      await expect(tx).to.be.revertedWith("Sender not Owner");
+    });
+    it("Only let's pausers pause", async () => {
+      await poolContract.pause(true);
+      const tx = poolContract.connect(balancerSigner).pause(false);
+      await expect(tx).to.be.revertedWith("Sender not Authorized");
+    });
+    it("Blocks trades and deposits on a paused pool", async () => {
+      await poolContract.pause(true);
+
+      let tx = poolContract.onJoinPool(
+        "0xb6749d30a0b09b310151e2cd2db8f72dd34aab4bbc60cf3e8dbca13b4d9369ad",
+        fakeAddress,
+        tokenSigner.address,
+        // Pool reserves are [100, 50]
+        [0, 0],
+        0,
+        ethers.utils.parseEther("0.1"),
+        "0x"
+      );
+      await expect(tx).to.be.revertedWith("Paused");
+      tx = poolContract.onSwap(
+        {
+          tokenIn: baseAssetContract.address,
+          tokenOut: bondAssetContract.address,
+          amount: ethers.utils.parseUnits("100", BASE_DECIMALS),
+          kind: inForOutType,
+          // Misc data
+          poolId:
+            "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
+          lastChangeBlock: BigNumber.from(0),
+          from: fakeAddress,
+          to: fakeAddress,
+          userData: "0x",
+        },
+        reserveUnderlying,
+        reserveBond
+      );
+      await expect(tx).to.be.revertedWith("Paused");
     });
   });
 });

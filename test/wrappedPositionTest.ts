@@ -5,6 +5,9 @@ import { ethers, waffle } from "hardhat";
 import { FixtureInterface, loadFixture } from "./helpers/deployer";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 
+import { TestYVault } from "../typechain/TestYVault";
+import { TestYVault__factory } from "../typechain/factories/TestYVault__factory";
+
 const { provider } = waffle;
 
 describe("Wrapped Position", () => {
@@ -148,6 +151,114 @@ describe("Wrapped Position", () => {
         .add(usdcBalanceUser1)
         .add(usdcBalanceUser2);
       expect(totalUsdcBalance).to.equal(ethers.BigNumber.from("19000000"));
+    });
+  });
+  describe("Yearn migration", async () => {
+    let newVault: TestYVault;
+
+    before(async () => {
+      // Deploy a new version
+      const yearnDeployer = new TestYVault__factory(users[0].user);
+      newVault = await yearnDeployer.deploy(
+        fixture.usdc.address,
+        await fixture.usdc.decimals()
+      );
+      // Deposit into it and set the ratio
+      await fixture.usdc.mint(users[0].address, 100);
+      await fixture.usdc.approve(newVault.address, 100);
+      await newVault.deposit(100, users[0].address);
+      // This ensures theirs a difference between the price per shares
+      await newVault.updateShares();
+      await newVault.updateShares();
+    });
+    // tests are independent
+    beforeEach(async () => {
+      await createSnapshot(provider);
+    });
+    afterEach(async () => {
+      await restoreSnapshot(provider);
+    });
+
+    it("Allows governance to upgrade", async () => {
+      await fixture.position.transition(newVault.address, 0);
+      const conversionRate = await fixture.position.conversionRate();
+      // Magic hex is 1.1 in 18 point fixed
+      expect(conversionRate).to.be.eq(BigNumber.from("0xF43FC2C04EE0000"));
+    });
+
+    it("Blocks non governance upgrades", async () => {
+      const tx = fixture.position
+        .connect(users[2].user)
+        .transition(newVault.address, 0);
+      await expect(tx).to.be.revertedWith("Sender not owner");
+    });
+
+    it("Blocks withdraw which does not product enough tokens", async () => {
+      const tx = fixture.position.transition(
+        newVault.address,
+        ethers.constants.MaxUint256
+      );
+      await expect(tx).to.be.revertedWith("Not enough output");
+    });
+
+    it("Makes consistent deposits", async () => {
+      // We check that a deposit before an upgrade gets the same amount of shares as one after
+      await fixture.position.deposit(users[0].address, 1e6);
+      const beforeBalance = await fixture.position.balanceOf(users[0].address);
+      await fixture.position.transition(newVault.address, 0);
+      await fixture.position.deposit(users[1].address, 1e6);
+      const afterBalance = await fixture.position.balanceOf(users[1].address);
+      // There are very small rounding errors leading to -1
+      expect(beforeBalance.sub(1)).to.be.eq(afterBalance);
+    });
+
+    // We check that after a transition you can still withdraw the same amount
+    it("Makes consistent withdraws", async () => {
+      // NOTE - Because of a rounding error bug the conversion rate mechanic can cause withdraw
+      //        failure for the last withdraw. we fix here by having a second deposit
+      await fixture.position.deposit(users[1].address, 5e5);
+      // Deposit and transition
+      await fixture.position.deposit(users[0].address, 1e6);
+      const beforeBalanceToken = await fixture.usdc.balanceOf(users[0].address);
+      const beforeBalanceShares = await fixture.position.balanceOf(
+        users[0].address
+      );
+      await fixture.position.transition(newVault.address, 0);
+      // Withdraw and check balances
+      await fixture.position.withdraw(users[0].address, beforeBalanceShares, 0);
+      const afterBalanceToken = await fixture.usdc.balanceOf(users[0].address);
+      // Minus one to allow for rounding error
+      expect(afterBalanceToken.sub(beforeBalanceToken)).to.be.eq(1e6 - 1);
+    });
+
+    it("has consistent price per share over upgrades", async () => {
+      const priceBefore = await fixture.position.getSharesToUnderlying(1e6);
+      await fixture.position.transition(newVault.address, 0);
+      const priceAfter = await fixture.position.getSharesToUnderlying(1e6);
+      // Allow some rounding
+      expect(priceAfter.sub(priceBefore).lt(10)).to.be.true;
+    });
+  });
+
+  describe("Pause tests", async () => {
+    before(async () => {
+      // Pause the contract
+      await fixture.position.pause(true);
+    });
+
+    it("Can't deposit", async () => {
+      const tx = fixture.position.deposit(users[0].address, 100);
+      await expect(tx).to.be.revertedWith("Paused");
+    });
+
+    it("Can't withdraw", async () => {
+      const tx = fixture.position.withdraw(users[0].address, 0, 0);
+      await expect(tx).to.be.revertedWith("Paused");
+    });
+
+    it("Only useable by authorized", async () => {
+      const tx = fixture.position.connect(users[1].user).pause(false);
+      await expect(tx).to.be.revertedWith("Sender not Authorized");
     });
   });
 });

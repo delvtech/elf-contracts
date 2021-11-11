@@ -61,10 +61,6 @@ describe("ETHPool-Mainnet", () => {
     await fixture.weth
       .connect(users[3].user)
       .approve(fixture.position.address, utils.parseEther("90000"));
-    // Initialize a reserve
-    await fixture.position
-      .connect(users[3].user)
-      .reserveDeposit(utils.parseEther("30000"));
   });
   after(async () => {
     // revert back to initial state after all tests pass
@@ -93,11 +89,9 @@ describe("ETHPool-Mainnet", () => {
         .deposit(users[3].address, utils.parseEther("60000"));
 
       let pricePerFullShare = await fixture.yweth.pricePerShare();
-      const balance = (
-        await (await fixture.yweth.balanceOf(fixture.position.address)).mul(
-          pricePerFullShare
-        )
-      ).div(utils.parseEther("1"));
+      const balance = (await fixture.yweth.balanceOf(fixture.position.address))
+        .mul(pricePerFullShare)
+        .div(utils.parseEther("1"));
       expect(balance.add(ethers.BigNumber.from("5"))).to.be.at.least(
         ethers.BigNumber.from("1000000000000")
       );

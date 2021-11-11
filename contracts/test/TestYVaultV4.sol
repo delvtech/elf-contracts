@@ -13,7 +13,7 @@ contract TestYVaultV4 is TestYVault {
         TestYVault(_token, _decimals)
     {}
 
-    function apiVersion() external override pure returns (string memory) {
+    function apiVersion() external pure override returns (string memory) {
         return ("0.4.2");
     }
 }

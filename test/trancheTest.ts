@@ -153,7 +153,8 @@ describe("Tranche", () => {
       expect(await fixture.usdc.balanceOf(user2Address)).to.equal(0);
     });
     it("should correctly handle deposits with accrued interest", async () => {
-      const initialUnderlying = await fixture.positionStub.underlyingUnitValue();
+      const initialUnderlying =
+        await fixture.positionStub.underlyingUnitValue();
 
       await fixture.tranche
         .connect(user1)
@@ -191,7 +192,8 @@ describe("Tranche", () => {
       );
     });
     it("should block deposits with negative interest", async () => {
-      const initialUnderlying = await fixture.positionStub.underlyingUnitValue();
+      const initialUnderlying =
+        await fixture.positionStub.underlyingUnitValue();
 
       await fixture.tranche
         .connect(user1)
@@ -219,7 +221,8 @@ describe("Tranche", () => {
       );
     });
     it("Correctly deposits at 3 times", async () => {
-      const initialUnderlying = await fixture.positionStub.underlyingUnitValue();
+      const initialUnderlying =
+        await fixture.positionStub.underlyingUnitValue();
 
       await fixture.tranche.deposit(1e8, user1Address);
       expect(await fixture.tranche.balanceOf(user1Address)).to.be.eq(1e8);
@@ -272,7 +275,8 @@ describe("Tranche", () => {
       );
     });
     it("should correctly handle Principal Token withdrawals with accrued interest", async () => {
-      const initialUnderlying = await fixture.positionStub.underlyingUnitValue();
+      const initialUnderlying =
+        await fixture.positionStub.underlyingUnitValue();
 
       await fixture.tranche
         .connect(user1)
@@ -339,7 +343,8 @@ describe("Tranche", () => {
       expect(await fixture.interestToken.balanceOf(user2Address)).to.equal(0);
     });
     it("should correctly handle Interest Token withdrawals with accrued interest", async () => {
-      const initialUnderlying = await fixture.positionStub.underlyingUnitValue();
+      const initialUnderlying =
+        await fixture.positionStub.underlyingUnitValue();
 
       await fixture.tranche
         .connect(user1)
@@ -378,7 +383,8 @@ describe("Tranche", () => {
       expect(userToken).to.equal(await fixture.usdc.balanceOf(user2Address));
     });
     it("should correctly handle Interest Token withdrawals with negative interest", async () => {
-      const initialUnderlying = await fixture.positionStub.underlyingUnitValue();
+      const initialUnderlying =
+        await fixture.positionStub.underlyingUnitValue();
 
       await fixture.tranche
         .connect(user1)
@@ -417,7 +423,8 @@ describe("Tranche", () => {
       expect(await fixture.positionStub.balanceOf(user2Address)).to.equal(0);
     });
     it("should correctly handle Principal Token withdrawals with negative interest", async () => {
-      const initialUnderlying = await fixture.positionStub.underlyingUnitValue();
+      const initialUnderlying =
+        await fixture.positionStub.underlyingUnitValue();
 
       await fixture.tranche
         .connect(user1)
@@ -495,7 +502,8 @@ describe("Tranche", () => {
     });
 
     it("should correctly handle Principal Token withdrawals with falsely reported negative interest", async () => {
-      const initialUnderlying = await fixture.positionStub.underlyingUnitValue();
+      const initialUnderlying =
+        await fixture.positionStub.underlyingUnitValue();
 
       // Deposit across interest rates
       await fixture.tranche
@@ -544,9 +552,6 @@ describe("Tranche", () => {
       await fixture.tranche
         .connect(user1)
         .withdrawPrincipal(principalBalanceU1, user1Address);
-      const contractHoldings2 = await fixture.positionStub.balanceOfUnderlying(
-        fixture.tranche.address
-      );
       await fixture.tranche
         .connect(user2)
         .withdrawPrincipal(principalBalanceU2, user2Address);
@@ -572,7 +577,8 @@ describe("Tranche", () => {
     });
 
     it("Should only allow setting speedbump once and after expiration", async () => {
-      const initialUnderlying = await fixture.positionStub.underlyingUnitValue();
+      const initialUnderlying =
+        await fixture.positionStub.underlyingUnitValue();
 
       // Deposit so it's possible to make a loss
       await fixture.tranche
@@ -710,7 +716,8 @@ describe("Tranche", () => {
       ).to.equal(0);
     });
     it("should correctly handle full withdrawals with accrued interest -  withdraw Interest Token, then Principal Token", async () => {
-      const initialUnderlying = await fixture.positionStub.underlyingUnitValue();
+      const initialUnderlying =
+        await fixture.positionStub.underlyingUnitValue();
 
       await fixture.tranche
         .connect(user1)
@@ -772,7 +779,8 @@ describe("Tranche", () => {
       );
     });
     it("should correctly handle full withdrawals with accrued interest -  withdraw Principal Token, then Interest Token", async () => {
-      const initialUnderlying = await fixture.positionStub.underlyingUnitValue();
+      const initialUnderlying =
+        await fixture.positionStub.underlyingUnitValue();
 
       await fixture.tranche
         .connect(user1)
@@ -845,7 +853,8 @@ describe("Tranche", () => {
       ).to.be.revertedWith("E:Not Expired");
     });
     it("should prevent withdraw of principal tokens when the interest rate is negative and speedbump hasn't been hit", async () => {
-      const initialUnderlying = await fixture.positionStub.underlyingUnitValue();
+      const initialUnderlying =
+        await fixture.positionStub.underlyingUnitValue();
 
       await fixture.tranche
         .connect(user1)
@@ -869,7 +878,8 @@ describe("Tranche", () => {
     });
 
     it("should prevent withdraw of principal tokens when the interest rate is negative and speedbump was hit less than 48 hours ago", async () => {
-      const initialUnderlying = await fixture.positionStub.underlyingUnitValue();
+      const initialUnderlying =
+        await fixture.positionStub.underlyingUnitValue();
 
       await fixture.tranche
         .connect(user1)

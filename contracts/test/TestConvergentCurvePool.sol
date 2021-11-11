@@ -29,7 +29,8 @@ contract TestConvergentCurvePool is ConvergentCurvePool {
             _percentFee,
             _governance,
             name,
-            symbol
+            symbol,
+            _governance
         )
     {} // solhint-disable-line no-empty-blocks
 
@@ -92,7 +93,7 @@ contract TestConvergentCurvePool is ConvergentCurvePool {
     }
 
     // Allows tests to specify fees without making trades
-    function setFees(uint128 amountUnderlying, uint128 amountBond) public {
+    function setFees(uint128 amountUnderlying, uint120 amountBond) public {
         feesUnderlying = amountUnderlying;
         feesBond = amountBond;
     }
@@ -141,7 +142,7 @@ contract TestConvergentCurvePool is ConvergentCurvePool {
     }
 
     // Allows the error measurement test to set the time
-    function _getYieldExponent() internal override view returns (uint256) {
+    function _getYieldExponent() internal view override returns (uint256) {
         // Load the stored time if it's set use that instead
         if (time > 0) {
             return uint256(FixedPoint.ONE).sub(time);

@@ -21,7 +21,11 @@ export async function deployConvergentCurvePool(
     durationInSeconds: number;
   }
 ) {
-  const { expiration: providedExpiration, swapFee, durationInSeconds } = {
+  const {
+    expiration: providedExpiration,
+    swapFee,
+    durationInSeconds,
+  } = {
     ...defaultOptions,
     ...options,
   };

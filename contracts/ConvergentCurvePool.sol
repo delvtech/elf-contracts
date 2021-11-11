@@ -9,6 +9,9 @@ import "./balancer-core-v2/vault/interfaces/IMinimalSwapInfoPool.sol";
 import "./balancer-core-v2/vault/interfaces/IVault.sol";
 import "./balancer-core-v2/pools/BalancerPoolToken.sol";
 
+// SECURITY - A governance address can freeze trading and deposits but has no access to user funds
+//            and cannot stop withdraws.
+
 contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     using LogExpMath for uint256;
     using FixedPoint for uint256;
@@ -36,6 +39,10 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     // Since we don't have access to transfer they must be stored so governance can collect them later
     uint128 public governanceFeesUnderlying;
     uint128 public governanceFeesBond;
+    // A bool to indicate if the contract is paused, stored with 'fees bond'
+    bool public paused;
+    // A mapping of who can pause
+    mapping(address => bool) public pausers;
     // Stored records of governance tokens
     address public immutable governance;
     // The percent of each trade's implied yield to collect as LP fee
@@ -53,6 +60,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
 
     // The max percent fee for governance, immutable after compilation
     uint256 public constant FEE_BOUND = 3e17;
+
+    // State saying if the contract is paused
 
     /// @notice This event allows the frontend to track the fees
     /// @param collectedBase the base asset tokens fees collected in this txn
@@ -79,6 +88,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     /// @param _governance The address which gets minted reward lp
     /// @param name The balancer pool token name
     /// @param symbol The balancer pool token symbol
+    /// @param _pauser An address that can pause trades and deposits
     constructor(
         IERC20 _underlying,
         IERC20 _bond,
@@ -89,7 +99,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         uint256 _percentFeeGov,
         address _governance,
         string memory name,
-        string memory symbol
+        string memory symbol,
+        address _pauser
     ) BalancerPoolToken(name, symbol) {
         // Sanity Check
         require(_expiration - block.timestamp < _unitSeconds);
@@ -106,6 +117,9 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             tokens[0] = _bond;
             tokens[1] = _underlying;
         }
+
+        // Set that the _pauser can pause
+        pausers[_pauser] = true;
 
         // Pass in zero addresses for Asset Managers
         // Note - functions below assume this token order
@@ -156,7 +170,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) public override returns (uint256) {
+    ) public override notPaused returns (uint256) {
         // Check that the sender is pool, we change state so must make
         // this check.
         require(msg.sender == address(_vault), "Non Vault caller");
@@ -240,6 +254,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     )
         external
         override
+        notPaused
         returns (
             uint256[] memory amountsIn,
             uint256[] memory dueProtocolFeeAmounts
@@ -371,6 +386,30 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         data[bondIndex] = _normalize(data[bondIndex], 18, bondDecimals);
     }
 
+    // Permission-ed functions
+
+    /// @notice checks for a pause on trading and depositing functionality
+    modifier notPaused() {
+        require(!paused, "Paused");
+        _;
+    }
+
+    /// @notice Allows an authorized address or the owner to pause this contract
+    /// @param pauseStatus true for paused, false for not paused
+    /// @dev the caller must be authorized
+    function pause(bool pauseStatus) external {
+        require(pausers[msg.sender], "Sender not Authorized");
+        paused = pauseStatus;
+    }
+
+    /// @notice Governance sets someone's pause status
+    /// @param who The address
+    /// @param status true for able to pause false for not
+    function setPauser(address who, bool status) external {
+        require(msg.sender == governance, "Sender not Owner");
+        pausers[who] = status;
+    }
+
     // Math libraries and internal routing
 
     /// @dev Calculates how many tokens should be outputted given an input plus reserve variables
@@ -443,7 +482,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountIn.sub(amountOut)
                 );
                 // we record that collected fee from the input bond
-                feesBond += uint128(impliedYieldFee);
+                feesBond += uint120(impliedYieldFee);
                 // and return the updated input quote
                 return amountIn.add(impliedYieldFee);
             }
@@ -454,7 +493,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountOut.sub(amountIn)
                 );
                 // we record that fee collected from the bond output
-                feesBond += uint128(impliedYieldFee);
+                feesBond += uint120(impliedYieldFee);
                 // and then return the updated output
                 return amountOut.sub(impliedYieldFee);
             } else {

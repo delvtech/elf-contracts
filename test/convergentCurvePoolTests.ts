@@ -548,7 +548,7 @@ describe("ConvergentCurvePool", function () {
         SECONDS_IN_YEAR,
         testVault.address,
         ethers.utils.parseEther("0.05"),
-        elementAddress,
+        balancerSigner.address,
         `Element ${baseAssetSymbol} - fy${baseAssetSymbol}`,
         `${baseAssetSymbol}-fy${baseAssetSymbol}`
       );

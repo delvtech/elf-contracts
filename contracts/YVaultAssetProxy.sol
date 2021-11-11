@@ -63,12 +63,7 @@ contract YVaultAssetProxy is WrappedPosition, Authorizable {
 
     /// @notice Makes the actual deposit into the yearn vault
     /// @return Tuple (the shares minted, amount underlying used)
-    function _deposit()
-        internal
-        override
-        notPaused()
-        returns (uint256, uint256)
-    {
+    function _deposit() internal override notPaused returns (uint256, uint256) {
         // Get the amount deposited
         uint256 amount = token.balanceOf(address(this));
 
@@ -96,7 +91,7 @@ contract YVaultAssetProxy is WrappedPosition, Authorizable {
         uint256 _shares,
         address _destination,
         uint256
-    ) internal override notPaused() returns (uint256) {
+    ) internal override notPaused returns (uint256) {
         // If the conversion rate is non-zero we have upgraded and so our wrapped shares are
         // not one to one with the original shares.
         if (conversionRate != 0) {
@@ -145,7 +140,7 @@ contract YVaultAssetProxy is WrappedPosition, Authorizable {
     /// @notice Allows an authorized address or the owner to pause this contract
     /// @param pauseStatus true for paused, false for not paused
     /// @dev the caller must be authorized
-    function pause(bool pauseStatus) external onlyAuthorized() {
+    function pause(bool pauseStatus) external onlyAuthorized {
         paused = pauseStatus;
     }
 

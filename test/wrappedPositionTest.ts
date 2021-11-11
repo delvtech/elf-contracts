@@ -31,7 +31,7 @@ describe("Wrapped Position", () => {
       users.map(async (userInfo) => {
         const { user } = userInfo;
         userInfo.address = await user.getAddress();
-        await fixture.usdc.mint(userInfo.address, 6e6);
+        await fixture.usdc.mint(userInfo.address, 7e6);
         await fixture.usdc
           .connect(user)
           .approve(fixture.position.address, 12e6);
@@ -91,22 +91,30 @@ describe("Wrapped Position", () => {
   });
   describe("transfer", () => {
     it("should correctly transfer value", async () => {
-      /* At this point:
-       * User 1: 2 USDC deposited
-       * user 2: 2 USDC deposited
-       * User 3: 6 USDC deposited
-       */
+      await fixture.position
+        .connect(users[3].user)
+        .deposit(users[3].address, 6e6);
+
       // Update vault to 1 share = 1.1 USDC
       await fixture.yusdc.updateShares();
       await fixture.position
         .connect(users[3].user)
         .transfer(users[1].address, 5e6);
       expect(await fixture.position.balanceOf(users[3].address)).to.equal(1e6);
-      expect(await fixture.position.balanceOf(users[1].address)).to.equal(7e6);
+      expect(await fixture.position.balanceOf(users[1].address)).to.equal(5e6);
     });
   });
   describe("withdraw", () => {
     it("should correctly withdraw value", async () => {
+      await fixture.position
+        .connect(users[1].user)
+        .deposit(users[1].address, 7e6);
+      await fixture.position
+        .connect(users[2].user)
+        .deposit(users[2].address, 2e6);
+      await fixture.position
+        .connect(users[3].user)
+        .deposit(users[3].address, 1e6);
       /* At this point:
        * User 1: 7 shares
        * user 2: 2 shares
@@ -150,7 +158,7 @@ describe("Wrapped Position", () => {
       const totalUsdcBalance = usdcBalanceUser0
         .add(usdcBalanceUser1)
         .add(usdcBalanceUser2);
-      expect(totalUsdcBalance).to.equal(ethers.BigNumber.from("19000000"));
+      expect(totalUsdcBalance).to.equal(ethers.BigNumber.from("21000000"));
     });
   });
   describe("Yearn migration", async () => {
@@ -183,7 +191,7 @@ describe("Wrapped Position", () => {
       await fixture.position.transition(newVault.address, 0);
       const conversionRate = await fixture.position.conversionRate();
       // Magic hex is 1.1 in 18 point fixed
-      expect(conversionRate).to.be.eq(BigNumber.from("0xF43FC2C04EE0000"));
+      expect(conversionRate).to.be.eq(BigNumber.from("0x10cac896d2390000"));
     });
 
     it("Blocks non governance upgrades", async () => {

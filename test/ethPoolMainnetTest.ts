@@ -61,10 +61,6 @@ describe("ETHPool-Mainnet", () => {
     await fixture.weth
       .connect(users[3].user)
       .approve(fixture.position.address, utils.parseEther("90000"));
-    // Initialize a reserve
-    await fixture.position
-      .connect(users[3].user)
-      .reserveDeposit(utils.parseEther("30000"));
   });
   after(async () => {
     // revert back to initial state after all tests pass

@@ -5,8 +5,8 @@ import { ethers, waffle } from "hardhat";
 import { FixtureInterface, loadFixture } from "./helpers/deployer";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 
-import { TestYVaultV4 } from "typechain/TestYVaultV4";
-import { YVaultV4AssetProxy } from "typechain/YVaultV4AssetProxy";
+import { TestYVault } from "../typechain/TestYVault";
+import { TestYVault__factory } from "../typechain/factories/TestYVault__factory";
 
 const { provider } = waffle;
 
@@ -47,29 +47,6 @@ describe("Wrapped Position", () => {
   after(async () => {
     // revert back to initial state after all tests pass
     await restoreSnapshot(provider);
-  });
-  describe("Version locked deployments", () => {
-    it("Wont deploy YAssetProxy with a v4 yearn vault", async () => {
-      // Deploy a mock yearn v4
-      const mockYearnV4Factory = await ethers.getContractFactory(
-        "TestYVaultV4"
-      );
-      const yVaultV4 = await mockYearnV4Factory.deploy(
-        fixture.usdc.address,
-        await fixture.usdc.decimals()
-      );
-      // Attempt to deploy a non v4 wp on it
-      const yearnWPFactory = await ethers.getContractFactory(
-        "YVaultAssetProxy"
-      );
-      const tx = yearnWPFactory.deploy(
-        yVaultV4.address,
-        fixture.usdc.address,
-        "mock yearn",
-        "my"
-      );
-      await expect(tx).to.be.revertedWith("Unsupported Version");
-    });
   });
   describe("balanceOfUnderlying", () => {
     beforeEach(async () => {
@@ -176,156 +153,112 @@ describe("Wrapped Position", () => {
       expect(totalUsdcBalance).to.equal(ethers.BigNumber.from("19000000"));
     });
   });
-  // These tests are of the reserve mechanic
-  describe("Reserve deposit and withdraw", async () => {
-    beforeEach(async () => {
-      await createSnapshot(provider);
-    });
-    afterEach(async () => {
-      await restoreSnapshot(provider);
-    });
-    it("Successfully deposits", async () => {
-      // Create some underlying
-      await fixture.usdc.mint(users[0].address, 100e6);
-      // Approve the wrapped position reserve
-      await fixture.usdc.approve(fixture.position.address, 100e6);
-      // deposit to the reserves
-      await fixture.position.reserveDeposit(10e6);
-      expect(await fixture.position.reserveUnderlying()).to.be.eq(10e6 - 1);
-      expect(await fixture.position.reserveShares()).to.be.eq(0);
-      expect(await fixture.position.reserveBalances(users[0].address)).to.be.eq(
-        10e6
-      );
-      expect(await fixture.position.reserveSupply()).to.be.eq(10e6);
-      // We make a small deposit to change the reserve
-      await fixture.position
-        .connect(users[1].user)
-        .deposit(users[1].address, 1e6);
-      // NOTE - THIS CONSTANT DEPENDS ON THE PREVIOUS TEST SETTING THE DEPOSIT RATE
-      expect(await fixture.position.balanceOf(users[1].address)).to.equal(
-        909090
-      );
-      // We then make a new reserve deposit
-      await fixture.position.connect(users[2].user).reserveDeposit(1e6);
-      expect(await fixture.position.reserveUnderlying()).to.be.eq(1e6);
-      expect(await fixture.position.reserveShares()).to.be.eq(9090909);
-      expect(await fixture.position.reserveBalances(users[2].address)).to.be.eq(
-        1e6
-      );
-      expect(await fixture.position.reserveSupply()).to.be.eq(11e6);
-    });
-
-    it("Successfully withdraws", async () => {
-      // Create some underlying
-      await fixture.usdc.mint(users[0].address, 10e6);
-      // Approve the position reserve
-      await fixture.usdc.approve(fixture.position.address, 100e6);
-      // deposit to the reserve
-      await fixture.position.reserveDeposit(10e6);
-      const balanceStart = await fixture.usdc.balanceOf(users[0].address);
-      // We do a trial withdraw
-      await fixture.position.reserveWithdraw(1e6);
-      let currentBalance = await fixture.usdc.balanceOf(users[0].address);
-      // Note - this is slightly less because underlying reserves are missing
-      //        exactly one unit of usdc
-      expect(currentBalance).to.be.eq(balanceStart.add(999999));
-      // We now check that reserve withdraws with shares present work properly
-      // Make a trade which requires local shares
-      await fixture.position
-        .connect(users[1].user)
-        .deposit(users[1].address, 1e6);
-      expect(await fixture.position.reserveShares()).to.be.eq(8181819);
-      // We now make a withdraw and check that the right amount is produced
-      await fixture.position.reserveWithdraw(1e6);
-      currentBalance = await fixture.usdc.balanceOf(users[0].address);
-      expect(currentBalance).to.be.eq(balanceStart.add(999999).add(1e6));
-      expect(await fixture.position.reserveShares()).to.be.eq(7272728);
-    });
-  });
-  // We test explicity only the functionality changes in V4 not the whole
-  // contract
-  describe("Wrapped Yearn Vault v4 upgrade", async () => {
-    let vaultV4: TestYVaultV4;
-    let wpV4: YVaultV4AssetProxy;
+  describe("Yearn migration", async () => {
+    let newVault: TestYVault;
 
     before(async () => {
-      // Deploy a mock yearn v4
-      const mockYearnV4Factory = await ethers.getContractFactory(
-        "TestYVaultV4"
-      );
-      // TODO - Update so that the ethers factories play nice with types
-      vaultV4 = (await mockYearnV4Factory.deploy(
+      // Deploy a new version
+      const yearnDeployer = new TestYVault__factory(users[0].user);
+      newVault = await yearnDeployer.deploy(
         fixture.usdc.address,
         await fixture.usdc.decimals()
-      )) as TestYVaultV4;
-      // Deploy a wrapped position
-      const wpFactory = await ethers.getContractFactory("YVaultV4AssetProxy");
-      wpV4 = (await wpFactory.deploy(
-        vaultV4.address,
-        fixture.usdc.address,
-        "mock yearn v4",
-        "test"
-      )) as YVaultV4AssetProxy;
-      // set approvals for accounts
-      await fixture.usdc.approve(wpV4.address, ethers.constants.MaxUint256);
-      await fixture.usdc
-        .connect(users[1].user)
-        .approve(wpV4.address, ethers.constants.MaxUint256);
-      // deposit into the yearn vault so there's a supply
-      await fixture.usdc.approve(vaultV4.address, ethers.constants.MaxUint256);
-      await vaultV4.deposit(1e6, users[0].address);
+      );
+      // Deposit into it and set the ratio
+      await fixture.usdc.mint(users[0].address, 100);
+      await fixture.usdc.approve(newVault.address, 100);
+      await newVault.deposit(100, users[0].address);
+      // This ensures theirs a difference between the price per shares
+      await newVault.updateShares();
+      await newVault.updateShares();
     });
-
+    // tests are independent
     beforeEach(async () => {
       await createSnapshot(provider);
     });
     afterEach(async () => {
-      // revert back to initial state after all tests pass
       await restoreSnapshot(provider);
     });
 
-    it("Won't deploy on a v3 wrapped position", async () => {
-      const wpFactory = await ethers.getContractFactory("YVaultAssetProxy");
-      const tx = wpFactory.deploy(
-        vaultV4.address,
-        fixture.usdc.address,
-        "mock yearn v4",
-        "test"
+    it("Allows governance to upgrade", async () => {
+      await fixture.position.transition(newVault.address, 0);
+      const conversionRate = await fixture.position.conversionRate();
+      // Magic hex is 1.1 in 18 point fixed
+      expect(conversionRate).to.be.eq(BigNumber.from("0xF43FC2C04EE0000"));
+    });
+
+    it("Blocks non governance upgrades", async () => {
+      const tx = fixture.position
+        .connect(users[2].user)
+        .transition(newVault.address, 0);
+      await expect(tx).to.be.revertedWith("Sender not owner");
+    });
+
+    it("Blocks withdraw which does not product enough tokens", async () => {
+      const tx = fixture.position.transition(
+        newVault.address,
+        ethers.constants.MaxUint256
       );
-      await expect(tx).to.be.revertedWith("Unsupported Version");
+      await expect(tx).to.be.revertedWith("Not enough output");
     });
 
-    it("Reserve deposits", async () => {
-      // First deposit inits
-      await wpV4.reserveDeposit(1e6);
-      // Check that we got shares
-      let balance = await wpV4.reserveBalances(users[0].address);
-      expect(balance).to.be.eq(BigNumber.from(1e6));
-      // Do a deposit to convert to shares
-      await wpV4.connect(users[1].user).deposit(users[1].address, 1e6);
-      // We want to change deposit rate
-      await fixture.usdc.transfer(vaultV4.address, 5e5);
-      // Now we deposit and check the price of deposit
-      await wpV4.reserveDeposit(1e6);
-      // Check the new balance
-      balance = await wpV4.reserveBalances(users[0].address);
-      // Magic number from rounding error on deposits
-      expect(balance).to.be.eq(BigNumber.from(1857144));
+    it("Makes consistent deposits", async () => {
+      // We check that a deposit before an upgrade gets the same amount of shares as one after
+      await fixture.position.deposit(users[0].address, 1e6);
+      const beforeBalance = await fixture.position.balanceOf(users[0].address);
+      await fixture.position.transition(newVault.address, 0);
+      await fixture.position.deposit(users[1].address, 1e6);
+      const afterBalance = await fixture.position.balanceOf(users[1].address);
+      // There are very small rounding errors leading to -1
+      expect(beforeBalance.sub(1)).to.be.eq(afterBalance);
     });
 
-    it("withdraws with the correct ratio", async () => {
-      await wpV4.deposit(users[0].address, 1e6);
-      // Check that we got shares
-      const balance = await wpV4.balanceOf(users[0].address);
-      expect(balance).to.be.eq(BigNumber.from(1e6));
-      // We want to change withdraw rate
-      await fixture.usdc.transfer(vaultV4.address, 5e5);
-      // withdraw
-      const balanceBefore = await fixture.usdc.balanceOf(users[0].address);
-      await wpV4.withdraw(users[0].address, balance, 0);
-      const balanceAfter = await fixture.usdc.balanceOf(users[0].address);
-      // check the withdraw amount
-      expect(balanceAfter.sub(balanceBefore)).to.be.eq(125e4);
+    // We check that after a transition you can still withdraw the same amount
+    it("Makes consistent withdraws", async () => {
+      // NOTE - Because of a rounding error bug the conversion rate mechanic can cause withdraw
+      //        failure for the last withdraw. we fix here by having a second deposit
+      await fixture.position.deposit(users[1].address, 5e5);
+      // Deposit and transition
+      await fixture.position.deposit(users[0].address, 1e6);
+      const beforeBalanceToken = await fixture.usdc.balanceOf(users[0].address);
+      const beforeBalanceShares = await fixture.position.balanceOf(
+        users[0].address
+      );
+      await fixture.position.transition(newVault.address, 0);
+      // Withdraw and check balances
+      await fixture.position.withdraw(users[0].address, beforeBalanceShares, 0);
+      const afterBalanceToken = await fixture.usdc.balanceOf(users[0].address);
+      // Minus one to allow for rounding error
+      expect(afterBalanceToken.sub(beforeBalanceToken)).to.be.eq(1e6 - 1);
+    });
+
+    it("has consistent price per share over upgrades", async () => {
+      const priceBefore = await fixture.position.getSharesToUnderlying(1e6);
+      await fixture.position.transition(newVault.address, 0);
+      const priceAfter = await fixture.position.getSharesToUnderlying(1e6);
+      // Allow some rounding
+      expect(priceAfter.sub(priceBefore).lt(10)).to.be.true;
+    });
+  });
+
+  describe("Pause tests", async () => {
+    before(async () => {
+      // Pause the contract
+      await fixture.position.pause(true);
+    });
+
+    it("Can't deposit", async () => {
+      const tx = fixture.position.deposit(users[0].address, 100);
+      await expect(tx).to.be.revertedWith("Paused");
+    });
+
+    it("Can't withdraw", async () => {
+      const tx = fixture.position.withdraw(users[0].address, 0, 0);
+      await expect(tx).to.be.revertedWith("Paused");
+    });
+
+    it("Only useable by authorized", async () => {
+      const tx = fixture.position.connect(users[1].user).pause(false);
+      await expect(tx).to.be.revertedWith("Sender not Authorized");
     });
   });
 });

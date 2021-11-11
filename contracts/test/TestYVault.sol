@@ -43,6 +43,10 @@ contract TestYVault is ERC20PermitWithSupply {
         address destination,
         uint256
     ) external returns (uint256) {
+        // Yearn supports this
+        if (_shares == type(uint256).max) {
+            _shares = balanceOf[msg.sender];
+        }
         uint256 _amount = (_shares * pricePerShare()) / (10**decimals);
         _burn(msg.sender, _shares);
         IERC20(token).transfer(destination, _amount);

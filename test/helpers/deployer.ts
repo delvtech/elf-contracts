@@ -118,7 +118,15 @@ const deployYasset = async (
   symbol: string
 ) => {
   const yVaultDeployer = new YVaultAssetProxy__factory(signer);
-  return await yVaultDeployer.deploy(yUnderlying, underlying, name, symbol);
+  const signerAddress = await signer.getAddress();
+  return await yVaultDeployer.deploy(
+    yUnderlying,
+    underlying,
+    name,
+    symbol,
+    signerAddress,
+    signerAddress
+  );
 };
 
 const deployInterestTokenFactory = async (signer: Signer) => {

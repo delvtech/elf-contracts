@@ -532,8 +532,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         }
     }
 
-    /// @dev Burns a number of LP tokens and returns the percent of the pool
-    ///      they represent
+    /// @dev Burns a number of LP tokens and returns the amount of the pool which they own.
     /// @param lpOut The minimum output in underlying
     /// @param currentBalances The current pool balances, sorted by address low to high.  length 2
     /// @param source The address to burn from.
@@ -559,7 +558,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
 
     /// @dev Calculates 1 - t
     /// @return Returns 1 - t, encoded as a fraction in 18 decimal fixed point
-    function _getYieldExponent() internal virtual view returns (uint256) {
+    function _getYieldExponent() internal view virtual returns (uint256) {
         // The fractional time
         uint256 timeTillExpiry = block.timestamp < expiration
             ? expiration - block.timestamp

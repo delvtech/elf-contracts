@@ -299,13 +299,12 @@ describe("ConvergentCurvePool", function () {
     expect(totalSupply).to.be.eq(oneThousand.add(sixteenHundred));
   });
 
-  // We test the mint functionality where the bond should be fully consumed
+  // We test the burn functionality where the bond should be fully consumed
   it("Internally Burns LP correctly for the underlying max", async function () {
     await resetPool();
     const oneThousand = ethers.utils.parseUnits("1000", 18);
     // Set the current total supply to 1000 lp tokens
     await mineTx(poolContract.setLPBalance(accounts[0].address, oneThousand));
-    // We want a min of 250 underlying and 250 bond
     const fiveHundred = ethers.utils.parseUnits("500", 18);
     const twoFifty = fiveHundred.div(2);
     const result = await mineTx(

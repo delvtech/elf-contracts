@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { Signer, BigNumber, BigNumberish } from "ethers";
+import { Signer, BigNumberish } from "ethers";
 import { ethers, waffle } from "hardhat";
 import { loadTrancheHopFixture, TrancheHopInterface } from "./helpers/deployer";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
@@ -16,7 +16,7 @@ describe("zapTrancheHop", () => {
   async function yearnInterestSim(amount: BigNumberish) {
     const usdcWhaleAddress = "0xAe2D4617c862309A3d75A0fFB358c7a5009c673F";
     impersonate(usdcWhaleAddress);
-    const lpSigner = await ethers.provider.getSigner(usdcWhaleAddress);
+    const lpSigner = ethers.provider.getSigner(usdcWhaleAddress);
     await fixture.usdc
       .connect(lpSigner)
       .transfer(fixture.yusdc.address, amount);
@@ -43,7 +43,7 @@ describe("zapTrancheHop", () => {
     // get USDC
     const usdcWhaleAddress = "0xAe2D4617c862309A3d75A0fFB358c7a5009c673F";
     impersonate(usdcWhaleAddress);
-    const usdcWhale = await ethers.provider.getSigner(usdcWhaleAddress);
+    const usdcWhale = ethers.provider.getSigner(usdcWhaleAddress);
     await fixture.usdc.connect(usdcWhale).transfer(users[1].address, 2e11); // 200k usdc
     stopImpersonating(usdcWhaleAddress);
   });

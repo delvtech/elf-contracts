@@ -33,7 +33,7 @@ contract ZapYearnShares is Authorizable {
 
     /// @dev Allows an authorized address to freeze or unfreeze this contract
     /// @param _newState True for frozen and false for unfrozen
-    function setIsFrozen(bool _newState) external onlyAuthorized() {
+    function setIsFrozen(bool _newState) external onlyAuthorized {
         isFrozen = _newState;
     }
 
@@ -53,7 +53,7 @@ contract ZapYearnShares is Authorizable {
         uint256 _expiration,
         address _position,
         uint256 _ptExpected
-    ) external notFrozen() returns (uint256, uint256) {
+    ) external notFrozen returns (uint256, uint256) {
         _vault.transferFrom(msg.sender, address(this), _amount);
         _vault.withdraw(_amount, _position, 0);
 
@@ -75,8 +75,8 @@ contract ZapYearnShares is Authorizable {
     /// @return The derived Tranche contract
     function _deriveTranche(address _position, uint256 _expiration)
         internal
-        virtual
         view
+        virtual
         returns (ITranche)
     {
         bytes32 salt = keccak256(abi.encodePacked(_position, _expiration));
@@ -95,7 +95,7 @@ contract ZapYearnShares is Authorizable {
     ///      it should be removed so that users do not have to remove allowances.
     ///      Note - onlyOwner is a stronger check than onlyAuthorized, many addresses can be
     ///      authorized to freeze or unfreeze the contract but only the owner address can kill
-    function deprecate() external onlyOwner() {
+    function deprecate() external onlyOwner {
         selfdestruct(payable(msg.sender));
     }
 }

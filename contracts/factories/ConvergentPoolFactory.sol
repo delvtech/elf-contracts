@@ -74,14 +74,14 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
 
     /// @notice Allows governance to set the new percent fee for governance
     /// @param newFee The new percentage fee
-    function setGovFee(uint256 newFee) external onlyAuthorized() {
+    function setGovFee(uint256 newFee) external onlyAuthorized {
         require(newFee < 3e17, "New fee higher than 30%");
         percentFeeGov = newFee;
     }
 
     /// @notice Allows the owner to change the governance minting address
     /// @param newGov The new address to receive rewards in pools
-    function setGov(address newGov) external onlyOwner() {
+    function setGov(address newGov) external onlyOwner {
         governance = newGov;
     }
 }

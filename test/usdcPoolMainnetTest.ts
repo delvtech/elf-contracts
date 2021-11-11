@@ -38,7 +38,7 @@ describe("USDCPool-Mainnet", () => {
     );
 
     impersonate(usdcWhaleAddress);
-    const usdcWhale = await ethers.provider.getSigner(usdcWhaleAddress);
+    const usdcWhale = ethers.provider.getSigner(usdcWhaleAddress);
 
     await fixture.usdc.connect(usdcWhale).transfer(users[1].address, 2e11); // 200k usdc
     await fixture.usdc.connect(usdcWhale).transfer(users[2].address, 2e11); // 200k usdc
@@ -84,11 +84,9 @@ describe("USDCPool-Mainnet", () => {
         .deposit(users[3].address, 6e11);
 
       let pricePerFullShare = await fixture.yusdc.pricePerShare();
-      const balance = (
-        await (await fixture.yusdc.balanceOf(fixture.position.address)).mul(
-          pricePerFullShare
-        )
-      ).div(ethers.utils.parseUnits("1", 6));
+      const balance = (await fixture.yusdc.balanceOf(fixture.position.address))
+        .mul(pricePerFullShare)
+        .div(ethers.utils.parseUnits("1", 6));
       // Allows a 0.01% conversion error
       expect(balance).to.be.at.least(subError(ethers.BigNumber.from(1e11)));
 

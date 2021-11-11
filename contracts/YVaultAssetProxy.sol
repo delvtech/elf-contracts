@@ -71,8 +71,8 @@ contract YVaultAssetProxy is WrappedPosition {
     /// @return Value of shares in underlying token
     function _underlying(uint256 _amount)
         internal
-        override
         view
+        override
         returns (uint256)
     {
         return (_amount * _pricePerShare()) / (10**vaultDecimals);

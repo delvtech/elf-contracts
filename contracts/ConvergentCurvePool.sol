@@ -656,7 +656,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
 
     /// @dev Calculates 1 - t
     /// @return Returns 1 - t, encoded as a fraction in 18 decimal fixed point
-    function _getYieldExponent() internal virtual view returns (uint256) {
+    function _getYieldExponent() internal view virtual returns (uint256) {
         // The fractional time
         uint256 timeTillExpiry = block.timestamp < expiration
             ? expiration - block.timestamp

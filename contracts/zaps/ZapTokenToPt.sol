@@ -7,24 +7,32 @@ import "../libraries/Authorizable.sol";
 import "../interfaces/IERC20.sol";
 import "../interfaces/ITranche.sol";
 
-interface ICrvAddLiqTwo {
+interface ICurveFiTwo {
     function add_liquidity(uint256[2] memory amounts, uint256 min_mint_amount)
         external
         payable
         returns (uint256);
+
+    function calc_token_amount(uint256[2] memory amounts, bool is_deposit)
+        external
+        view
+        returns (uint256);
 }
 
-interface ICrvAddLiqThree {
+interface ICurveFiThree {
     function add_liquidity(uint256[3] memory amounts, uint256 min_mint_amount)
         external
         payable
         returns (uint256);
+
+    function calc_token_amount(uint256[3] memory amounts, bool is_deposit)
+        external
+        view
+        returns (uint256);
 }
 
-interface ICurveFi is ICrvAddLiqTwo, ICrvAddLiqThree {
+interface ICurveFi is ICurveFiTwo, ICurveFiThree {
     function lp_token() external view returns (address);
-
-    function coins(uint256 idx) external view returns (address);
 }
 
 interface IAsset {}
@@ -109,12 +117,12 @@ contract ZapTokenToPt is Authorizable {
         _noReentry = false;
     }
 
-    function setApprovalsFor(address[] memory tokens, address[] memory crvPools)
+    function setApprovalsFor(address[] memory tokens, address[] memory spenders)
         external
         onlyAuthorized
     {
         for (uint256 i = 0; i < tokens.length; i++) {
-            IERC20(tokens[i]).approve(crvPools[i], type(uint256).max);
+            IERC20(tokens[i]).approve(spenders[i], type(uint256).max);
         }
     }
 
@@ -139,7 +147,7 @@ contract ZapTokenToPt is Authorizable {
     struct ZapPtInfo {
         bytes32 balancerPoolId;
         address payable recipient;
-        address principalToken;
+        IAsset principalToken;
         uint256 minPtAmount;
         uint256 deadline;
     }
@@ -202,49 +210,33 @@ contract ZapTokenToPt is Authorizable {
     function zapCurveIn(
         ZapPtInfo memory _ptInfo,
         ZapCurveLp memory _zap,
-        bool _zapHasCrvLpRoot,
-        ZapCurveLp memory _rootZap,
-        uint256 _rootZapIdx
+        ZapCurveLp[] memory _rootZaps,
+        uint256[] _rootZapsIndexes
     ) external payable reentrancyGuard notFrozen returns (uint256 ptAmount) {
-        console.log("knknk");
-        if (_zapHasCrvLpRoot) {
-            uint256 crvRootLpAmount = _zapCurveLp(_rootZap);
-            _zap.amounts[_rootZapIdx] += crvRootLpAmount;
+        for (uint256 i = 0; i < _rootZaps.length; i++) {
+            _zap.amounts[_rootZapsIndexes[i]] += _zapCurveLp(_rootZaps[i]);
         }
 
         uint256 baseTokenAmount = _zapCurveLp(_zap);
-        console.log(baseTokenAmount);
+        IERC20 baseToken = IERC20(_zap.curvePool.lp_token());
 
-        // uint256[2] memory crvPoolInputCtx;
-        // crvPoolInputCtx[_zap.inputTokenIdx] = _amount;
-        // uint256 baseTokenAmount;
-        // if (address(_zap.inputToken) == _ETH_CONSTANT) {
-        //     require(msg.value == _amount, "Incorrect amount provided");
-        //     // don't enforce a minimum lp out, we can enforce a minimum PT swap output later
-        //     baseTokenAmount = _zap.crvPool.add_liquidity{ value: msg.value }(
-        //         crvPoolInputCtx,
-        //         0
-        //     );
-        // } else {
-        //     require(msg.value == 0, "Non payable");
-        //     // don't enforce a minimum lp out, we can enforce a minimum PT swap output later
-        //     baseTokenAmount = _zap.crvPool.add_liquidity(crvPoolInputCtx, 0);
-        // }
-        // _zap.baseToken.approve(address(_balancer), baseTokenAmount);
-        // IVault.SingleSwap memory sswap = IVault.SingleSwap({
-        //     poolId: _zap.balancerPoolId,
-        //     kind: IVault.SwapKind.GIVEN_IN,
-        //     assetIn: IAsset(address(_zap.baseToken)),
-        //     assetOut: IAsset(_zap.principalToken),
-        //     amount: baseTokenAmount,
-        //     userData: "0x00"
-        // });
-        // IVault.FundManagement memory fmgmt = IVault.FundManagement({
-        //     sender: address(this),
-        //     fromInternalBalance: false,
-        //     recipient: _recipient,
-        //     toInternalBalance: false
-        // });
-        // ptAmount = _balancer.swap(sswap, fmgmt, _minPtAmount, _deadline);
+        ptAmount = _balancer.swap(
+            IVault.SingleSwap({
+                poolId: _ptInfo.balancerPoolId,
+                kind: IVault.SwapKind.GIVEN_IN,
+                assetIn: IAsset(address(baseToken)),
+                assetOut: _ptInfo.principalToken,
+                amount: baseTokenAmount,
+                userData: "0x00"
+            }),
+            IVault.FundManagement({
+                sender: address(this),
+                fromInternalBalance: false,
+                recipient: _ptInfo.recipient,
+                toInternalBalance: false
+            }),
+            _ptInfo.minPtAmount,
+            _ptInfo.deadline
+        );
     }
 }

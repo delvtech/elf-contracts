@@ -1,8 +1,6 @@
 import { Signer } from "ethers";
-import { providers } from "ethers/lib/ethers";
 import { ethers } from "hardhat";
 import "module-alias/register";
-import { ValueOf } from "ts-essentials";
 import { DateString__factory } from "typechain/factories/DateString__factory";
 import { IERC20__factory } from "typechain/factories/IERC20__factory";
 import { InterestTokenFactory__factory } from "typechain/factories/InterestTokenFactory__factory";
@@ -16,7 +14,6 @@ import { TestYVault__factory } from "typechain/factories/TestYVault__factory";
 import { TrancheFactory__factory } from "typechain/factories/TrancheFactory__factory";
 import { Tranche__factory } from "typechain/factories/Tranche__factory";
 import { YVaultAssetProxy__factory } from "typechain/factories/YVaultAssetProxy__factory";
-import { ZapTokenToPt__factory } from "typechain/factories/ZapTokenToPt__factory";
 import { ZapTrancheHop__factory } from "typechain/factories/ZapTrancheHop__factory";
 import { ZapYearnShares__factory } from "typechain/factories/ZapYearnShares__factory";
 import { IERC20 } from "typechain/IERC20";
@@ -30,11 +27,9 @@ import { TestYVault } from "typechain/TestYVault";
 import { Tranche } from "typechain/Tranche";
 import { TrancheFactory } from "typechain/TrancheFactory";
 import { YVaultAssetProxy } from "typechain/YVaultAssetProxy";
-import { ZapTokenToPt } from "typechain/ZapTokenToPt";
 import { ZapTrancheHop } from "typechain/ZapTrancheHop";
 import { ZapYearnShares } from "typechain/ZapYearnShares";
 import data from "../../artifacts/contracts/Tranche.sol/Tranche.json";
-import { _ETH_CONSTANT } from "./constants";
 
 export interface FixtureInterface {
   signer: Signer;
@@ -128,7 +123,7 @@ const deployInterestTokenFactory = async (signer: Signer) => {
   return await deployer.deploy();
 };
 
-const deployTrancheFactory = async (signer: Signer) => {
+export const deployTrancheFactory = async (signer: Signer) => {
   const interestTokenFactory = await deployInterestTokenFactory(signer);
   const deployer = new TrancheFactory__factory(signer);
   const dateLibFactory = new DateString__factory(signer);
@@ -414,98 +409,5 @@ export async function loadTrancheHopFixture(toAuth: string) {
     tranche2,
     interestToken1,
     interestToken2,
-  };
-}
-
-interface PrincipalRootTokenPairs {
-  eP_yvcrvSTETH: ["ETH", "STETH"];
-}
-
-export type ZapCurveTokenFixture<T extends ValueOf<PrincipalRootTokenPairs>> =
-  Omit<
-    {
-      curvePool: string;
-      principalToken: Tranche;
-      balancerPoolId: string;
-      roots: T;
-    } & { [K in T[number]]: K extends "ETH" ? { address: string } : IERC20 } & {
-      [R in T[number] as `whale${R}`]: R extends "ETH"
-        ? never
-        : providers.JsonRpcSigner;
-    },
-    "whaleETH"
-  >;
-
-export type ZapCurveTokenFixtures = {
-  [K in keyof PrincipalRootTokenPairs]: PrincipalRootTokenPairs[K] extends ValueOf<PrincipalRootTokenPairs>
-    ? ZapCurveTokenFixture<PrincipalRootTokenPairs[K]>
-    : never;
-};
-
-export type IZapCurveTokenToPt = {
-  zapTokenToPt: ZapTokenToPt;
-} & ZapCurveTokenFixtures;
-
-export async function loadCurveTokenToPtZapFixture(
-  toAuth: string
-): Promise<IZapCurveTokenToPt> {
-  const [signer] = await ethers.getSigners();
-
-  const balancerVaultAddress = "0xBA12222222228d8Ba445958a75a0704d566BF2C8";
-
-  const fixtures: ZapCurveTokenFixtures = {
-    eP_yvcrvSTETH: {
-      curvePool: "0xDC24316b9AE028F1497c275EB9192a3Ea0f67022",
-      principalToken: Tranche__factory.connect(
-        "0x2361102893CCabFb543bc55AC4cC8d6d0824A67E",
-        signer
-      ),
-      balancerPoolId:
-        "0xb03c6b351a283bc1cd26b9cf6d7b0c4556013bdb0002000000000000000000ab",
-      roots: ["ETH", "STETH"],
-      ETH: {
-        address: _ETH_CONSTANT,
-      },
-      STETH: IERC20__factory.connect(
-        "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
-        signer
-      ),
-      whaleSTETH: ethers.provider.getSigner(
-        "0x62e41b1185023bcc14a465d350e1dde341557925"
-      ),
-    },
-  };
-
-  const trancheFactory = await deployTrancheFactory(signer);
-  const bytecodehash = ethers.utils.solidityKeccak256(
-    ["bytes"],
-    [data.bytecode]
-  );
-
-  const deployer = new ZapTokenToPt__factory(signer);
-  const zapTokenToPt = await deployer.deploy(
-    trancheFactory.address,
-    bytecodehash,
-    balancerVaultAddress
-  );
-
-  await zapTokenToPt.connect(signer).authorize(toAuth);
-  await zapTokenToPt.connect(signer).setOwner(toAuth);
-
-  const erc20CurvePoolMappings = Object.values(fixtures).map(
-    ({ curvePool, roots, ...rest }) => {
-      const filteredRoots = roots.filter((root) => root !== "ETH");
-      return filteredRoots.map((root) => ({
-        tkn: rest[root].address,
-        pool: curvePool,
-      }));
-    }
-  );
-
-  console.log(erc20CurvePoolMappings);
-
-  return {
-    zapTokenToPt,
-    ...fixtures,
   };
 }

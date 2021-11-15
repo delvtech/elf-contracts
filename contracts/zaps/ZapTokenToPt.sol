@@ -142,6 +142,7 @@ contract ZapTokenToPt is Authorizable {
         ICurveFi curvePool;
         uint256[] amounts;
         address[] roots;
+        uint256 parentIdx;
     }
 
     struct ZapPtInfo {
@@ -210,11 +211,10 @@ contract ZapTokenToPt is Authorizable {
     function zapCurveIn(
         ZapPtInfo memory _ptInfo,
         ZapCurveLp memory _zap,
-        ZapCurveLp[] memory _rootZaps,
-        uint256[] _rootZapsIndexes
+        ZapCurveLp[] memory _childZaps
     ) external payable reentrancyGuard notFrozen returns (uint256 ptAmount) {
-        for (uint256 i = 0; i < _rootZaps.length; i++) {
-            _zap.amounts[_rootZapsIndexes[i]] += _zapCurveLp(_rootZaps[i]);
+        for (uint256 i = 0; i < _childZaps.length; i++) {
+            _zap.amounts[_childZaps[i].parentIdx] += _zapCurveLp(_childZaps[i]);
         }
 
         uint256 baseTokenAmount = _zapCurveLp(_zap);

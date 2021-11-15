@@ -24,229 +24,228 @@ import { ZapTokenToPt } from "typechain/ZapTokenToPt";
 import data from "../../artifacts/contracts/Tranche.sol/Tranche.json";
 import { deployTrancheFactory } from "./deployer";
 
-interface PrincipalRootTokenTuples {
-  eP_yvcrvSTETH: ["ETH", "STETH"];
-}
+// type Root2<T1, T2> = [T1, T2, ...never[]]
+// type Root3<T1, T2, T3> = [T1, T2, T3, ...never[]]
+// type Root = Root2<string, string> | Root3<string, string, string> | Root2<string, CurveTokenRootMap<string, Root3<string, string, string>>>
 
-export type PrincipalTokens = keyof PrincipalRootTokenTuples;
-export type Roots = ValueOf<PrincipalRootTokenTuples>;
-type RootTokens<R extends Roots> = {
-  [K in R[number]]: K extends "ETH" ? { address: string } : IERC20;
-};
+// type CurveTokenRootMap<C extends string, R extends Root> = { [K in C]: R }
 
-type RootWhales<R extends Roots> = Omit<
-  {
-    [K in R[number] as `whale${K}`]: K extends "ETH" ? never : string;
-  },
-  "whaleETH"
->;
+// type CRVSTETH_LP = CurveTokenRootMap<"CRVSTETH", ["ETH", "STETH"]>
+// type THREE_CRV_LP = CurveTokenRootMap<"THREE_CRV", ["DAI", "USDC", "USDT"]>
+// type LUSD_THREE_CRV_LP = CurveTokenRootMap<"LUSD_THREE_CRV", ["LUSD", ["THREE_CRV", ]]>
 
-type PrincipalToken<P extends PrincipalTokens> = { [k in P]: Tranche };
-export type ZapCurveTokenFixture<P extends PrincipalTokens, R extends Roots> = {
-  curvePool: ICurveFi;
-  balancerPoolId: string;
-  convergentCurvePool: BasePool;
-  roots: R;
-  calcMinPtAmount: (amounts: BigNumberish[]) => Promise<number>;
-} & RootTokens<R> &
-  RootWhales<R> &
-  PrincipalToken<P>;
+// type FlattenRoot<T> = T extends string ? T : T extends Root ? FlattenRoot<T[number]> : never
 
-export type ZapCurveTokenFixtures = {
-  [K in keyof PrincipalRootTokenTuples]: PrincipalRootTokenTuples[K] extends Roots
-    ? ZapCurveTokenFixture<K, PrincipalRootTokenTuples[K]>
-    : never;
-};
+// type ExtractRoots<T extends CurveTokenRootMap<string, Root>> = ValueOf<T> extends infer R ? R extends string ? R : R extends Root ? FlattenRoot<R> : never : never
 
-export type ZapCurveTokenFixtureConstructorFn<
-  P extends PrincipalTokens,
-  R extends Roots
-> = (x: {
-  roots: R;
-  rootAddresses: string[];
-  rootWhales: (string | null)[];
-  curvePoolAddress: string;
-  principalTokenAddress: string;
-  balancerPoolId: string;
-  pt: PrincipalTokens;
-}) => Promise<ZapCurveTokenFixture<P, R>>;
+// interface PrincipalCurveRoots {
+//   epCrvSteth: {
+//   },
+//   epThreeCrv: {
+//     threeCrv: ["DAI", "USDC", "USDT"]
+//   },
+//   epLusdThreeCrv: {
+//     lusdThreeCrv: ["LUSD", { threeCrv: ["DAI", "USDC", "USDT"] }]
+// }
 
-interface BuildZapCurveTokenFixtureConstructor {
-  signer: SignerWithAddress;
-  balancerVault: Vault;
-  zapTokenToPt: ZapTokenToPt;
-}
+//export type Roots = ValueOf<PrincipalRootTokenTuples>;
+// type RootTokens<R extends Roots> = {
+//   [K in R[number]]: K extends "ETH" ? { address: string } : IERC20;
+// };
 
-export function buildZapCurveTokenFixtureConstructor<
-  P extends PrincipalTokens,
-  R extends Roots
->({
-  signer,
-  balancerVault,
-  zapTokenToPt,
-}: BuildZapCurveTokenFixtureConstructor): ZapCurveTokenFixtureConstructorFn<
-  P,
-  R
-> {
-  return async function ({
-    roots,
-    rootAddresses,
-    rootWhales,
-    balancerPoolId,
-    curvePoolAddress,
-    principalTokenAddress,
-    pt,
-  }) {
-    const [convergentCurvePoolAddress] = await balancerVault.getPool(
-      balancerPoolId
-    );
+// type RootWhales<R extends Roots> = Omit<
+//   {
+//     [K in R[number] as `whale${K}`]: K extends "ETH" ? never : string;
+//   },
+//   "whaleETH"
+// >;
 
-    const tokens = roots.reduce(
-      (acc, root, idx) => ({
-        ...acc,
-        [root]:
-          root === "ETH"
-            ? { address: rootAddresses[idx] }
-            : IERC20__factory.connect(rootAddresses[idx], signer),
-      }),
-      {} as RootTokens<R>
-    );
+// type PrincipalToken<P extends PrincipalTokens> = { [k in P]: Tranche };
+// export type ZapCurveTokenFixture<P extends PrincipalTokens, R extends Roots> = {
+//   curvePool: ICurveFi;
+//   balancerPoolId: string;
+//   convergentCurvePool: BasePool;
+//   roots: R;
+//   calcMinPtAmount: (amounts: BigNumberish[]) => Promise<number>;
+// } & RootTokens<R> &
+//   RootWhales<R> &
+//   PrincipalToken<P>;
 
-    const whales = rootWhales.reduce((acc, whale, idx) => {
-      if (whale !== null) {
-        return { ...acc, [`whale${roots[idx]}`]: whale };
-      }
-      return acc;
-    }, {} as RootWhales<R>);
+// export type ZapCurveTokenFixtures = {
+//   [K in keyof PrincipalRootTokenTuples]: PrincipalRootTokenTuples[K] extends Roots
+//     ? ZapCurveTokenFixture<K, PrincipalRootTokenTuples[K]>
+//     : never;
+// };
 
-    const curvePool = ICurveFi__factory.connect(curvePoolAddress, signer);
+// export type ZapCurveTokenFixtureConstructorFn<
+//   P extends PrincipalTokens,
+//   R extends Roots
+// > = (x: {
+//   roots: R;
+//   rootAddresses: string[];
+//   rootWhales: (string | null)[];
+//   curvePoolAddress: string;
+//   principalTokenAddress: string;
+//   balancerPoolId: string;
+//   pt: PrincipalTokens;
+// }) => Promise<ZapCurveTokenFixture<P, R>>;
 
-    const baseToken = await curvePool.lp_token();
+// interface BuildZapCurveTokenFixtureConstructor {
+//   signer: SignerWithAddress;
+//   balancerVault: Vault;
+//   zapTokenToPt: ZapTokenToPt;
+// }
 
-    const erc20Tokens = rootAddresses.filter((_, idx) => roots[idx] !== "ETH");
-    await zapTokenToPt
-      .connect(signer)
-      .setApprovalsFor(
-        [baseToken, ...erc20Tokens],
-        [balancerVault.address, ...erc20Tokens.map(() => curvePoolAddress)]
-      );
+// export function buildZapCurveTokenFixtureConstructor<
+//   P extends PrincipalTokens,
+//   R extends Roots
+// >({
+//   signer,
+//   balancerVault,
+//   zapTokenToPt,
+// }: BuildZapCurveTokenFixtureConstructor): ZapCurveTokenFixtureConstructorFn<
+//   P,
+//   R
+// > {
+//   return async function ({
+//     roots,
+//     rootAddresses,
+//     rootWhales,
+//     balancerPoolId,
+//     curvePoolAddress,
+//     principalTokenAddress,
+//     pt,
+//   }) {
+//     const [convergentCurvePoolAddress] = await balancerVault.getPool(
+//       balancerPoolId
+//     );
 
-    const calcMinPtAmount = async (amounts: BigNumberish[]) => {
-      const xAmount: BigNumberish = await (
-        curvePool[
-          `calc_token_amount(uint256[${amounts.length === 2 ? 2 : 3}],bool)`
-        ] as any
-      )(amounts, false);
+//     const tokens = roots.reduce(
+//       (acc, root, idx) => ({
+//         ...acc,
+//         [root]:
+//           root === "ETH"
+//             ? { address: rootAddresses[idx] }
+//             : IERC20__factory.connect(rootAddresses[idx], signer),
+//       }),
+//       {} as RootTokens<R>
+//     );
 
-      const [balancerPool] = await balancerVault.getPool(balancerPoolId);
-      const {
-        balances: [xReserves, yReserves],
-        tokens,
-      } = await getReserves(balancerPool, balancerVault.address, signer);
+//     const whales = rootWhales.reduce((acc, whale, idx) => {
+//       if (whale !== null) {
+//         return { ...acc, [`whale${roots[idx]}`]: whale };
+//       }
+//       return acc;
+//     }, {} as RootWhales<R>);
 
-      const totalSupply = await getTotalSupply(balancerPool, signer);
-      const nowInSeconds = Math.round(Date.now() / 1000);
-      const timeRemainingSeconds = await getSecondsUntilExpiration(
-        balancerPool,
-        signer,
-        nowInSeconds
-      );
-      const tParamsSeconds = await getUnitSeconds(balancerPool, signer);
+//     const curvePool = ICurveFi__factory.connect(curvePoolAddress, signer);
 
-      console.log("xAmount:", xAmount.toString());
-      console.log("xReserves:", xReserves.toString());
-      console.log("yReserves", yReserves.toString());
-      console.log("totalSupply:", totalSupply.toString());
-      console.log("timeRemaining:", timeRemainingSeconds);
-      console.log("tParamsSeconds:", timeRemainingSeconds);
-      return calcSwapOutGivenInCCPoolUnsafe(
-        xAmount.toString(),
-        xReserves.toString(),
-        yReserves.toString(),
-        totalSupply.toString(),
-        timeRemainingSeconds,
-        tParamsSeconds,
-        true
-      );
-    };
+//     const baseToken = await curvePool.lp_token();
 
-    return {
-      convergentCurvePool: BasePool__factory.connect(
-        convergentCurvePoolAddress,
-        signer
-      ),
-      curvePool,
-      calcMinPtAmount,
-      [pt]: Tranche__factory.connect(principalTokenAddress, signer),
-      balancerPoolId,
-      roots,
-      ...tokens,
-      ...whales,
-    };
-  };
-}
+//     const erc20Tokens = rootAddresses.filter((_, idx) => roots[idx] !== "ETH");
+//     await zapTokenToPt
+//       .connect(signer)
+//       .setApprovalsFor(
+//         [baseToken, ...erc20Tokens],
+//         [balancerVault.address, ...erc20Tokens.map(() => curvePoolAddress)]
+//       );
 
-type Tuple2<T1, T2> = [T1, T2, ...never[]];
-type Tuple3<T1, T2, T3> = [T1, T2, T3, ...never[]];
+//     const calcMinPtAmount = async (amounts: BigNumberish[]) => {
+//       const xAmount: BigNumberish = await (
+//         curvePool[
+//           `calc_token_amount(uint256[${amounts.length === 2 ? 2 : 3}],bool)`
+//         ] as any
+//       )(amounts, false);
 
-type xRoot<X extends string, Y extends string[]> = Y extends []
-  ? [X]
-  : Y extends Tuple2<string, string> | Tuple3<string, string, string>
-  ? [X, Y]
-  : never;
+//       const [balancerPool] = await balancerVault.getPool(balancerPoolId);
+//       const {
+//         balances: [xReserves, yReserves],
+//         tokens,
+//       } = await getReserves(balancerPool, balancerVault.address, signer);
 
-type THREE_CRV = xRoot<"THREE_CRV", ["DAI", "USDC", "USDT"]>;
-type LUSD = xRoot<"LUSD", []>;
+//       const totalSupply = await getTotalSupply(balancerPool, signer);
+//       const nowInSeconds = Math.round(Date.now() / 1000);
+//       const timeRemainingSeconds = await getSecondsUntilExpiration(
+//         balancerPool,
+//         signer,
+//         nowInSeconds
+//       );
+//       const tParamsSeconds = await getUnitSeconds(balancerPool, signer);
 
-type FlatRecurse<T extends string | string[]> = T extends string[]
-  ? FlatRecurse<T[number]>
-  : T;
+//       console.log("xAmount:", xAmount.toString());
+//       console.log("xReserves:", xReserves.toString());
+//       console.log("yReserves", yReserves.toString());
+//       console.log("totalSupply:", totalSupply.toString());
+//       console.log("timeRemaining:", timeRemainingSeconds);
+//       console.log("tParamsSeconds:", timeRemainingSeconds);
+//       return calcSwapOutGivenInCCPoolUnsafe(
+//         xAmount.toString(),
+//         xReserves.toString(),
+//         yReserves.toString(),
+//         totalSupply.toString(),
+//         timeRemainingSeconds,
+//         tParamsSeconds,
+//         true
+//       );
+//     };
 
-type ddd = FlatRecurse<
-  Tuple2<xRoot<"LUSD", []>, xRoot<"THREE_CRV", ["DAI", "USDC", "USDT"]>>
->;
+//     return {
+//       convergentCurvePool: BasePool__factory.connect(
+//         convergentCurvePoolAddress,
+//         signer
+//       ),
+//       curvePool,
+//       calcMinPtAmount,
+//       [pt]: Tranche__factory.connect(principalTokenAddress, signer),
+//       balancerPoolId,
+//       roots,
+//       ...tokens,
+//       ...whales,
+//     };
+//   };
+// }
 
-export type ZapCurveTokenToPtFixture = {
-  zapTokenToPt: ZapTokenToPt;
-  constructZapCurveTokenFixture: ZapCurveTokenFixtureConstructorFn<
-    PrincipalTokens,
-    Roots
-  >;
-};
+// export type ZapCurveTokenToPtFixture = {
+//   zapTokenToPt: ZapTokenToPt;
+//   constructZapCurveTokenFixture: ZapCurveTokenFixtureConstructorFn<
+//     PrincipalTokens,
+//     Roots
+//   >;
+// };
 
-export async function initZapCurveTokenToPt(
-  toAuth: string
-): Promise<ZapCurveTokenToPtFixture> {
-  const [signer] = await ethers.getSigners();
+// export async function initZapCurveTokenToPt(
+//   toAuth: string
+// ): Promise<ZapCurveTokenToPtFixture> {
+//   const [signer] = await ethers.getSigners();
 
-  const balancerVault = Vault__factory.connect(
-    "0xBA12222222228d8Ba445958a75a0704d566BF2C8",
-    signer
-  );
-  const trancheFactory = await deployTrancheFactory(signer);
-  const bytecodehash = ethers.utils.solidityKeccak256(
-    ["bytes"],
-    [data.bytecode]
-  );
+//   const balancerVault = Vault__factory.connect(
+//     "0xBA12222222228d8Ba445958a75a0704d566BF2C8",
+//     signer
+//   );
+//   const trancheFactory = await deployTrancheFactory(signer);
+//   const bytecodehash = ethers.utils.solidityKeccak256(
+//     ["bytes"],
+//     [data.bytecode]
+//   );
 
-  const deployer = new ZapTokenToPt__factory(signer);
-  const zapTokenToPt = await deployer.deploy(
-    trancheFactory.address,
-    bytecodehash,
-    balancerVault.address
-  );
+//   const deployer = new ZapTokenToPt__factory(signer);
+//   const zapTokenToPt = await deployer.deploy(
+//     trancheFactory.address,
+//     bytecodehash,
+//     balancerVault.address
+//   );
 
-  await zapTokenToPt.connect(signer).authorize(toAuth);
-  await zapTokenToPt.connect(signer).setOwner(toAuth);
+//   await zapTokenToPt.connect(signer).authorize(toAuth);
+//   await zapTokenToPt.connect(signer).setOwner(toAuth);
 
-  const constructZapCurveTokenFixture = buildZapCurveTokenFixtureConstructor({
-    signer,
-    balancerVault,
-    zapTokenToPt,
-  });
+//   const constructZapCurveTokenFixture = buildZapCurveTokenFixtureConstructor({
+//     signer,
+//     balancerVault,
+//     zapTokenToPt,
+//   });
 
-  return {
-    zapTokenToPt,
-    constructZapCurveTokenFixture,
-  };
-}
+//   return {
+//     zapTokenToPt,
+//     constructZapCurveTokenFixture,
+//   };
+// }

@@ -6,30 +6,25 @@ import {
   ZapPtInfoStruct,
   ZapTokenToPt,
 } from "typechain/ZapTokenToPt";
-import { ZERO, _ETH_CONSTANT } from "./helpers/constants";
+import { ONE_ETH, ZERO, _ETH_CONSTANT } from "./helpers/constants";
 import {
-  initZapCurveTokenToPt,
-  Roots,
-  PrincipalTokens,
+  deploy,
   ZapCurveTokenFixture,
   ZapCurveTokenFixtureConstructorFn,
 } from "./helpers/deployZapCurveTokenToPt";
-import { impersonate, stopImpersonating } from "./helpers/impersonate";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
-import { ONE_DAY_IN_SECONDS } from "./helpers/time";
 
 const { provider } = waffle;
 
 describe.only("zapTokenToPt", () => {
   let users: { user: Signer; address: string }[];
 
-  let zapTokenToPt: ZapTokenToPt;
-  let constructZapFixture: ZapCurveTokenFixtureConstructorFn<
-    PrincipalTokens,
-    Roots
-  >;
+  let ptInfo: ZapPtInfoStruct;
+  let zap: ZapCurveLpStruct;
+  let childZaps: ZapCurveLpStruct[];
 
-  const deadline = Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS;
+  let zapTokenToPt: ZapTokenToPt;
+  let constructZapFixture: ZapCurveTokenFixtureConstructorFn;
 
   before(async () => {
     await createSnapshot(provider);
@@ -45,8 +40,7 @@ describe.only("zapTokenToPt", () => {
       })
     );
 
-    ({ zapTokenToPt, constructZapCurveTokenFixture: constructZapFixture } =
-      await initZapCurveTokenToPt(users[1].address));
+    ({ zapTokenToPt, constructZapFixture } = await deploy(users[1].address));
   });
 
   after(async () => {
@@ -61,102 +55,153 @@ describe.only("zapTokenToPt", () => {
   });
 
   describe("ETH:STETH -> eP:yvcrvSTETH", () => {
-    let fixture: ZapCurveTokenFixture<PrincipalTokens, Roots>;
-    let zapEthStethPtInfo: ZapPtInfoStruct;
-    let zapEthStethCurveLp: ZapCurveLpStruct;
+    let constructZapStructs: ZapCurveTokenFixture<"ep_yvcrvSTETH">["constructZapStructs"];
+    let tokens: ZapCurveTokenFixture<"ep_yvcrvSTETH">["tokens"];
+    let stealFromWhale: ZapCurveTokenFixture<"ep_yvcrvSTETH">["stealFromWhale"];
 
     before(async () => {
-      fixture = await constructZapFixture({
-        pt: "eP_yvcrvSTETH",
-        roots: ["ETH", "STETH"],
-        rootAddresses: [
-          _ETH_CONSTANT,
-          "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
-        ],
-        rootWhales: [null, "0x62e41b1185023bcc14a465d350e1dde341557925"],
-        curvePoolAddress: "0xDC24316b9AE028F1497c275EB9192a3Ea0f67022",
-        principalTokenAddress: "0x2361102893CCabFb543bc55AC4cC8d6d0824A67E",
-        balancerPoolId:
-          "0xb03c6b351a283bc1cd26b9cf6d7b0c4556013bdb0002000000000000000000ab",
-      });
-
-      const {
-        balancerPoolId,
-        eP_yvcrvSTETH,
-        curvePool,
-        roots,
-        STETH,
-        whaleSTETH,
-      } = fixture;
-
-      impersonate(whaleSTETH);
-      const whaleSTETHSigner = ethers.provider.getSigner(whaleSTETH);
-
-      await STETH.connect(whaleSTETHSigner).transfer(
-        users[1].address,
-        ethers.utils.parseEther("1")
-      );
-
-      zapEthStethPtInfo = {
-        balancerPoolId,
-        recipient: users[1].address,
-        principalToken: eP_yvcrvSTETH.address,
-        minPtAmount: ZERO,
-        deadline,
-      };
-
-      zapEthStethCurveLp = {
-        curvePool: curvePool.address,
-        amounts: [ZERO, ZERO],
-        roots: roots.map((tkn) => fixture[tkn].address),
-      };
-
-      stopImpersonating(whaleSTETH);
+      ({ constructZapStructs, tokens, stealFromWhale } =
+        await constructZapFixture({
+          zapTrie: {
+            ep_yvcrvSTETH: {
+              CRV_STETH: ["ETH", "STETH"],
+            },
+          },
+          balancerPoolId:
+            "0xb03c6b351a283bc1cd26b9cf6d7b0c4556013bdb0002000000000000000000ab",
+          addresses: {
+            ETH: _ETH_CONSTANT,
+            STETH: "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+            CRV_STETH: "0x06325440D014e39736583c165C2963BA99fAf14E",
+            ep_yvcrvSTETH: "0x2361102893CCabFb543bc55AC4cC8d6d0824A67E",
+          },
+          pools: {
+            CRV_STETH: "0xDC24316b9AE028F1497c275EB9192a3Ea0f67022",
+          },
+          whales: {
+            STETH: "0x06920C9fC643De77B99cB7670A944AD31eaAA260",
+          },
+        }));
     });
 
-    it.only("should swap ETH for eP:yvcrvSTETH", async () => {
-      const amounts = [ethers.utils.parseEther("1"), ZERO];
-      const minPtAmount = await fixture.calcMinPtAmount(amounts);
-      console.log(
-        "minPtAmount:",
-        formatEther(ethers.utils.parseUnits(minPtAmount.toString(), "wei"))
-      );
-      await zapTokenToPt.connect(users[1].user).zapCurveIn(
-        { ...zapEthStethPtInfo, minPtAmount: ZERO },
+    it("should swap ETH for eP:yvcrvSTETH", async () => {
+      const { ptInfo, zap, childZaps } = constructZapStructs(
         {
-          ...zapEthStethCurveLp,
-          amounts,
+          ETH: ONE_ETH,
+          STETH: ZERO,
         },
-        false,
-        zapEthStethCurveLp,
-        0,
-        {
-          value: ethers.utils.parseEther("1"),
-        }
+        users[1].address,
+        0
       );
-      const ptBalance = await fixture.eP_yvcrvSTETH.balanceOf(users[1].address);
 
-      console.log("ptAmount", formatEther(ptBalance));
+      await zapTokenToPt
+        .connect(users[1].user)
+        .zapCurveIn(ptInfo, zap, childZaps, {
+          value: ethers.utils.parseEther("1"),
+        });
+
+      const ptBalance = await tokens.ep_yvcrvSTETH.balanceOf(users[1].address);
+      console.log(formatEther(ptBalance));
     });
 
     it("should swap stETH for eP:yvcrvSTETH", async () => {
-      await fixture.STETH.connect(users[1].user).approve(
+      await stealFromWhale({
+        recipient: users[1].address,
+        token: "STETH",
+        amount: ONE_ETH,
+      });
+
+      await tokens.STETH.connect(users[1].user).approve(
         zapTokenToPt.address,
-        ethers.utils.parseEther("100")
+        ONE_ETH
       );
 
-      await zapTokenToPt.connect(users[1].user).zapCurveIn(
-        zapEthStethPtInfo,
+      const { ptInfo, zap, childZaps } = constructZapStructs(
         {
-          ...zapEthStethCurveLp,
-          amounts: [ZERO, ethers.utils.parseEther("100")],
+          ETH: ZERO,
+          STETH: ONE_ETH,
         },
-        false,
-        zapEthStethCurveLp,
+        users[1].address,
         0
       );
-      const ptBalance = await fixture.eP_yvcrvSTETH.balanceOf(users[1].address);
-      console.log(ptBalance.toString());
+
+      await zapTokenToPt
+        .connect(users[1].user)
+        .zapCurveIn(ptInfo, zap, childZaps);
+
+      const ptBalance = await tokens.ep_yvcrvSTETH.balanceOf(users[1].address);
+      console.log(formatEther(ptBalance));
+    });
+
+    it("should swap stETH and ETH for eP:yvcrvSTETH", async () => {
+      await stealFromWhale({
+        recipient: users[1].address,
+        token: "STETH",
+        amount: ONE_ETH,
+      });
+
+      await tokens.STETH.connect(users[1].user).approve(
+        zapTokenToPt.address,
+        ONE_ETH
+      );
+
+      const { ptInfo, zap, childZaps } = constructZapStructs(
+        {
+          ETH: ONE_ETH,
+          STETH: ONE_ETH,
+        },
+        users[1].address,
+        0
+      );
+
+      await zapTokenToPt
+        .connect(users[1].user)
+        .zapCurveIn(ptInfo, zap, childZaps, { value: ONE_ETH });
+
+      const ptBalance = await tokens.ep_yvcrvSTETH.balanceOf(users[1].address);
+      console.log(formatEther(ptBalance));
     });
   });
+
+  // describe("DAI:USDC:USDT -> ep", () => {
+  //   let constructZapStructs: ZapCurveTokenFixture<"ep_yvcrv3crypto">["constructZapStructs"];
+  //   let tokens: ZapCurveTokenFixture<"ep_yvcrv3crypto">["tokens"];
+  //   let stealFromWhale: ZapCurveTokenFixture<"ep_yvcrv3crypto">["stealFromWhale"];
+
+  //   before(async () => {
+  //     ({ constructZapStructs, tokens, stealFromWhale } =
+  //       await constructZapFixture({
+  //         zapTrie: {
+  //           ep_yvcrv3crypto: {
+  //             THREE_CRV: ["DAI", "USDC", "USDT"],
+  //           },
+  //         },
+  //         balancerPoolId:
+  //           "0xb03c6b351a283bc1cd26b9cf6d7b0c4556013bdb0002000000000000000000ab",
+  //         addresses: {},
+  //         pools: {},
+  //         whales: {},
+  //       }));
+  //   });
+
+  //   it("should swap ETH for eP:yvcrvSTETH", async () => {
+  //     const { ptInfo, zap, childZaps } = constructZapStructs(
+  //       {
+  //         ETH: ONE_ETH,
+  //         STETH: ZERO,
+  //       },
+  //       users[1].address,
+  //       0
+  //     );
+
+  //     await zapTokenToPt
+  //       .connect(users[1].user)
+  //       .zapCurveIn(ptInfo, zap, childZaps, {
+  //         value: ethers.utils.parseEther("1"),
+  //       });
+
+  //     const ptBalance = await tokens.ep_yvcrvSTETH.balanceOf(users[1].address);
+  //     console.log(formatEther(ptBalance));
+  //   });
+  // });
 });

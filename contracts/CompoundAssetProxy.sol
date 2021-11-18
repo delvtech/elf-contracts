@@ -12,27 +12,40 @@ import "./libraries/Authorizable.sol";
 /// @title Compound Asset Proxy
 contract CompoundAssetProxy is WrappedPosition, Authorizable {
     uint8 public immutable underlyingDecimals;
+    // The ctoken contract
     CErc20Interface public immutable ctoken;
+    // The Compound comptroller contract
     ComptrollerInterface public immutable comptroller;
+    // Constant comp token address
+    IERC20 public immutable comp;
 
     /// @notice Constructs this contract and stores needed data
-    /// @param _ctoken The compound ctoken contract
-    /// @param _comptroller The compound comptroller
+    /// @param _ctoken The Compound ctoken contract
+    /// @param _comptroller The Compound comptroller
+    /// @param _comp The address of the COMP governance token
     /// @param _token The underlying token
     /// @param _name The name of the token created
     /// @param _symbol The symbol of the token created
+    /// @param _owner The contract owner who is authorized to collect rewards
     constructor(
         address _ctoken,
         address _comptroller,
+        IERC20 _comp,
         IERC20 _token,
         string memory _name,
-        string memory _symbol
+        string memory _symbol,
+        address _owner
     ) WrappedPosition(_token, _name, _symbol) {
+        // Authorize the contract owner
+        setOwner(_owner);
+
         ctoken = CErc20Interface(_ctoken);
         comptroller = ComptrollerInterface(_comptroller);
+        comp = _comp;
+        // Set approval for the proxy
         _token.approve(_ctoken, type(uint256).max);
         underlyingDecimals = _token.decimals();
-        // we must assume the ctoken has 8 decimals to make the correct calculation for exchangeRate
+        // We must assume the ctoken has 8 decimals to make the correct calculation for exchangeRate
         require(
             IERC20(_ctoken).decimals() == 8,
             "breaks our assumption in exchange rate"
@@ -42,21 +55,23 @@ contract CompoundAssetProxy is WrappedPosition, Authorizable {
     /// @notice Makes the actual ctoken deposit
     /// @return Tuple (the shares minted, amount underlying used)
     function _deposit() internal override returns (uint256, uint256) {
-        // load balance of contract
+        // Load balance of contract
         uint256 amount = token.balanceOf(address(this));
 
+        // Since ctoken's mint function returns sucess codes
+        // we get the balance before and after minting to calculate shares
         uint256 beforeBalance = ctoken.balanceOfUnderlying(address(this));
 
-        // deposit into compound
+        // Deposit into compound
         uint256 mintStatus = ctoken.mint(amount);
         require(mintStatus == 0, "compound mint failed");
 
+        // StoGetre ctoken balance after minting
         uint256 afterBalance = ctoken.balanceOfUnderlying(address(this));
-
-        // Compound doesn't return this value, so we calculate it manually
-        uint256 share = beforeBalance - afterBalance;
-        // Return the amount of shares the user has produced, and the amount of underlying used for it.
-        return (share, amount);
+        // Calculate ctoken shares minted
+        uint256 shares = beforeBalance - afterBalance;
+        // Return the amount of shares the user has produced and the amount of underlying used for it.
+        return (shares, amount);
     }
 
     /// @notice Withdraw the number of shares
@@ -69,15 +84,20 @@ contract CompoundAssetProxy is WrappedPosition, Authorizable {
         address _destination,
         uint256
     ) internal override returns (uint256) {
+        // Since ctoken's redeem function returns sucess codes
+        // we get the balance before and after minting to calculate amount
         uint256 beforeBalance = token.balanceOf(address(this));
 
-        // do the withdraw
+        // Do the withdraw
         uint256 redeemStatus = ctoken.redeem(_shares);
         require(redeemStatus == 0, "compound mint failed");
 
+        // Get underlying balance after withdrawing
         uint256 afterBalance = token.balanceOf(address(this));
+        // Calculate the amount of funds that were freed
         uint256 amountReceived = afterBalance - beforeBalance;
-        // Transfer the underlying to the destination 'token' is an immutable in WrappedPosition
+        // Transfer the underlying to the destination
+        // 'token' is an immutable in WrappedPosition
         token.transfer(_destination, amountReceived);
 
         // Return the amount of underlying
@@ -93,31 +113,30 @@ contract CompoundAssetProxy is WrappedPosition, Authorizable {
         view
         returns (uint256)
     {
-        // load exchange rate
+        // Load exchange rate
         uint256 exchangeRate = ctoken.exchangeRateStored();
 
-        // multiply _amount by exchange rate & correct for decimals
-        // we assume 8 decimals in the ctoken + 18 point decimal fix = 26
+        // Multiply _amount by exchange rate & correct for decimals
+        // We assume 8 decimals in the ctoken + 18 point decimal fix = 26
         return ((_amount * exchangeRate) / (10**(26 - underlyingDecimals)));
     }
 
     /// @notice Collect the comp rewards accrued
     /// @param _destination The address to send the rewards to
     function collectRewards(address _destination) external onlyAuthorized() {
-        // collect rewards
-        uint256 beforeBalance = ctoken.balanceOfUnderlying(address(this));
-
-        // set up input params
+        // Set up input params for claimComp
         address[] memory holder = new address[](1);
+        // Store contract address as an array
         holder[1] = address(this);
         CErc20Interface[] memory cTokens = new CErc20Interface[](1);
+        // Store cToken as an array
         cTokens[1] = ctoken;
 
+        // claim the rewards
         comptroller.claimComp(holder, cTokens, true, true);
-        uint256 afterBalance = ctoken.balanceOfUnderlying(address(this));
-        uint256 rewardAmount = afterBalance - beforeBalance;
-
-        // send those to an address
-        token.transfer(_destination, rewardAmount);
+        // look up the comp balance to send
+        uint256 balance = comp.balanceOf(address(this));
+        // send to destination address
+        comp.transfer(_destination, balance);
     }
 }

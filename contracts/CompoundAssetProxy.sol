@@ -20,7 +20,7 @@ contract CompoundAssetProxy is WrappedPosition, Authorizable {
     IERC20 public immutable comp;
 
     /// @notice Constructs this contract and stores needed data
-    /// @param _ctoken The Compound ctoken contract
+    /// @param _ctoken The underlying ctoken
     /// @param _comptroller The Compound comptroller
     /// @param _comp The address of the COMP governance token
     /// @param _token The underlying token
@@ -69,7 +69,7 @@ contract CompoundAssetProxy is WrappedPosition, Authorizable {
         // StoGetre ctoken balance after minting
         uint256 afterBalance = ctoken.balanceOfUnderlying(address(this));
         // Calculate ctoken shares minted
-        uint256 shares = beforeBalance - afterBalance;
+        uint256 shares = afterBalance - beforeBalance;
         // Return the amount of shares the user has produced and the amount of underlying used for it.
         return (shares, amount);
     }

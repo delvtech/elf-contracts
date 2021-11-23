@@ -357,56 +357,46 @@ abstract contract CTokenInterface is CTokenStorage {
     //     returns (uint256);
 }
 
-contract CErc20Storage {
+interface CErc20Storage {
     /**
      * @notice Underlying asset for this CToken
      */
-    address public underlying;
+    // address public underlying;
 }
 
-abstract contract CErc20Interface is CErc20Storage {
+interface CErc20Interface is CErc20Storage {
     /*** User Interface ***/
 
-    function mint(uint256 mintAmount) external virtual returns (uint256);
+    function mint(uint256 mintAmount) external returns (uint256);
 
-    function redeem(uint256 redeemTokens) external virtual returns (uint256);
+    function redeem(uint256 redeemTokens) external returns (uint256);
 
-    function redeemUnderlying(uint256 redeemAmount)
-        external
-        virtual
-        returns (uint256);
+    function redeemUnderlying(uint256 redeemAmount) external returns (uint256);
 
-    function borrow(uint256 borrowAmount) external virtual returns (uint256);
+    function borrow(uint256 borrowAmount) external returns (uint256);
 
-    function repayBorrow(uint256 repayAmount)
-        external
-        virtual
-        returns (uint256);
+    function repayBorrow(uint256 repayAmount) external returns (uint256);
 
     function repayBorrowBehalf(address borrower, uint256 repayAmount)
         external
-        virtual
         returns (uint256);
 
     function liquidateBorrow(
         address borrower,
         uint256 repayAmount,
         CTokenInterface cTokenCollateral
-    ) external virtual returns (uint256);
+    ) external returns (uint256);
 
     // function sweepToken(EIP20NonStandardInterface token) external;
 
     // From CTokenInterface
-    function balanceOfUnderlying(address owner)
-        external
-        virtual
-        returns (uint256);
+    function balanceOfUnderlying(address owner) external returns (uint256);
 
-    function exchangeRateStored() public virtual view returns (uint256);
+    function exchangeRateStored() external view returns (uint256);
 
     /*** Admin Functions ***/
 
-    function _addReserves(uint256 addAmount) external virtual returns (uint256);
+    function _addReserves(uint256 addAmount) external returns (uint256);
 }
 
 contract CDelegationStorage {

@@ -30,6 +30,10 @@ import { YVaultAssetProxy } from "typechain/YVaultAssetProxy";
 import { ZapTrancheHop } from "typechain/ZapTrancheHop";
 import { ZapYearnShares } from "typechain/ZapYearnShares";
 import data from "../../artifacts/contracts/Tranche.sol/Tranche.json";
+import { CompoundAssetProxy__factory } from "typechain/factories/CompoundAssetProxy__factory";
+import { CTokenInterface__factory } from "typechain/factories/CTokenInterface__factory";
+import { CompoundAssetProxy } from "typechain/CompoundAssetProxy";
+import { CTokenInterface } from "typechain/CTokenInterface";
 
 export interface FixtureInterface {
   signer: Signer;
@@ -40,6 +44,12 @@ export interface FixtureInterface {
   interestToken: InterestToken;
   proxy: TestUserProxy;
   trancheFactory: TrancheFactory;
+}
+
+export interface CFixtureInterface {
+  position: CompoundAssetProxy;
+  cusdc: CTokenInterface;
+  usdc: IERC20;
 }
 
 export interface EthPoolMainnetInterface {
@@ -118,6 +128,28 @@ const deployYasset = async (
   return await yVaultDeployer.deploy(yUnderlying, underlying, name, symbol);
 };
 
+const deployCasset = async (
+  signer: Signer,
+  cToken: string,
+  comptroller: string,
+  compAddress: string,
+  underlying: string,
+  name: string,
+  symbol: string,
+  owner: string
+) => {
+  const cDeployer = new CompoundAssetProxy__factory(signer);
+  return await cDeployer.deploy(
+    cToken,
+    comptroller,
+    compAddress,
+    underlying,
+    name,
+    symbol,
+    owner
+  );
+};
+
 const deployInterestTokenFactory = async (signer: Signer) => {
   const deployer = new InterestTokenFactory__factory(signer);
   return await deployer.deploy();
@@ -134,6 +166,46 @@ export const deployTrancheFactory = async (signer: Signer) => {
   );
   return deployTx;
 };
+
+export async function loadCFixture() {
+  const [signer] = await ethers.getSigners();
+  const cusdcAddress = "0x39aa39c021dfbae8fac545936693ac917d5e7563";
+  const usdcAddress = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+  const cusdc = CTokenInterface__factory.connect(cusdcAddress, signer);
+  const usdc = IERC20__factory.connect(usdcAddress, signer);
+
+  const comptrollerAddress = await cusdc.comptroller();
+
+  const compAddress = "0xc00e94cb662c3520282e6f5717214004a7f26888";
+  const signerAddress = await signer.getAddress();
+
+  // deploy casset
+  const position: CompoundAssetProxy = await deployCasset(
+    signer,
+    cusdcAddress,
+    comptrollerAddress,
+    compAddress,
+    usdcAddress,
+    "cusdc",
+    "element cusdc",
+    signerAddress
+  );
+
+  // deploy and fetch tranche contract
+  const trancheFactory = await deployTrancheFactory(signer);
+  await trancheFactory.deployTranche(1e10, position.address);
+  const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
+  const events = await trancheFactory.queryFilter(eventFilter);
+  const trancheAddress = events[0] && events[0].args && events[0].args[0];
+  const tranche = Tranche__factory.connect(trancheAddress, signer);
+
+  const interestTokenAddress = await tranche.interestToken();
+  const interestToken = InterestToken__factory.connect(
+    interestTokenAddress,
+    signer
+  );
+  return { position, cusdc, usdc };
+}
 
 export async function loadFixture() {
   // The mainnet weth address won't work unless mainnet deployed

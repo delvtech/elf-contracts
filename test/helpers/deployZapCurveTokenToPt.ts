@@ -2,8 +2,10 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { BigNumberish } from "ethers";
 import { ethers } from "hardhat";
 import { ValueOf } from "ts-essentials";
-import { Vault__factory } from "typechain/factories/Vault__factory";
+import { IERC20__factory } from "typechain/factories/IERC20__factory";
 import { Tranche__factory } from "typechain/factories/Tranche__factory";
+import { Vault__factory } from "typechain/factories/Vault__factory";
+import { ZapTokenToPt__factory } from "typechain/factories/ZapTokenToPt__factory";
 import { IERC20 } from "typechain/IERC20";
 import { Tranche } from "typechain/Tranche";
 import { Vault } from "typechain/Vault";
@@ -12,21 +14,15 @@ import {
   ZapPtInfoStruct,
   ZapTokenToPt,
 } from "typechain/ZapTokenToPt";
-import { ONE_DAY_IN_SECONDS } from "./time";
-import { deployTrancheFactory } from "./deployer";
-import { ZapTokenToPt__factory } from "typechain/factories/ZapTokenToPt__factory";
-import data from "../../artifacts/contracts/Tranche.sol/Tranche.json";
-import { IERC20__factory } from "typechain/factories/IERC20__factory";
-import { type } from "os";
-import { string } from "hardhat/internal/core/params/argumentTypes";
 import { impersonate, stopImpersonating } from "./impersonate";
+import { ONE_DAY_IN_SECONDS } from "./time";
 
 interface PrincipalCurveRoots {
-  ep_yvcrvSTETH: {
-    CRV_STETH: ["ETH", "STETH"];
+  ePyvcrvSTETH: {
+    stCRV: ["ETH", "stETH"];
   };
-  ep_yvcrv3crypto: {
-    THREE_CRV: ["DAI", "USDC", "USDT"];
+  ePyvcrv3crypto: {
+    crvTriCrypto: ["USDT", "WBTC", "WETH"];
   };
   ep_yvCurveLUSD: {
     LUSD_CRV: ["LUSD", { THREE_CRV: ["DAI", "USDC", "USDT"] }];
@@ -34,11 +30,6 @@ interface PrincipalCurveRoots {
 }
 
 export type PrincipalTokens = keyof PrincipalCurveRoots;
-
-type PrincipalToken<P extends PrincipalTokens> = {
-  [k in P]: Tranche;
-};
-
 type PrincipalLpToken<P extends PrincipalTokens> = keyof PrincipalCurveRoots[P];
 
 type LpToken<P extends PrincipalTokens> = PrincipalLpToken<P> | LpRootToken<P>;
@@ -192,6 +183,7 @@ const buildZapStructs = <P extends PrincipalTokens>({
 
   const zap: ZapCurveLpStruct = {
     curvePool: pools[curveLpToken],
+    lpToken: addresses[curveLpToken as TokenNames<P>],
     amounts: directRootTokens.map((r) => amounts[r]),
     roots: directRootTokens.map((r) => addresses[r]),
     parentIdx: 0, // unused
@@ -203,6 +195,7 @@ const buildZapStructs = <P extends PrincipalTokens>({
         ((rootLpTokenRoots[idx] as any[]).length
           ? {
               curvePool: pools[root],
+              lpToken: addresses[root],
               amounts: (rootLpTokenRoots[idx] as UserTokens<P>[]).map(
                 (r) => amounts[r]
               ),
@@ -262,12 +255,14 @@ export type ZapCurveTokenFixtureConstructorFn = <P extends PrincipalTokens>(
 ) => Promise<ZapCurveTokenFixture<P>>;
 
 const setZapApprovals = async <P extends PrincipalTokens>({
+  signer,
   zapTrie,
   zapTokenToPt,
   addresses,
   pools,
   balancerVault,
 }: {
+  signer: SignerWithAddress;
   balancerVault: Vault;
   zapTrie: ZapTrie<P>;
   zapTokenToPt: ZapTokenToPt;
@@ -312,7 +307,7 @@ const setZapApprovals = async <P extends PrincipalTokens>({
     ],
   ];
 
-  await zapTokenToPt.setApprovalsFor(tokens, spenders);
+  await zapTokenToPt.connect(signer).setApprovalsFor(tokens, spenders);
 };
 
 export function buildZapCurveTokenFixtureConstructor<
@@ -363,14 +358,15 @@ export function buildZapCurveTokenFixtureConstructor<
       token: Exclude<UserTokens<P>, "ETH">;
       amount: BigNumberish;
     }) => {
-      impersonate(whales[token]);
+      const whaleSigner = await impersonate(whales[token]);
       await (tokens[token] as IERC20)
-        .connect(ethers.provider.getSigner(whales[token]))
-        .transfer(recipient, amount);
-      stopImpersonating(whales[token]);
+        .connect(whaleSigner)
+        .transfer(recipient, amount, { from: whales[token] });
+      await stopImpersonating(whales[token]);
     };
 
     await setZapApprovals({
+      signer,
       balancerVault,
       addresses,
       zapTrie,
@@ -411,18 +407,9 @@ export async function deploy(toAuth: string): Promise<{
     "0xBA12222222228d8Ba445958a75a0704d566BF2C8",
     signer
   );
-  const trancheFactory = await deployTrancheFactory(signer);
-  const bytecodehash = ethers.utils.solidityKeccak256(
-    ["bytes"],
-    [data.bytecode]
-  );
 
   const deployer = new ZapTokenToPt__factory(signer);
-  const zapTokenToPt = await deployer.deploy(
-    trancheFactory.address,
-    bytecodehash,
-    balancerVault.address
-  );
+  const zapTokenToPt = await deployer.deploy(balancerVault.address);
 
   await zapTokenToPt.connect(signer).authorize(toAuth);
   await zapTokenToPt.connect(signer).setOwner(toAuth);

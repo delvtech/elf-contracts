@@ -2,18 +2,15 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { BigNumberish } from "ethers";
 import { ethers } from "hardhat";
 import { ValueOf } from "ts-essentials";
+import { ZapCurveToPt__factory } from "typechain/factories/ZapCurveToPt__factory";
 import { IERC20__factory } from "typechain/factories/IERC20__factory";
 import { Tranche__factory } from "typechain/factories/Tranche__factory";
 import { Vault__factory } from "typechain/factories/Vault__factory";
-import { ZapTokenToPt__factory } from "typechain/factories/ZapTokenToPt__factory";
 import { IERC20 } from "typechain/IERC20";
 import { Tranche } from "typechain/Tranche";
 import { Vault } from "typechain/Vault";
-import {
-  ZapCurveLpStruct,
-  ZapPtInfoStruct,
-  ZapTokenToPt,
-} from "typechain/ZapTokenToPt";
+import { ZapCurveToPt } from "typechain/ZapCurveToPt";
+import { ZapCurveLpStruct, ZapPtInfoStruct } from "typechain/ZapTokenToPt";
 import { impersonate, stopImpersonating } from "./impersonate";
 import { ONE_DAY_IN_SECONDS } from "./time";
 
@@ -24,8 +21,8 @@ interface PrincipalCurveRoots {
   ePyvcrv3crypto: {
     crvTriCrypto: ["USDT", "WBTC", "WETH"];
   };
-  ep_yvCurveLUSD: {
-    LUSD_CRV: ["LUSD", { THREE_CRV: ["DAI", "USDC", "USDT"] }];
+  ePyvCurveLUSD: {
+    LUSD3CRV_F: ["LUSD", { ThreeCrv: ["DAI", "USDC", "USDT"] }];
   };
 }
 
@@ -226,7 +223,7 @@ const buildZapStructs = <P extends PrincipalTokens>({
 interface BuildZapCurveTokenFixtureConstructor {
   signer: SignerWithAddress;
   balancerVault: Vault;
-  zapTokenToPt: ZapTokenToPt;
+  zapCurveToPt: ZapCurveToPt;
 }
 
 type ZapStructConstructor<P extends PrincipalTokens> = (
@@ -257,7 +254,7 @@ export type ZapCurveTokenFixtureConstructorFn = <P extends PrincipalTokens>(
 const setZapApprovals = async <P extends PrincipalTokens>({
   signer,
   zapTrie,
-  zapTokenToPt,
+  zapCurveToPt,
   addresses,
   pools,
   balancerVault,
@@ -265,7 +262,7 @@ const setZapApprovals = async <P extends PrincipalTokens>({
   signer: SignerWithAddress;
   balancerVault: Vault;
   zapTrie: ZapTrie<P>;
-  zapTokenToPt: ZapTokenToPt;
+  zapCurveToPt: ZapCurveToPt;
 } & TokenAddresses<P> &
   CurvePools<P>): Promise<void> => {
   const [_, curveLpToken, directRootTokens, rootLpTokenRoots] =
@@ -307,7 +304,7 @@ const setZapApprovals = async <P extends PrincipalTokens>({
     ],
   ];
 
-  await zapTokenToPt.connect(signer).setApprovalsFor(tokens, spenders);
+  await zapCurveToPt.connect(signer).setApprovalsFor(tokens, spenders);
 };
 
 export function buildZapCurveTokenFixtureConstructor<
@@ -315,7 +312,7 @@ export function buildZapCurveTokenFixtureConstructor<
 >({
   balancerVault,
   signer,
-  zapTokenToPt,
+  zapCurveToPt,
 }: BuildZapCurveTokenFixtureConstructor): ZapCurveTokenFixtureConstructorFn {
   return async function ({
     zapTrie,
@@ -371,7 +368,7 @@ export function buildZapCurveTokenFixtureConstructor<
       addresses,
       zapTrie,
       pools,
-      zapTokenToPt,
+      zapCurveToPt,
     });
 
     const constructZapStructs: ZapStructConstructor<P> = (
@@ -398,7 +395,7 @@ export function buildZapCurveTokenFixtureConstructor<
 }
 
 export async function deploy(toAuth: string): Promise<{
-  zapTokenToPt: ZapTokenToPt;
+  zapCurveToPt: ZapCurveToPt;
   constructZapFixture: ZapCurveTokenFixtureConstructorFn;
 }> {
   const [signer] = await ethers.getSigners();
@@ -408,20 +405,20 @@ export async function deploy(toAuth: string): Promise<{
     signer
   );
 
-  const deployer = new ZapTokenToPt__factory(signer);
-  const zapTokenToPt = await deployer.deploy(balancerVault.address);
+  const deployer = new ZapCurveToPt__factory(signer);
+  const zapCurveToPt = await deployer.deploy(balancerVault.address);
 
-  await zapTokenToPt.connect(signer).authorize(toAuth);
-  await zapTokenToPt.connect(signer).setOwner(toAuth);
+  await zapCurveToPt.connect(signer).authorize(toAuth);
+  await zapCurveToPt.connect(signer).setOwner(toAuth);
 
   const constructZapFixture = buildZapCurveTokenFixtureConstructor({
     signer,
     balancerVault,
-    zapTokenToPt,
+    zapCurveToPt,
   });
 
   return {
-    zapTokenToPt,
+    zapCurveToPt,
     constructZapFixture,
   };
 }

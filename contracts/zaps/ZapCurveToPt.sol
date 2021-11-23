@@ -50,7 +50,7 @@ interface IVault {
         returns (address, PoolSpecialization);
 }
 
-contract ZapTokenToPt is Authorizable {
+contract ZapCurveToPt is Authorizable {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -113,36 +113,60 @@ contract ZapTokenToPt is Authorizable {
     }
 
     function _zapCurveLp(ZapCurveLp memory _zap) internal returns (uint256) {
+        uint256[3] memory ctx;
+        return _zapCurveLp(_zap, ctx);
+    }
+
+    // Given that we call the curve add liquidity function through a low-level
+    // call, we can utilise a fixed-length array of length 3 as our input context
+    // "bucket". In the event where the target curve pool contract expects an
+    // array of length 2, we can still utilise the "bucket" where the last index is
+    // disregarded.
+    function _zapCurveLp(ZapCurveLp memory _zap, uint256[3] memory ctx)
+        internal
+        returns (uint256)
+    {
         require(
             _zap.amounts.length == 2 || _zap.amounts.length == 3,
             "!(2 >= amounts.length <= 3)"
         );
 
-        // Given that we call the curve add liquidity function through a low-level
-        // call, we can utilise a fixed-length array of length 3 as our input context
-        // "bucket". In the event where the target curve pool contract expects an
-        // array of length 2, we can still utilise the "bucket" where the last index is
-        // disregarded.
-        uint256[3] memory ctx;
-
+        console.log(ctx[0], ctx[1], ctx[2]);
+        bool zapHasAmounts = false;
+        bool ctxHasAmounts = false;
         for (uint256 i = 0; i < _zap.amounts.length; i++) {
-            if (_zap.roots[i] == _ETH_CONSTANT) {
+            // Must check we do not unintentionally send ETH
+            if (_zap.roots[i] == _ETH_CONSTANT)
                 require(msg.value == _zap.amounts[i], "incorrect value");
-                ctx[i] = _zap.amounts[i];
-            } else {
-                IERC20(_zap.roots[i]).safeTransferFrom(
-                    msg.sender,
-                    address(this),
-                    _zap.amounts[i]
-                );
-                ctx[i] = IERC20(_zap.roots[i]).balanceOf(address(this));
+
+            if (!ctxHasAmounts && ctx[i] > 0) {
+                ctxHasAmounts = true;
             }
+
+            if (_zap.amounts[i] > 0) {
+                zapHasAmounts = true;
+                if (_zap.roots[i] == _ETH_CONSTANT) {
+                    ctx[i] += _zap.amounts[i];
+                } else {
+                    IERC20(_zap.roots[i]).safeTransferFrom(
+                        msg.sender,
+                        address(this),
+                        _zap.amounts[i]
+                    );
+                    ctx[i] = IERC20(_zap.roots[i]).balanceOf(address(this));
+                }
+            }
+        }
+
+        if (!zapHasAmounts && !ctxHasAmounts) {
+            return 0;
         }
 
         string memory funcSig = _zap.amounts.length == 2
             ? "add_liquidity(uint256[2],uint256)"
             : "add_liquidity(uint256[3],uint256)";
 
+        console.log(funcSig, ctx[0], ctx[1], ctx[2]);
         // It is necessary to add liquidity to the respective curve pool like this
         // due to the non-standard interface of the function in the curve contracts.
         // Not only is there two variants of fixed length array amount inputs but it is
@@ -160,11 +184,12 @@ contract ZapTokenToPt is Authorizable {
         ZapCurveLp memory _zap,
         ZapCurveLp[] memory _childZaps
     ) external payable reentrancyGuard notFrozen returns (uint256 ptAmount) {
+        uint256[3] memory ctx;
         for (uint256 i = 0; i < _childZaps.length; i++) {
-            _zap.amounts[_childZaps[i].parentIdx] += _zapCurveLp(_childZaps[i]);
+            ctx[_childZaps[i].parentIdx] += _zapCurveLp(_childZaps[i]);
         }
 
-        uint256 baseTokenAmount = _zapCurveLp(_zap);
+        uint256 baseTokenAmount = _zapCurveLp(_zap, ctx);
 
         ptAmount = _balancer.swap(
             IVault.SingleSwap({

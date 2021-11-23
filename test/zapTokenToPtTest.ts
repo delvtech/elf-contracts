@@ -1,7 +1,7 @@
 import { Signer } from "ethers";
 import { formatEther } from "ethers/lib/utils";
 import { ethers, waffle } from "hardhat";
-import { ZapTokenToPt } from "typechain/ZapTokenToPt";
+import { ZapCurveToPt } from "typechain/ZapCurveToPt";
 import { ONE_ETH, ZERO, _ETH_CONSTANT } from "./helpers/constants";
 import {
   deploy,
@@ -12,10 +12,10 @@ import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 
 const { provider } = waffle;
 
-describe.only("zapTokenToPt", () => {
+describe.only("zapCurveToPt", () => {
   let users: { user: Signer; address: string }[];
 
-  let zapTokenToPt: ZapTokenToPt;
+  let zapCurveToPt: ZapCurveToPt;
   let constructZapFixture: ZapCurveTokenFixtureConstructorFn;
 
   before(async () => {
@@ -32,7 +32,7 @@ describe.only("zapTokenToPt", () => {
       })
     );
 
-    ({ zapTokenToPt, constructZapFixture } = await deploy(users[1].address));
+    ({ zapCurveToPt, constructZapFixture } = await deploy(users[1].address));
   });
 
   after(async () => {
@@ -86,7 +86,7 @@ describe.only("zapTokenToPt", () => {
         0
       );
 
-      await zapTokenToPt
+      await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps, {
           value: ethers.utils.parseEther("1"),
@@ -105,7 +105,7 @@ describe.only("zapTokenToPt", () => {
 
       await tokens.stETH
         .connect(users[1].user)
-        .approve(zapTokenToPt.address, ONE_ETH);
+        .approve(zapCurveToPt.address, ONE_ETH);
 
       const { ptInfo, zap, childZaps } = constructZapStructs(
         {
@@ -116,7 +116,7 @@ describe.only("zapTokenToPt", () => {
         0
       );
 
-      await zapTokenToPt
+      await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps);
 
@@ -133,7 +133,7 @@ describe.only("zapTokenToPt", () => {
 
       await tokens.stETH
         .connect(users[1].user)
-        .approve(zapTokenToPt.address, ONE_ETH);
+        .approve(zapCurveToPt.address, ONE_ETH);
 
       const { ptInfo, zap, childZaps } = constructZapStructs(
         {
@@ -144,7 +144,7 @@ describe.only("zapTokenToPt", () => {
         0
       );
 
-      await zapTokenToPt
+      await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps, { value: ONE_ETH });
 
@@ -196,7 +196,7 @@ describe.only("zapTokenToPt", () => {
       });
 
       await tokens.WBTC.connect(users[1].user).approve(
-        zapTokenToPt.address,
+        zapCurveToPt.address,
         amountWBTC
       );
 
@@ -210,7 +210,7 @@ describe.only("zapTokenToPt", () => {
         0
       );
 
-      await zapTokenToPt
+      await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps);
 
@@ -228,7 +228,7 @@ describe.only("zapTokenToPt", () => {
       });
 
       await tokens.USDT.connect(users[1].user).approve(
-        zapTokenToPt.address,
+        zapCurveToPt.address,
         amountUSDT
       );
 
@@ -242,7 +242,7 @@ describe.only("zapTokenToPt", () => {
         0
       );
 
-      await zapTokenToPt
+      await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps);
 
@@ -260,7 +260,7 @@ describe.only("zapTokenToPt", () => {
       });
 
       await tokens.WETH.connect(users[1].user).approve(
-        zapTokenToPt.address,
+        zapCurveToPt.address,
         amountWETH
       );
 
@@ -274,7 +274,7 @@ describe.only("zapTokenToPt", () => {
         0
       );
 
-      await zapTokenToPt
+      await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps);
 
@@ -304,15 +304,15 @@ describe.only("zapTokenToPt", () => {
       });
 
       await tokens.USDT.connect(users[1].user).approve(
-        zapTokenToPt.address,
+        zapCurveToPt.address,
         amountUSDT
       );
       await tokens.WBTC.connect(users[1].user).approve(
-        zapTokenToPt.address,
+        zapCurveToPt.address,
         amountWBTC
       );
       await tokens.WETH.connect(users[1].user).approve(
-        zapTokenToPt.address,
+        zapCurveToPt.address,
         amountWETH
       );
 
@@ -326,11 +326,382 @@ describe.only("zapTokenToPt", () => {
         0
       );
 
-      await zapTokenToPt
+      await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps);
 
       const ptBalance = await tokens.ePyvcrv3crypto.balanceOf(users[1].address);
+      console.log(formatEther(ptBalance));
+    });
+  });
+
+  describe("LUSD:3Crv:DAI:USDC:USDT -> ePyvCurveLUSD", () => {
+    let constructZapStructs: ZapCurveTokenFixture<"ePyvCurveLUSD">["constructZapStructs"];
+    let tokens: ZapCurveTokenFixture<"ePyvCurveLUSD">["tokens"];
+    let stealFromWhale: ZapCurveTokenFixture<"ePyvCurveLUSD">["stealFromWhale"];
+
+    before(async () => {
+      ({ constructZapStructs, tokens, stealFromWhale } =
+        await constructZapFixture({
+          zapTrie: {
+            ePyvCurveLUSD: {
+              LUSD3CRV_F: ["LUSD", { ThreeCrv: ["DAI", "USDC", "USDT"] }],
+            },
+          },
+          balancerPoolId:
+            "0x893b30574bf183d69413717f30b17062ec9dfd8b000200000000000000000061",
+          addresses: {
+            USDT: "0xdac17f958d2ee523a2206206994597c13d831ec7",
+            USDC: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            DAI: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+            LUSD: "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0",
+            ThreeCrv: "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490",
+            LUSD3CRV_F: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
+            ePyvCurveLUSD: "0xa2b3d083AA1eaa8453BfB477f062A208Ed85cBBF",
+          },
+          pools: {
+            LUSD3CRV_F: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
+            ThreeCrv: "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
+          },
+          whales: {
+            USDT: "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503",
+            USDC: "0xdb49552EeFB89416b9A412138c009a004f54BAd0",
+            DAI: "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503",
+            LUSD: "0xE05fD1304C1CfE19dcc6AAb0767848CC4A8f54aa",
+            ThreeCrv: "0x0B096d1f0ba7Ef2b3C7ecB8d4a5848043CdeBD50",
+          },
+        }));
+    });
+
+    it("should swap DAI for ePyvcrv3crypto", async () => {
+      const amountDAI = ethers.utils.parseUnits("5000", 18);
+
+      await stealFromWhale({
+        recipient: users[1].address,
+        token: "DAI",
+        amount: amountDAI,
+      });
+
+      await tokens.DAI.connect(users[1].user).approve(
+        zapCurveToPt.address,
+        amountDAI
+      );
+
+      const { ptInfo, zap, childZaps } = constructZapStructs(
+        {
+          USDT: ZERO,
+          DAI: amountDAI,
+          USDC: ZERO,
+          ThreeCrv: ZERO,
+          LUSD: ZERO,
+        },
+        users[1].address,
+        0
+      );
+
+      await zapCurveToPt
+        .connect(users[1].user)
+        .zapCurveIn(ptInfo, zap, childZaps);
+
+      const ptBalance = await tokens.ePyvCurveLUSD.balanceOf(users[1].address);
+      console.log(formatEther(ptBalance));
+    });
+
+    it("should swap USDC for ePyvcrv3crypto", async () => {
+      const amountUSDC = ethers.utils.parseUnits("5000", 6);
+
+      await stealFromWhale({
+        recipient: users[1].address,
+        token: "USDC",
+        amount: amountUSDC,
+      });
+
+      await tokens.USDC.connect(users[1].user).approve(
+        zapCurveToPt.address,
+        amountUSDC
+      );
+
+      const { ptInfo, zap, childZaps } = constructZapStructs(
+        {
+          USDT: ZERO,
+          DAI: ZERO,
+          USDC: amountUSDC,
+          ThreeCrv: ZERO,
+          LUSD: ZERO,
+        },
+        users[1].address,
+        0
+      );
+
+      await zapCurveToPt
+        .connect(users[1].user)
+        .zapCurveIn(ptInfo, zap, childZaps);
+
+      const ptBalance = await tokens.ePyvCurveLUSD.balanceOf(users[1].address);
+      console.log(formatEther(ptBalance));
+    });
+
+    it("should swap USDT for ePyvcrv3crypto", async () => {
+      const amountUSDT = ethers.utils.parseUnits("5000", 6);
+
+      await stealFromWhale({
+        recipient: users[1].address,
+        token: "USDT",
+        amount: amountUSDT,
+      });
+
+      await tokens.USDT.connect(users[1].user).approve(
+        zapCurveToPt.address,
+        amountUSDT
+      );
+
+      const { ptInfo, zap, childZaps } = constructZapStructs(
+        {
+          USDT: amountUSDT,
+          DAI: ZERO,
+          USDC: ZERO,
+          ThreeCrv: ZERO,
+          LUSD: ZERO,
+        },
+        users[1].address,
+        0
+      );
+
+      await zapCurveToPt
+        .connect(users[1].user)
+        .zapCurveIn(ptInfo, zap, childZaps);
+
+      const ptBalance = await tokens.ePyvCurveLUSD.balanceOf(users[1].address);
+      console.log(formatEther(ptBalance));
+    });
+
+    it("should swap LUSD for ePyvcrv3crypto", async () => {
+      const amountLUSD = ethers.utils.parseEther("5000");
+
+      await stealFromWhale({
+        recipient: users[1].address,
+        token: "LUSD",
+        amount: amountLUSD,
+      });
+
+      await tokens.LUSD.connect(users[1].user).approve(
+        zapCurveToPt.address,
+        amountLUSD
+      );
+
+      const { ptInfo, zap, childZaps } = constructZapStructs(
+        {
+          USDT: ZERO,
+          DAI: ZERO,
+          USDC: ZERO,
+          ThreeCrv: ZERO,
+          LUSD: amountLUSD,
+        },
+        users[1].address,
+        0
+      );
+
+      await zapCurveToPt
+        .connect(users[1].user)
+        .zapCurveIn(ptInfo, zap, childZaps);
+
+      const ptBalance = await tokens.ePyvCurveLUSD.balanceOf(users[1].address);
+      console.log(formatEther(ptBalance));
+    });
+
+    it("should swap ThreeCrv for ePyvcrv3crypto", async () => {
+      const amountThreeCrv = ethers.utils.parseEther("5000");
+
+      await stealFromWhale({
+        recipient: users[1].address,
+        token: "ThreeCrv",
+        amount: amountThreeCrv,
+      });
+
+      await tokens.ThreeCrv.connect(users[1].user).approve(
+        zapCurveToPt.address,
+        amountThreeCrv
+      );
+
+      const { ptInfo, zap, childZaps } = constructZapStructs(
+        {
+          USDT: ZERO,
+          DAI: ZERO,
+          USDC: ZERO,
+          ThreeCrv: amountThreeCrv,
+          LUSD: ZERO,
+        },
+        users[1].address,
+        0
+      );
+
+      await zapCurveToPt
+        .connect(users[1].user)
+        .zapCurveIn(ptInfo, zap, childZaps);
+
+      const ptBalance = await tokens.ePyvCurveLUSD.balanceOf(users[1].address);
+      console.log(formatEther(ptBalance));
+    });
+
+    it("should swap LUSD and DAI for ePyvcrv3crypto", async () => {
+      const amountLUSD = ethers.utils.parseEther("5000");
+      const amountDAI = ethers.utils.parseEther("5000");
+
+      await stealFromWhale({
+        recipient: users[1].address,
+        token: "LUSD",
+        amount: amountLUSD,
+      });
+      await stealFromWhale({
+        recipient: users[1].address,
+        token: "DAI",
+        amount: amountDAI,
+      });
+
+      await tokens.LUSD.connect(users[1].user).approve(
+        zapCurveToPt.address,
+        amountLUSD
+      );
+      await tokens.DAI.connect(users[1].user).approve(
+        zapCurveToPt.address,
+        amountDAI
+      );
+
+      const { ptInfo, zap, childZaps } = constructZapStructs(
+        {
+          USDT: ZERO,
+          DAI: amountDAI,
+          USDC: ZERO,
+          ThreeCrv: ZERO,
+          LUSD: amountLUSD,
+        },
+        users[1].address,
+        0
+      );
+
+      await zapCurveToPt
+        .connect(users[1].user)
+        .zapCurveIn(ptInfo, zap, childZaps);
+
+      const ptBalance = await tokens.ePyvCurveLUSD.balanceOf(users[1].address);
+      console.log(formatEther(ptBalance));
+    });
+
+    it("should swap ThreeCrv and DAI for ePyvcrv3crypto", async () => {
+      const amountThreeCrv = ethers.utils.parseEther("5000");
+      const amountDAI = ethers.utils.parseEther("5000");
+
+      await stealFromWhale({
+        recipient: users[1].address,
+        token: "ThreeCrv",
+        amount: amountThreeCrv,
+      });
+      await stealFromWhale({
+        recipient: users[1].address,
+        token: "DAI",
+        amount: amountDAI,
+      });
+
+      await tokens.ThreeCrv.connect(users[1].user).approve(
+        zapCurveToPt.address,
+        amountThreeCrv
+      );
+      await tokens.DAI.connect(users[1].user).approve(
+        zapCurveToPt.address,
+        amountDAI
+      );
+
+      const { ptInfo, zap, childZaps } = constructZapStructs(
+        {
+          USDT: ZERO,
+          DAI: amountDAI,
+          USDC: ZERO,
+          ThreeCrv: amountThreeCrv,
+          LUSD: ZERO,
+        },
+        users[1].address,
+        0
+      );
+
+      await zapCurveToPt
+        .connect(users[1].user)
+        .zapCurveIn(ptInfo, zap, childZaps);
+
+      const ptBalance = await tokens.ePyvCurveLUSD.balanceOf(users[1].address);
+      console.log(formatEther(ptBalance));
+    });
+
+    it("should swap LUSD, DAI, USDC, USDT & ThreeCrv for ePyvcrv3crypto", async () => {
+      const amountLUSD = ethers.utils.parseEther("5000");
+      const amountDAI = ethers.utils.parseEther("5000");
+      const amountThreeCrv = ethers.utils.parseEther("5000");
+      const amountUSDT = ethers.utils.parseUnits("5000", 6);
+      const amountUSDC = ethers.utils.parseUnits("5000", 6);
+
+      await stealFromWhale({
+        recipient: users[1].address,
+        token: "LUSD",
+        amount: amountLUSD,
+      });
+      await stealFromWhale({
+        recipient: users[1].address,
+        token: "DAI",
+        amount: amountDAI,
+      });
+      await stealFromWhale({
+        recipient: users[1].address,
+        token: "ThreeCrv",
+        amount: amountThreeCrv,
+      });
+      await stealFromWhale({
+        recipient: users[1].address,
+        token: "USDC",
+        amount: amountUSDC,
+      });
+      await stealFromWhale({
+        recipient: users[1].address,
+        token: "USDT",
+        amount: amountUSDT,
+      });
+
+      await tokens.LUSD.connect(users[1].user).approve(
+        zapCurveToPt.address,
+        amountLUSD
+      );
+      await tokens.DAI.connect(users[1].user).approve(
+        zapCurveToPt.address,
+        amountDAI
+      );
+      await tokens.ThreeCrv.connect(users[1].user).approve(
+        zapCurveToPt.address,
+        amountThreeCrv
+      );
+      await tokens.USDC.connect(users[1].user).approve(
+        zapCurveToPt.address,
+        amountUSDC
+      );
+      await tokens.USDT.connect(users[1].user).approve(
+        zapCurveToPt.address,
+        amountUSDT
+      );
+
+      const { ptInfo, zap, childZaps } = constructZapStructs(
+        {
+          USDT: amountUSDT,
+          DAI: amountDAI,
+          USDC: amountUSDC,
+          ThreeCrv: amountThreeCrv,
+          LUSD: amountLUSD,
+        },
+        users[1].address,
+        0
+      );
+
+      await zapCurveToPt
+        .connect(users[1].user)
+        .zapCurveIn(ptInfo, zap, childZaps);
+
+      const ptBalance = await tokens.ePyvCurveLUSD.balanceOf(users[1].address);
       console.log(formatEther(ptBalance));
     });
   });

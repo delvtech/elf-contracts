@@ -1,18 +1,22 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { BigNumberish } from "ethers";
-import { ethers } from "hardhat";
+import { BigNumber, BigNumberish } from "ethers";
+import { ethers, waffle } from "hardhat";
 import { ValueOf } from "ts-essentials";
-import { ZapCurveToPt__factory } from "typechain/factories/ZapCurveToPt__factory";
 import { IERC20__factory } from "typechain/factories/IERC20__factory";
 import { Tranche__factory } from "typechain/factories/Tranche__factory";
 import { Vault__factory } from "typechain/factories/Vault__factory";
+import { ZapCurveToPt__factory } from "typechain/factories/ZapCurveToPt__factory";
 import { IERC20 } from "typechain/IERC20";
 import { Tranche } from "typechain/Tranche";
 import { Vault } from "typechain/Vault";
 import { ZapCurveToPt } from "typechain/ZapCurveToPt";
 import { ZapCurveLpStruct, ZapPtInfoStruct } from "typechain/ZapTokenToPt";
+import { SwapKind } from "./batchSwap";
+import { calcSwapPrincipalPool, SwapAsset } from "./calculations";
 import { impersonate, stopImpersonating } from "./impersonate";
 import { ONE_DAY_IN_SECONDS } from "./time";
+
+const { provider } = waffle;
 
 interface PrincipalCurveRoots {
   ePyvcrvSTETH: {
@@ -152,29 +156,99 @@ const extractTrieLayers = <P extends PrincipalTokens>(
 };
 
 type BuildZapStructsArgs<P extends PrincipalTokens> = {
+  balancerVault: Vault;
   zapTrie: ZapTrie<P>;
   recipient: string;
-  minPtAmount: BigNumberish;
   balancerPoolId: string;
 } & TokenAmounts<P> &
   CurvePools<P> &
   TokenAddresses<P>;
 
+async function estimateCurveZap({
+  curvePool,
+  amounts,
+}: ZapCurveLpStruct): Promise<string> {
+  const curveAbi = [
+    "function fee() view returns (uint256)",
+    amounts.length === 2
+      ? "function calc_token_amount(uint256[2],bool) view returns (uint256)"
+      : "function calc_token_amount(uint256[3],bool) view returns (uint256)",
+  ];
+
+  const curveContract = new ethers.Contract(curvePool, curveAbi, provider);
+  const lpRawAmount = BigNumber.from(
+    await curveContract.calc_token_amount(amounts, true)
+  );
+  const curveFee: BigNumberish = await curveContract.fee();
+
+  const FEE_DENOMINATOR = BigNumber.from("10").pow(BigNumber.from("10"));
+  const feeAmount = lpRawAmount.mul(curveFee).div(FEE_DENOMINATOR);
+
+  return lpRawAmount.sub(feeAmount).toString();
+}
+
+async function estimatePtZap(
+  balancerVault: Vault,
+  amount: BigNumberish,
+  balancerPoolId: string
+): Promise<string> {
+  const [convergentCurvePoolAddress] = await balancerVault.getPool(
+    balancerPoolId
+  );
+
+  const ccpAbi = [
+    "function expiration() view returns (uint256)",
+    "function totalSupply() view returns (uint256)",
+    "function unitSeconds() view returns (uint256)",
+  ];
+
+  const convergentCurvePool = new ethers.Contract(
+    convergentCurvePoolAddress,
+    ccpAbi,
+    provider
+  );
+
+  const [totalSupply, expiration, tParamSeconds] = await Promise.all([
+    convergentCurvePool.totalSupply(),
+    convergentCurvePool.expiration(),
+    convergentCurvePool.unitSeconds(),
+  ] as Promise<BigNumberish>[]);
+
+  const [, [xReserves, yReserves]] = await balancerVault.getPoolTokens(
+    balancerPoolId
+  );
+
+  const result = calcSwapPrincipalPool(
+    amount.toString(),
+    SwapKind.GIVEN_IN,
+    SwapAsset.BASE_ASSET,
+    18,
+    xReserves.toString(),
+    yReserves.toString(),
+    totalSupply.toString(),
+    tParamSeconds.toString(),
+    expiration.toString()
+  );
+
+  return result.amountOut;
+}
+
 type ZapStructs = {
   ptInfo: ZapPtInfoStruct;
   zap: ZapCurveLpStruct;
   childZaps: ZapCurveLpStruct[];
+  expectedPtAmount: BigNumberish;
 };
 
-const buildZapStructs = <P extends PrincipalTokens>({
+const buildZapStructs = async <P extends PrincipalTokens>({
+  balancerVault,
   amounts,
   pools,
   addresses,
   zapTrie,
   recipient,
-  minPtAmount,
   balancerPoolId,
-}: BuildZapStructsArgs<P>): ZapStructs => {
+}: BuildZapStructsArgs<P>): Promise<ZapStructs> => {
   const [principalToken, curveLpToken, directRootTokens, rootLpTokenRoots] =
     extractTrieLayers(zapTrie);
 
@@ -205,11 +279,32 @@ const buildZapStructs = <P extends PrincipalTokens>({
     )
     .filter((zap) => !Array.isArray(zap)) as ZapCurveLpStruct[];
 
+  for (const xZap of childZaps) {
+    const parentIdx = BigNumber.from(xZap.parentIdx).toNumber();
+    const amountString = await estimateCurveZap(xZap);
+    zap.amounts[parentIdx] = BigNumber.from(zap.amounts[parentIdx]).add(
+      BigNumber.from(amountString)
+    );
+  }
+
+  const estimatedBaseTokenAmount = await estimateCurveZap(zap);
+  const estimatedPrincipalTokenAmount = await estimatePtZap(
+    balancerVault,
+    BigNumber.from(estimatedBaseTokenAmount),
+    balancerPoolId
+  );
+
+  console.log("Expected BaseToken Amount: ", estimatedBaseTokenAmount);
+  console.log(
+    "Expected PrincipalToken Amount: ",
+    estimatedPrincipalTokenAmount
+  );
+
   const ptInfo: ZapPtInfoStruct = {
     balancerPoolId,
     principalToken: addresses[principalToken as TokenNames<P>],
     recipient,
-    minPtAmount,
+    minPtAmount: 0, //BigNumber.from(estimatedPrincipalTokenAmount),
     deadline: Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS,
   };
 
@@ -217,6 +312,7 @@ const buildZapStructs = <P extends PrincipalTokens>({
     ptInfo,
     zap,
     childZaps,
+    expectedPtAmount: BigNumber.from(estimatedPrincipalTokenAmount),
   };
 };
 
@@ -228,9 +324,8 @@ interface BuildZapCurveTokenFixtureConstructor {
 
 type ZapStructConstructor<P extends PrincipalTokens> = (
   amounts: TokenAmounts<P>["amounts"],
-  recipient: string,
-  minPtAmount: BigNumberish
-) => ZapStructs;
+  recipient: string
+) => Promise<ZapStructs>;
 
 export interface ZapCurveTokenFixture<P extends PrincipalTokens> {
   constructZapStructs: ZapStructConstructor<P>;
@@ -251,6 +346,14 @@ export type ZapCurveTokenFixtureConstructorFn = <P extends PrincipalTokens>(
     TokenWhales<P>
 ) => Promise<ZapCurveTokenFixture<P>>;
 
+type SetZapApprovals<P extends PrincipalTokens> = {
+  signer: SignerWithAddress;
+  balancerVault: Vault;
+  zapTrie: ZapTrie<P>;
+  zapCurveToPt: ZapCurveToPt;
+} & TokenAddresses<P> &
+  CurvePools<P>;
+
 const setZapApprovals = async <P extends PrincipalTokens>({
   signer,
   zapTrie,
@@ -258,13 +361,7 @@ const setZapApprovals = async <P extends PrincipalTokens>({
   addresses,
   pools,
   balancerVault,
-}: {
-  signer: SignerWithAddress;
-  balancerVault: Vault;
-  zapTrie: ZapTrie<P>;
-  zapCurveToPt: ZapCurveToPt;
-} & TokenAddresses<P> &
-  CurvePools<P>): Promise<void> => {
+}: SetZapApprovals<P>): Promise<void> => {
   const [_, curveLpToken, directRootTokens, rootLpTokenRoots] =
     extractTrieLayers(zapTrie);
 
@@ -371,18 +468,17 @@ export function buildZapCurveTokenFixtureConstructor<
       zapCurveToPt,
     });
 
-    const constructZapStructs: ZapStructConstructor<P> = (
+    const constructZapStructs: ZapStructConstructor<P> = async (
       amounts,
-      recipient,
-      minPtAmount
+      recipient
     ) =>
-      buildZapStructs({
+      await buildZapStructs({
+        balancerVault,
         amounts,
         zapTrie,
         addresses,
         pools,
         recipient,
-        minPtAmount,
         balancerPoolId,
       });
 
@@ -396,6 +492,7 @@ export function buildZapCurveTokenFixtureConstructor<
 
 export async function deploy(toAuth: string): Promise<{
   zapCurveToPt: ZapCurveToPt;
+  balancerVault: Vault;
   constructZapFixture: ZapCurveTokenFixtureConstructorFn;
 }> {
   const [signer] = await ethers.getSigners();
@@ -419,6 +516,7 @@ export async function deploy(toAuth: string): Promise<{
 
   return {
     zapCurveToPt,
+    balancerVault,
     constructZapFixture,
   };
 }

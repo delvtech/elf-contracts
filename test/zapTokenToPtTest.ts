@@ -1,6 +1,7 @@
 import { Signer } from "ethers";
 import { formatEther } from "ethers/lib/utils";
 import { ethers, waffle } from "hardhat";
+import { Vault } from "typechain/Vault";
 import { ZapCurveToPt } from "typechain/ZapCurveToPt";
 import { ONE_ETH, ZERO, _ETH_CONSTANT } from "./helpers/constants";
 import {
@@ -16,6 +17,7 @@ describe.only("zapCurveToPt", () => {
   let users: { user: Signer; address: string }[];
 
   let zapCurveToPt: ZapCurveToPt;
+  let balancerVault: Vault;
   let constructZapFixture: ZapCurveTokenFixtureConstructorFn;
 
   before(async () => {
@@ -32,7 +34,9 @@ describe.only("zapCurveToPt", () => {
       })
     );
 
-    ({ zapCurveToPt, constructZapFixture } = await deploy(users[1].address));
+    ({ zapCurveToPt, balancerVault, constructZapFixture } = await deploy(
+      users[1].address
+    ));
   });
 
   after(async () => {
@@ -76,20 +80,19 @@ describe.only("zapCurveToPt", () => {
         }));
     });
 
-    it("should swap ETH for eP:yvcrvSTETH", async () => {
-      const { ptInfo, zap, childZaps } = constructZapStructs(
-        {
-          ETH: ONE_ETH,
-          stETH: ZERO,
-        },
-        users[1].address,
-        0
-      );
-
+    it.only("should swap ETH for eP:yvcrvSTETH", async () => {
+      const { ptInfo, zap, childZaps, expectedPtAmount } =
+        await constructZapStructs(
+          {
+            ETH: ethers.utils.parseEther("100"),
+            stETH: ZERO,
+          },
+          users[1].address
+        );
       await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps, {
-          value: ethers.utils.parseEther("1"),
+          value: ethers.utils.parseEther("100"),
         });
 
       const ptBalance = await tokens.ePyvcrvSTETH.balanceOf(users[1].address);
@@ -107,13 +110,12 @@ describe.only("zapCurveToPt", () => {
         .connect(users[1].user)
         .approve(zapCurveToPt.address, ONE_ETH);
 
-      const { ptInfo, zap, childZaps } = constructZapStructs(
+      const { ptInfo, zap, childZaps } = await constructZapStructs(
         {
           ETH: ZERO,
           stETH: ONE_ETH,
         },
-        users[1].address,
-        0
+        users[1].address
       );
 
       await zapCurveToPt
@@ -135,13 +137,12 @@ describe.only("zapCurveToPt", () => {
         .connect(users[1].user)
         .approve(zapCurveToPt.address, ONE_ETH);
 
-      const { ptInfo, zap, childZaps } = constructZapStructs(
+      const { ptInfo, zap, childZaps } = await constructZapStructs(
         {
           ETH: ONE_ETH,
           stETH: ONE_ETH,
         },
-        users[1].address,
-        0
+        users[1].address
       );
 
       await zapCurveToPt
@@ -200,14 +201,13 @@ describe.only("zapCurveToPt", () => {
         amountWBTC
       );
 
-      const { ptInfo, zap, childZaps } = constructZapStructs(
+      const { ptInfo, zap, childZaps } = await constructZapStructs(
         {
           USDT: ZERO,
           WBTC: amountWBTC,
           WETH: ZERO,
         },
-        users[1].address,
-        0
+        users[1].address
       );
 
       await zapCurveToPt
@@ -232,14 +232,13 @@ describe.only("zapCurveToPt", () => {
         amountUSDT
       );
 
-      const { ptInfo, zap, childZaps } = constructZapStructs(
+      const { ptInfo, zap, childZaps } = await constructZapStructs(
         {
           USDT: amountUSDT,
           WBTC: ZERO,
           WETH: ZERO,
         },
-        users[1].address,
-        0
+        users[1].address
       );
 
       await zapCurveToPt
@@ -264,14 +263,13 @@ describe.only("zapCurveToPt", () => {
         amountWETH
       );
 
-      const { ptInfo, zap, childZaps } = constructZapStructs(
+      const { ptInfo, zap, childZaps } = await constructZapStructs(
         {
           USDT: ZERO,
           WBTC: ZERO,
           WETH: amountWETH,
         },
-        users[1].address,
-        0
+        users[1].address
       );
 
       await zapCurveToPt
@@ -316,14 +314,13 @@ describe.only("zapCurveToPt", () => {
         amountWETH
       );
 
-      const { ptInfo, zap, childZaps } = constructZapStructs(
+      const { ptInfo, zap, childZaps } = await constructZapStructs(
         {
           USDT: amountUSDT,
           WBTC: amountWBTC,
           WETH: amountWETH,
         },
-        users[1].address,
-        0
+        users[1].address
       );
 
       await zapCurveToPt
@@ -387,7 +384,7 @@ describe.only("zapCurveToPt", () => {
         amountDAI
       );
 
-      const { ptInfo, zap, childZaps } = constructZapStructs(
+      const { ptInfo, zap, childZaps } = await constructZapStructs(
         {
           USDT: ZERO,
           DAI: amountDAI,
@@ -395,8 +392,7 @@ describe.only("zapCurveToPt", () => {
           ThreeCrv: ZERO,
           LUSD: ZERO,
         },
-        users[1].address,
-        0
+        users[1].address
       );
 
       await zapCurveToPt
@@ -421,7 +417,7 @@ describe.only("zapCurveToPt", () => {
         amountUSDC
       );
 
-      const { ptInfo, zap, childZaps } = constructZapStructs(
+      const { ptInfo, zap, childZaps } = await constructZapStructs(
         {
           USDT: ZERO,
           DAI: ZERO,
@@ -429,8 +425,7 @@ describe.only("zapCurveToPt", () => {
           ThreeCrv: ZERO,
           LUSD: ZERO,
         },
-        users[1].address,
-        0
+        users[1].address
       );
 
       await zapCurveToPt
@@ -455,7 +450,7 @@ describe.only("zapCurveToPt", () => {
         amountUSDT
       );
 
-      const { ptInfo, zap, childZaps } = constructZapStructs(
+      const { ptInfo, zap, childZaps } = await constructZapStructs(
         {
           USDT: amountUSDT,
           DAI: ZERO,
@@ -463,8 +458,7 @@ describe.only("zapCurveToPt", () => {
           ThreeCrv: ZERO,
           LUSD: ZERO,
         },
-        users[1].address,
-        0
+        users[1].address
       );
 
       await zapCurveToPt
@@ -489,7 +483,7 @@ describe.only("zapCurveToPt", () => {
         amountLUSD
       );
 
-      const { ptInfo, zap, childZaps } = constructZapStructs(
+      const { ptInfo, zap, childZaps } = await constructZapStructs(
         {
           USDT: ZERO,
           DAI: ZERO,
@@ -497,8 +491,7 @@ describe.only("zapCurveToPt", () => {
           ThreeCrv: ZERO,
           LUSD: amountLUSD,
         },
-        users[1].address,
-        0
+        users[1].address
       );
 
       await zapCurveToPt
@@ -523,7 +516,7 @@ describe.only("zapCurveToPt", () => {
         amountThreeCrv
       );
 
-      const { ptInfo, zap, childZaps } = constructZapStructs(
+      const { ptInfo, zap, childZaps } = await constructZapStructs(
         {
           USDT: ZERO,
           DAI: ZERO,
@@ -531,8 +524,7 @@ describe.only("zapCurveToPt", () => {
           ThreeCrv: amountThreeCrv,
           LUSD: ZERO,
         },
-        users[1].address,
-        0
+        users[1].address
       );
 
       await zapCurveToPt
@@ -567,7 +559,7 @@ describe.only("zapCurveToPt", () => {
         amountDAI
       );
 
-      const { ptInfo, zap, childZaps } = constructZapStructs(
+      const { ptInfo, zap, childZaps } = await constructZapStructs(
         {
           USDT: ZERO,
           DAI: amountDAI,
@@ -575,8 +567,7 @@ describe.only("zapCurveToPt", () => {
           ThreeCrv: ZERO,
           LUSD: amountLUSD,
         },
-        users[1].address,
-        0
+        users[1].address
       );
 
       await zapCurveToPt
@@ -611,7 +602,7 @@ describe.only("zapCurveToPt", () => {
         amountDAI
       );
 
-      const { ptInfo, zap, childZaps } = constructZapStructs(
+      const { ptInfo, zap, childZaps } = await constructZapStructs(
         {
           USDT: ZERO,
           DAI: amountDAI,
@@ -619,8 +610,7 @@ describe.only("zapCurveToPt", () => {
           ThreeCrv: amountThreeCrv,
           LUSD: ZERO,
         },
-        users[1].address,
-        0
+        users[1].address
       );
 
       await zapCurveToPt
@@ -685,7 +675,7 @@ describe.only("zapCurveToPt", () => {
         amountUSDT
       );
 
-      const { ptInfo, zap, childZaps } = constructZapStructs(
+      const { ptInfo, zap, childZaps } = await constructZapStructs(
         {
           USDT: amountUSDT,
           DAI: amountDAI,
@@ -693,8 +683,7 @@ describe.only("zapCurveToPt", () => {
           ThreeCrv: amountThreeCrv,
           LUSD: amountLUSD,
         },
-        users[1].address,
-        0
+        users[1].address
       );
 
       await zapCurveToPt

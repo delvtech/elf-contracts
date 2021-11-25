@@ -131,7 +131,6 @@ contract ZapCurveToPt is Authorizable {
             "!(2 >= amounts.length <= 3)"
         );
 
-        console.log(ctx[0], ctx[1], ctx[2]);
         bool zapHasAmounts = false;
         bool ctxHasAmounts = false;
         for (uint256 i = 0; i < _zap.amounts.length; i++) {
@@ -162,11 +161,11 @@ contract ZapCurveToPt is Authorizable {
             return 0;
         }
 
+        // TODO Make constant
         string memory funcSig = _zap.amounts.length == 2
             ? "add_liquidity(uint256[2],uint256)"
             : "add_liquidity(uint256[3],uint256)";
 
-        console.log(funcSig, ctx[0], ctx[1], ctx[2]);
         // It is necessary to add liquidity to the respective curve pool like this
         // due to the non-standard interface of the function in the curve contracts.
         // Not only is there two variants of fixed length array amount inputs but it is
@@ -190,6 +189,7 @@ contract ZapCurveToPt is Authorizable {
         }
 
         uint256 baseTokenAmount = _zapCurveLp(_zap, ctx);
+        console.log("Returned BaseToken Amount: %s", baseTokenAmount);
 
         ptAmount = _balancer.swap(
             IVault.SingleSwap({
@@ -209,5 +209,7 @@ contract ZapCurveToPt is Authorizable {
             _ptInfo.minPtAmount,
             _ptInfo.deadline
         );
+
+        console.log("Returned PrincipalToken Amount: %s", ptAmount);
     }
 }

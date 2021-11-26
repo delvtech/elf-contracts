@@ -2,7 +2,7 @@ import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-ethers";
 import "@typechain/hardhat";
 import "@typechain/ethers-v5";
-import "hardhat-gas-reporter";
+//import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "hardhat-tracer";
 import "tsconfig-paths/register";
@@ -74,7 +74,7 @@ const config: HardhatUserConfig = {
     hardhat: {
       forking: {
         url: "https://eth-mainnet.alchemyapi.io/v2/kwjMP-X-Vajdk1ItCfU-56Uaq1wwhamK",
-        blockNumber: 13582600,
+        blockNumber: 13583600, //13582600,
       },
       accounts: {
         accountsBalance: "100000000000000000000000", // 100000 ETH

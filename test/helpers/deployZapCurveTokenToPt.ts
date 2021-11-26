@@ -11,12 +11,13 @@ import { Tranche } from "typechain/Tranche";
 import { Vault } from "typechain/Vault";
 import { ZapCurveToPt } from "typechain/ZapCurveToPt";
 import { ZapCurveLpStruct, ZapPtInfoStruct } from "typechain/ZapTokenToPt";
-import { SwapKind } from "./batchSwap";
-import { calcSwapPrincipalPool, SwapAsset } from "./calculations";
 import { impersonate, stopImpersonating } from "./impersonate";
+import { calcBigNumberPercentage } from "./math";
 import { ONE_DAY_IN_SECONDS } from "./time";
 
 const { provider } = waffle;
+
+const DEFAULT_BALANCER_SWAP_SLIPPAGE = 0.5; // %
 
 interface PrincipalCurveRoots {
   ePyvcrvSTETH: {
@@ -160,6 +161,7 @@ type BuildZapStructsArgs<P extends PrincipalTokens> = {
   zapTrie: ZapTrie<P>;
   recipient: string;
   balancerPoolId: string;
+  slippagePercentage: number;
 } & TokenAmounts<P> &
   CurvePools<P> &
   TokenAddresses<P>;
@@ -169,34 +171,31 @@ async function estimateCurveZap({
   amounts,
 }: ZapCurveLpStruct): Promise<string> {
   const curveAbi = [
-    "function fee() view returns (uint256)",
     amounts.length === 2
       ? "function calc_token_amount(uint256[2],bool) view returns (uint256)"
       : "function calc_token_amount(uint256[3],bool) view returns (uint256)",
   ];
 
   const curveContract = new ethers.Contract(curvePool, curveAbi, provider);
-  const lpRawAmount = BigNumber.from(
+  const estimatedLpAmount = BigNumber.from(
     await curveContract.calc_token_amount(amounts, true)
   );
-  const curveFee: BigNumberish = await curveContract.fee();
 
-  const FEE_DENOMINATOR = BigNumber.from("10").pow(BigNumber.from("10"));
-  const feeAmount = lpRawAmount.mul(curveFee).div(FEE_DENOMINATOR);
-
-  return lpRawAmount.sub(feeAmount).toString();
+  return estimatedLpAmount.toString();
 }
 
 async function estimatePtZap(
   balancerVault: Vault,
   amount: BigNumberish,
-  balancerPoolId: string
+  balancerPoolId: string,
+  slippagePercentage: number
 ): Promise<string> {
   const [convergentCurvePoolAddress] = await balancerVault.getPool(
     balancerPoolId
   );
 
   const ccpAbi = [
+    "function solveTradeInvariant(uint256,uint256,uint256,bool) view returns (uint256)",
     "function expiration() view returns (uint256)",
     "function totalSupply() view returns (uint256)",
     "function unitSeconds() view returns (uint256)",
@@ -207,37 +206,57 @@ async function estimatePtZap(
     ccpAbi,
     provider
   );
-
-  const [totalSupply, expiration, tParamSeconds] = await Promise.all([
-    convergentCurvePool.totalSupply(),
-    convergentCurvePool.expiration(),
-    convergentCurvePool.unitSeconds(),
-  ] as Promise<BigNumberish>[]);
-
   const [, [xReserves, yReserves]] = await balancerVault.getPoolTokens(
     balancerPoolId
   );
 
-  const result = calcSwapPrincipalPool(
-    amount.toString(),
-    SwapKind.GIVEN_IN,
-    SwapAsset.BASE_ASSET,
-    18,
-    xReserves.toString(),
-    yReserves.toString(),
-    totalSupply.toString(),
-    tParamSeconds.toString(),
-    expiration.toString()
+  const totalSupply = await convergentCurvePool.totalSupply();
+  const estimatedPtAmount = await convergentCurvePool.solveTradeInvariant(
+    amount,
+    xReserves,
+    yReserves.add(totalSupply),
+    true
   );
 
-  return result.amountOut;
+  const slippageAmount = calcBigNumberPercentage(
+    estimatedPtAmount,
+    slippagePercentage
+  );
+
+  return estimatedPtAmount.sub(slippageAmount).toString();
 }
 
 type ZapStructs = {
   ptInfo: ZapPtInfoStruct;
   zap: ZapCurveLpStruct;
   childZaps: ZapCurveLpStruct[];
-  expectedPtAmount: BigNumberish;
+  expectedPtAmount: BigNumber;
+};
+
+const estimateZapCurveToPt = async (
+  balancerVault: Vault,
+  balancerPoolId: string,
+  zap: ZapCurveLpStruct,
+  childZaps: ZapCurveLpStruct[],
+  slippagePercentage: number
+) => {
+  for (const xZap of childZaps) {
+    const parentIdx = BigNumber.from(xZap.parentIdx).toNumber();
+    const amountString = await estimateCurveZap(xZap);
+
+    zap.amounts[parentIdx] = BigNumber.from(zap.amounts[parentIdx]).add(
+      BigNumber.from(amountString)
+    );
+  }
+
+  const estimatedBaseTokenAmount = await estimateCurveZap(zap);
+  const estimatedPrincipalTokenAmount = await estimatePtZap(
+    balancerVault,
+    BigNumber.from(estimatedBaseTokenAmount),
+    balancerPoolId,
+    slippagePercentage
+  );
+  return estimatedPrincipalTokenAmount;
 };
 
 const buildZapStructs = async <P extends PrincipalTokens>({
@@ -248,17 +267,20 @@ const buildZapStructs = async <P extends PrincipalTokens>({
   zapTrie,
   recipient,
   balancerPoolId,
+  slippagePercentage,
 }: BuildZapStructsArgs<P>): Promise<ZapStructs> => {
   const [principalToken, curveLpToken, directRootTokens, rootLpTokenRoots] =
     extractTrieLayers(zapTrie);
 
-  const zap: ZapCurveLpStruct = {
+  // Making this object simplifies immutabiltity issues with
+  // estimation
+  const zap: () => ZapCurveLpStruct = () => ({
     curvePool: pools[curveLpToken],
     lpToken: addresses[curveLpToken as TokenNames<P>],
     amounts: directRootTokens.map((r) => amounts[r]),
     roots: directRootTokens.map((r) => addresses[r]),
     parentIdx: 0, // unused
-  };
+  });
 
   const childZaps: ZapCurveLpStruct[] = directRootTokens
     .map(
@@ -279,40 +301,27 @@ const buildZapStructs = async <P extends PrincipalTokens>({
     )
     .filter((zap) => !Array.isArray(zap)) as ZapCurveLpStruct[];
 
-  for (const xZap of childZaps) {
-    const parentIdx = BigNumber.from(xZap.parentIdx).toNumber();
-    const amountString = await estimateCurveZap(xZap);
-    zap.amounts[parentIdx] = BigNumber.from(zap.amounts[parentIdx]).add(
-      BigNumber.from(amountString)
-    );
-  }
-
-  const estimatedBaseTokenAmount = await estimateCurveZap(zap);
-  const estimatedPrincipalTokenAmount = await estimatePtZap(
+  const estimatedPtAmount = await estimateZapCurveToPt(
     balancerVault,
-    BigNumber.from(estimatedBaseTokenAmount),
-    balancerPoolId
-  );
-
-  console.log("Expected BaseToken Amount: ", estimatedBaseTokenAmount);
-  console.log(
-    "Expected PrincipalToken Amount: ",
-    estimatedPrincipalTokenAmount
+    balancerPoolId,
+    zap(),
+    childZaps,
+    slippagePercentage
   );
 
   const ptInfo: ZapPtInfoStruct = {
     balancerPoolId,
     principalToken: addresses[principalToken as TokenNames<P>],
     recipient,
-    minPtAmount: 0, //BigNumber.from(estimatedPrincipalTokenAmount),
+    minPtAmount: estimatedPtAmount,
     deadline: Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS,
   };
 
   return {
     ptInfo,
-    zap,
+    zap: zap(),
     childZaps,
-    expectedPtAmount: BigNumber.from(estimatedPrincipalTokenAmount),
+    expectedPtAmount: BigNumber.from(estimatedPtAmount),
   };
 };
 
@@ -341,6 +350,7 @@ export type ZapCurveTokenFixtureConstructorFn = <P extends PrincipalTokens>(
   x: {
     zapTrie: ZapTrie<P>;
     balancerPoolId: string;
+    defaultSlippagePercentage?: number;
   } & TokenAddresses<P> &
     CurvePools<P> &
     TokenWhales<P>
@@ -417,6 +427,7 @@ export function buildZapCurveTokenFixtureConstructor<
     addresses,
     pools,
     whales,
+    defaultSlippagePercentage,
   }) {
     const tokens = (Object.entries(addresses) as [string, string][]).reduce(
       (acc, [tName, tAddress]) => {
@@ -480,6 +491,8 @@ export function buildZapCurveTokenFixtureConstructor<
         pools,
         recipient,
         balancerPoolId,
+        slippagePercentage:
+          defaultSlippagePercentage ?? DEFAULT_BALANCER_SWAP_SLIPPAGE,
       });
 
     return {

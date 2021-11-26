@@ -1,4 +1,5 @@
-import { Signer } from "ethers";
+import { expect } from "chai";
+import { BigNumber, Signer } from "ethers";
 import { formatEther } from "ethers/lib/utils";
 import { ethers, waffle } from "hardhat";
 import { Vault } from "typechain/Vault";
@@ -9,15 +10,16 @@ import {
   ZapCurveTokenFixture,
   ZapCurveTokenFixtureConstructorFn,
 } from "./helpers/deployZapCurveTokenToPt";
+import { calcBigNumberPercentage } from "./helpers/math";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 
 const { provider } = waffle;
 
+const ptOffsetTolerancePercentage = 0.1;
 describe.only("zapCurveToPt", () => {
   let users: { user: Signer; address: string }[];
 
   let zapCurveToPt: ZapCurveToPt;
-  let balancerVault: Vault;
   let constructZapFixture: ZapCurveTokenFixtureConstructorFn;
 
   before(async () => {
@@ -34,9 +36,7 @@ describe.only("zapCurveToPt", () => {
       })
     );
 
-    ({ zapCurveToPt, balancerVault, constructZapFixture } = await deploy(
-      users[1].address
-    ));
+    ({ zapCurveToPt, constructZapFixture } = await deploy(users[1].address));
   });
 
   after(async () => {
@@ -77,10 +77,11 @@ describe.only("zapCurveToPt", () => {
           whales: {
             stETH: "0x06920C9fC643De77B99cB7670A944AD31eaAA260",
           },
+          defaultSlippagePercentage: 0.2,
         }));
     });
 
-    it.only("should swap ETH for eP:yvcrvSTETH", async () => {
+    it("should swap ETH for eP:yvcrvSTETH", async () => {
       const { ptInfo, zap, childZaps, expectedPtAmount } =
         await constructZapStructs(
           {
@@ -94,9 +95,27 @@ describe.only("zapCurveToPt", () => {
         .zapCurveIn(ptInfo, zap, childZaps, {
           value: ethers.utils.parseEther("100"),
         });
-
       const ptBalance = await tokens.ePyvcrvSTETH.balanceOf(users[1].address);
-      console.log(formatEther(ptBalance));
+
+      console.log(
+        "Expected PrincipalToken Amount:",
+        formatEther(expectedPtAmount)
+      );
+      console.log("Returned PrincipalToken Amount:", formatEther(ptBalance));
+      const diff = ptBalance.sub(expectedPtAmount);
+      console.log("Diff expected and returned:    ", formatEther(diff));
+
+      const allowedOffset = calcBigNumberPercentage(
+        ptBalance,
+        ptOffsetTolerancePercentage
+      );
+      console.log(
+        "Allowed Offset:                ",
+        formatEther(allowedOffset)
+      );
+
+      expect(diff.gt(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap stETH for eP:yvcrvSTETH", async () => {
@@ -110,20 +129,40 @@ describe.only("zapCurveToPt", () => {
         .connect(users[1].user)
         .approve(zapCurveToPt.address, ONE_ETH);
 
-      const { ptInfo, zap, childZaps } = await constructZapStructs(
-        {
-          ETH: ZERO,
-          stETH: ONE_ETH,
-        },
-        users[1].address
-      );
+      const { ptInfo, zap, childZaps, expectedPtAmount } =
+        await constructZapStructs(
+          {
+            ETH: ZERO,
+            stETH: ONE_ETH,
+          },
+          users[1].address
+        );
 
       await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps);
 
       const ptBalance = await tokens.ePyvcrvSTETH.balanceOf(users[1].address);
-      console.log(formatEther(ptBalance));
+
+      console.log(
+        "Expected PrincipalToken Amount:",
+        formatEther(expectedPtAmount)
+      );
+      console.log("Returned PrincipalToken Amount:", formatEther(ptBalance));
+      const diff = ptBalance.sub(expectedPtAmount);
+      console.log("Diff expected and returned:    ", formatEther(diff));
+
+      const allowedOffset = calcBigNumberPercentage(
+        ptBalance,
+        ptOffsetTolerancePercentage
+      );
+      console.log(
+        "Allowed Offset:                ",
+        formatEther(allowedOffset)
+      );
+
+      expect(diff.gt(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap stETH and ETH for eP:yvcrvSTETH", async () => {
@@ -137,20 +176,40 @@ describe.only("zapCurveToPt", () => {
         .connect(users[1].user)
         .approve(zapCurveToPt.address, ONE_ETH);
 
-      const { ptInfo, zap, childZaps } = await constructZapStructs(
-        {
-          ETH: ONE_ETH,
-          stETH: ONE_ETH,
-        },
-        users[1].address
-      );
+      const { ptInfo, zap, childZaps, expectedPtAmount } =
+        await constructZapStructs(
+          {
+            ETH: ONE_ETH,
+            stETH: ONE_ETH,
+          },
+          users[1].address
+        );
 
       await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps, { value: ONE_ETH });
 
       const ptBalance = await tokens.ePyvcrvSTETH.balanceOf(users[1].address);
-      console.log(formatEther(ptBalance));
+
+      console.log(
+        "Expected PrincipalToken Amount:",
+        formatEther(expectedPtAmount)
+      );
+      console.log("Returned PrincipalToken Amount:", formatEther(ptBalance));
+      const diff = ptBalance.sub(expectedPtAmount);
+      console.log("Diff expected and returned:    ", formatEther(diff));
+
+      const allowedOffset = calcBigNumberPercentage(
+        ptBalance,
+        ptOffsetTolerancePercentage
+      );
+      console.log(
+        "Allowed Offset:                ",
+        formatEther(allowedOffset)
+      );
+
+      expect(diff.gt(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
   });
 
@@ -184,11 +243,12 @@ describe.only("zapCurveToPt", () => {
             WBTC: "0xE3DD3914aB28bB552d41B8dFE607355DE4c37A51",
             WETH: "0x2fEb1512183545f48f6b9C5b4EbfCaF49CfCa6F3",
           },
+          defaultSlippagePercentage: 1,
         }));
     });
 
     it("should swap WBTC for ePyvcrv3crypto", async () => {
-      const amountWBTC = ethers.utils.parseUnits("1", 8);
+      const amountWBTC = ethers.utils.parseUnits("0.2", 8);
 
       await stealFromWhale({
         recipient: users[1].address,
@@ -201,25 +261,45 @@ describe.only("zapCurveToPt", () => {
         amountWBTC
       );
 
-      const { ptInfo, zap, childZaps } = await constructZapStructs(
-        {
-          USDT: ZERO,
-          WBTC: amountWBTC,
-          WETH: ZERO,
-        },
-        users[1].address
-      );
+      const { ptInfo, zap, childZaps, expectedPtAmount } =
+        await constructZapStructs(
+          {
+            USDT: ZERO,
+            WBTC: amountWBTC,
+            WETH: ZERO,
+          },
+          users[1].address
+        );
 
       await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps);
 
       const ptBalance = await tokens.ePyvcrv3crypto.balanceOf(users[1].address);
-      console.log(formatEther(ptBalance));
+
+      console.log(
+        "Expected PrincipalToken Amount:",
+        formatEther(expectedPtAmount)
+      );
+      console.log("Returned PrincipalToken Amount:", formatEther(ptBalance));
+      const diff = ptBalance.sub(expectedPtAmount);
+      console.log("Diff expected and returned:    ", formatEther(diff));
+
+      const allowedOffset = calcBigNumberPercentage(
+        ptBalance,
+        ptOffsetTolerancePercentage
+      );
+      console.log(
+        "Allowed Offset:                ",
+        formatEther(allowedOffset)
+      );
+
+      expect(diff.gt(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap USDT for ePyvcrv3crypto", async () => {
-      const amountUSDT = ethers.utils.parseUnits("60000", 6);
+      const amountUSDT = ethers.utils.parseUnits("5000", 6);
 
       await stealFromWhale({
         recipient: users[1].address,
@@ -232,25 +312,45 @@ describe.only("zapCurveToPt", () => {
         amountUSDT
       );
 
-      const { ptInfo, zap, childZaps } = await constructZapStructs(
-        {
-          USDT: amountUSDT,
-          WBTC: ZERO,
-          WETH: ZERO,
-        },
-        users[1].address
-      );
+      const { ptInfo, zap, childZaps, expectedPtAmount } =
+        await constructZapStructs(
+          {
+            USDT: amountUSDT,
+            WBTC: ZERO,
+            WETH: ZERO,
+          },
+          users[1].address
+        );
 
       await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps);
 
       const ptBalance = await tokens.ePyvcrv3crypto.balanceOf(users[1].address);
-      console.log(formatEther(ptBalance));
+
+      console.log(
+        "Expected PrincipalToken Amount:",
+        formatEther(expectedPtAmount)
+      );
+      console.log("Returned PrincipalToken Amount:", formatEther(ptBalance));
+      const diff = ptBalance.sub(expectedPtAmount);
+      console.log("Diff expected and returned:    ", formatEther(diff));
+
+      const allowedOffset = calcBigNumberPercentage(
+        ptBalance,
+        ptOffsetTolerancePercentage
+      );
+      console.log(
+        "Allowed Offset:                ",
+        formatEther(allowedOffset)
+      );
+
+      expect(diff.gt(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap WETH for ePyvcrv3crypto", async () => {
-      const amountWETH = ethers.utils.parseUnits("15", 18);
+      const amountWETH = ethers.utils.parseUnits("2", 18);
 
       await stealFromWhale({
         recipient: users[1].address,
@@ -263,21 +363,41 @@ describe.only("zapCurveToPt", () => {
         amountWETH
       );
 
-      const { ptInfo, zap, childZaps } = await constructZapStructs(
-        {
-          USDT: ZERO,
-          WBTC: ZERO,
-          WETH: amountWETH,
-        },
-        users[1].address
-      );
+      const { ptInfo, zap, childZaps, expectedPtAmount } =
+        await constructZapStructs(
+          {
+            USDT: ZERO,
+            WBTC: ZERO,
+            WETH: amountWETH,
+          },
+          users[1].address
+        );
 
       await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps);
 
       const ptBalance = await tokens.ePyvcrv3crypto.balanceOf(users[1].address);
-      console.log(formatEther(ptBalance));
+
+      console.log(
+        "Expected PrincipalToken Amount:",
+        formatEther(expectedPtAmount)
+      );
+      console.log("Returned PrincipalToken Amount:", formatEther(ptBalance));
+      const diff = ptBalance.sub(expectedPtAmount);
+      console.log("Diff expected and returned:    ", formatEther(diff));
+
+      const allowedOffset = calcBigNumberPercentage(
+        ptBalance,
+        ptOffsetTolerancePercentage
+      );
+      console.log(
+        "Allowed Offset:                ",
+        formatEther(allowedOffset)
+      );
+
+      expect(diff.gt(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap WBTC,USDT & WETH for ePyvcrv3crypto", async () => {
@@ -314,21 +434,41 @@ describe.only("zapCurveToPt", () => {
         amountWETH
       );
 
-      const { ptInfo, zap, childZaps } = await constructZapStructs(
-        {
-          USDT: amountUSDT,
-          WBTC: amountWBTC,
-          WETH: amountWETH,
-        },
-        users[1].address
-      );
+      const { ptInfo, zap, childZaps, expectedPtAmount } =
+        await constructZapStructs(
+          {
+            USDT: amountUSDT,
+            WBTC: amountWBTC,
+            WETH: amountWETH,
+          },
+          users[1].address
+        );
 
       await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps);
 
       const ptBalance = await tokens.ePyvcrv3crypto.balanceOf(users[1].address);
-      console.log(formatEther(ptBalance));
+
+      console.log(
+        "Expected PrincipalToken Amount:",
+        formatEther(expectedPtAmount)
+      );
+      console.log("Returned PrincipalToken Amount:", formatEther(ptBalance));
+      const diff = ptBalance.sub(expectedPtAmount);
+      console.log("Diff expected and returned:    ", formatEther(diff));
+
+      const allowedOffset = calcBigNumberPercentage(
+        ptBalance,
+        ptOffsetTolerancePercentage
+      );
+      console.log(
+        "Allowed Offset:                ",
+        formatEther(allowedOffset)
+      );
+
+      expect(diff.gt(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
   });
 
@@ -367,6 +507,7 @@ describe.only("zapCurveToPt", () => {
             LUSD: "0xE05fD1304C1CfE19dcc6AAb0767848CC4A8f54aa",
             ThreeCrv: "0x0B096d1f0ba7Ef2b3C7ecB8d4a5848043CdeBD50",
           },
+          defaultSlippagePercentage: 0.075,
         }));
     });
 
@@ -384,23 +525,43 @@ describe.only("zapCurveToPt", () => {
         amountDAI
       );
 
-      const { ptInfo, zap, childZaps } = await constructZapStructs(
-        {
-          USDT: ZERO,
-          DAI: amountDAI,
-          USDC: ZERO,
-          ThreeCrv: ZERO,
-          LUSD: ZERO,
-        },
-        users[1].address
-      );
+      const { ptInfo, zap, childZaps, expectedPtAmount } =
+        await constructZapStructs(
+          {
+            USDT: ZERO,
+            DAI: amountDAI,
+            USDC: ZERO,
+            ThreeCrv: ZERO,
+            LUSD: ZERO,
+          },
+          users[1].address
+        );
 
       await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps);
 
       const ptBalance = await tokens.ePyvCurveLUSD.balanceOf(users[1].address);
-      console.log(formatEther(ptBalance));
+
+      console.log(
+        "Expected PrincipalToken Amount:",
+        formatEther(expectedPtAmount)
+      );
+      console.log("Returned PrincipalToken Amount:", formatEther(ptBalance));
+      const diff = ptBalance.sub(expectedPtAmount);
+      console.log("Diff expected and returned:    ", formatEther(diff));
+
+      const allowedOffset = calcBigNumberPercentage(
+        ptBalance,
+        ptOffsetTolerancePercentage
+      );
+      console.log(
+        "Allowed Offset:                ",
+        formatEther(allowedOffset)
+      );
+
+      expect(diff.gt(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap USDC for ePyvcrv3crypto", async () => {
@@ -417,23 +578,43 @@ describe.only("zapCurveToPt", () => {
         amountUSDC
       );
 
-      const { ptInfo, zap, childZaps } = await constructZapStructs(
-        {
-          USDT: ZERO,
-          DAI: ZERO,
-          USDC: amountUSDC,
-          ThreeCrv: ZERO,
-          LUSD: ZERO,
-        },
-        users[1].address
-      );
+      const { ptInfo, zap, childZaps, expectedPtAmount } =
+        await constructZapStructs(
+          {
+            USDT: ZERO,
+            DAI: ZERO,
+            USDC: amountUSDC,
+            ThreeCrv: ZERO,
+            LUSD: ZERO,
+          },
+          users[1].address
+        );
 
       await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps);
 
       const ptBalance = await tokens.ePyvCurveLUSD.balanceOf(users[1].address);
-      console.log(formatEther(ptBalance));
+
+      console.log(
+        "Expected PrincipalToken Amount:",
+        formatEther(expectedPtAmount)
+      );
+      console.log("Returned PrincipalToken Amount:", formatEther(ptBalance));
+      const diff = ptBalance.sub(expectedPtAmount);
+      console.log("Diff expected and returned:    ", formatEther(diff));
+
+      const allowedOffset = calcBigNumberPercentage(
+        ptBalance,
+        ptOffsetTolerancePercentage
+      );
+      console.log(
+        "Allowed Offset:                ",
+        formatEther(allowedOffset)
+      );
+
+      expect(diff.gt(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap USDT for ePyvcrv3crypto", async () => {
@@ -450,23 +631,43 @@ describe.only("zapCurveToPt", () => {
         amountUSDT
       );
 
-      const { ptInfo, zap, childZaps } = await constructZapStructs(
-        {
-          USDT: amountUSDT,
-          DAI: ZERO,
-          USDC: ZERO,
-          ThreeCrv: ZERO,
-          LUSD: ZERO,
-        },
-        users[1].address
-      );
+      const { ptInfo, zap, childZaps, expectedPtAmount } =
+        await constructZapStructs(
+          {
+            USDT: amountUSDT,
+            DAI: ZERO,
+            USDC: ZERO,
+            ThreeCrv: ZERO,
+            LUSD: ZERO,
+          },
+          users[1].address
+        );
 
       await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps);
 
       const ptBalance = await tokens.ePyvCurveLUSD.balanceOf(users[1].address);
-      console.log(formatEther(ptBalance));
+
+      console.log(
+        "Expected PrincipalToken Amount:",
+        formatEther(expectedPtAmount)
+      );
+      console.log("Returned PrincipalToken Amount:", formatEther(ptBalance));
+      const diff = ptBalance.sub(expectedPtAmount);
+      console.log("Diff expected and returned:    ", formatEther(diff));
+
+      const allowedOffset = calcBigNumberPercentage(
+        ptBalance,
+        ptOffsetTolerancePercentage
+      );
+      console.log(
+        "Allowed Offset:                ",
+        formatEther(allowedOffset)
+      );
+
+      expect(diff.gt(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap LUSD for ePyvcrv3crypto", async () => {
@@ -483,23 +684,43 @@ describe.only("zapCurveToPt", () => {
         amountLUSD
       );
 
-      const { ptInfo, zap, childZaps } = await constructZapStructs(
-        {
-          USDT: ZERO,
-          DAI: ZERO,
-          USDC: ZERO,
-          ThreeCrv: ZERO,
-          LUSD: amountLUSD,
-        },
-        users[1].address
-      );
+      const { ptInfo, zap, childZaps, expectedPtAmount } =
+        await constructZapStructs(
+          {
+            USDT: ZERO,
+            DAI: ZERO,
+            USDC: ZERO,
+            ThreeCrv: ZERO,
+            LUSD: amountLUSD,
+          },
+          users[1].address
+        );
 
       await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps);
 
       const ptBalance = await tokens.ePyvCurveLUSD.balanceOf(users[1].address);
-      console.log(formatEther(ptBalance));
+
+      console.log(
+        "Expected PrincipalToken Amount:",
+        formatEther(expectedPtAmount)
+      );
+      console.log("Returned PrincipalToken Amount:", formatEther(ptBalance));
+      const diff = ptBalance.sub(expectedPtAmount);
+      console.log("Diff expected and returned:    ", formatEther(diff));
+
+      const allowedOffset = calcBigNumberPercentage(
+        ptBalance,
+        ptOffsetTolerancePercentage
+      );
+      console.log(
+        "Allowed Offset:                ",
+        formatEther(allowedOffset)
+      );
+
+      expect(diff.gt(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap ThreeCrv for ePyvcrv3crypto", async () => {
@@ -516,23 +737,43 @@ describe.only("zapCurveToPt", () => {
         amountThreeCrv
       );
 
-      const { ptInfo, zap, childZaps } = await constructZapStructs(
-        {
-          USDT: ZERO,
-          DAI: ZERO,
-          USDC: ZERO,
-          ThreeCrv: amountThreeCrv,
-          LUSD: ZERO,
-        },
-        users[1].address
-      );
+      const { ptInfo, zap, childZaps, expectedPtAmount } =
+        await constructZapStructs(
+          {
+            USDT: ZERO,
+            DAI: ZERO,
+            USDC: ZERO,
+            ThreeCrv: amountThreeCrv,
+            LUSD: ZERO,
+          },
+          users[1].address
+        );
 
       await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps);
 
       const ptBalance = await tokens.ePyvCurveLUSD.balanceOf(users[1].address);
-      console.log(formatEther(ptBalance));
+
+      console.log(
+        "Expected PrincipalToken Amount:",
+        formatEther(expectedPtAmount)
+      );
+      console.log("Returned PrincipalToken Amount:", formatEther(ptBalance));
+      const diff = ptBalance.sub(expectedPtAmount);
+      console.log("Diff expected and returned:    ", formatEther(diff));
+
+      const allowedOffset = calcBigNumberPercentage(
+        ptBalance,
+        ptOffsetTolerancePercentage
+      );
+      console.log(
+        "Allowed Offset:                ",
+        formatEther(allowedOffset)
+      );
+
+      expect(diff.gt(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap LUSD and DAI for ePyvcrv3crypto", async () => {
@@ -559,23 +800,43 @@ describe.only("zapCurveToPt", () => {
         amountDAI
       );
 
-      const { ptInfo, zap, childZaps } = await constructZapStructs(
-        {
-          USDT: ZERO,
-          DAI: amountDAI,
-          USDC: ZERO,
-          ThreeCrv: ZERO,
-          LUSD: amountLUSD,
-        },
-        users[1].address
-      );
+      const { ptInfo, zap, childZaps, expectedPtAmount } =
+        await constructZapStructs(
+          {
+            USDT: ZERO,
+            DAI: amountDAI,
+            USDC: ZERO,
+            ThreeCrv: ZERO,
+            LUSD: amountLUSD,
+          },
+          users[1].address
+        );
 
       await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps);
 
       const ptBalance = await tokens.ePyvCurveLUSD.balanceOf(users[1].address);
-      console.log(formatEther(ptBalance));
+
+      console.log(
+        "Expected PrincipalToken Amount:",
+        formatEther(expectedPtAmount)
+      );
+      console.log("Returned PrincipalToken Amount:", formatEther(ptBalance));
+      const diff = ptBalance.sub(expectedPtAmount);
+      console.log("Diff expected and returned:    ", formatEther(diff));
+
+      const allowedOffset = calcBigNumberPercentage(
+        ptBalance,
+        ptOffsetTolerancePercentage
+      );
+      console.log(
+        "Allowed Offset:                ",
+        formatEther(allowedOffset)
+      );
+
+      expect(diff.gt(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap ThreeCrv and DAI for ePyvcrv3crypto", async () => {
@@ -602,23 +863,43 @@ describe.only("zapCurveToPt", () => {
         amountDAI
       );
 
-      const { ptInfo, zap, childZaps } = await constructZapStructs(
-        {
-          USDT: ZERO,
-          DAI: amountDAI,
-          USDC: ZERO,
-          ThreeCrv: amountThreeCrv,
-          LUSD: ZERO,
-        },
-        users[1].address
-      );
+      const { ptInfo, zap, childZaps, expectedPtAmount } =
+        await constructZapStructs(
+          {
+            USDT: ZERO,
+            DAI: amountDAI,
+            USDC: ZERO,
+            ThreeCrv: amountThreeCrv,
+            LUSD: ZERO,
+          },
+          users[1].address
+        );
 
       await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps);
 
       const ptBalance = await tokens.ePyvCurveLUSD.balanceOf(users[1].address);
-      console.log(formatEther(ptBalance));
+
+      console.log(
+        "Expected PrincipalToken Amount:",
+        formatEther(expectedPtAmount)
+      );
+      console.log("Returned PrincipalToken Amount:", formatEther(ptBalance));
+      const diff = ptBalance.sub(expectedPtAmount);
+      console.log("Diff expected and returned:    ", formatEther(diff));
+
+      const allowedOffset = calcBigNumberPercentage(
+        ptBalance,
+        ptOffsetTolerancePercentage
+      );
+      console.log(
+        "Allowed Offset:                ",
+        formatEther(allowedOffset)
+      );
+
+      expect(diff.gt(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap LUSD, DAI, USDC, USDT & ThreeCrv for ePyvcrv3crypto", async () => {
@@ -675,23 +956,43 @@ describe.only("zapCurveToPt", () => {
         amountUSDT
       );
 
-      const { ptInfo, zap, childZaps } = await constructZapStructs(
-        {
-          USDT: amountUSDT,
-          DAI: amountDAI,
-          USDC: amountUSDC,
-          ThreeCrv: amountThreeCrv,
-          LUSD: amountLUSD,
-        },
-        users[1].address
-      );
+      const { ptInfo, zap, childZaps, expectedPtAmount } =
+        await constructZapStructs(
+          {
+            USDT: amountUSDT,
+            DAI: amountDAI,
+            USDC: amountUSDC,
+            ThreeCrv: amountThreeCrv,
+            LUSD: amountLUSD,
+          },
+          users[1].address
+        );
 
       await zapCurveToPt
         .connect(users[1].user)
         .zapCurveIn(ptInfo, zap, childZaps);
 
       const ptBalance = await tokens.ePyvCurveLUSD.balanceOf(users[1].address);
-      console.log(formatEther(ptBalance));
+
+      console.log(
+        "Expected PrincipalToken Amount:",
+        formatEther(expectedPtAmount)
+      );
+      console.log("Returned PrincipalToken Amount:", formatEther(ptBalance));
+      const diff = ptBalance.sub(expectedPtAmount);
+      console.log("Diff expected and returned:    ", formatEther(diff));
+
+      const allowedOffset = calcBigNumberPercentage(
+        ptBalance,
+        ptOffsetTolerancePercentage
+      );
+      console.log(
+        "Allowed Offset:                ",
+        formatEther(allowedOffset)
+      );
+
+      expect(diff.gt(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
   });
 });

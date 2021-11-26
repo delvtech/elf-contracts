@@ -133,7 +133,7 @@ contract ZapCurveToPt is Authorizable {
 
         bool zapHasAmounts = false;
         bool ctxHasAmounts = false;
-        for (uint256 i = 0; i < _zap.amounts.length; i++) {
+        for (uint8 i = 0; i < _zap.amounts.length; i++) {
             // Must check we do not unintentionally send ETH
             if (_zap.roots[i] == _ETH_CONSTANT)
                 require(msg.value == _zap.amounts[i], "incorrect value");
@@ -152,6 +152,7 @@ contract ZapCurveToPt is Authorizable {
                         address(this),
                         _zap.amounts[i]
                     );
+
                     ctx[i] = IERC20(_zap.roots[i]).balanceOf(address(this));
                 }
             }
@@ -185,11 +186,11 @@ contract ZapCurveToPt is Authorizable {
     ) external payable reentrancyGuard notFrozen returns (uint256 ptAmount) {
         uint256[3] memory ctx;
         for (uint256 i = 0; i < _childZaps.length; i++) {
-            ctx[_childZaps[i].parentIdx] += _zapCurveLp(_childZaps[i]);
+            uint256 _amount = _zapCurveLp(_childZaps[i]);
+            ctx[_childZaps[i].parentIdx] += _amount;
         }
 
         uint256 baseTokenAmount = _zapCurveLp(_zap, ctx);
-        console.log("Returned BaseToken Amount: %s", baseTokenAmount);
 
         ptAmount = _balancer.swap(
             IVault.SingleSwap({
@@ -209,7 +210,11 @@ contract ZapCurveToPt is Authorizable {
             _ptInfo.minPtAmount,
             _ptInfo.deadline
         );
-
-        console.log("Returned PrincipalToken Amount: %s", ptAmount);
     }
+
+    function estimateZapCurveIn(
+        ZapPtInfo memory _ptInfo,
+        ZapCurveLp memory _zap,
+        ZapCurveLp[] memory _childZaps
+    ) public view returns (uint256 ptAmount) {}
 }

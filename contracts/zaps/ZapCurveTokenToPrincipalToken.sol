@@ -59,6 +59,11 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
     address internal constant _ETH_CONSTANT =
         address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
+    bytes4 internal constant addLiquidityTwo =
+        bytes4(keccak256(bytes("add_liquidity(uint256[2],uint256)")));
+    bytes4 internal constant addLiquidityThree =
+        bytes4(keccak256(bytes("add_liquidity(uint256[3],uint256)")));
+
     IVault internal immutable _balancer;
 
     constructor(IVault __balancer) Authorizable() {
@@ -161,18 +166,20 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         if (!zapHasAmounts && !ctxHasAmounts) {
             return 0;
         }
-
-        // TODO Make constant
-        string memory funcSig = _zap.amounts.length == 2
-            ? "add_liquidity(uint256[2],uint256)"
-            : "add_liquidity(uint256[3],uint256)";
-
         // It is necessary to add liquidity to the respective curve pool like this
         // due to the non-standard interface of the function in the curve contracts.
         // Not only is there two variants of fixed length array amount inputs but it is
         // often inconsistent whether return values exist or not
         address(_zap.curvePool).functionCallWithValue(
-            abi.encodeWithSelector(bytes4(keccak256(bytes(funcSig))), ctx, 0),
+            abi.encodeWithSelector(
+                (
+                    _zap.amounts.length == 2
+                        ? addLiquidityTwo
+                        : addLiquidityThree
+                ),
+                ctx,
+                0
+            ),
             msg.value
         );
 
@@ -185,7 +192,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         ZapCurveLp[] memory _childZaps
     ) external payable reentrancyGuard notFrozen returns (uint256 ptAmount) {
         uint256[3] memory ctx;
-        for (uint256 i = 0; i < _childZaps.length; i++) {
+        for (uint8 i = 0; i < _childZaps.length; i++) {
             uint256 _amount = _zapCurveLp(_childZaps[i]);
             ctx[_childZaps[i].parentIdx] += _amount;
         }
@@ -211,10 +218,4 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
             _ptInfo.deadline
         );
     }
-
-    function estimateZapCurveIn(
-        ZapPtInfo memory _ptInfo,
-        ZapCurveLp memory _zap,
-        ZapCurveLp[] memory _childZaps
-    ) public view returns (uint256 ptAmount) {}
 }

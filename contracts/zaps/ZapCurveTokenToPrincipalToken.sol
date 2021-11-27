@@ -50,7 +50,7 @@ interface IVault {
         returns (address, PoolSpecialization);
 }
 
-contract ZapCurveToPt is Authorizable {
+contract ZapCurveTokenToPrincipalToken is Authorizable {
     using SafeERC20 for IERC20;
     using Address for address;
 

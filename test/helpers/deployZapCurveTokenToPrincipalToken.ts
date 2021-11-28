@@ -10,8 +10,9 @@ import { Tranche } from "typechain/Tranche";
 import { Vault } from "typechain/Vault";
 import {
   ZapCurveTokenToPrincipalToken,
-  ZapCurveLpStruct,
+  ZapCurveLpInStruct,
   ZapPtInfoStruct,
+  ZapCurveLpOutStruct,
 } from "typechain/ZapCurveTokenToPrincipalToken";
 import { ZERO, _ETH_CONSTANT } from "./constants";
 import { impersonate, stopImpersonating } from "./impersonate";
@@ -63,23 +64,12 @@ type RootToken<K extends RootTokenKind> = {
       | ThreeRootTokens<RootTokenKind.Basic>
     ));
 
-export type ConstructZapInputs = (
-  trie: PrincipalTokenCurveTrie,
-  amounts: { [tokenName in string]: BigNumber }
-) => Promise<{
-  ptInfo: ZapPtInfoStruct;
-  zap: ZapCurveLpStruct;
-  childZaps: ZapCurveLpStruct[];
-  expectedPrincipalTokenAmount: BigNumber;
-}>;
-
 export async function deploy(user: { user: Signer; address: string }): Promise<{
   zapCurveTokenToPrincipalToken: ZapCurveTokenToPrincipalToken;
   balancerVault: Vault;
   ePyvcrvSTETH: PrincipalTokenCurveTrie;
   ePyvcrv3crypto: PrincipalTokenCurveTrie;
   ePyvCurveLUSD: PrincipalTokenCurveTrie;
-  constructZapInputs: ConstructZapInputs;
 }> {
   const [authSigner] = await ethers.getSigners();
 
@@ -263,12 +253,25 @@ export async function deploy(user: { user: Signer; address: string }): Promise<{
   ].reduce(
     ({ tokens, spenders }, trie) => {
       const {
+        token: { address: principalTokenAddress },
+      } = trie;
+      const {
         token: { address: baseTokenAddress },
         pool: baseTokenPool,
         roots: baseTokenRoots,
       } = trie.baseToken;
-      tokens = [...tokens, baseTokenAddress];
-      spenders = [...spenders, balancerVault.address];
+      tokens = [
+        ...tokens,
+        baseTokenAddress,
+        principalTokenAddress,
+        baseTokenAddress,
+      ];
+      spenders = [
+        ...spenders,
+        balancerVault.address,
+        balancerVault.address,
+        baseTokenPool,
+      ];
 
       baseTokenRoots.map((root) => {
         if (root.name === "ETH") return;
@@ -344,86 +347,32 @@ export async function deploy(user: { user: Signer; address: string }): Promise<{
       const whaleSigner = await impersonate(whaleAddress);
       await token.connect(whaleSigner).transfer(user.address, whaleBalance);
       await stopImpersonating(whaleAddress);
+
+      // enable approvals on root token for zapping in
       await token
         .connect(user.user)
         .approve(zapCurveTokenToPrincipalToken.address, whaleBalance);
     }),
-  ]);
+    ...[ePyvcrv3crypto, ePyvcrvSTETH, ePyvCurveLUSD].map(
+      async (trie) =>
+        await trie.token
+          .connect(user.user)
+          .approve(
+            zapCurveTokenToPrincipalToken.address,
+            ethers.constants.MaxUint256
+          )
+    ),
+  ] as Promise<any>[]);
 
-  const constructZapInputs: ConstructZapInputs = async (trie, amounts) => {
-    const rootNames = trie.baseToken.roots
-      .map((root) => [
-        root.name,
-        ...(root.kind === RootTokenKind.Basic
-          ? []
-          : root.roots.map((nestedRoot) => nestedRoot.name)),
-      ])
-      .flat();
-
-    for (const n of Object.keys(amounts)) {
-      if (!rootNames.includes(n)) {
-        throw new Error(`Token ${n} does not exist in ${trie.name} trie`);
-      }
-    }
-
-    const zap: () => ZapCurveLpStruct = () => ({
-      curvePool: trie.baseToken.pool,
-      lpToken: trie.baseToken.token.address,
-      amounts: trie.baseToken.roots.map((root) =>
-        BigNumber.isBigNumber(amounts[root.name]) ? amounts[root.name] : ZERO
-      ),
-      roots: trie.baseToken.roots.map((root) => root.token.address),
-      parentIdx: 0,
-    });
-
-    const childZaps: ZapCurveLpStruct[] = trie.baseToken.roots
-      .map((root, idx) => {
-        if (root.kind !== RootTokenKind.LpToken) {
-          return {} as ZapCurveLpStruct;
-        } else {
-          return {
-            curvePool: root.pool,
-            lpToken: root.token.address,
-            amounts: root.roots.map((r) =>
-              BigNumber.isBigNumber(amounts[r.name]) ? amounts[r.name] : ZERO
-            ),
-            roots: root.roots.map((r) => r.token.address),
-            parentIdx: idx,
-          };
-        }
-      })
-      .filter((zap) => Object.keys(zap).length !== 0);
-
-    const ptInfo: ZapPtInfoStruct = {
-      balancerPoolId: trie.balancerPoolId,
-      principalToken: trie.token.address,
-      recipient: user.address,
-      minPtAmount: 0,
-      deadline: Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS,
-    };
-
-    const expectedPrincipalTokenAmount = await estimateZapPrincipalTokens(
-      trie,
-      balancerVault,
-      zap(),
-      childZaps
-    );
-    return {
-      zap: zap(),
-      childZaps,
-      ptInfo,
-      expectedPrincipalTokenAmount,
-    };
-  };
   return {
     zapCurveTokenToPrincipalToken,
     balancerVault,
-    constructZapInputs,
     ePyvcrvSTETH,
     ePyvcrv3crypto,
     ePyvCurveLUSD,
   };
 }
+
 const buildCurvePoolContract = (address: string, numRoots: number) => {
   return new ethers.Contract(
     address,
@@ -436,11 +385,11 @@ const buildCurvePoolContract = (address: string, numRoots: number) => {
   );
 };
 
-async function estimateZapPrincipalTokens(
+async function estimateZapIn(
   trie: PrincipalTokenCurveTrie,
   balancerVault: Vault,
-  zap: ZapCurveLpStruct,
-  childZaps: ZapCurveLpStruct[]
+  zap: ZapCurveLpInStruct,
+  childZaps: ZapCurveLpInStruct[]
 ): Promise<BigNumber> {
   for (const childZap of childZaps) {
     const parentIdx = BigNumber.from(childZap.parentIdx).toNumber();
@@ -488,4 +437,117 @@ async function estimateZapPrincipalTokens(
   );
 
   return estimatedPtAmount.sub(slippageAmount);
+}
+
+export async function constructZapInArgs(
+  trie: PrincipalTokenCurveTrie,
+  amounts: { [tokenName in string]: BigNumber },
+  balancerVault: Vault,
+  recipient: string
+): Promise<{
+  ptInfo: ZapPtInfoStruct;
+  zap: ZapCurveLpInStruct;
+  childZaps: ZapCurveLpInStruct[];
+  expectedPrincipalTokenAmount: BigNumber;
+}> {
+  const rootNames = trie.baseToken.roots
+    .map((root) => [
+      root.name,
+      ...(root.kind === RootTokenKind.Basic
+        ? []
+        : root.roots.map((nestedRoot) => nestedRoot.name)),
+    ])
+    .flat();
+
+  for (const n of Object.keys(amounts)) {
+    if (!rootNames.includes(n)) {
+      throw new Error(`Token ${n} does not exist in ${trie.name} trie`);
+    }
+  }
+
+  const zap: () => ZapCurveLpInStruct = () => ({
+    curvePool: trie.baseToken.pool,
+    lpToken: trie.baseToken.token.address,
+    amounts: trie.baseToken.roots.map((root) =>
+      BigNumber.isBigNumber(amounts[root.name]) ? amounts[root.name] : ZERO
+    ),
+    roots: trie.baseToken.roots.map((root) => root.token.address),
+    parentIdx: 0,
+  });
+
+  const childZaps: ZapCurveLpInStruct[] = trie.baseToken.roots
+    .map((root, idx) => {
+      if (root.kind !== RootTokenKind.LpToken) {
+        return {} as ZapCurveLpInStruct;
+      } else {
+        return {
+          curvePool: root.pool,
+          lpToken: root.token.address,
+          amounts: root.roots.map((r) =>
+            BigNumber.isBigNumber(amounts[r.name]) ? amounts[r.name] : ZERO
+          ),
+          roots: root.roots.map((r) => r.token.address),
+          parentIdx: idx,
+        };
+      }
+    })
+    .filter((zap) => Object.keys(zap).length !== 0);
+
+  const expectedPrincipalTokenAmount = await estimateZapIn(
+    trie,
+    balancerVault,
+    zap(),
+    childZaps
+  );
+
+  const ptInfo: ZapPtInfoStruct = {
+    balancerPoolId: trie.balancerPoolId,
+    principalToken: trie.token.address,
+    recipient,
+    minPtAmount: expectedPrincipalTokenAmount,
+    deadline: Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS,
+    principalTokenAmount: 0,
+  };
+
+  return {
+    zap: zap(),
+    childZaps,
+    ptInfo,
+    expectedPrincipalTokenAmount,
+  };
+}
+
+export async function constructZapOutArgs(
+  trie: PrincipalTokenCurveTrie,
+  target: string,
+  principalTokenAmount: BigNumber,
+  balancerVault: Vault,
+  recipient: string
+): Promise<{
+  ptInfo: ZapPtInfoStruct;
+  zap: ZapCurveLpOutStruct;
+  //childZap: ZapCurveLpOutStruct;
+  //expectedTargetTokenAmount: BigNumber;
+}> {
+  const ptInfo: ZapPtInfoStruct = {
+    balancerPoolId: trie.balancerPoolId,
+    principalToken: trie.token.address,
+    recipient,
+    minPtAmount: 0,
+    deadline: Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS,
+    principalTokenAmount,
+  };
+
+  const zap: ZapCurveLpOutStruct = {
+    curvePool: trie.baseToken.pool,
+    lpToken: trie.baseToken.token.address,
+    targetIdx: 0,
+    targetToken: trie.baseToken.roots[0].token.address,
+    hasChildZap: false,
+  };
+
+  return {
+    ptInfo,
+    zap,
+  };
 }

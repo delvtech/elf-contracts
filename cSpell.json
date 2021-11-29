@@ -77,7 +77,8 @@
         "ytoken",
         "yusdc",
         "yweth",
-        "speedbump"
+        "speedbump",
+        "upgrador"
     ],
     "enabledLanguageIds": [
         "asciidoc",

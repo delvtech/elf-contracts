@@ -9,9 +9,9 @@ import "@openzeppelin/contracts/utils/Address.sol";
 
 interface ICurvePool {
     function remove_liquidity_one_coin(
-        uint256 _burnAmount,
+        uint256 amount,
         int128 i,
-        uint256 _minReceived
+        uint256 minAmount
     ) external returns (uint256);
 }
 
@@ -72,19 +72,14 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
     bytes4 internal constant addLiquidityThree =
         bytes4(keccak256(bytes("add_liquidity(uint256[3],uint256)")));
 
-    bytes4 internal constant removeLiquidity =
-        bytes4(
-            keccak256(
-                bytes("remove_liquidity_one_coin(uint256,int128,uint256)")
-            )
-        );
-
     IVault internal immutable _balancer;
 
     constructor(IVault __balancer) Authorizable() {
         _authorize(msg.sender);
         _balancer = __balancer;
     }
+
+    receive() external payable {}
 
     bool private _noReentry = false;
 
@@ -123,22 +118,12 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         address[] roots;
         uint256 parentIdx;
     }
-
-    struct ZapCurveLpOut {
-        ICurvePool curvePool;
-        IERC20 lpToken;
-        int128 targetIdx;
-        address targetToken;
-        bool hasChildZap;
-    }
-
-    struct ZapPtInfo {
+    struct ZapInInfo {
         bytes32 balancerPoolId;
-        address payable recipient;
+        address recipient;
         IAsset principalToken;
         uint256 minPtAmount;
         uint256 deadline;
-        uint256 principalTokenAmount;
     }
 
     function _zapCurveLpIn(ZapCurveLpIn memory _zap)
@@ -214,7 +199,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
     }
 
     function zapCurveIn(
-        ZapPtInfo memory _ptInfo,
+        ZapInInfo memory _info,
         ZapCurveLpIn memory _zap,
         ZapCurveLpIn[] memory _childZaps
     ) external payable reentrancyGuard notFrozen returns (uint256 ptAmount) {
@@ -228,49 +213,94 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
 
         ptAmount = _balancer.swap(
             IVault.SingleSwap({
-                poolId: _ptInfo.balancerPoolId,
+                poolId: _info.balancerPoolId,
                 kind: IVault.SwapKind.GIVEN_IN,
                 assetIn: IAsset(address(_zap.lpToken)),
-                assetOut: _ptInfo.principalToken,
+                assetOut: _info.principalToken,
                 amount: baseTokenAmount,
                 userData: "0x00"
             }),
             IVault.FundManagement({
                 sender: address(this),
                 fromInternalBalance: false,
-                recipient: _ptInfo.recipient,
+                recipient: payable(_info.recipient),
                 toInternalBalance: false
             }),
-            _ptInfo.minPtAmount,
-            _ptInfo.deadline
+            _info.minPtAmount,
+            _info.deadline
         );
     }
 
-    function zapCurveOut(ZapPtInfo memory _ptInfo, ZapCurveLpOut memory _zap)
-        external
-        payable
-        //ZapCurveLpOut memory _childZap
-        reentrancyGuard
-        notFrozen
-        returns (uint256 amount)
-    {
-        IERC20(address(_ptInfo.principalToken)).safeTransferFrom(
-            msg.sender,
-            address(this),
-            _ptInfo.principalTokenAmount
-        );
-        console.log(
-            "principalTokenBalance:",
-            IERC20(address(_ptInfo.principalToken)).balanceOf(address(this))
+    struct ZapCurveLpOut {
+        ICurvePool curvePool;
+        IERC20 lpToken;
+        int128 rootTokenIdx;
+        address rootToken;
+    }
+
+    struct ZapOutInfo {
+        bytes32 balancerPoolId;
+        IAsset principalToken;
+        uint256 principalTokenAmount;
+        address payable recipient;
+        uint256 minRootTokenAmount;
+        uint256 deadline;
+        bool targetNeedsChildZap;
+    }
+
+    function _zapCurveLpOut(
+        ZapCurveLpOut memory _zap,
+        uint256 _lpTokenAmount,
+        uint256 _minRootTokenAmount,
+        address payable _recipient
+    ) internal returns (uint256 rootAmount) {
+        bool transferToTarget = address(this) != _recipient;
+        _zap.curvePool.remove_liquidity_one_coin(
+            _lpTokenAmount,
+            _zap.rootTokenIdx,
+            _minRootTokenAmount
         );
 
+        if (_zap.rootToken == _ETH_CONSTANT) {
+            rootAmount = address(this).balance;
+            // if address does not equal this contract we send funds to recipient
+            if (transferToTarget) {
+                _recipient.transfer(rootAmount);
+            }
+        } else {
+            rootAmount = IERC20(_zap.rootToken).balanceOf(address(this));
+            if (transferToTarget) {
+                IERC20(_zap.rootToken).safeTransferFrom(
+                    address(this),
+                    _recipient,
+                    rootAmount
+                );
+            }
+        }
+    }
+
+    function zapCurveOut(
+        ZapOutInfo memory _info,
+        ZapCurveLpOut memory _zap,
+        ZapCurveLpOut memory _childZap
+    ) external payable reentrancyGuard notFrozen returns (uint256 amount) {
+        // First, principalTokenAmount of principal tokens transferred
+        // from sender to this contract
+        IERC20(address(_info.principalToken)).safeTransferFrom(
+            msg.sender,
+            address(this),
+            _info.principalTokenAmount
+        );
+
+        // Then, contract swaps the principal tokens for an
+        // unspecified amount of baseTokens on balancer
         uint256 baseTokenAmount = _balancer.swap(
             IVault.SingleSwap({
-                poolId: _ptInfo.balancerPoolId,
+                poolId: _info.balancerPoolId,
                 kind: IVault.SwapKind.GIVEN_IN,
-                assetIn: _ptInfo.principalToken,
+                assetIn: _info.principalToken,
                 assetOut: IAsset(address(_zap.lpToken)),
-                amount: _ptInfo.principalTokenAmount,
+                amount: _info.principalTokenAmount,
                 userData: "0x00"
             }),
             IVault.FundManagement({
@@ -279,31 +309,25 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
                 recipient: payable(address(this)),
                 toInternalBalance: false
             }),
-            0, //_ptInfo.minPtAmount,
-            _ptInfo.deadline
-        );
-        console.log(
-            "baseTokenAmount:",
-            IERC20(address(_zap.lpToken)).balanceOf(address(this))
+            0,
+            _info.deadline
         );
 
-        console.log(address(_zap.curvePool));
-        _zap.curvePool.remove_liquidity_one_coin(
+        // If the target token is a root token of a meta pool, two curve swaps
+        // are necessary.
+        amount = _zapCurveLpOut(
+            _zap,
             baseTokenAmount,
-            _zap.targetIdx,
-            0
+            _info.targetNeedsChildZap ? 0 : _info.minRootTokenAmount,
+            _info.targetNeedsChildZap ? payable(address(this)) : _info.recipient
         );
-        // address(_zap.curvePool).functionCall(
-        //     abi.encodeWithSelector(
-        //         removeLiquidity,
-        //         baseTokenAmount,
-        //         _zap.targetIdx,
-        //         0
-        //     )
-        // );
-
-        console.log(address(this).balance);
-
-        amount = 0;
+        if (_info.targetNeedsChildZap) {
+            amount = _zapCurveLpOut(
+                _childZap,
+                amount,
+                _info.minRootTokenAmount,
+                _info.recipient
+            );
+        }
     }
 }

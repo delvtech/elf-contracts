@@ -11,7 +11,8 @@ import { Vault } from "typechain/Vault";
 import {
   ZapCurveTokenToPrincipalToken,
   ZapCurveLpInStruct,
-  ZapPtInfoStruct,
+  ZapOutInfoStruct,
+  ZapInInfoStruct,
   ZapCurveLpOutStruct,
 } from "typechain/ZapCurveTokenToPrincipalToken";
 import { ZERO, _ETH_CONSTANT } from "./constants";
@@ -445,7 +446,7 @@ export async function constructZapInArgs(
   balancerVault: Vault,
   recipient: string
 ): Promise<{
-  ptInfo: ZapPtInfoStruct;
+  info: ZapInInfoStruct;
   zap: ZapCurveLpInStruct;
   childZaps: ZapCurveLpInStruct[];
   expectedPrincipalTokenAmount: BigNumber;
@@ -500,54 +501,53 @@ export async function constructZapInArgs(
     childZaps
   );
 
-  const ptInfo: ZapPtInfoStruct = {
+  const info: ZapInInfoStruct = {
     balancerPoolId: trie.balancerPoolId,
     principalToken: trie.token.address,
     recipient,
     minPtAmount: expectedPrincipalTokenAmount,
     deadline: Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS,
-    principalTokenAmount: 0,
   };
 
   return {
     zap: zap(),
     childZaps,
-    ptInfo,
+    info,
     expectedPrincipalTokenAmount,
   };
 }
 
-export async function constructZapOutArgs(
-  trie: PrincipalTokenCurveTrie,
-  target: string,
-  principalTokenAmount: BigNumber,
-  balancerVault: Vault,
-  recipient: string
-): Promise<{
-  ptInfo: ZapPtInfoStruct;
-  zap: ZapCurveLpOutStruct;
-  //childZap: ZapCurveLpOutStruct;
-  //expectedTargetTokenAmount: BigNumber;
-}> {
-  const ptInfo: ZapPtInfoStruct = {
-    balancerPoolId: trie.balancerPoolId,
-    principalToken: trie.token.address,
-    recipient,
-    minPtAmount: 0,
-    deadline: Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS,
-    principalTokenAmount,
-  };
+// export async function constructZapOutArgs(
+//   trie: PrincipalTokenCurveTrie,
+//   target: string,
+//   principalTokenAmount: BigNumber,
+//   balancerVault: Vault,
+//   recipient: string
+// ): Promise<{
+//   info: ZapOutInfoStruct;
+//   zap: ZapCurveLpOutStruct;
+//   //childZap: ZapCurveLpOutStruct;
+//   //expectedTargetTokenAmount: BigNumber;
+// }> {
+//   const info: ZapOutInfoStruct = {
+//     balancerPoolId: trie.balancerPoolId,
+//     principalToken: trie.token.address,
+//     recipient,
+//     minPtAmount: 0,
+//     deadline: Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS,
+//     principalTokenAmount,
+//   };
 
-  const zap: ZapCurveLpOutStruct = {
-    curvePool: trie.baseToken.pool,
-    lpToken: trie.baseToken.token.address,
-    targetIdx: 0,
-    targetToken: trie.baseToken.roots[0].token.address,
-    hasChildZap: false,
-  };
+//   const zap: ZapCurveLpOutStruct = {
+//     curvePool: trie.baseToken.pool,
+//     lpToken: trie.baseToken.token.address,
+//     targetIdx: 0,
+//     targetToken: trie.baseToken.roots[0].token.address,
+//     hasChildZap: false,
+//   };
 
-  return {
-    ptInfo,
-    zap,
-  };
-}
+//   return {
+//     info,
+//     zap,
+//   };
+// }

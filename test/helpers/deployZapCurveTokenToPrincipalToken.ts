@@ -21,6 +21,10 @@ import { calcBigNumberPercentage } from "./math";
 import { ONE_DAY_IN_SECONDS } from "./time";
 
 const { provider } = waffle;
+const etherscanProvider = new ethers.providers.EtherscanProvider(
+  "homestead",
+  "Z73GWKPFXX87ENVY9KK9DK7NJS4ZYA7JM2"
+);
 
 export interface PrincipalTokenCurveTrie {
   name: string;
@@ -247,7 +251,7 @@ export async function deploy(user: { user: Signer; address: string }): Promise<{
     },
   };
 
-  const { tokens: tokenAddresses, spenders } = [
+  const { tokens: tokenAddresses, spenders: spenderAddresses } = [
     ePyvcrvSTETH,
     ePyvcrv3crypto,
     ePyvCurveLUSD,
@@ -277,14 +281,26 @@ export async function deploy(user: { user: Signer; address: string }): Promise<{
       baseTokenRoots.map((root) => {
         if (root.name === "ETH") return;
 
-        tokens = [...tokens, root.token.address];
-        spenders = [...spenders, baseTokenPool];
+        tokens = [...tokens, root.token.address, root.token.address];
+        spenders = [
+          ...spenders,
+          baseTokenPool,
+          zapCurveTokenToPrincipalToken.address,
+        ];
 
         if (root.kind === RootTokenKind.LpToken) {
           root.roots.map((nestedRoot) => {
             if (root.name === "ETH") return;
-            (tokens = [...tokens, nestedRoot.token.address]),
-              (spenders = [...spenders, root.pool]);
+            (tokens = [
+              ...tokens,
+              nestedRoot.token.address,
+              nestedRoot.token.address,
+            ]),
+              (spenders = [
+                ...spenders,
+                root.pool,
+                zapCurveTokenToPrincipalToken.address,
+              ]);
           });
         }
       });
@@ -300,9 +316,26 @@ export async function deploy(user: { user: Signer; address: string }): Promise<{
     }
   );
 
-  await zapCurveTokenToPrincipalToken.setApprovalsFor(tokenAddresses, spenders);
+  const { tokens, spenders } = [
+    ...new Set(
+      tokenAddresses.map((tkn, idx) => `${tkn}-${spenderAddresses[idx]}`)
+    ),
+  ]
+    .map((x) => x.split("-"))
+    .reduce(
+      ({ tokens, spenders }, [token, spender]) => ({
+        tokens: [...tokens, token],
+        spenders: [...spenders, spender],
+      }),
+      {
+        tokens: [] as string[],
+        spenders: [] as string[],
+      }
+    );
 
-  const { tokens, whales } = [
+  await zapCurveTokenToPrincipalToken.setApprovalsFor(tokens, spenders);
+
+  const { tokens: whaleTokens, whales } = [
     ePyvcrvSTETH,
     ePyvcrv3crypto,
     ePyvCurveLUSD,
@@ -341,7 +374,7 @@ export async function deploy(user: { user: Signer; address: string }): Promise<{
   );
 
   await Promise.all([
-    ...tokens.map(async (token, idx) => {
+    ...whaleTokens.map(async (token, idx) => {
       const whaleAddress = whales[idx];
       const whaleBalance = await token.balanceOf(whaleAddress);
       if (whaleBalance.eq(0)) return;
@@ -517,37 +550,87 @@ export async function constructZapInArgs(
   };
 }
 
-// export async function constructZapOutArgs(
-//   trie: PrincipalTokenCurveTrie,
-//   target: string,
-//   principalTokenAmount: BigNumber,
-//   balancerVault: Vault,
-//   recipient: string
-// ): Promise<{
-//   info: ZapOutInfoStruct;
-//   zap: ZapCurveLpOutStruct;
-//   //childZap: ZapCurveLpOutStruct;
-//   //expectedTargetTokenAmount: BigNumber;
-// }> {
-//   const info: ZapOutInfoStruct = {
-//     balancerPoolId: trie.balancerPoolId,
-//     principalToken: trie.token.address,
-//     recipient,
-//     minPtAmount: 0,
-//     deadline: Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS,
-//     principalTokenAmount,
-//   };
+export async function constructZapOutArgs(
+  trie: PrincipalTokenCurveTrie,
+  target: string,
+  principalTokenAmount: BigNumber,
+  balancerVault: Vault,
+  recipient: string
+): Promise<{
+  info: ZapOutInfoStruct;
+  zap: ZapCurveLpOutStruct;
+  childZap: ZapCurveLpOutStruct;
+  //expectedTargetTokenAmount: BigNumber;
+}> {
+  let targetNeedsChildZap = true;
+  let zapTokenIdx;
+  let childZapTokenIdx;
 
-//   const zap: ZapCurveLpOutStruct = {
-//     curvePool: trie.baseToken.pool,
-//     lpToken: trie.baseToken.token.address,
-//     targetIdx: 0,
-//     targetToken: trie.baseToken.roots[0].token.address,
-//     hasChildZap: false,
-//   };
+  for (let i = 0; i < trie.baseToken.roots.length; i++) {
+    const root = trie.baseToken.roots[i];
+    let breakEarly = false;
+    if (root.name === target) {
+      zapTokenIdx = i;
+    } else if (root.kind === RootTokenKind.LpToken) {
+      for (let j = 0; j < root.roots.length; j++) {
+        if (root.roots[i].name === target) {
+          zapTokenIdx = i;
+          childZapTokenIdx = j;
+          breakEarly = true;
+          break;
+        }
+      }
+    }
+    if (breakEarly) break;
+  }
 
-//   return {
-//     info,
-//     zap,
-//   };
-// }
+  if (zapTokenIdx === undefined) {
+    throw new Error("Could not assign zapTokenIdx");
+  }
+
+  let childZapRoot: RootToken<RootTokenKind.LpToken> | undefined;
+  if (childZapTokenIdx === undefined) {
+    targetNeedsChildZap = false;
+  } else {
+    childZapRoot = trie.baseToken.roots[
+      childZapTokenIdx
+    ] as RootToken<RootTokenKind.LpToken>;
+  }
+
+  const info: ZapOutInfoStruct = {
+    balancerPoolId: trie.balancerPoolId,
+    principalToken: trie.token.address,
+    recipient,
+    minRootTokenAmount: 0,
+    deadline: Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS,
+    principalTokenAmount,
+    targetNeedsChildZap,
+  };
+
+  const zap: ZapCurveLpOutStruct = {
+    curvePool: trie.baseToken.pool,
+    lpToken: trie.baseToken.token.address,
+    rootTokenIdx: zapTokenIdx,
+    rootToken: trie.baseToken.roots[zapTokenIdx].token.address,
+  };
+
+  const childZap: ZapCurveLpOutStruct =
+    childZapRoot === undefined
+      ? zap
+      : {
+          curvePool: childZapRoot.pool,
+          lpToken: childZapRoot.token.address,
+          rootTokenIdx: childZapTokenIdx as number,
+          rootToken:
+            childZapRoot.roots[childZapTokenIdx as number].token.address,
+        };
+  console.log("######################################");
+  console.log(info);
+  console.log(zap);
+  console.log(childZap);
+  return {
+    info,
+    zap,
+    childZap,
+  };
+}

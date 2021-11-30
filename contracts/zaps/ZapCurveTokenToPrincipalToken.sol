@@ -13,6 +13,12 @@ interface ICurvePool {
         int128 i,
         uint256 minAmount
     ) external returns (uint256);
+
+    function remove_liquidity_one_coin(
+        uint256 amount,
+        uint256 i,
+        uint256 minAmount
+    ) external returns (uint256);
 }
 
 interface IAsset {}
@@ -117,6 +123,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         uint256[] amounts;
         address[] roots;
         uint256 parentIdx;
+        bytes4 funcSig; // add_liquidity
     }
     struct ZapInInfo {
         bytes32 balancerPoolId;
@@ -232,10 +239,11 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
     }
 
     struct ZapCurveLpOut {
-        ICurvePool curvePool;
+        address curvePool;
         IERC20 lpToken;
         int128 rootTokenIdx;
         address rootToken;
+        bytes4 funcSig; // remove_liquidity_one_coin
     }
 
     struct ZapOutInfo {
@@ -259,6 +267,15 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
             _lpTokenAmount,
             _zap.rootTokenIdx,
             _minRootTokenAmount
+        );
+
+        address(_zap.curvePool).functionCall(
+            abi.encodeWithSelector(
+                (_zap.funcSig),
+                _lpTokenAmount,
+                _zap.rootTokenIdx,
+                _minRootTokenAmount
+            )
         );
 
         if (_zap.rootToken == _ETH_CONSTANT) {

@@ -46,6 +46,7 @@
     "@types/node": "^14.17.32",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",
+    "axios": "^0.24.0",
     "chai": "^4.3.4",
     "chai-almost": "^1.0.1",
     "coveralls": "^3.1.1",

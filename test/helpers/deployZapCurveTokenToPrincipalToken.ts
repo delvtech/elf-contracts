@@ -1,5 +1,6 @@
 import { BigNumber, Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
+import { UserProxy__factory } from "typechain/factories/UserProxy__factory";
 import { ConvergentCurvePool__factory } from "typechain/factories/ConvergentCurvePool__factory";
 import { IERC20__factory } from "typechain/factories/IERC20__factory";
 import { Tranche__factory } from "typechain/factories/Tranche__factory";
@@ -7,6 +8,7 @@ import { Vault__factory } from "typechain/factories/Vault__factory";
 import { ZapCurveTokenToPrincipalToken__factory } from "typechain/factories/ZapCurveTokenToPrincipalToken__factory";
 import { IERC20 } from "typechain/IERC20";
 import { Tranche } from "typechain/Tranche";
+import { UserProxy } from "typechain/UserProxy";
 import { Vault } from "typechain/Vault";
 import {
   ZapCurveLpInStruct,
@@ -34,6 +36,7 @@ export interface PrincipalTokenCurveTrie {
 type BaseTokenTrie = {
   name: string;
   token: IERC20;
+  whale?: string;
 } & CurvePoolInfo &
   (
     | TwoRootTokens<RootTokenKind.Basic | RootTokenKind.LpToken>
@@ -76,6 +79,7 @@ type RootToken<K extends RootTokenKind> = {
 
 export async function deploy(user: { user: Signer; address: string }): Promise<{
   zapCurveTokenToPrincipalToken: ZapCurveTokenToPrincipalToken;
+  proxy: UserProxy;
   balancerVault: Vault;
   ePyvcrvSTETH: PrincipalTokenCurveTrie;
   ePyvcrv3crypto: PrincipalTokenCurveTrie;
@@ -88,6 +92,10 @@ export async function deploy(user: { user: Signer; address: string }): Promise<{
     user.user
   );
 
+  const proxy = UserProxy__factory.connect(
+    "0xEe4e158c03A10CBc8242350d74510779A364581C",
+    user.user
+  );
   const deployer = new ZapCurveTokenToPrincipalToken__factory(authSigner);
   const zapCurveTokenToPrincipalToken = await deployer.deploy(
     balancerVault.address
@@ -115,6 +123,7 @@ export async function deploy(user: { user: Signer; address: string }): Promise<{
         "0x06325440D014e39736583c165C2963BA99fAf14E",
         user.user
       ),
+      whale: "0x56c915758Ad3f76Fd287FFF7563ee313142Fb663",
       pool: "0xDC24316b9AE028F1497c275EB9192a3Ea0f67022",
       zapInFuncSig: "add_liquidity(uint256[2],uint256)",
       zapOutFuncSig: "remove_liquidity_one_coin(uint256,int128,uint256)",
@@ -153,6 +162,7 @@ export async function deploy(user: { user: Signer; address: string }): Promise<{
         "0xc4AD29ba4B3c580e6D59105FFf484999997675Ff",
         user.user
       ),
+      whale: "0x1d5e65a087ebc3d03a294412e46ce5d6882969f4",
       pool: "0xD51a44d3FaE010294C616388b506AcdA1bfAAE46",
       zapInFuncSig: "add_liquidity(uint256[3],uint256)",
       zapOutFuncSig: "remove_liquidity_one_coin(uint256,uint256,uint256)",
@@ -204,6 +214,7 @@ export async function deploy(user: { user: Signer; address: string }): Promise<{
         "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
         user.user
       ),
+      whale: "0x3631401a11ba7004d1311e24d177b05ece39b4b3",
       pool: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
       zapInFuncSig: "add_liquidity(uint256[2],uint256)",
       zapOutFuncSig: "remove_liquidity_one_coin(uint256,int128,uint256)",
@@ -354,6 +365,11 @@ export async function deploy(user: { user: Signer; address: string }): Promise<{
     ePyvCurveLUSD,
   ].reduce(
     ({ tokens, whales }, trie) => {
+      if (trie.baseToken.whale) {
+        tokens = [...tokens, trie.baseToken.token];
+        whales = [...whales, trie.baseToken.whale];
+      }
+
       const tokenAddress = () => tokens.map((token) => token.address);
       const baseTokenRoots = trie.baseToken.roots;
       baseTokenRoots.map((root) => {
@@ -386,8 +402,9 @@ export async function deploy(user: { user: Signer; address: string }): Promise<{
     }
   );
 
-  await Promise.all([
-    ...whaleTokens.map(async (token, idx) => {
+  // transfer all whale tokens to user address for zapping in
+  await Promise.all(
+    whaleTokens.map(async (token, idx) => {
       const whaleAddress = whales[idx];
       const whaleBalance = await token.balanceOf(whaleAddress);
       if (whaleBalance.eq(0)) return;
@@ -399,21 +416,12 @@ export async function deploy(user: { user: Signer; address: string }): Promise<{
       await token
         .connect(user.user)
         .approve(zapCurveTokenToPrincipalToken.address, whaleBalance);
-    }),
-    ...[ePyvcrv3crypto, ePyvcrvSTETH, ePyvCurveLUSD].map(
-      async (trie) =>
-        await trie.token
-          .connect(user.user)
-          .approve(
-            zapCurveTokenToPrincipalToken.address,
-            ethers.constants.MaxUint256
-          )
-    ),
-  ] as Promise<any>[]);
-
+    })
+  );
   return {
     zapCurveTokenToPrincipalToken,
     balancerVault,
+    proxy,
     ePyvcrvSTETH,
     ePyvcrv3crypto,
     ePyvCurveLUSD,
@@ -655,4 +663,25 @@ export async function constructZapOutArgs(
     zap,
     childZap,
   };
+}
+
+export async function mintPrincipalTokens(
+  trie: PrincipalTokenCurveTrie,
+  proxy: UserProxy,
+  userAddress: string
+): Promise<BigNumber> {
+  const baseToken = trie.baseToken.token;
+  const baseTokenAmount = await baseToken.balanceOf(userAddress);
+  await baseToken.approve(proxy.address, baseTokenAmount);
+  const position = await trie.token.position();
+  const expiration = await trie.token.unlockTimestamp();
+  await proxy.mint(
+    baseTokenAmount,
+    baseToken.address,
+    expiration,
+    position,
+    []
+  );
+
+  return trie.token.balanceOf(userAddress);
 }

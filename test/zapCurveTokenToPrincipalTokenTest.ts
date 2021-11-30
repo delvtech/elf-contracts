@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
 import { IERC20 } from "typechain/IERC20";
+import { UserProxy } from "typechain/UserProxy";
 import { Vault } from "typechain/Vault";
 import { ZapCurveTokenToPrincipalToken } from "typechain/ZapCurveTokenToPrincipalToken";
 import { ZERO } from "./helpers/constants";
@@ -9,6 +10,7 @@ import {
   constructZapInArgs,
   constructZapOutArgs,
   deploy,
+  mintPrincipalTokens,
   PrincipalTokenCurveTrie,
 } from "./helpers/deployZapCurveTokenToPrincipalToken";
 import { calcBigNumberPercentage } from "./helpers/math";
@@ -26,14 +28,16 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
   let ePyvcrv3crypto: PrincipalTokenCurveTrie;
   let ePyvCurveLUSD: PrincipalTokenCurveTrie;
   let balancerVault: Vault;
+  let proxy: UserProxy;
   let blankAddress: string;
 
   before(async () => {
     await createSnapshot(provider);
 
-    users = ((await ethers.getSigners()) as Signer[]).map(function (user) {
-      return { user, address: "" };
-    });
+    users = ((await ethers.getSigners()) as Signer[]).map((user) => ({
+      user,
+      address: "",
+    }));
 
     // Address we can send funds to
     blankAddress = ethers.Wallet.createRandom().address;
@@ -51,6 +55,7 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       ePyvcrvSTETH,
       ePyvcrv3crypto,
       ePyvCurveLUSD,
+      proxy,
     } = await deploy(users[1]));
   });
 
@@ -96,26 +101,10 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       expect(diff.lt(allowedOffset)).to.be.true;
     });
 
-    it("should swap ePyvcrvSTETH to ETH", async () => {
-      const {
-        info: zapInInfo,
-        zap: zapIn,
-        childZaps: childZapIns,
-      } = await constructZapInArgs(
+    it.only("should swap ePyvcrvSTETH to ETH", async () => {
+      const ePyvcrvSTETHAmount = await mintPrincipalTokens(
         ePyvcrvSTETH,
-        {
-          ETH: ethers.utils.parseEther("1"),
-        },
-        balancerVault,
-        users[1].address
-      );
-      await zapCurveTokenToPrincipalToken
-        .connect(users[1].user)
-        .zapCurveIn(zapInInfo, zapIn, childZapIns, {
-          value: ethers.utils.parseEther("1"),
-        });
-
-      const ePyvcrvSTETHAmount = await ePyvcrvSTETH.token.balanceOf(
+        proxy,
         users[1].address
       );
 

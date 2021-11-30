@@ -58,15 +58,15 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
     await restoreSnapshot(provider);
   });
 
-  // beforeEach(async () => {
-  //   await createSnapshot(provider);
-  // });
-  // afterEach(async () => {
-  //   await restoreSnapshot(provider);
-  // });
+  beforeEach(async () => {
+    await createSnapshot(provider);
+  });
+  afterEach(async () => {
+    await restoreSnapshot(provider);
+  });
 
   describe("ETH:STETH <-> ePyvcrvSTETH", () => {
-    it.only("should swap ETH for ePyvcrvSTETH", async () => {
+    it("should swap ETH for ePyvcrvSTETH", async () => {
       await createSnapshot(provider);
       const { info, zap, childZaps, expectedPrincipalTokenAmount } =
         await constructZapInArgs(
@@ -96,7 +96,25 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       expect(diff.lt(allowedOffset)).to.be.true;
     });
 
-    it.only("should swap ePyvcrvSTETH to ETH", async () => {
+    it("should swap ePyvcrvSTETH to ETH", async () => {
+      const {
+        info: zapInInfo,
+        zap: zapIn,
+        childZaps: childZapIns,
+      } = await constructZapInArgs(
+        ePyvcrvSTETH,
+        {
+          ETH: ethers.utils.parseEther("1"),
+        },
+        balancerVault,
+        users[1].address
+      );
+      await zapCurveTokenToPrincipalToken
+        .connect(users[1].user)
+        .zapCurveIn(zapInInfo, zapIn, childZapIns, {
+          value: ethers.utils.parseEther("1"),
+        });
+
       const ePyvcrvSTETHAmount = await ePyvcrvSTETH.token.balanceOf(
         users[1].address
       );
@@ -117,8 +135,6 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
 
       console.log(ethers.utils.formatEther(ePyvcrvSTETHAmount));
       console.log(ethers.utils.formatEther(returnedTokenAmount));
-
-      await restoreSnapshot(provider);
     });
 
     it("should swap stETH for ePyvcrvSTETH", async () => {
@@ -150,32 +166,32 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       expect(diff.lt(allowedOffset)).to.be.true;
     });
 
-    it("should swap ePyvcrvSTETH to stETH", async () => {
-      const ePyvcrvSTETHAmount = await ePyvcrvSTETH.token.balanceOf(
-        users[1].address
-      );
+    // it("should swap ePyvcrvSTETH to stETH", async () => {
+    //   const ePyvcrvSTETHAmount = await ePyvcrvSTETH.token.balanceOf(
+    //     users[1].address
+    //   );
 
-      const { info, zap, childZap } = await constructZapOutArgs(
-        ePyvcrvSTETH,
-        "stETH",
-        ePyvcrvSTETHAmount,
-        balancerVault,
-        blankAddress
-      );
+    //   const { info, zap, childZap } = await constructZapOutArgs(
+    //     ePyvcrvSTETH,
+    //     "stETH",
+    //     ePyvcrvSTETHAmount,
+    //     balancerVault,
+    //     blankAddress
+    //   );
 
-      await zapCurveTokenToPrincipalToken
-        .connect(users[1].user)
-        .zapCurveOut(info, zap, childZap);
+    //   await zapCurveTokenToPrincipalToken
+    //     .connect(users[1].user)
+    //     .zapCurveOut(info, zap, childZap);
 
-      const returnedTokenAmount = await (
-        ePyvcrvSTETH.baseToken.roots[1].token as IERC20
-      ).balanceOf(blankAddress);
+    //   const returnedTokenAmount = await (
+    //     ePyvcrvSTETH.baseToken.roots[1].token as IERC20
+    //   ).balanceOf(blankAddress);
 
-      console.log(ethers.utils.formatEther(ePyvcrvSTETHAmount));
-      console.log(ethers.utils.formatEther(returnedTokenAmount));
+    //   console.log(ethers.utils.formatEther(ePyvcrvSTETHAmount));
+    //   console.log(ethers.utils.formatEther(returnedTokenAmount));
 
-      await restoreSnapshot(provider);
-    });
+    //   await restoreSnapshot(provider);
+    // });
 
     it("should swap stETH & ETH for ePyvcrvSTETH", async () => {
       await createSnapshot(provider);
@@ -211,7 +227,7 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
   });
 
   describe("USDT:WBTC:WETH -> ePyvcrv3crypto", () => {
-    it.only("should swap USDT for ePyvcrv3crypto", async () => {
+    it("should swap USDT for ePyvcrv3crypto", async () => {
       await createSnapshot(provider);
       const { info, zap, childZaps, expectedPrincipalTokenAmount } =
         await constructZapInArgs(
@@ -239,34 +255,35 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       expect(diff.lt(allowedOffset)).to.be.true;
     });
 
-    it.only("should swap ePyvcrv3crypto to USDT", async () => {
-      const ePyvcrv3cryptoAmount = await ePyvcrv3crypto.token.balanceOf(
-        users[1].address
-      );
+    // it("should swap ePyvcrv3crypto to USDT", async () => {
+    //   const ePyvcrv3cryptoAmount = await ePyvcrv3crypto.token.balanceOf(
+    //     users[1].address
+    //   );
 
-      const { info, zap, childZap } = await constructZapOutArgs(
-        ePyvcrv3crypto,
-        "USDT",
-        ePyvcrv3cryptoAmount,
-        balancerVault,
-        blankAddress
-      );
+    //   const { info, zap, childZap } = await constructZapOutArgs(
+    //     ePyvcrv3crypto,
+    //     "USDT",
+    //     ePyvcrv3cryptoAmount,
+    //     balancerVault,
+    //     blankAddress
+    //   );
 
-      await zapCurveTokenToPrincipalToken
-        .connect(users[1].user)
-        .zapCurveOut(info, zap, childZap);
+    //   await zapCurveTokenToPrincipalToken
+    //     .connect(users[1].user)
+    //     .zapCurveOut(info, zap, childZap);
 
-      const returnedTokenAmount = await (
-        ePyvcrv3crypto.baseToken.roots[1].token as IERC20
-      ).balanceOf(blankAddress);
+    //   const returnedTokenAmount = await (
+    //     ePyvcrv3crypto.baseToken.roots[0].token as IERC20
+    //   ).balanceOf(blankAddress);
 
-      console.log(ethers.utils.formatEther(ePyvcrv3cryptoAmount));
-      console.log(ethers.utils.formatEther(returnedTokenAmount));
+    //   console.log(ethers.utils.formatEther(ePyvcrv3cryptoAmount));
+    //   console.log(ethers.utils.formatUnits(returnedTokenAmount, 6));
 
-      await restoreSnapshot(provider);
-    });
+    //   await restoreSnapshot(provider);
+    // });
 
     it("should swap WBTC for ePyvcrv3crypto", async () => {
+      await createSnapshot(provider);
       const { info, zap, childZaps, expectedPrincipalTokenAmount } =
         await constructZapInArgs(
           ePyvcrv3crypto,
@@ -292,6 +309,33 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       expect(diff.gte(ZERO)).to.be.true;
       expect(diff.lt(allowedOffset)).to.be.true;
     });
+
+    // it("should swap ePyvcrv3crypto to WBTC", async () => {
+    //   const ePyvcrv3cryptoAmount = await ePyvcrv3crypto.token.balanceOf(
+    //     users[1].address
+    //   );
+
+    //   const { info, zap, childZap } = await constructZapOutArgs(
+    //     ePyvcrv3crypto,
+    //     "WBTC",
+    //     ePyvcrv3cryptoAmount,
+    //     balancerVault,
+    //     blankAddress
+    //   );
+
+    //   await zapCurveTokenToPrincipalToken
+    //     .connect(users[1].user)
+    //     .zapCurveOut(info, zap, childZap);
+
+    //   const returnedTokenAmount = await (
+    //     ePyvcrv3crypto.baseToken.roots[1].token as IERC20
+    //   ).balanceOf(blankAddress);
+
+    //   console.log(ethers.utils.formatEther(ePyvcrv3cryptoAmount));
+    //   console.log(ethers.utils.formatUnits(returnedTokenAmount, 8));
+
+    //   await restoreSnapshot(provider);
+    // });
 
     it("should swap WETH for ePyvcrv3crypto", async () => {
       const { info, zap, childZaps, expectedPrincipalTokenAmount } =
@@ -319,6 +363,33 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       expect(diff.gte(ZERO)).to.be.true;
       expect(diff.lt(allowedOffset)).to.be.true;
     });
+
+    // it("should swap ePyvcrv3crypto to WETH", async () => {
+    //   const ePyvcrv3cryptoAmount = await ePyvcrv3crypto.token.balanceOf(
+    //     users[1].address
+    //   );
+
+    //   const { info, zap, childZap } = await constructZapOutArgs(
+    //     ePyvcrv3crypto,
+    //     "WETH",
+    //     ePyvcrv3cryptoAmount,
+    //     balancerVault,
+    //     blankAddress
+    //   );
+
+    //   await zapCurveTokenToPrincipalToken
+    //     .connect(users[1].user)
+    //     .zapCurveOut(info, zap, childZap);
+
+    //   const returnedTokenAmount = await (
+    //     (ePyvcrv3crypto.baseToken.roots[2] as any).token as IERC20
+    //   ).balanceOf(blankAddress);
+
+    //   console.log(ethers.utils.formatEther(ePyvcrv3cryptoAmount));
+    //   console.log(ethers.utils.formatEther(returnedTokenAmount));
+
+    //   await restoreSnapshot(provider);
+    // });
 
     it("should swap WBTC,USDT & WETH for ePyvcrv3crypto", async () => {
       const { info, zap, childZaps, expectedPrincipalTokenAmount } =

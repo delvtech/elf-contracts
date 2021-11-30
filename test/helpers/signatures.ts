@@ -111,3 +111,9 @@ function parseSigString(signature: string) {
     v: BigNumber.from("0x" + signature.slice(130)).toNumber(),
   };
 }
+
+export function getFunctionSignature(sig: string) {
+  return ethers.utils.Interface.getSighash(
+    ethers.utils.FunctionFragment.from(sig)
+  );
+}

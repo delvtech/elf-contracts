@@ -7,20 +7,6 @@ import "../libraries/Authorizable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-interface ICurvePool {
-    function remove_liquidity_one_coin(
-        uint256 amount,
-        int128 i,
-        uint256 minAmount
-    ) external returns (uint256);
-
-    function remove_liquidity_one_coin(
-        uint256 amount,
-        uint256 i,
-        uint256 minAmount
-    ) external returns (uint256);
-}
-
 interface IAsset {}
 
 interface IVault {
@@ -72,11 +58,6 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
 
     address internal constant _ETH_CONSTANT =
         address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
-
-    bytes4 internal constant addLiquidityTwo =
-        bytes4(keccak256(bytes("add_liquidity(uint256[2],uint256)")));
-    bytes4 internal constant addLiquidityThree =
-        bytes4(keccak256(bytes("add_liquidity(uint256[3],uint256)")));
 
     IVault internal immutable _balancer;
 
@@ -190,15 +171,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         // Not only is there two variants of fixed length array amount inputs but it is
         // often inconsistent whether return values exist or not
         address(_zap.curvePool).functionCallWithValue(
-            abi.encodeWithSelector(
-                (
-                    _zap.amounts.length == 2
-                        ? addLiquidityTwo
-                        : addLiquidityThree
-                ),
-                ctx,
-                0
-            ),
+            abi.encodeWithSelector(_zap.funcSig, ctx, 0),
             msg.value
         );
 
@@ -263,15 +236,9 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         address payable _recipient
     ) internal returns (uint256 rootAmount) {
         bool transferToTarget = address(this) != _recipient;
-        _zap.curvePool.remove_liquidity_one_coin(
-            _lpTokenAmount,
-            _zap.rootTokenIdx,
-            _minRootTokenAmount
-        );
-
         address(_zap.curvePool).functionCall(
             abi.encodeWithSelector(
-                (_zap.funcSig),
+                _zap.funcSig,
                 _lpTokenAmount,
                 _zap.rootTokenIdx,
                 _minRootTokenAmount
@@ -309,6 +276,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
             _info.principalTokenAmount
         );
 
+        console.log("principalTokenAmount: %s", _info.principalTokenAmount);
         // Then, contract swaps the principal tokens for an
         // unspecified amount of baseTokens on balancer
         uint256 baseTokenAmount = _balancer.swap(
@@ -330,6 +298,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
             _info.deadline
         );
 
+        console.log("baseTokenAmount: %s", baseTokenAmount);
         // If the target token is a root token of a meta pool, two curve swaps
         // are necessary.
         amount = _zapCurveLpOut(
@@ -338,6 +307,8 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
             _info.targetNeedsChildZap ? 0 : _info.minRootTokenAmount,
             _info.targetNeedsChildZap ? payable(address(this)) : _info.recipient
         );
+
+        console.log("targetTokenAmount: %s", amount);
         if (_info.targetNeedsChildZap) {
             amount = _zapCurveLpOut(
                 _childZap,

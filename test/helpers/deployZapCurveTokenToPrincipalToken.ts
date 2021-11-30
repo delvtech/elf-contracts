@@ -1,30 +1,27 @@
 import { BigNumber, Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
-import { ZapCurveTokenToPrincipalToken__factory } from "typechain/factories/ZapCurveTokenToPrincipalToken__factory";
 import { ConvergentCurvePool__factory } from "typechain/factories/ConvergentCurvePool__factory";
 import { IERC20__factory } from "typechain/factories/IERC20__factory";
 import { Tranche__factory } from "typechain/factories/Tranche__factory";
 import { Vault__factory } from "typechain/factories/Vault__factory";
+import { ZapCurveTokenToPrincipalToken__factory } from "typechain/factories/ZapCurveTokenToPrincipalToken__factory";
 import { IERC20 } from "typechain/IERC20";
 import { Tranche } from "typechain/Tranche";
 import { Vault } from "typechain/Vault";
 import {
-  ZapCurveTokenToPrincipalToken,
   ZapCurveLpInStruct,
-  ZapOutInfoStruct,
-  ZapInInfoStruct,
   ZapCurveLpOutStruct,
+  ZapCurveTokenToPrincipalToken,
+  ZapInInfoStruct,
+  ZapOutInfoStruct,
 } from "typechain/ZapCurveTokenToPrincipalToken";
 import { ZERO, _ETH_CONSTANT } from "./constants";
 import { impersonate, stopImpersonating } from "./impersonate";
 import { calcBigNumberPercentage } from "./math";
+import { getFunctionSignature } from "./signatures";
 import { ONE_DAY_IN_SECONDS } from "./time";
 
 const { provider } = waffle;
-const etherscanProvider = new ethers.providers.EtherscanProvider(
-  "homestead",
-  "Z73GWKPFXX87ENVY9KK9DK7NJS4ZYA7JM2"
-);
 
 export interface PrincipalTokenCurveTrie {
   name: string;
@@ -36,13 +33,18 @@ export interface PrincipalTokenCurveTrie {
 
 type BaseTokenTrie = {
   name: string;
-  pool: string;
   token: IERC20;
-} & (
-  | TwoRootTokens<RootTokenKind.Basic | RootTokenKind.LpToken>
-  | ThreeRootTokens<RootTokenKind.Basic | RootTokenKind.LpToken>
-);
+} & CurvePoolInfo &
+  (
+    | TwoRootTokens<RootTokenKind.Basic | RootTokenKind.LpToken>
+    | ThreeRootTokens<RootTokenKind.Basic | RootTokenKind.LpToken>
+  );
 
+interface CurvePoolInfo {
+  pool: string;
+  zapInFuncSig: string;
+  zapOutFuncSig: string;
+}
 enum RootTokenKind {
   Basic = "Basic",
   LpToken = "LpToken",
@@ -64,10 +66,13 @@ type RootToken<K extends RootTokenKind> = {
   whale?: string;
 } & (K extends RootTokenKind.Basic
   ? { kind: RootTokenKind.Basic }
-  : { kind: RootTokenKind.LpToken; pool: string } & (
-      | TwoRootTokens<RootTokenKind.Basic>
-      | ThreeRootTokens<RootTokenKind.Basic>
-    ));
+  : {
+      kind: RootTokenKind.LpToken;
+    } & CurvePoolInfo &
+      (
+        | TwoRootTokens<RootTokenKind.Basic>
+        | ThreeRootTokens<RootTokenKind.Basic>
+      ));
 
 export async function deploy(user: { user: Signer; address: string }): Promise<{
   zapCurveTokenToPrincipalToken: ZapCurveTokenToPrincipalToken;
@@ -111,6 +116,8 @@ export async function deploy(user: { user: Signer; address: string }): Promise<{
         user.user
       ),
       pool: "0xDC24316b9AE028F1497c275EB9192a3Ea0f67022",
+      zapInFuncSig: "add_liquidity(uint256[2],uint256)",
+      zapOutFuncSig: "remove_liquidity_one_coin(uint256,int128,uint256)",
       numberOfRoots: 2,
       roots: [
         {
@@ -147,6 +154,8 @@ export async function deploy(user: { user: Signer; address: string }): Promise<{
         user.user
       ),
       pool: "0xD51a44d3FaE010294C616388b506AcdA1bfAAE46",
+      zapInFuncSig: "add_liquidity(uint256[3],uint256)",
+      zapOutFuncSig: "remove_liquidity_one_coin(uint256,uint256,uint256)",
       numberOfRoots: 3,
       roots: [
         {
@@ -196,6 +205,8 @@ export async function deploy(user: { user: Signer; address: string }): Promise<{
         user.user
       ),
       pool: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
+      zapInFuncSig: "add_liquidity(uint256[2],uint256)",
+      zapOutFuncSig: "remove_liquidity_one_coin(uint256,int128,uint256)",
       numberOfRoots: 2,
       roots: [
         {
@@ -215,6 +226,8 @@ export async function deploy(user: { user: Signer; address: string }): Promise<{
             user.user
           ),
           pool: "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
+          zapInFuncSig: "add_liquidity(uint256[3],uint256)",
+          zapOutFuncSig: "remove_liquidity_one_coin(uint256,int128,uint256)",
           whale: "0x0B096d1f0ba7Ef2b3C7ecB8d4a5848043CdeBD50",
           numberOfRoots: 3,
           roots: [
@@ -501,6 +514,7 @@ export async function constructZapInArgs(
 
   const zap: () => ZapCurveLpInStruct = () => ({
     curvePool: trie.baseToken.pool,
+    funcSig: getFunctionSignature(trie.baseToken.zapInFuncSig),
     lpToken: trie.baseToken.token.address,
     amounts: trie.baseToken.roots.map((root) =>
       BigNumber.isBigNumber(amounts[root.name]) ? amounts[root.name] : ZERO
@@ -516,6 +530,7 @@ export async function constructZapInArgs(
       } else {
         return {
           curvePool: root.pool,
+          funcSig: getFunctionSignature(root.zapInFuncSig),
           lpToken: root.token.address,
           amounts: root.roots.map((r) =>
             BigNumber.isBigNumber(amounts[r.name]) ? amounts[r.name] : ZERO
@@ -541,6 +556,11 @@ export async function constructZapInArgs(
     minPtAmount: expectedPrincipalTokenAmount,
     deadline: Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS,
   };
+
+  console.log("#########################################################");
+  console.log(info);
+  console.log(zap());
+  console.log(childZaps);
 
   return {
     zap: zap(),
@@ -609,6 +629,7 @@ export async function constructZapOutArgs(
 
   const zap: ZapCurveLpOutStruct = {
     curvePool: trie.baseToken.pool,
+    funcSig: getFunctionSignature(trie.baseToken.zapOutFuncSig),
     lpToken: trie.baseToken.token.address,
     rootTokenIdx: zapTokenIdx,
     rootToken: trie.baseToken.roots[zapTokenIdx].token.address,
@@ -619,12 +640,13 @@ export async function constructZapOutArgs(
       ? zap
       : {
           curvePool: childZapRoot.pool,
+          funcSig: getFunctionSignature(childZapRoot.zapOutFuncSig),
           lpToken: childZapRoot.token.address,
           rootTokenIdx: childZapTokenIdx as number,
           rootToken:
             childZapRoot.roots[childZapTokenIdx as number].token.address,
         };
-  console.log("######################################");
+  console.log("#########################################################");
   console.log(info);
   console.log(zap);
   console.log(childZap);

@@ -437,7 +437,7 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       expect(diff.lt(allowedOffset)).to.be.true;
     });
 
-    it.only("should swap ePyvCurveLUSD to USDC", async () => {
+    it("should swap ePyvCurveLUSD to USDC", async () => {
       const principalTokenAmount = ethers.utils.parseEther("5000");
 
       const { info, zap, childZap, expectedRootTokenAmount } =
@@ -445,7 +445,7 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
 
       console.log(
         "Expected RootToken Amount:",
-        ethers.utils.formatEther(expectedRootTokenAmount)
+        ethers.utils.formatUnits(expectedRootTokenAmount, 6)
       );
 
       await zapCurveTokenToPrincipalToken
@@ -485,13 +485,15 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       expect(diff.lt(allowedOffset)).to.be.true;
     });
 
-    it("should swap ePyvCurveLUSD to USDT", async () => {
+    it.only("should swap ePyvCurveLUSD to USDT", async () => {
       const principalTokenAmount = ethers.utils.parseEther("5000");
 
-      const { info, zap, childZap } = await constructZapOutArgs(
-        ePyvCurveLUSD,
-        "USDT",
-        principalTokenAmount
+      const { info, zap, childZap, expectedRootTokenAmount } =
+        await constructZapOutArgs(ePyvCurveLUSD, "USDT", principalTokenAmount);
+
+      console.log(
+        "Expected RootToken Amount:",
+        ethers.utils.formatUnits(expectedRootTokenAmount, 6)
       );
 
       await zapCurveTokenToPrincipalToken

@@ -247,7 +247,7 @@ export async function deploy(user: { user: Signer; address: string }) {
 
     const expectedRootTokenAmount = await estimateZapOut(
       trie,
-      getERC20(target),
+      target,
       balancerVault,
       info,
       zap,
@@ -255,7 +255,7 @@ export async function deploy(user: { user: Signer; address: string }) {
     );
 
     return {
-      info: { ...info }, //, minRootTokenAmount: expectedRootTokenAmount },
+      info: { ...info, minRootTokenAmount: expectedRootTokenAmount },
       zap,
       childZap,
       expectedRootTokenAmount,
@@ -346,7 +346,7 @@ async function estimateZapIn(
 
 async function estimateZapOut(
   trie: PrincipalTokenCurveTrie,
-  token: IERC20,
+  target: string,
   balancerVault: Vault,
   info: ZapOutInfoStruct,
   zap: ZapCurveLpOutStruct,
@@ -374,16 +374,22 @@ async function estimateZapOut(
     );
 
   // Account for decimals
-  let estimatedRootTokenAmount = await buildCurvePoolContract({
+  let estimatedRootTokenAmount: BigNumber = await buildCurvePoolContract({
     address: zap.curvePool,
     targetType: trie.name !== "ePyvcrv3crypto" ? "int128" : "uint256",
   }).calc_withdraw_one_coin(estmatedBaseTokenAmount, zap.rootTokenIdx);
 
+  console.log(estimatedRootTokenAmount);
   if (info.targetNeedsChildZap) {
     estimatedRootTokenAmount = await buildCurvePoolContract({
       address: zap.curvePool,
       targetType: trie.name !== "ePyvcrv3crypto" ? "int128" : "uint256",
     }).calc_withdraw_one_coin(estimatedRootTokenAmount, childZap.rootTokenIdx);
+  }
+
+  console.log("hvbhvhvhv");
+  if (target === "USDC" || target === "USDT") {
+    estimatedRootTokenAmount = estimatedRootTokenAmount.div(10 ** 12); // 18 - 12 = 6 decimals
   }
 
   const slippageAmount = calcBigNumberPercentage(

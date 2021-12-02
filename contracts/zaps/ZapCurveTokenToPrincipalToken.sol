@@ -236,6 +236,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         uint256 _minRootTokenAmount,
         address payable _recipient
     ) internal returns (uint256 rootAmount) {
+        console.log(_minRootTokenAmount);
         bool transferToTarget = address(this) != _recipient;
         address(_zap.curvePool).functionCall(
             abi.encodeWithSelector(

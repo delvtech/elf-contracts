@@ -5,6 +5,7 @@ import { IERC20__factory } from "typechain/factories/IERC20__factory";
 import { UserProxy__factory } from "typechain/factories/UserProxy__factory";
 import { Vault__factory } from "typechain/factories/Vault__factory";
 import { ZapCurveTokenToPrincipalToken__factory } from "typechain/factories/ZapCurveTokenToPrincipalToken__factory";
+import { IERC20 } from "typechain/IERC20";
 import { Vault } from "typechain/Vault";
 import {
   ZapCurveLpInStruct,
@@ -48,6 +49,7 @@ export type ConstructZapOutArgs = (
   info: ZapOutInfoStruct;
   zap: ZapCurveLpOutStruct;
   childZap: ZapCurveLpOutStruct;
+  expectedRootTokenAmount: BigNumber;
 }>;
 
 export async function deploy(user: { user: Signer; address: string }) {
@@ -242,10 +244,21 @@ export async function deploy(user: { user: Signer; address: string }) {
             rootTokenIdx: childZapTokenIdx,
             rootToken: childZapRoot.roots[childZapTokenIdx].address,
           };
-    return {
+
+    const expectedRootTokenAmount = await estimateZapOut(
+      trie,
+      getERC20(target),
+      balancerVault,
       info,
       zap,
+      childZap
+    );
+
+    return {
+      info: { ...info }, //, minRootTokenAmount: expectedRootTokenAmount },
+      zap,
       childZap,
+      expectedRootTokenAmount,
     };
   };
 
@@ -256,13 +269,22 @@ export async function deploy(user: { user: Signer; address: string }) {
   };
 }
 
-const buildCurvePoolContract = (address: string, numRoots: number) => {
+const buildCurvePoolContract = ({
+  address,
+  numRoots = 2,
+  targetType = `uint256`,
+}: {
+  address: string;
+  numRoots?: number;
+  targetType?: "uint256" | "int128";
+}) => {
   return new ethers.Contract(
     address,
     [
       numRoots === 2
         ? "function calc_token_amount(uint256[2],bool) view returns (uint256)"
         : "function calc_token_amount(uint256[3],bool) view returns (uint256)",
+      `function calc_withdraw_one_coin(uint256,${targetType}) view returns (uint256)`,
     ],
     provider
   );
@@ -277,10 +299,10 @@ async function estimateZapIn(
   for (const childZap of childZaps) {
     const parentIdx = BigNumber.from(childZap.parentIdx).toNumber();
     const estimatedLpAmount = BigNumber.from(
-      await buildCurvePoolContract(
-        childZap.curvePool,
-        childZap.amounts.length
-      ).calc_token_amount(childZap.amounts, true)
+      await buildCurvePoolContract({
+        address: childZap.curvePool,
+        numRoots: childZap.amounts.length,
+      }).calc_token_amount(childZap.amounts, true)
     );
 
     zap.amounts[parentIdx] = BigNumber.from(zap.amounts[parentIdx])
@@ -288,10 +310,10 @@ async function estimateZapIn(
       .toString();
   }
 
-  const baseTokenAmount = await buildCurvePoolContract(
-    zap.curvePool,
-    zap.amounts.length
-  ).calc_token_amount(zap.amounts, true);
+  const baseTokenAmount = await buildCurvePoolContract({
+    address: zap.curvePool,
+    numRoots: zap.amounts.length,
+  }).calc_token_amount(zap.amounts, true);
 
   const [convergentCurvePoolAddress] = await balancerVault.getPool(
     trie.balancerPoolId
@@ -316,10 +338,60 @@ async function estimateZapIn(
 
   const slippageAmount = calcBigNumberPercentage(
     estimatedPtAmount,
-    trie.slippagePercentage
+    trie.slippageInPercentage
   );
 
   return estimatedPtAmount.sub(slippageAmount);
+}
+
+async function estimateZapOut(
+  trie: PrincipalTokenCurveTrie,
+  token: IERC20,
+  balancerVault: Vault,
+  info: ZapOutInfoStruct,
+  zap: ZapCurveLpOutStruct,
+  childZap: ZapCurveLpOutStruct
+): Promise<BigNumber> {
+  const [convergentCurvePoolAddress] = await balancerVault.getPool(
+    trie.balancerPoolId
+  );
+
+  const [, [xReserves, yReserves]] = await balancerVault.getPoolTokens(
+    trie.balancerPoolId
+  );
+
+  const convergentCurvePool = ConvergentCurvePool__factory.connect(
+    convergentCurvePoolAddress,
+    balancerVault.signer
+  );
+  const totalSupply: BigNumber = await convergentCurvePool.totalSupply();
+  const estmatedBaseTokenAmount: BigNumber =
+    await convergentCurvePool.solveTradeInvariant(
+      info.principalTokenAmount,
+      xReserves.add(totalSupply),
+      yReserves,
+      false
+    );
+
+  // Account for decimals
+  let estimatedRootTokenAmount = await buildCurvePoolContract({
+    address: zap.curvePool,
+    targetType: trie.name !== "ePyvcrv3crypto" ? "int128" : "uint256",
+  }).calc_withdraw_one_coin(estmatedBaseTokenAmount, zap.rootTokenIdx);
+
+  if (info.targetNeedsChildZap) {
+    estimatedRootTokenAmount = await buildCurvePoolContract({
+      address: zap.curvePool,
+      targetType: trie.name !== "ePyvcrv3crypto" ? "int128" : "uint256",
+    }).calc_withdraw_one_coin(estimatedRootTokenAmount, childZap.rootTokenIdx);
+  }
+
+  const slippageAmount = calcBigNumberPercentage(
+    estimatedRootTokenAmount,
+    trie.slippageOutPercentage
+  );
+
+  return estimatedRootTokenAmount.sub(slippageAmount);
 }
 
 export async function stealFromWhale(token: string, recipient: string) {

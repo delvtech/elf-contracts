@@ -1,90 +1,56 @@
 import { BigNumber, Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
-import { UserProxy__factory } from "typechain/factories/UserProxy__factory";
 import { ConvergentCurvePool__factory } from "typechain/factories/ConvergentCurvePool__factory";
 import { IERC20__factory } from "typechain/factories/IERC20__factory";
-import { Tranche__factory } from "typechain/factories/Tranche__factory";
+import { UserProxy__factory } from "typechain/factories/UserProxy__factory";
 import { Vault__factory } from "typechain/factories/Vault__factory";
 import { ZapCurveTokenToPrincipalToken__factory } from "typechain/factories/ZapCurveTokenToPrincipalToken__factory";
-import { IERC20 } from "typechain/IERC20";
-import { Tranche } from "typechain/Tranche";
-import { UserProxy } from "typechain/UserProxy";
 import { Vault } from "typechain/Vault";
 import {
   ZapCurveLpInStruct,
   ZapCurveLpOutStruct,
-  ZapCurveTokenToPrincipalToken,
   ZapInInfoStruct,
   ZapOutInfoStruct,
 } from "typechain/ZapCurveTokenToPrincipalToken";
-import { ZERO, _ETH_CONSTANT } from "./constants";
+import { ZERO } from "./constants";
 import { impersonate, stopImpersonating } from "./impersonate";
 import { calcBigNumberPercentage } from "./math";
 import { getFunctionSignature } from "./signatures";
 import { ONE_DAY_IN_SECONDS } from "./time";
+import {
+  getERC20,
+  getPrincipalToken,
+  getRootTokensAddresses,
+  getZapContractApprovalsList,
+  PrincipalTokenCurveTrie,
+  RootToken,
+  RootTokenKind,
+} from "./ZapCurveTries";
 
 const { provider } = waffle;
 
-export interface PrincipalTokenCurveTrie {
-  name: string;
-  token: Tranche;
-  slippagePercentage: number;
-  balancerPoolId: string;
-  baseToken: BaseTokenTrie;
-}
+export type ConstructZapInArgs = (
+  trie: PrincipalTokenCurveTrie,
+  amounts: { [tokenName in string]: BigNumber }
+) => Promise<{
+  info: ZapInInfoStruct;
+  zap: ZapCurveLpInStruct;
+  childZaps: ZapCurveLpInStruct[];
+  expectedPrincipalTokenAmount: BigNumber;
+}>;
 
-type BaseTokenTrie = {
-  name: string;
-  token: IERC20;
-  whale?: string;
-} & CurvePoolInfo &
-  (
-    | TwoRootTokens<RootTokenKind.Basic | RootTokenKind.LpToken>
-    | ThreeRootTokens<RootTokenKind.Basic | RootTokenKind.LpToken>
-  );
+export type ConstructZapOutArgs = (
+  trie: PrincipalTokenCurveTrie,
+  target: string,
+  amount: BigNumber,
+  recipient?: string
+) => Promise<{
+  info: ZapOutInfoStruct;
+  zap: ZapCurveLpOutStruct;
+  childZap: ZapCurveLpOutStruct;
+}>;
 
-interface CurvePoolInfo {
-  pool: string;
-  zapInFuncSig: string;
-  zapOutFuncSig: string;
-}
-enum RootTokenKind {
-  Basic = "Basic",
-  LpToken = "LpToken",
-}
-
-interface TwoRootTokens<K extends RootTokenKind> {
-  numberOfRoots: 2;
-  roots: [RootToken<K>, RootToken<K>];
-}
-
-interface ThreeRootTokens<K extends RootTokenKind> {
-  numberOfRoots: 3;
-  roots: [RootToken<K>, RootToken<K>, RootToken<K>];
-}
-
-type RootToken<K extends RootTokenKind> = {
-  name: string;
-  token: IERC20 | { address: string };
-  whale?: string;
-} & (K extends RootTokenKind.Basic
-  ? { kind: RootTokenKind.Basic }
-  : {
-      kind: RootTokenKind.LpToken;
-    } & CurvePoolInfo &
-      (
-        | TwoRootTokens<RootTokenKind.Basic>
-        | ThreeRootTokens<RootTokenKind.Basic>
-      ));
-
-export async function deploy(user: { user: Signer; address: string }): Promise<{
-  zapCurveTokenToPrincipalToken: ZapCurveTokenToPrincipalToken;
-  proxy: UserProxy;
-  balancerVault: Vault;
-  ePyvcrvSTETH: PrincipalTokenCurveTrie;
-  ePyvcrv3crypto: PrincipalTokenCurveTrie;
-  ePyvCurveLUSD: PrincipalTokenCurveTrie;
-}> {
+export async function deploy(user: { user: Signer; address: string }) {
   const [authSigner] = await ethers.getSigners();
 
   const balancerVault = Vault__factory.connect(
@@ -108,323 +74,185 @@ export async function deploy(user: { user: Signer; address: string }): Promise<{
     .connect(authSigner)
     .setOwner(authSigner.address);
 
-  const ePyvcrvSTETH: PrincipalTokenCurveTrie = {
-    name: "ePyvcrvSTETH",
-    token: Tranche__factory.connect(
-      "0x2361102893CCabFb543bc55AC4cC8d6d0824A67E",
-      user.user
-    ),
-    slippagePercentage: 0.2,
-    balancerPoolId:
-      "0xb03c6b351a283bc1cd26b9cf6d7b0c4556013bdb0002000000000000000000ab",
-    baseToken: {
-      name: "stCRV",
-      token: IERC20__factory.connect(
-        "0x06325440D014e39736583c165C2963BA99fAf14E",
-        user.user
-      ),
-      whale: "0x56c915758Ad3f76Fd287FFF7563ee313142Fb663",
-      pool: "0xDC24316b9AE028F1497c275EB9192a3Ea0f67022",
-      zapInFuncSig: "add_liquidity(uint256[2],uint256)",
-      zapOutFuncSig: "remove_liquidity_one_coin(uint256,int128,uint256)",
-      numberOfRoots: 2,
-      roots: [
-        {
-          kind: RootTokenKind.Basic,
-          name: "ETH",
-          token: { address: _ETH_CONSTANT },
-        },
-        {
-          kind: RootTokenKind.Basic,
-          name: "stETH",
-          token: IERC20__factory.connect(
-            "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
-            user.user
-          ),
-          whale: "0x06920C9fC643De77B99cB7670A944AD31eaAA260",
-        },
-      ],
-    },
-  };
-
-  const ePyvcrv3crypto: PrincipalTokenCurveTrie = {
-    name: "ePyvcrv3crypto",
-    token: Tranche__factory.connect(
-      "0x285328906D0D33cb757c1E471F5e2176683247c2",
-      user.user
-    ),
-    slippagePercentage: 1,
-    balancerPoolId:
-      "0x6dd0f7c8f4793ed2531c0df4fea8633a21fdcff40002000000000000000000b7",
-    baseToken: {
-      name: "crvTriCrypto",
-      token: IERC20__factory.connect(
-        "0xc4AD29ba4B3c580e6D59105FFf484999997675Ff",
-        user.user
-      ),
-      whale: "0x1d5e65a087ebc3d03a294412e46ce5d6882969f4",
-      pool: "0xD51a44d3FaE010294C616388b506AcdA1bfAAE46",
-      zapInFuncSig: "add_liquidity(uint256[3],uint256)",
-      zapOutFuncSig: "remove_liquidity_one_coin(uint256,uint256,uint256)",
-      numberOfRoots: 3,
-      roots: [
-        {
-          kind: RootTokenKind.Basic,
-          name: "USDT",
-          token: IERC20__factory.connect(
-            "0xdac17f958d2ee523a2206206994597c13d831ec7",
-            user.user
-          ),
-          whale: "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503",
-        },
-        {
-          kind: RootTokenKind.Basic,
-          name: "WBTC",
-          token: IERC20__factory.connect(
-            "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
-            user.user
-          ),
-          whale: "0xE3DD3914aB28bB552d41B8dFE607355DE4c37A51",
-        },
-        {
-          kind: RootTokenKind.Basic,
-          name: "WETH",
-          token: IERC20__factory.connect(
-            "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            user.user
-          ),
-          whale: "0x2fEb1512183545f48f6b9C5b4EbfCaF49CfCa6F3",
-        },
-      ],
-    },
-  };
-
-  const ePyvCurveLUSD: PrincipalTokenCurveTrie = {
-    name: "ePyvCurveLUSD",
-    token: Tranche__factory.connect(
-      "0xa2b3d083AA1eaa8453BfB477f062A208Ed85cBBF",
-      user.user
-    ),
-    slippagePercentage: 0.075,
-    balancerPoolId:
-      "0x893b30574bf183d69413717f30b17062ec9dfd8b000200000000000000000061",
-    baseToken: {
-      name: "LUSD3CRV_F",
-      token: IERC20__factory.connect(
-        "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
-        user.user
-      ),
-      whale: "0x3631401a11ba7004d1311e24d177b05ece39b4b3",
-      pool: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
-      zapInFuncSig: "add_liquidity(uint256[2],uint256)",
-      zapOutFuncSig: "remove_liquidity_one_coin(uint256,int128,uint256)",
-      numberOfRoots: 2,
-      roots: [
-        {
-          kind: RootTokenKind.Basic,
-          name: "LUSD",
-          token: IERC20__factory.connect(
-            "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0",
-            user.user
-          ),
-          whale: "0xE05fD1304C1CfE19dcc6AAb0767848CC4A8f54aa",
-        },
-        {
-          kind: RootTokenKind.LpToken,
-          name: "3Crv",
-          token: IERC20__factory.connect(
-            "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490",
-            user.user
-          ),
-          pool: "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
-          zapInFuncSig: "add_liquidity(uint256[3],uint256)",
-          zapOutFuncSig: "remove_liquidity_one_coin(uint256,int128,uint256)",
-          whale: "0x0B096d1f0ba7Ef2b3C7ecB8d4a5848043CdeBD50",
-          numberOfRoots: 3,
-          roots: [
-            {
-              kind: RootTokenKind.Basic,
-              name: "DAI",
-              token: IERC20__factory.connect(
-                "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-                user.user
-              ),
-              whale: "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503",
-            },
-            {
-              kind: RootTokenKind.Basic,
-              name: "USDC",
-              token: IERC20__factory.connect(
-                "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-                user.user
-              ),
-              whale: "0xdb49552EeFB89416b9A412138c009a004f54BAd0",
-            },
-            {
-              kind: RootTokenKind.Basic,
-              name: "USDT",
-              token: IERC20__factory.connect(
-                "0xdac17f958d2ee523a2206206994597c13d831ec7",
-                user.user
-              ),
-              whale: "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503",
-            },
-          ],
-        },
-      ],
-    },
-  };
-
-  const { tokens: tokenAddresses, spenders: spenderAddresses } = [
-    ePyvcrvSTETH,
-    ePyvcrv3crypto,
-    ePyvCurveLUSD,
-  ].reduce(
-    ({ tokens, spenders }, trie) => {
-      const {
-        token: { address: principalTokenAddress },
-      } = trie;
-      const {
-        token: { address: baseTokenAddress },
-        pool: baseTokenPool,
-        roots: baseTokenRoots,
-      } = trie.baseToken;
-      tokens = [
-        ...tokens,
-        baseTokenAddress,
-        principalTokenAddress,
-        baseTokenAddress,
-      ];
-      spenders = [
-        ...spenders,
-        balancerVault.address,
-        balancerVault.address,
-        baseTokenPool,
-      ];
-
-      baseTokenRoots.map((root) => {
-        if (root.name === "ETH") return;
-
-        tokens = [...tokens, root.token.address, root.token.address];
-        spenders = [
-          ...spenders,
-          baseTokenPool,
-          zapCurveTokenToPrincipalToken.address,
-        ];
-
-        if (root.kind === RootTokenKind.LpToken) {
-          root.roots.map((nestedRoot) => {
-            if (root.name === "ETH") return;
-            (tokens = [
-              ...tokens,
-              nestedRoot.token.address,
-              nestedRoot.token.address,
-            ]),
-              (spenders = [
-                ...spenders,
-                root.pool,
-                zapCurveTokenToPrincipalToken.address,
-              ]);
-          });
-        }
-      });
-
-      return {
-        tokens,
-        spenders,
-      };
-    },
-    {
-      tokens: [] as string[],
-      spenders: [] as string[],
-    }
+  const { tokens, spenders } = getZapContractApprovalsList(
+    zapCurveTokenToPrincipalToken.address
+  );
+  await zapCurveTokenToPrincipalToken.setApprovalsFor(
+    tokens,
+    spenders,
+    spenders.map(() => ethers.constants.MaxUint256)
   );
 
-  const { tokens, spenders } = [
-    ...new Set(
-      tokenAddresses.map((tkn, idx) => `${tkn}-${spenderAddresses[idx]}`)
-    ),
-  ]
-    .map((x) => x.split("-"))
-    .reduce(
-      ({ tokens, spenders }, [token, spender]) => ({
-        tokens: [...tokens, token],
-        spenders: [...spenders, spender],
-      }),
-      {
-        tokens: [] as string[],
-        spenders: [] as string[],
-      }
+  await Promise.all(
+    [...new Set(tokens)].map(async (token) =>
+      IERC20__factory.connect(token, user.user).approve(
+        zapCurveTokenToPrincipalToken.address,
+        ethers.constants.MaxUint256
+      )
+    )
+  );
+
+  const constructZapInArgs: ConstructZapInArgs = async (trie, amounts) => {
+    await Promise.all(
+      Object.keys(getRootTokensAddresses(trie)).map(async (n) =>
+        amounts[n] && amounts[n].eq(ZERO)
+          ? await 0
+          : await stealFromWhale(n, user.address)
+      )
     );
 
-  await zapCurveTokenToPrincipalToken.setApprovalsFor(tokens, spenders);
+    const zap: () => ZapCurveLpInStruct = () => ({
+      curvePool: trie.baseToken.pool,
+      funcSig: getFunctionSignature(trie.baseToken.zapInFuncSig),
+      lpToken: trie.baseToken.address,
+      amounts: trie.baseToken.roots.map((root) =>
+        BigNumber.isBigNumber(amounts[root.name]) ? amounts[root.name] : ZERO
+      ),
+      roots: trie.baseToken.roots.map((root) => root.address),
+      parentIdx: 0,
+    });
 
-  const { tokens: whaleTokens, whales } = [
-    ePyvcrvSTETH,
-    ePyvcrv3crypto,
-    ePyvCurveLUSD,
-  ].reduce(
-    ({ tokens, whales }, trie) => {
-      if (trie.baseToken.whale) {
-        tokens = [...tokens, trie.baseToken.token];
-        whales = [...whales, trie.baseToken.whale];
-      }
-
-      const tokenAddress = () => tokens.map((token) => token.address);
-      const baseTokenRoots = trie.baseToken.roots;
-      baseTokenRoots.map((root) => {
-        if (root.whale && !tokenAddress().includes(root.token.address)) {
-          tokens = [...tokens, root.token] as IERC20[];
-          whales = [...whales, root.whale];
+    const childZaps: ZapCurveLpInStruct[] = trie.baseToken.roots
+      .map((root, idx) => {
+        if (root.kind !== RootTokenKind.LpToken) {
+          return {} as ZapCurveLpInStruct;
+        } else {
+          return {
+            curvePool: root.pool,
+            funcSig: getFunctionSignature(root.zapInFuncSig),
+            lpToken: root.address,
+            amounts: root.roots.map((r) =>
+              BigNumber.isBigNumber(amounts[r.name]) ? amounts[r.name] : ZERO
+            ),
+            roots: root.roots.map((r) => r.address),
+            parentIdx: idx,
+          };
         }
+      })
+      .filter((zap) => Object.keys(zap).length !== 0);
 
-        if (root.kind === RootTokenKind.LpToken) {
-          root.roots.map((nestedRoot) => {
-            if (
-              root.whale &&
-              !tokenAddress().includes(nestedRoot.token.address)
-            ) {
-              tokens = [...tokens, nestedRoot.token] as IERC20[];
-              whales = [...whales, nestedRoot.whale] as string[];
-            }
-          });
-        }
-      });
+    const expectedPrincipalTokenAmount = await estimateZapIn(
+      trie,
+      balancerVault,
+      zap(),
+      childZaps
+    );
 
-      return {
-        tokens,
-        whales,
-      };
-    },
-    {
-      tokens: [] as IERC20[],
-      whales: [] as string[],
+    const info: ZapInInfoStruct = {
+      balancerPoolId: trie.balancerPoolId,
+      principalToken: trie.address,
+      recipient: user.address,
+      minPtAmount: expectedPrincipalTokenAmount,
+      deadline: Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS,
+    };
+
+    return {
+      zap: zap(),
+      childZaps,
+      info,
+      expectedPrincipalTokenAmount,
+    };
+  };
+
+  const constructZapOutArgs: ConstructZapOutArgs = async (
+    trie,
+    target,
+    amount,
+    recipient = user.address
+  ) => {
+    if (!Object.keys(getRootTokensAddresses(trie)).includes(target)) {
+      throw new Error(`${target} is not a root token of ${trie.name}`);
     }
-  );
+    await stealFromWhale(trie.baseToken.name, user.address);
+    const baseToken = getERC20(trie.baseToken.name, user.user);
+    const baseTokenAmount = await baseToken.balanceOf(user.address);
+    await baseToken.approve(proxy.address, baseTokenAmount);
+    const principalToken = getPrincipalToken(trie.name);
+    const position = await principalToken.position();
+    const expiration = await principalToken.unlockTimestamp();
+    await proxy.mint(
+      baseTokenAmount,
+      baseToken.address,
+      expiration,
+      position,
+      []
+    );
 
-  // transfer all whale tokens to user address for zapping in
-  await Promise.all(
-    whaleTokens.map(async (token, idx) => {
-      const whaleAddress = whales[idx];
-      const whaleBalance = await token.balanceOf(whaleAddress);
-      if (whaleBalance.eq(0)) return;
-      const whaleSigner = await impersonate(whaleAddress);
-      await token.connect(whaleSigner).transfer(user.address, whaleBalance);
-      await stopImpersonating(whaleAddress);
+    const userPrincipalTokenBalance = await principalToken.balanceOf(
+      user.address
+    );
 
-      // enable approvals on root token for zapping in
-      await token
-        .connect(user.user)
-        .approve(zapCurveTokenToPrincipalToken.address, whaleBalance);
-    })
-  );
+    if (userPrincipalTokenBalance.lt(amount))
+      throw new Error("Not enough pt's minted");
+
+    let targetNeedsChildZap = true;
+    const zapTokenIdx = trie.baseToken.roots.findIndex(
+      (root) =>
+        root.name === target ||
+        (root.kind === RootTokenKind.LpToken &&
+          root.roots.map((r) => r.name).includes(target))
+    );
+
+    const childZapRoot =
+      zapTokenIdx !== -1 &&
+      trie.baseToken.roots[zapTokenIdx].kind === RootTokenKind.LpToken &&
+      trie.baseToken.roots[zapTokenIdx].name !== target
+        ? (trie.baseToken.roots[
+            zapTokenIdx
+          ] as RootToken<RootTokenKind.LpToken>)
+        : undefined;
+
+    const childZapTokenIdx = childZapRoot
+      ? childZapRoot.roots.findIndex((r) => r.name === target)
+      : 0;
+
+    if (zapTokenIdx === -1) {
+      throw new Error("Could not assign zapTokenIdx");
+    }
+
+    if (childZapRoot === undefined) {
+      targetNeedsChildZap = false;
+    }
+
+    const info: ZapOutInfoStruct = {
+      balancerPoolId: trie.balancerPoolId,
+      principalToken: trie.address,
+      recipient,
+      minRootTokenAmount: 0,
+      deadline: Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS,
+      principalTokenAmount: amount,
+      targetNeedsChildZap,
+    };
+
+    const zap: ZapCurveLpOutStruct = {
+      curvePool: trie.baseToken.pool,
+      funcSig: getFunctionSignature(trie.baseToken.zapOutFuncSig),
+      lpToken: trie.baseToken.address,
+      rootTokenIdx: zapTokenIdx,
+      rootToken: trie.baseToken.roots[zapTokenIdx].address,
+    };
+
+    const childZap: ZapCurveLpOutStruct =
+      childZapRoot === undefined
+        ? zap
+        : {
+            curvePool: childZapRoot.pool,
+            funcSig: getFunctionSignature(childZapRoot.zapOutFuncSig),
+            lpToken: childZapRoot.address,
+            rootTokenIdx: childZapTokenIdx,
+            rootToken: childZapRoot.roots[childZapTokenIdx].address,
+          };
+    return {
+      info,
+      zap,
+      childZap,
+    };
+  };
+
   return {
     zapCurveTokenToPrincipalToken,
-    balancerVault,
-    proxy,
-    ePyvcrvSTETH,
-    ePyvcrv3crypto,
-    ePyvCurveLUSD,
+    constructZapInArgs,
+    constructZapOutArgs,
   };
 }
 
@@ -494,194 +322,33 @@ async function estimateZapIn(
   return estimatedPtAmount.sub(slippageAmount);
 }
 
-export async function constructZapInArgs(
-  trie: PrincipalTokenCurveTrie,
-  amounts: { [tokenName in string]: BigNumber },
-  balancerVault: Vault,
-  recipient: string
-): Promise<{
-  info: ZapInInfoStruct;
-  zap: ZapCurveLpInStruct;
-  childZaps: ZapCurveLpInStruct[];
-  expectedPrincipalTokenAmount: BigNumber;
-}> {
-  const rootNames = trie.baseToken.roots
-    .map((root) => [
-      root.name,
-      ...(root.kind === RootTokenKind.Basic
-        ? []
-        : root.roots.map((nestedRoot) => nestedRoot.name)),
-    ])
-    .flat();
-
-  for (const n of Object.keys(amounts)) {
-    if (!rootNames.includes(n)) {
-      throw new Error(`Token ${n} does not exist in ${trie.name} trie`);
-    }
+export async function stealFromWhale(token: string, recipient: string) {
+  if (token === "ETH") return;
+  if (!whales[token]) {
+    throw new Error("whale does not exist");
+  }
+  const whaleAddress = whales[token];
+  const erc20 = getERC20(token);
+  const whaleBalance = await erc20.balanceOf(whaleAddress);
+  if (whaleBalance.eq(0)) {
+    throw new Error("whale does not have balance");
   }
 
-  const zap: () => ZapCurveLpInStruct = () => ({
-    curvePool: trie.baseToken.pool,
-    funcSig: getFunctionSignature(trie.baseToken.zapInFuncSig),
-    lpToken: trie.baseToken.token.address,
-    amounts: trie.baseToken.roots.map((root) =>
-      BigNumber.isBigNumber(amounts[root.name]) ? amounts[root.name] : ZERO
-    ),
-    roots: trie.baseToken.roots.map((root) => root.token.address),
-    parentIdx: 0,
-  });
-
-  const childZaps: ZapCurveLpInStruct[] = trie.baseToken.roots
-    .map((root, idx) => {
-      if (root.kind !== RootTokenKind.LpToken) {
-        return {} as ZapCurveLpInStruct;
-      } else {
-        return {
-          curvePool: root.pool,
-          funcSig: getFunctionSignature(root.zapInFuncSig),
-          lpToken: root.token.address,
-          amounts: root.roots.map((r) =>
-            BigNumber.isBigNumber(amounts[r.name]) ? amounts[r.name] : ZERO
-          ),
-          roots: root.roots.map((r) => r.token.address),
-          parentIdx: idx,
-        };
-      }
-    })
-    .filter((zap) => Object.keys(zap).length !== 0);
-
-  const expectedPrincipalTokenAmount = await estimateZapIn(
-    trie,
-    balancerVault,
-    zap(),
-    childZaps
-  );
-
-  const info: ZapInInfoStruct = {
-    balancerPoolId: trie.balancerPoolId,
-    principalToken: trie.token.address,
-    recipient,
-    minPtAmount: expectedPrincipalTokenAmount,
-    deadline: Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS,
-  };
-
-  console.log("#########################################################");
-  console.log(info);
-  console.log(zap());
-  console.log(childZaps);
-
-  return {
-    zap: zap(),
-    childZaps,
-    info,
-    expectedPrincipalTokenAmount,
-  };
+  const whaleSigner = await impersonate(whaleAddress);
+  await erc20.connect(whaleSigner).transfer(recipient, whaleBalance);
+  await stopImpersonating(whaleAddress);
 }
 
-export async function constructZapOutArgs(
-  trie: PrincipalTokenCurveTrie,
-  target: string,
-  principalTokenAmount: BigNumber,
-  balancerVault: Vault,
-  recipient: string
-): Promise<{
-  info: ZapOutInfoStruct;
-  zap: ZapCurveLpOutStruct;
-  childZap: ZapCurveLpOutStruct;
-  //expectedTargetTokenAmount: BigNumber;
-}> {
-  let targetNeedsChildZap = true;
-  let zapTokenIdx;
-  let childZapTokenIdx;
-
-  for (let i = 0; i < trie.baseToken.roots.length; i++) {
-    const root = trie.baseToken.roots[i];
-    let breakEarly = false;
-    if (root.name === target) {
-      zapTokenIdx = i;
-    } else if (root.kind === RootTokenKind.LpToken) {
-      for (let j = 0; j < root.roots.length; j++) {
-        if (root.roots[i].name === target) {
-          zapTokenIdx = i;
-          childZapTokenIdx = j;
-          breakEarly = true;
-          break;
-        }
-      }
-    }
-    if (breakEarly) break;
-  }
-
-  if (zapTokenIdx === undefined) {
-    throw new Error("Could not assign zapTokenIdx");
-  }
-
-  let childZapRoot: RootToken<RootTokenKind.LpToken> | undefined;
-  if (childZapTokenIdx === undefined) {
-    targetNeedsChildZap = false;
-  } else {
-    childZapRoot = trie.baseToken.roots[
-      childZapTokenIdx
-    ] as RootToken<RootTokenKind.LpToken>;
-  }
-
-  const info: ZapOutInfoStruct = {
-    balancerPoolId: trie.balancerPoolId,
-    principalToken: trie.token.address,
-    recipient,
-    minRootTokenAmount: 0,
-    deadline: Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS,
-    principalTokenAmount,
-    targetNeedsChildZap,
-  };
-
-  const zap: ZapCurveLpOutStruct = {
-    curvePool: trie.baseToken.pool,
-    funcSig: getFunctionSignature(trie.baseToken.zapOutFuncSig),
-    lpToken: trie.baseToken.token.address,
-    rootTokenIdx: zapTokenIdx,
-    rootToken: trie.baseToken.roots[zapTokenIdx].token.address,
-  };
-
-  const childZap: ZapCurveLpOutStruct =
-    childZapRoot === undefined
-      ? zap
-      : {
-          curvePool: childZapRoot.pool,
-          funcSig: getFunctionSignature(childZapRoot.zapOutFuncSig),
-          lpToken: childZapRoot.token.address,
-          rootTokenIdx: childZapTokenIdx as number,
-          rootToken:
-            childZapRoot.roots[childZapTokenIdx as number].token.address,
-        };
-  console.log("#########################################################");
-  console.log(info);
-  console.log(zap);
-  console.log(childZap);
-  return {
-    info,
-    zap,
-    childZap,
-  };
-}
-
-export async function mintPrincipalTokens(
-  trie: PrincipalTokenCurveTrie,
-  proxy: UserProxy,
-  userAddress: string
-): Promise<BigNumber> {
-  const baseToken = trie.baseToken.token;
-  const baseTokenAmount = await baseToken.balanceOf(userAddress);
-  await baseToken.approve(proxy.address, baseTokenAmount);
-  const position = await trie.token.position();
-  const expiration = await trie.token.unlockTimestamp();
-  await proxy.mint(
-    baseTokenAmount,
-    baseToken.address,
-    expiration,
-    position,
-    []
-  );
-
-  return trie.token.balanceOf(userAddress);
-}
+const whales: { [k in string]: string } = {
+  stCRV: "0x56c915758Ad3f76Fd287FFF7563ee313142Fb663",
+  stETH: "0x06920C9fC643De77B99cB7670A944AD31eaAA260",
+  crvTriCrypto: "0x26026fec6af3404a2d00918891966330bc2f36c8",
+  USDT: "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503",
+  WBTC: "0xE3DD3914aB28bB552d41B8dFE607355DE4c37A51",
+  WETH: "0x2fEb1512183545f48f6b9C5b4EbfCaF49CfCa6F3",
+  LUSD3CRV_F: "0x3631401a11ba7004d1311e24d177b05ece39b4b3",
+  LUSD: "0xE05fD1304C1CfE19dcc6AAb0767848CC4A8f54aa",
+  "3Crv": "0x0B096d1f0ba7Ef2b3C7ecB8d4a5848043CdeBD50",
+  DAI: "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503",
+  USDC: "0xdb49552EeFB89416b9A412138c009a004f54BAd0",
+};

@@ -77,12 +77,13 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         _noReentry = false;
     }
 
-    function setApprovalsFor(address[] memory tokens, address[] memory spenders)
-        external
-        onlyAuthorized
-    {
+    function setApprovalsFor(
+        address[] memory tokens,
+        address[] memory spenders,
+        uint256[] memory amounts
+    ) external onlyAuthorized {
         for (uint256 i = 0; i < tokens.length; i++) {
-            IERC20(tokens[i]).safeApprove(spenders[i], type(uint256).max);
+            IERC20(tokens[i]).safeApprove(spenders[i], amounts[i]);
         }
     }
 
@@ -261,6 +262,8 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
                 );
             }
         }
+
+        console.log("targetTokenAmount: %s", rootAmount);
     }
 
     function zapCurveOut(
@@ -308,7 +311,6 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
             _info.targetNeedsChildZap ? payable(address(this)) : _info.recipient
         );
 
-        console.log("targetTokenAmount: %s", amount);
         if (_info.targetNeedsChildZap) {
             amount = _zapCurveLpOut(
                 _childZap,

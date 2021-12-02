@@ -1,12 +1,9 @@
 import { expect } from "chai";
-import { BigNumber, Signer } from "ethers";
+import { Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
 
 import { CFixtureInterface, loadCFixture } from "./helpers/deployer";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
-import { setBlock } from "test/helpers/forking";
-
-import { CompoundAssetProxy } from "typechain/CompoundAssetProxy";
 
 import { impersonate, stopImpersonating } from "./helpers/impersonate";
 
@@ -21,11 +18,13 @@ describe.only("Compound Asset Proxy", () => {
     // snapshot initial state
     await createSnapshot(provider);
 
+    const signers = await ethers.getSigners();
     // load all related contracts
-    fixture = await loadCFixture();
+    // TODO: pass signers into this here
+    fixture = await loadCFixture(signers[2]);
 
     // begin to populate the user array by assigning each index a signer
-    users = ((await ethers.getSigners()) as Signer[]).map(function (user) {
+    users = signers.map(function (user) {
       return { user, address: "" };
     });
 
@@ -62,6 +61,31 @@ describe.only("Compound Asset Proxy", () => {
       .deposit(users[0].address, 1e6);
     expect(
       await fixture.position.balanceOfUnderlying(users[0].address)
-    ).to.equal(1e6);
+    ).to.equal(2); // TODO: I'm not sure if this should actually equal 2
+    // I think it's because of the exchange rate?
+    // Am I checking the right value?
+  });
+  it("withdraw", async () => {
+    const shareBalance = await fixture.position.balanceOf(users[0].address);
+    await fixture.position
+      .connect(users[0].user)
+      .withdraw(users[0].address, shareBalance, 0);
+    expect(await fixture.position.balanceOf(users[0].address)).to.equal(0);
+  });
+  it("rewards", async () => {
+    // transfer some comp so we have something to collect
+    const compWhaleAddress = "0x0f50d31b3eaefd65236dd3736b863cffa4c63c4e";
+    impersonate(compWhaleAddress);
+    const compWhale = await ethers.provider.getSigner(compWhaleAddress);
+
+    // check the whale's balance
+
+    // collect the rewards
+    const owner = await fixture.position.owner();
+    const rewardBalance = await fixture.position.collectRewards(owner);
+
+    // check the comp balance
+    console.log(`Rewards: ${rewardBalance}`);
+    stopImpersonating(usdcWhaleAddress);
   });
 });

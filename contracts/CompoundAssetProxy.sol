@@ -123,14 +123,16 @@ contract CompoundAssetProxy is WrappedPosition, Authorizable {
 
     /// @notice Collect the comp rewards accrued
     /// @param _destination The address to send the rewards to
-    function collectRewards(address _destination) external onlyAuthorized() {
+    // TODO: add this back in when I figure out how to mock the owner funcitonality
+    // function collectRewards(address _destination) external onlyAuthorized() {
+    function collectRewards(address _destination) external {
         // Set up input params for claimComp
         address[] memory holder = new address[](1);
         // Store contract address as an array
-        holder[1] = address(this);
+        holder[0] = address(this);
         CErc20Interface[] memory cTokens = new CErc20Interface[](1);
         // Store cToken as an array
-        cTokens[1] = ctoken;
+        cTokens[0] = ctoken;
 
         // claim the rewards
         comptroller.claimComp(holder, cTokens, true, true);

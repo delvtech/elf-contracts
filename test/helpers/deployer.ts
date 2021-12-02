@@ -47,9 +47,11 @@ export interface FixtureInterface {
 }
 
 export interface CFixtureInterface {
+  signer: Signer;
   position: CompoundAssetProxy;
   cusdc: CTokenInterface;
   usdc: IERC20;
+  comp: IERC20;
 }
 
 export interface EthPoolMainnetInterface {
@@ -167,44 +169,44 @@ export const deployTrancheFactory = async (signer: Signer) => {
   return deployTx;
 };
 
-export async function loadCFixture() {
-  const [signer] = await ethers.getSigners();
+export async function loadCFixture(signer: Signer) {
+  const owner = signer;
   const cusdcAddress = "0x39aa39c021dfbae8fac545936693ac917d5e7563";
   const usdcAddress = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
-  const cusdc = CTokenInterface__factory.connect(cusdcAddress, signer);
-  const usdc = IERC20__factory.connect(usdcAddress, signer);
+  const cusdc = CTokenInterface__factory.connect(cusdcAddress, owner);
+  const usdc = IERC20__factory.connect(usdcAddress, owner);
 
   const comptrollerAddress = await cusdc.comptroller();
 
   const compAddress = "0xc00e94cb662c3520282e6f5717214004a7f26888";
-  const signerAddress = await signer.getAddress();
+  const ownerAddress = await signer.getAddress();
 
   // deploy casset
   const position: CompoundAssetProxy = await deployCasset(
-    signer,
+    owner,
     cusdcAddress,
     comptrollerAddress,
     compAddress,
     usdcAddress,
     "cusdc",
     "element cusdc",
-    signerAddress
+    ownerAddress
   );
 
   // deploy and fetch tranche contract
-  const trancheFactory = await deployTrancheFactory(signer);
+  const trancheFactory = await deployTrancheFactory(owner);
   await trancheFactory.deployTranche(1e10, position.address);
   const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
   const events = await trancheFactory.queryFilter(eventFilter);
   const trancheAddress = events[0] && events[0].args && events[0].args[0];
-  const tranche = Tranche__factory.connect(trancheAddress, signer);
+  const tranche = Tranche__factory.connect(trancheAddress, owner);
 
   const interestTokenAddress = await tranche.interestToken();
   const interestToken = InterestToken__factory.connect(
     interestTokenAddress,
-    signer
+    owner
   );
-  return { position, cusdc, usdc };
+  return { signer, position, cusdc, usdc };
 }
 
 export async function loadFixture() {

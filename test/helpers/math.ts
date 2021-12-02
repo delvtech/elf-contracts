@@ -9,8 +9,6 @@ export const subError = (amount: BigNumber) => {
   return amount.sub(bnFloatMultiplier(amount, 0.00001));
 };
 
-// 0.125% -> 125 / 100000
-// 100% -> 100 / 100
 export function calcBigNumberPercentage(
   amount: BigNumber,
   percentage: number

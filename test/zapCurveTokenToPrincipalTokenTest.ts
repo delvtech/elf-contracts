@@ -16,7 +16,7 @@ import {
   ePyvCurveLUSD,
   getERC20,
   getPrincipalToken,
-} from "./helpers/ZapCurveTries";
+} from "./helpers/zapCurveTries";
 const { provider } = waffle;
 
 const ptOffsetTolerancePercentage = 0.1;
@@ -98,12 +98,6 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
           principalTokenAmount,
           users[2].address
         );
-
-      console.log(
-        "Expected RootToken Amount:",
-        ethers.utils.formatEther(expectedRootTokenAmount)
-      );
-
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
         .zapCurveOut(info, zap, childZap);
@@ -112,8 +106,14 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
 
       const returnedTokenAmount = user2PostBalance.sub(user2PreBalance);
 
-      console.log(ethers.utils.formatEther(principalTokenAmount));
-      console.log(ethers.utils.formatEther(returnedTokenAmount));
+      const diff = returnedTokenAmount.sub(expectedRootTokenAmount);
+      const allowedOffset = calcBigNumberPercentage(
+        returnedTokenAmount,
+        ptOffsetTolerancePercentage
+      );
+
+      expect(diff.gte(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap stETH for ePyvcrvSTETH", async () => {
@@ -145,12 +145,6 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       const principalTokenAmount = ethers.utils.parseEther("100");
       const { info, zap, childZap, expectedRootTokenAmount } =
         await constructZapOutArgs(ePyvcrvSTETH, "stETH", principalTokenAmount);
-
-      console.log(
-        "Expected RootToken Amount:",
-        ethers.utils.formatEther(expectedRootTokenAmount)
-      );
-
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
         .zapCurveOut(info, zap, childZap);
@@ -158,9 +152,14 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       const returnedTokenAmount = await getERC20("stETH").balanceOf(
         users[1].address
       );
+      const diff = returnedTokenAmount.sub(expectedRootTokenAmount);
+      const allowedOffset = calcBigNumberPercentage(
+        returnedTokenAmount,
+        ptOffsetTolerancePercentage
+      );
 
-      console.log(ethers.utils.formatEther(principalTokenAmount));
-      console.log(ethers.utils.formatEther(returnedTokenAmount));
+      expect(diff.gte(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap stETH & ETH for ePyvcrvSTETH", async () => {
@@ -223,12 +222,6 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
 
       const { info, zap, childZap, expectedRootTokenAmount } =
         await constructZapOutArgs(ePyvcrv3crypto, "USDT", principalTokenAmount);
-
-      console.log(
-        "Expected RootToken Amount:",
-        ethers.utils.formatUnits(expectedRootTokenAmount, 6)
-      );
-
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
         .zapCurveOut(info, zap, childZap);
@@ -236,9 +229,14 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       const returnedTokenAmount = await getERC20("USDT").balanceOf(
         users[1].address
       );
+      const diff = returnedTokenAmount.sub(expectedRootTokenAmount);
+      const allowedOffset = calcBigNumberPercentage(
+        returnedTokenAmount,
+        ptOffsetTolerancePercentage
+      );
 
-      console.log(ethers.utils.formatEther(principalTokenAmount));
-      console.log(ethers.utils.formatUnits(returnedTokenAmount, 6));
+      expect(diff.gte(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap WBTC for ePyvcrv3crypto", async () => {
@@ -271,11 +269,6 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       const { info, zap, childZap, expectedRootTokenAmount } =
         await constructZapOutArgs(ePyvcrv3crypto, "WBTC", principalTokenAmount);
 
-      console.log(
-        "Expected RootToken Amount:",
-        ethers.utils.formatUnits(expectedRootTokenAmount, 8)
-      );
-
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
         .zapCurveOut(info, zap, childZap);
@@ -283,9 +276,14 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       const returnedTokenAmount = await getERC20("WBTC").balanceOf(
         users[1].address
       );
+      const diff = returnedTokenAmount.sub(expectedRootTokenAmount);
+      const allowedOffset = calcBigNumberPercentage(
+        returnedTokenAmount,
+        ptOffsetTolerancePercentage
+      );
 
-      console.log(ethers.utils.formatEther(principalTokenAmount));
-      console.log(ethers.utils.formatUnits(returnedTokenAmount, 8));
+      expect(diff.gte(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap WETH for ePyvcrv3crypto", async () => {
@@ -308,6 +306,7 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
         returnedPrincipalTokenAmount,
         ptOffsetTolerancePercentage
       );
+
       expect(diff.gte(ZERO)).to.be.true;
       expect(diff.lt(allowedOffset)).to.be.true;
     });
@@ -318,11 +317,6 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       const { info, zap, childZap, expectedRootTokenAmount } =
         await constructZapOutArgs(ePyvcrv3crypto, "WETH", principalTokenAmount);
 
-      console.log(
-        "Expected RootToken Amount:",
-        ethers.utils.formatEther(expectedRootTokenAmount)
-      );
-
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
         .zapCurveOut(info, zap, childZap);
@@ -330,9 +324,14 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       const returnedTokenAmount = await getERC20("WETH").balanceOf(
         users[1].address
       );
+      const diff = returnedTokenAmount.sub(expectedRootTokenAmount);
+      const allowedOffset = calcBigNumberPercentage(
+        returnedTokenAmount,
+        ptOffsetTolerancePercentage
+      );
 
-      console.log(ethers.utils.formatEther(principalTokenAmount));
-      console.log(ethers.utils.formatEther(returnedTokenAmount));
+      expect(diff.gte(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap WBTC,USDT & WETH for ePyvcrv3crypto", async () => {
@@ -395,11 +394,6 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       const { info, zap, childZap, expectedRootTokenAmount } =
         await constructZapOutArgs(ePyvCurveLUSD, "DAI", principalTokenAmount);
 
-      console.log(
-        "Expected RootToken Amount:",
-        ethers.utils.formatEther(expectedRootTokenAmount)
-      );
-
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
         .zapCurveOut(info, zap, childZap);
@@ -407,9 +401,14 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       const returnedTokenAmount = await getERC20("DAI").balanceOf(
         users[1].address
       );
+      const diff = returnedTokenAmount.sub(expectedRootTokenAmount);
+      const allowedOffset = calcBigNumberPercentage(
+        returnedTokenAmount,
+        ptOffsetTolerancePercentage
+      );
 
-      console.log(ethers.utils.formatEther(principalTokenAmount));
-      console.log(ethers.utils.formatEther(returnedTokenAmount));
+      expect(diff.gte(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap USDC for ePyvCurveLUSD", async () => {
@@ -443,11 +442,6 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       const { info, zap, childZap, expectedRootTokenAmount } =
         await constructZapOutArgs(ePyvCurveLUSD, "USDC", principalTokenAmount);
 
-      console.log(
-        "Expected RootToken Amount:",
-        ethers.utils.formatUnits(expectedRootTokenAmount, 6)
-      );
-
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
         .zapCurveOut(info, zap, childZap);
@@ -455,9 +449,14 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       const returnedTokenAmount = await getERC20("USDC").balanceOf(
         users[1].address
       );
+      const diff = returnedTokenAmount.sub(expectedRootTokenAmount);
+      const allowedOffset = calcBigNumberPercentage(
+        returnedTokenAmount,
+        ptOffsetTolerancePercentage
+      );
 
-      console.log(ethers.utils.formatEther(principalTokenAmount));
-      console.log(ethers.utils.formatUnits(returnedTokenAmount, 6));
+      expect(diff.gte(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap USDT for ePyvCurveLUSD", async () => {
@@ -485,16 +484,11 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       expect(diff.lt(allowedOffset)).to.be.true;
     });
 
-    it.only("should swap ePyvCurveLUSD to USDT", async () => {
+    it("should swap ePyvCurveLUSD to USDT", async () => {
       const principalTokenAmount = ethers.utils.parseEther("5000");
 
       const { info, zap, childZap, expectedRootTokenAmount } =
         await constructZapOutArgs(ePyvCurveLUSD, "USDT", principalTokenAmount);
-
-      console.log(
-        "Expected RootToken Amount:",
-        ethers.utils.formatUnits(expectedRootTokenAmount, 6)
-      );
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
@@ -503,9 +497,14 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       const returnedTokenAmount = await getERC20("USDT").balanceOf(
         users[1].address
       );
+      const diff = returnedTokenAmount.sub(expectedRootTokenAmount);
+      const allowedOffset = calcBigNumberPercentage(
+        returnedTokenAmount,
+        ptOffsetTolerancePercentage
+      );
 
-      console.log(ethers.utils.formatEther(principalTokenAmount));
-      console.log(ethers.utils.formatUnits(returnedTokenAmount, 6));
+      expect(diff.gte(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap LUSD for ePyvCurveLUSD", async () => {
@@ -536,11 +535,8 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
     it("should swap ePyvCurveLUSD to LUSD", async () => {
       const principalTokenAmount = ethers.utils.parseEther("5000");
 
-      const { info, zap, childZap } = await constructZapOutArgs(
-        ePyvCurveLUSD,
-        "LUSD",
-        principalTokenAmount
-      );
+      const { info, zap, childZap, expectedRootTokenAmount } =
+        await constructZapOutArgs(ePyvCurveLUSD, "LUSD", principalTokenAmount);
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
@@ -549,9 +545,14 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       const returnedTokenAmount = await getERC20("LUSD").balanceOf(
         users[1].address
       );
+      const diff = returnedTokenAmount.sub(expectedRootTokenAmount);
+      const allowedOffset = calcBigNumberPercentage(
+        returnedTokenAmount,
+        ptOffsetTolerancePercentage
+      );
 
-      console.log(ethers.utils.formatEther(principalTokenAmount));
-      console.log(ethers.utils.formatEther(returnedTokenAmount));
+      expect(diff.gte(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap 3Crv for ePyvCurveLUSD", async () => {
@@ -582,11 +583,8 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
     it("should swap ePyvCurveLUSD to 3Crv", async () => {
       const principalTokenAmount = ethers.utils.parseEther("5000");
 
-      const { info, zap, childZap } = await constructZapOutArgs(
-        ePyvCurveLUSD,
-        "3Crv",
-        principalTokenAmount
-      );
+      const { info, zap, childZap, expectedRootTokenAmount } =
+        await constructZapOutArgs(ePyvCurveLUSD, "3Crv", principalTokenAmount);
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
@@ -595,9 +593,14 @@ describe.only("ZapCurveTokenToPrincpalToken", () => {
       const returnedTokenAmount = await getERC20("3Crv").balanceOf(
         users[1].address
       );
+      const diff = returnedTokenAmount.sub(expectedRootTokenAmount);
+      const allowedOffset = calcBigNumberPercentage(
+        returnedTokenAmount,
+        ptOffsetTolerancePercentage
+      );
 
-      console.log(ethers.utils.formatEther(principalTokenAmount));
-      console.log(ethers.utils.formatEther(returnedTokenAmount));
+      expect(diff.gte(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
     });
 
     it("should swap LUSD and DAI for ePyvCurveLUSD", async () => {

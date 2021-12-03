@@ -5,7 +5,6 @@ import { IERC20__factory } from "typechain/factories/IERC20__factory";
 import { UserProxy__factory } from "typechain/factories/UserProxy__factory";
 import { Vault__factory } from "typechain/factories/Vault__factory";
 import { ZapCurveTokenToPrincipalToken__factory } from "typechain/factories/ZapCurveTokenToPrincipalToken__factory";
-import { IERC20 } from "typechain/IERC20";
 import { Vault } from "typechain/Vault";
 import {
   ZapCurveLpInStruct,
@@ -26,7 +25,7 @@ import {
   PrincipalTokenCurveTrie,
   RootToken,
   RootTokenKind,
-} from "./ZapCurveTries";
+} from "./zapCurveTries";
 
 const { provider } = waffle;
 
@@ -82,7 +81,10 @@ export async function deploy(user: { user: Signer; address: string }) {
   await zapCurveTokenToPrincipalToken.setApprovalsFor(
     tokens,
     spenders,
-    spenders.map(() => ethers.constants.MaxUint256)
+    Array.from(
+      { length: spenders.length },
+      () => ethers.constants.MaxUint256
+    ) as BigNumber[]
   );
 
   await Promise.all(
@@ -373,23 +375,16 @@ async function estimateZapOut(
       false
     );
 
-  // Account for decimals
   let estimatedRootTokenAmount: BigNumber = await buildCurvePoolContract({
     address: zap.curvePool,
     targetType: trie.name !== "ePyvcrv3crypto" ? "int128" : "uint256",
   }).calc_withdraw_one_coin(estmatedBaseTokenAmount, zap.rootTokenIdx);
 
-  console.log(estimatedRootTokenAmount);
   if (info.targetNeedsChildZap) {
     estimatedRootTokenAmount = await buildCurvePoolContract({
-      address: zap.curvePool,
+      address: childZap.curvePool,
       targetType: trie.name !== "ePyvcrv3crypto" ? "int128" : "uint256",
     }).calc_withdraw_one_coin(estimatedRootTokenAmount, childZap.rootTokenIdx);
-  }
-
-  console.log("hvbhvhvhv");
-  if (target === "USDC" || target === "USDT") {
-    estimatedRootTokenAmount = estimatedRootTokenAmount.div(10 ** 12); // 18 - 12 = 6 decimals
   }
 
   const slippageAmount = calcBigNumberPercentage(

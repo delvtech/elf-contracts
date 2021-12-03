@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.0;
 
-import "hardhat/console.sol";
-
 import "../libraries/Authorizable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -236,7 +234,6 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         uint256 _minRootTokenAmount,
         address payable _recipient
     ) internal returns (uint256 rootAmount) {
-        console.log(_minRootTokenAmount);
         bool transferToTarget = address(this) != _recipient;
         address(_zap.curvePool).functionCall(
             abi.encodeWithSelector(
@@ -263,8 +260,6 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
                 );
             }
         }
-
-        console.log("targetTokenAmount: %s", rootAmount);
     }
 
     function zapCurveOut(
@@ -280,7 +275,6 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
             _info.principalTokenAmount
         );
 
-        console.log("principalTokenAmount: %s", _info.principalTokenAmount);
         // Then, contract swaps the principal tokens for an
         // unspecified amount of baseTokens on balancer
         uint256 baseTokenAmount = _balancer.swap(
@@ -302,7 +296,6 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
             _info.deadline
         );
 
-        console.log("baseTokenAmount: %s", baseTokenAmount);
         // If the target token is a root token of a meta pool, two curve swaps
         // are necessary.
         amount = _zapCurveLpOut(

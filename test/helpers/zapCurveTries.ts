@@ -93,7 +93,7 @@ export const ePyvcrv3crypto: PrincipalTokenCurveTrie = {
   name: "ePyvcrv3crypto",
   address: "0x285328906D0D33cb757c1E471F5e2176683247c2",
   slippageInPercentage: 1,
-  slippageOutPercentage: 1.25,
+  slippageOutPercentage: 1.2,
   balancerPoolId:
     "0x6dd0f7c8f4793ed2531c0df4fea8633a21fdcff40002000000000000000000b7",
   baseToken: {
@@ -127,7 +127,7 @@ export const ePyvCurveLUSD: PrincipalTokenCurveTrie = {
   name: "ePyvCurveLUSD",
   address: "0xa2b3d083AA1eaa8453BfB477f062A208Ed85cBBF",
   slippageInPercentage: 0.075,
-  slippageOutPercentage: 0,
+  slippageOutPercentage: 0.075,
   balancerPoolId:
     "0x893b30574bf183d69413717f30b17062ec9dfd8b000200000000000000000061",
   baseToken: {

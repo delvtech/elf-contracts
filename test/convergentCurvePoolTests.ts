@@ -239,7 +239,7 @@ describe("ConvergentCurvePool", function () {
 
   // We test the mint functionality where the underlying should be fully
   // consumed
-  it("Internally Mints LP correctly for underlying max", async function () {
+  it.only("Internally Mints LP correctly for underlying max", async function () {
     await resetPool();
     const oneThousand = ethers.utils.parseUnits("1000", 18);
     // Set the current total supply to 1000 lp tokens
@@ -258,8 +258,8 @@ describe("ConvergentCurvePool", function () {
     const returned = result.events.filter(
       (event) => event.event == "UIntReturn"
     );
-    expect(returned[0].data).to.be.eq(oneThousand);
-    expect(returned[1].data).to.be.eq(fiveHundred);
+    expect(returned[0].data).to.be.eq(fiveHundred);
+    expect(returned[1].data).to.be.eq(oneThousand);
     // Check the LP balance
     const balance = await poolContract.balanceOf(accounts[0].address);
     expect(balance).to.be.eq(oneThousand);

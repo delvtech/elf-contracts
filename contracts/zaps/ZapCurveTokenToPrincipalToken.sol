@@ -287,30 +287,63 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
     }
 
     struct ZapCurveLpOut {
+        // Address of the curvePool for which an amount of lpTokens
+        // is swapped for an amount of single root tokens
         address curvePool;
+        // The contract address of the curve pools lpToken
         IERC20 lpToken;
+        // This is the index of the target root we are swapping for
         int128 rootTokenIdx;
+        // Address of the rootToken we are swapping for
         address rootToken;
+        // This is the function signature of the curvePool's
+        // "remove_liquidity_one_coin" function which similar to the
+        // "add_liquidity" curvePool function in the zapIn, there is
+        // an inconsistent interface when interacting with curve pools
         bytes4 funcSig;
     }
 
     struct ZapOutInfo {
+        // Pool id of balancer pool that is used to exchange a users
+        // amount of principal tokens
         bytes32 balancerPoolId;
+        // Address of the principal token
         IAsset principalToken;
+        // Amount of principal tokens the user wishes to swap for
         uint256 principalTokenAmount;
+        // The recipient is the address the tokens which are to be swapped for
+        // will be sent to
         address payable recipient;
+        // The minimum amount root tokens the user is expecting
         uint256 minRootTokenAmount;
+        // Timestamp into the future for which a transaction is valid for
         uint256 deadline;
+        // If the target root token is sourced via two curve pool swaps, then
+        // this is to be flagged as true
         bool targetNeedsChildZap;
     }
 
+    /// @dev Swaps an amount of curve lptokens for a single dependent root token
+    /// from its pool
+    /// @param _zap See ZapCurveLpOut
+    /// @param _lpTokenAmount This is the amount of lpTokens we are swapping
+    /// with
+    /// @param _minRootTokenAmount This is the minimum amount of "root" tokens
+    /// the user expects to swap for. Used only in the final zap when executed
+    /// under zapOut
+    /// @param _recipient The address which the outputs tokens are to be sent
+    /// to. When there is a second zap to occur, in the first zap the recipient
+    /// should be this address
     function _zapCurveLpOut(
         ZapCurveLpOut memory _zap,
         uint256 _lpTokenAmount,
         uint256 _minRootTokenAmount,
         address payable _recipient
     ) internal returns (uint256 rootAmount) {
-        bool transferToTarget = address(this) != _recipient;
+        // Flag to detect if we are sending to recipient
+        bool transferToRecipient = address(this) != _recipient;
+
+        // Actual swap of lpToken -> rootToken
         address(_zap.curvePool).functionCall(
             abi.encodeWithSelector(
                 _zap.funcSig,
@@ -320,15 +353,20 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
             )
         );
 
+        // ETH case
         if (_zap.rootToken == _ETH_CONSTANT) {
+            // Get ETH balance of current contract
             rootAmount = address(this).balance;
             // if address does not equal this contract we send funds to recipient
-            if (transferToTarget) {
+            if (transferToRecipient) {
+                // Send rootAmount of ETH to the user-specified recipient
                 _recipient.transfer(rootAmount);
             }
         } else {
+            // Get balance of root token that was swapped
             rootAmount = IERC20(_zap.rootToken).balanceOf(address(this));
-            if (transferToTarget) {
+            // Send tokens to recipient
+            if (transferToRecipient) {
                 IERC20(_zap.rootToken).safeTransferFrom(
                     address(this),
                     _recipient,
@@ -338,6 +376,11 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         }
     }
 
+    /// @dev zapOut Allows users sell their principalTokens and subsequently
+    /// swap the resultant curve lpToken for one of its dependent "root" tokens
+    /// @param _info See ZapOutInfo
+    /// @param _zap See ZapCurveLpOut
+    /// @param _childZap See ZapCurveLpOut
     function zapOut(
         ZapOutInfo memory _info,
         ZapCurveLpOut memory _zap,
@@ -351,6 +394,8 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
             _info.principalTokenAmount
         );
 
+        // Swaps an amount of users principal tokens for baseTokens, which
+        // are the lpToken specified in the zap argument
         uint256 baseTokenAmount = _balancer.swap(
             IVault.SingleSwap({
                 poolId: _info.balancerPoolId,
@@ -370,6 +415,11 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
             _info.deadline
         );
 
+        // Swap the baseTokens for a target root. In the case of where the
+        // specified token the user wants is part of the childZap, the zap that
+        // occurs is to swap the baseTokens to the lpToken specified in the
+        // childZap struct. If there is no childZap, then the contract sends
+        // the tokens to the recipient
         amount = _zapCurveLpOut(
             _zap,
             baseTokenAmount,
@@ -377,6 +427,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
             _info.targetNeedsChildZap ? payable(address(this)) : _info.recipient
         );
 
+        // Execute the childZap is specified to do so
         if (_info.targetNeedsChildZap) {
             amount = _zapCurveLpOut(
                 _childZap,

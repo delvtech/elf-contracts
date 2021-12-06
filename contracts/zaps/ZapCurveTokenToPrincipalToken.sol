@@ -105,20 +105,14 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         uint256 parentIdx;
         bytes4 funcSig; // add_liquidity
     }
+
     struct ZapInInfo {
         bytes32 balancerPoolId;
         address recipient;
         IAsset principalToken;
         uint256 minPtAmount;
         uint256 deadline;
-    }
-
-    function _zapCurveLpIn(ZapCurveLpIn memory _zap)
-        internal
-        returns (uint256)
-    {
-        uint256[3] memory ctx;
-        return _zapCurveLpIn(_zap, ctx);
+        bool needsChildZap;
     }
 
     // Given that we call the curve add liquidity function through a low-level
@@ -180,12 +174,15 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
     function zapIn(
         ZapInInfo memory _info,
         ZapCurveLpIn memory _zap,
-        ZapCurveLpIn[] memory _childZaps
+        ZapCurveLpIn memory _childZap
     ) external payable reentrancyGuard notFrozen returns (uint256 ptAmount) {
         uint256[3] memory ctx;
-        for (uint8 i = 0; i < _childZaps.length; i++) {
-            uint256 _amount = _zapCurveLpIn(_childZaps[i]);
-            ctx[_childZaps[i].parentIdx] += _amount;
+        if (_info.needsChildZap) {
+            uint256 _amount = _zapCurveLpIn(
+                _childZap,
+                [uint256(0), uint256(0), uint256(0)]
+            );
+            ctx[_childZap.parentIdx] += _amount;
         }
 
         uint256 baseTokenAmount = _zapCurveLpIn(_zap, ctx);

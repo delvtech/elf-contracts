@@ -35,7 +35,7 @@ export type ConstructZapInArgs = (
 ) => Promise<{
   info: ZapInInfoStruct;
   zap: ZapCurveLpInStruct;
-  childZaps: ZapCurveLpInStruct[];
+  childZap: ZapCurveLpInStruct;
   expectedPrincipalTokenAmount: BigNumber;
 }>;
 
@@ -105,7 +105,7 @@ export async function deploy(user: { user: Signer; address: string }) {
       )
     );
 
-    const zap: () => ZapCurveLpInStruct = () => ({
+    const zap: ZapCurveLpInStruct = {
       curvePool: trie.baseToken.pool,
       funcSig: getFunctionSignature(trie.baseToken.zapInFuncSig),
       lpToken: trie.baseToken.address,
@@ -114,46 +114,52 @@ export async function deploy(user: { user: Signer; address: string }) {
       ),
       roots: trie.baseToken.roots.map((root) => root.address),
       parentIdx: 0,
-    });
+    };
 
-    const childZaps: ZapCurveLpInStruct[] = trie.baseToken.roots
-      .map((root, idx) => {
-        if (root.kind !== RootTokenKind.LpToken) {
-          return {} as ZapCurveLpInStruct;
-        } else {
-          return {
-            curvePool: root.pool,
-            funcSig: getFunctionSignature(root.zapInFuncSig),
-            lpToken: root.address,
-            amounts: root.roots.map((r) =>
-              BigNumber.isBigNumber(amounts[r.name]) ? amounts[r.name] : ZERO
-            ),
-            roots: root.roots.map((r) => r.address),
-            parentIdx: idx,
-          };
-        }
-      })
-      .filter((zap) => Object.keys(zap).length !== 0);
-
-    const expectedPrincipalTokenAmount = await estimateZapIn(
-      trie,
-      balancerVault,
-      zap(),
-      childZaps
+    const lpRootIdx = trie.baseToken.roots.findIndex(
+      (root) => root.kind === RootTokenKind.LpToken
     );
+
+    let childZap: ZapCurveLpInStruct;
+    if (lpRootIdx === -1) {
+      childZap = zap;
+    } else {
+      const lpRoot = trie.baseToken.roots[
+        lpRootIdx
+      ] as RootToken<RootTokenKind.LpToken>;
+      childZap = {
+        curvePool: lpRoot.pool,
+        funcSig: getFunctionSignature(lpRoot.zapInFuncSig),
+        lpToken: lpRoot.address,
+        amounts: lpRoot.roots.map((r) =>
+          BigNumber.isBigNumber(amounts[r.name]) ? amounts[r.name] : ZERO
+        ),
+        roots: lpRoot.roots.map((r) => r.address),
+        parentIdx: lpRootIdx,
+      };
+    }
 
     const info: ZapInInfoStruct = {
       balancerPoolId: trie.balancerPoolId,
       principalToken: trie.address,
       recipient: user.address,
-      minPtAmount: expectedPrincipalTokenAmount,
+      minPtAmount: ZERO,
       deadline: Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS,
+      needsChildZap: lpRootIdx !== -1,
     };
 
-    return {
-      zap: zap(),
-      childZaps,
+    const expectedPrincipalTokenAmount = await estimateZapIn(
+      trie,
+      balancerVault,
       info,
+      zap,
+      childZap
+    );
+
+    return {
+      zap,
+      childZap,
+      info: { ...info, minPtAmount: expectedPrincipalTokenAmount },
       expectedPrincipalTokenAmount,
     };
   };
@@ -295,27 +301,25 @@ const buildCurvePoolContract = ({
 async function estimateZapIn(
   trie: PrincipalTokenCurveTrie,
   balancerVault: Vault,
+  info: ZapInInfoStruct,
   zap: ZapCurveLpInStruct,
-  childZaps: ZapCurveLpInStruct[]
+  childZap: ZapCurveLpInStruct
 ): Promise<BigNumber> {
-  for (const childZap of childZaps) {
-    const parentIdx = BigNumber.from(childZap.parentIdx).toNumber();
-    const estimatedLpAmount = BigNumber.from(
-      await buildCurvePoolContract({
+  const estimatedLpAmount: BigNumber = info.needsChildZap
+    ? await buildCurvePoolContract({
         address: childZap.curvePool,
         numRoots: childZap.amounts.length,
       }).calc_token_amount(childZap.amounts, true)
-    );
+    : ZERO;
 
-    zap.amounts[parentIdx] = BigNumber.from(zap.amounts[parentIdx])
-      .add(estimatedLpAmount)
-      .toString();
-  }
+  const zapAmounts = zap.amounts.map((amount, idx) =>
+    idx === childZap.parentIdx ? estimatedLpAmount.add(amount) : amount
+  );
 
   const baseTokenAmount = await buildCurvePoolContract({
     address: zap.curvePool,
     numRoots: zap.amounts.length,
-  }).calc_token_amount(zap.amounts, true);
+  }).calc_token_amount(zapAmounts, true);
 
   const [convergentCurvePoolAddress] = await balancerVault.getPool(
     trie.balancerPoolId

@@ -49,32 +49,39 @@ interface IVault {
 }
 
 contract ZapCurveTokenToPrincipalToken is Authorizable {
+    // Enables a more consistent interface when utilising ERC20 tokens
     using SafeERC20 for IERC20;
+    // Simplifies making low-level function calls
     using Address for address;
 
+    // Store the accessibility state of the contract
     bool public isFrozen = false;
 
+    // A constant to represent ether
     address internal constant _ETH_CONSTANT =
         address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
+    // Reference to the main balancer vault
     IVault internal immutable _balancer;
 
+    /// @dev Marks the msg.sender as authorized and sets them as the owner
+    ///      in the authorization library
+    /// @param __balancer The balancer vault contract
     constructor(IVault __balancer) Authorizable() {
         _authorize(msg.sender);
         _balancer = __balancer;
     }
 
+    /// @dev Allows this contract to receive ether
     receive() external payable {}
 
-    bool private _noReentry = false;
-
-    modifier reentrancyGuard() {
-        require(!_noReentry);
-        _noReentry = true;
-        _;
-        _noReentry = false;
-    }
-
+    /// @dev This function sets approvals on all ERC20 tokens
+    /// @param tokens An array of token addresses which are to be approved
+    /// @param spenders An array of contract addresses, most likely curve and
+    /// balancer pool addresses
+    /// @param amounts An array of amounts for which at each index, the spender
+    /// from the same index in the spenders array is approved to use the token
+    /// at the equivalent index of the token array on behalf of this contract
     function setApprovalsFor(
         address[] memory tokens,
         address[] memory spenders,
@@ -97,72 +104,123 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         isFrozen = _newState;
     }
 
-    struct ZapCurveLpIn {
-        address curvePool;
-        IERC20 lpToken;
-        uint256[] amounts;
-        address[] roots;
-        uint256 parentIdx;
-        bytes4 funcSig; // add_liquidity
-    }
-
     struct ZapInInfo {
+        // The balancerPoolId references the particular pool in the balancer
+        // contract which is used to exchange for the principal token
         bytes32 balancerPoolId;
+        // The recipient is a target address the sender can send the resulting
+        // principal tokens to
         address recipient;
+        // Address of the principalToken
         IAsset principalToken;
+        // The minimum amount of principal tokens the user expects to recieve
         uint256 minPtAmount;
+        // The time into the future for which the trade can happen
         uint256 deadline;
+        // Some curvePools have themselves a dependent lpToken "root" which
+        // this contract accomodates zapping through. This flag indicates if
+        // such an action is necessary
         bool needsChildZap;
     }
 
-    // Given that we call the curve add liquidity function through a low-level
-    // call, we can utilise a fixed-length array of length 3 as our input context
-    // "bucket". In the event where the target curve pool contract expects an
-    // array of length 2, we can still utilise the "bucket" where the last index is
-    // disregarded.
+    struct ZapCurveLpIn {
+        // Address of target curvePool for which liquidity will be added
+        // giving this contract the lpTokens necessary to swap for the
+        // principalTokens
+        address curvePool;
+        // The target lpToken which will be received
+        IERC20 lpToken;
+        // Array of amounts which are structured in reference to the
+        // "add_liquidity" function in the related curvePool. These in all
+        // cases come in either fixed-length arrays of length 2 or 3
+        uint256[] amounts;
+        // Similar to "amounts", these are the reference token contract
+        // addresses also ordered as per the inconsistent interface of the
+        // "add_liquidity" curvePool function
+        address[] roots;
+        // Only relevant when there is a childZap, it references what
+        // index in the amounts array of the main "zap" the resultant
+        // number of lpTokens should be added to
+        uint256 parentIdx;
+        // This is the function signature for the "add_liquidity" function
+        // which must be constructed on the frontend as the suite of curvePool
+        // contracts have an inconsistent interface.
+        bytes4 funcSig;
+    }
+
+    /// @dev Effectively exchanges an array of "root" tokens for an amount of
+    /// curve lpTokens
+    /// @param _zap ZapCurveLpIn struct
+    /// @param _ctx fixed length array used as an amounts container between the
+    /// zap and childZap and also makes the transition from a dynamic-length
+    /// array to a fixed-length which is required for the actual call to add
+    /// liquidity to the curvePool
     function _zapCurveLpIn(ZapCurveLpIn memory _zap, uint256[3] memory ctx)
         internal
         returns (uint256)
     {
+        // All curvePools have either 2 or 3 "root" tokens
         require(
             _zap.amounts.length == 2 || _zap.amounts.length == 3,
             "!(2 >= amounts.length <= 3)"
         );
 
+        // Flag if the current zap has amounts. Used to short-circuit
+        // unneccessary calls
         bool zapHasAmounts = false;
+        // Flag for where the user has a childZap with amounts. Used to
+        // short-cicuit unneccessary calls
         bool ctxHasAmounts = false;
         for (uint8 i = 0; i < _zap.amounts.length; i++) {
             // Must check we do not unintentionally send ETH
             if (_zap.roots[i] == _ETH_CONSTANT)
                 require(msg.value == _zap.amounts[i], "incorrect value");
 
+            // Setting ctxHasAmounts flag as true means that there
+            // was a previous childZap we must acknowledge
             if (!ctxHasAmounts && ctx[i] > 0) {
                 ctxHasAmounts = true;
             }
 
             if (_zap.amounts[i] > 0) {
-                zapHasAmounts = true;
+                // If the zapHasAmounts has not been set, we set it to true
+                if (!zapHasAmounts) {
+                    zapHasAmounts = true;
+                }
+
                 if (_zap.roots[i] == _ETH_CONSTANT) {
+                    // We build the context container with our amounts
                     ctx[i] += _zap.amounts[i];
                 } else {
+                    // In the case of swapping an ERC20 "root" we must transfer them
+                    // to this contract in order to make the exchange
                     IERC20(_zap.roots[i]).safeTransferFrom(
                         msg.sender,
                         address(this),
                         _zap.amounts[i]
                     );
 
+                    // Due to rounding issues of some tokens, we find the
+                    // relevant token balance of this contract
                     ctx[i] = IERC20(_zap.roots[i]).balanceOf(address(this));
                 }
             }
         }
 
+        // When we do not have anything to swap for, we short-circuit
         if (!zapHasAmounts && !ctxHasAmounts) {
             return 0;
         }
-        // It is necessary to add liquidity to the respective curve pool like this
-        // due to the non-standard interface of the function in the curve contracts.
-        // Not only is there two variants of fixed length array amount inputs but it is
-        // often inconsistent whether return values exist or not
+
+        // It is necessary to add liquidity to the respective curve pool like
+        // this due to the non-standard interface of the function in the curve
+        // contracts. Not only is there two variants of fixed length array
+        // amount inputs but it is often inconsistent whether return values
+        // exist or not
+        // Also, the context amounts container, although fixed-length of 2 or 3,
+        // because it is a low-level function call, solidity will not complain
+        // and the first 2 indexes are only considered in the case of it being
+        // length 2
         address(_zap.curvePool).functionCallWithValue(
             abi.encodeWithSelector(_zap.funcSig, ctx, 0),
             msg.value
@@ -171,22 +229,43 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         return _zap.lpToken.balanceOf(address(this));
     }
 
+    /// @dev zapIn enables the user swap multiple dependent curve tokens into
+    /// their respective lp tokens and then immediately swaps them for
+    /// principal tokens, greatly simplifying the purchasing of principal
+    /// tokens
+    /// @param _info See ZapInInfo struct
+    /// @param _zap See ZapCurveLpIn struct - This is the "main" or parent zap
+    /// which produces the lp token necessary to swap for the principal token
+    /// @param _childZap See ZapCurveLpIn - This is used only in cases where
+    /// the "main" or "parent" zap itself is composed of another curve lp token
+    /// which can be accessed more readily via another swap via curve
     function zapIn(
         ZapInInfo memory _info,
         ZapCurveLpIn memory _zap,
         ZapCurveLpIn memory _childZap
-    ) external payable reentrancyGuard notFrozen returns (uint256 ptAmount) {
+    ) external payable notFrozen returns (uint256 ptAmount) {
+        // Instantiation of the context amount container which is used to track
+        // amounts to be swapped in the final curve zap.
         uint256[3] memory ctx;
+
+        // Only execute the childZap if it is necessary
         if (_info.needsChildZap) {
             uint256 _amount = _zapCurveLpIn(
                 _childZap,
+                // The context array is unneccessary for the childZap and so we
+                // can just put a dud array in place of it
                 [uint256(0), uint256(0), uint256(0)]
             );
+            // When a childZap happens, we add the amount of lpTokens gathered
+            // from it to the relevant root index of the "main" zap
             ctx[_childZap.parentIdx] += _amount;
         }
 
+        // Swap an amount of "root" tokens on curve for the lp token that is
+        // used to then purchase the principal token
         uint256 baseTokenAmount = _zapCurveLpIn(_zap, ctx);
 
+        // Purchase of "ptAmount" of principal tokens
         ptAmount = _balancer.swap(
             IVault.SingleSwap({
                 poolId: _info.balancerPoolId,
@@ -212,7 +291,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         IERC20 lpToken;
         int128 rootTokenIdx;
         address rootToken;
-        bytes4 funcSig; // remove_liquidity_one_coin
+        bytes4 funcSig;
     }
 
     struct ZapOutInfo {
@@ -263,7 +342,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         ZapOutInfo memory _info,
         ZapCurveLpOut memory _zap,
         ZapCurveLpOut memory _childZap
-    ) external payable reentrancyGuard notFrozen returns (uint256 amount) {
+    ) external payable notFrozen returns (uint256 amount) {
         // First, principalTokenAmount of principal tokens transferred
         // from sender to this contract
         IERC20(address(_info.principalToken)).safeTransferFrom(
@@ -272,8 +351,6 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
             _info.principalTokenAmount
         );
 
-        // Then, contract swaps the principal tokens for an
-        // unspecified amount of baseTokens on balancer
         uint256 baseTokenAmount = _balancer.swap(
             IVault.SingleSwap({
                 poolId: _info.balancerPoolId,
@@ -293,8 +370,6 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
             _info.deadline
         );
 
-        // If the target token is a root token of a meta pool, two curve swaps
-        // are necessary.
         amount = _zapCurveLpOut(
             _zap,
             baseTokenAmount,

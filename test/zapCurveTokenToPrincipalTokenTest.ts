@@ -21,7 +21,7 @@ const { provider } = waffle;
 
 const ptOffsetTolerancePercentage = 0.1;
 
-describe("ZapCurveTokenToPrincpalToken", () => {
+describe.only("ZapCurveTokenToPrincipalToken", () => {
   let users: { user: Signer; address: string }[];
 
   let zapCurveTokenToPrincipalToken: ZapCurveTokenToPrincipalToken;

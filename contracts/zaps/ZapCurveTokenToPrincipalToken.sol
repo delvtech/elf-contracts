@@ -177,7 +177,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         return _zap.lpToken.balanceOf(address(this));
     }
 
-    function zapCurveIn(
+    function zapIn(
         ZapInInfo memory _info,
         ZapCurveLpIn memory _zap,
         ZapCurveLpIn[] memory _childZaps
@@ -262,7 +262,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         }
     }
 
-    function zapCurveOut(
+    function zapOut(
         ZapOutInfo memory _info,
         ZapCurveLpOut memory _zap,
         ZapCurveLpOut memory _childZap

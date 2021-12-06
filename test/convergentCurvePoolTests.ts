@@ -239,7 +239,7 @@ describe("ConvergentCurvePool", function () {
 
   // We test the mint functionality where the underlying should be fully
   // consumed
-  it.only("Internally Mints LP correctly for underlying max", async function () {
+  it("Internally Mints LP correctly for underlying max", async function () {
     await resetPool();
     const oneThousand = ethers.utils.parseUnits("1000", 18);
     // Set the current total supply to 1000 lp tokens

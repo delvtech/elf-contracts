@@ -52,6 +52,7 @@ export interface CFixtureInterface {
   cusdc: CTokenInterface;
   usdc: IERC20;
   comp: IERC20;
+  proxy: TestUserProxy;
 }
 
 export interface EthPoolMainnetInterface {
@@ -170,6 +171,7 @@ export const deployTrancheFactory = async (signer: Signer) => {
 };
 
 export async function loadCFixture(signer: Signer) {
+  const wethAddress = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
   const owner = signer;
   const cusdcAddress = "0x39aa39c021dfbae8fac545936693ac917d5e7563";
   const usdcAddress = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
@@ -177,8 +179,9 @@ export async function loadCFixture(signer: Signer) {
   const usdc = IERC20__factory.connect(usdcAddress, owner);
 
   const comptrollerAddress = await cusdc.comptroller();
-
   const compAddress = "0xc00e94cb662c3520282e6f5717214004a7f26888";
+  const comp = IERC20__factory.connect(compAddress, owner);
+
   const ownerAddress = await signer.getAddress();
 
   // deploy casset
@@ -206,7 +209,20 @@ export async function loadCFixture(signer: Signer) {
     interestTokenAddress,
     owner
   );
-  return { signer, position, cusdc, usdc };
+
+  // Setup the proxy
+  const bytecodehash = ethers.utils.solidityKeccak256(
+    ["bytes"],
+    [data.bytecode]
+  );
+  const proxyFactory = new TestUserProxy__factory(signer);
+  const proxy = await proxyFactory.deploy(
+    wethAddress,
+    trancheFactory.address,
+    bytecodehash
+  );
+
+  return { signer, position, cusdc, usdc, comp, proxy };
 }
 
 export async function loadFixture() {

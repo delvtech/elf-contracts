@@ -6,6 +6,8 @@ import { CFixtureInterface, loadCFixture } from "./helpers/deployer";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 
 import { impersonate, stopImpersonating } from "./helpers/impersonate";
+import { send } from "process";
+import { subError } from "./helpers/math";
 
 const { provider } = waffle;
 
@@ -14,14 +16,14 @@ describe.only("Compound Asset Proxy", () => {
   let fixture: CFixtureInterface;
   // address of a large usdc holder to impersonate. 69 million usdc as of block 11860000
   const usdcWhaleAddress = "0xAe2D4617c862309A3d75A0fFB358c7a5009c673F";
+
   before(async () => {
     // snapshot initial state
     await createSnapshot(provider);
 
     const signers = await ethers.getSigners();
     // load all related contracts
-    // TODO: pass signers into this here
-    fixture = await loadCFixture(signers[2]);
+    fixture = await loadCFixture(signers[0]);
 
     // begin to populate the user array by assigning each index a signer
     users = signers.map(function (user) {
@@ -55,37 +57,57 @@ describe.only("Compound Asset Proxy", () => {
     // revert back to initial state after all tests pass
     await restoreSnapshot(provider);
   });
-  it("deposit", async () => {
-    await fixture.position
-      .connect(users[0].user)
-      .deposit(users[0].address, 1e6);
-    expect(
-      await fixture.position.balanceOfUnderlying(users[0].address)
-    ).to.equal(2); // TODO: I'm not sure if this should actually equal 2
-    // I think it's because of the exchange rate?
-    // Am I checking the right value?
+  describe("deposit", () => {
+    it("deposits correctly", async () => {
+      await fixture.position
+        .connect(users[0].user)
+        .deposit(users[0].address, 2e6);
+      const balance = await fixture.position.balanceOf(users[0].address);
+      // Allows a 0.01% conversion error
+      expect(balance).to.be.at.least(subError(ethers.BigNumber.from(2e6)));
+    });
+    it("fails to deposit amount greater than available", async () => {
+      const tx = fixture.position
+        .connect(users[1].user)
+        .deposit(users[1].address, 10e12);
+      await expect(tx).to.be.reverted;
+    });
   });
-  it("withdraw", async () => {
-    const shareBalance = await fixture.position.balanceOf(users[0].address);
-    await fixture.position
-      .connect(users[0].user)
-      .withdraw(users[0].address, shareBalance, 0);
-    expect(await fixture.position.balanceOf(users[0].address)).to.equal(0);
+  describe("withdraw", () => {
+    it("withdraws correctly", async () => {
+      const shareBalance = await fixture.position.balanceOf(users[0].address);
+      await fixture.position
+        .connect(users[0].user)
+        .withdraw(users[0].address, shareBalance, 0);
+      expect(await fixture.position.balanceOf(users[0].address)).to.equal(0);
+    });
+    it("fails to withdraw more shares than in balance", async () => {
+      // withdraw 10 shares from user with balance 0
+      const tx = fixture.position
+        .connect(users[2].user)
+        .withdraw(users[2].address, 10, 0);
+      await expect(tx).to.be.reverted;
+    });
   });
-  it("rewards", async () => {
-    // transfer some comp so we have something to collect
-    const compWhaleAddress = "0x0f50d31b3eaefd65236dd3736b863cffa4c63c4e";
-    impersonate(compWhaleAddress);
-    const compWhale = await ethers.provider.getSigner(compWhaleAddress);
-
-    // check the whale's balance
-
-    // collect the rewards
-    const owner = await fixture.position.owner();
-    const rewardBalance = await fixture.position.collectRewards(owner);
-
-    // check the comp balance
-    console.log(`Rewards: ${rewardBalance}`);
-    stopImpersonating(usdcWhaleAddress);
+  describe("rewards", () => {
+    it("collects rewards", async () => {
+      // starting balance should be 0
+      expect(await fixture.comp.balanceOf(users[0].address)).to.equal(0);
+      // collect the rewards
+      await fixture.position
+        .connect(users[0].user)
+        .collectRewards(users[0].address);
+      // after collection balance should be nonzero
+      const balance = await (
+        await fixture.comp.balanceOf(users[0].address)
+      ).toNumber();
+      expect(balance).to.be.greaterThan(0);
+    });
+    it("fails for unauthorized user", async () => {
+      const tx = fixture.position
+        .connect(users[1].user)
+        .collectRewards(users[0].address);
+      await expect(tx).to.be.revertedWith("Sender not Authorized");
+    });
   });
 });

@@ -392,7 +392,7 @@ interface CErc20Interface is CErc20Storage {
     // Copied from CTokenInterface
     function balanceOfUnderlying(address owner) external returns (uint256);
 
-    function exchangeRateCurrent() external returns (uint256);
+    function exchangeRateCurrent() external view returns (uint256);
 
     function exchangeRateStored() external view returns (uint256);
 

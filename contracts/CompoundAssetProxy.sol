@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-
 pragma solidity >=0.5.16;
 
 import "./interfaces/IERC20.sol";
@@ -36,6 +35,7 @@ contract CompoundAssetProxy is WrappedPosition, Authorizable {
         string memory _symbol,
         address _owner
     ) WrappedPosition(_token, _name, _symbol) {
+        _authorize(_owner);
         // Authorize the contract owner
         setOwner(_owner);
 
@@ -90,7 +90,7 @@ contract CompoundAssetProxy is WrappedPosition, Authorizable {
 
         // Do the withdraw
         uint256 redeemStatus = ctoken.redeem(_shares);
-        require(redeemStatus == 0, "compound mint failed");
+        require(redeemStatus == 0, "compound redeem failed");
 
         // Get underlying balance after withdrawing
         uint256 afterBalance = token.balanceOf(address(this));
@@ -124,8 +124,7 @@ contract CompoundAssetProxy is WrappedPosition, Authorizable {
     /// @notice Collect the comp rewards accrued
     /// @param _destination The address to send the rewards to
     // TODO: add this back in when I figure out how to mock the owner funcitonality
-    // function collectRewards(address _destination) external onlyAuthorized() {
-    function collectRewards(address _destination) external {
+    function collectRewards(address _destination) external onlyAuthorized() {
         // Set up input params for claimComp
         address[] memory holder = new address[](1);
         // Store contract address as an array

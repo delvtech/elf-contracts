@@ -1,9 +1,10 @@
 import { expect } from "chai";
-import { Signer } from "ethers";
+import { Signer, Wallet } from "ethers";
 import { ethers, waffle } from "hardhat";
 import { ZapCurveTokenToPrincipalToken } from "typechain/ZapCurveTokenToPrincipalToken";
 import { ZERO } from "./helpers/constants";
 import {
+  constructPermitData,
   ConstructZapInArgs,
   ConstructZapOutArgs,
   deploy,
@@ -22,7 +23,7 @@ const { provider } = waffle;
 const ptOffsetTolerancePercentage = 0.1;
 
 describe.only("ZapCurveTokenToPrincipalToken", () => {
-  let users: { user: Signer; address: string }[];
+  let users: { user: Signer; address: string; wallet: Wallet }[];
 
   let zapCurveTokenToPrincipalToken: ZapCurveTokenToPrincipalToken;
   let constructZapInArgs: ConstructZapInArgs;
@@ -31,9 +32,12 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
   before(async () => {
     await createSnapshot(provider);
 
-    users = ((await ethers.getSigners()) as Signer[]).map((user) => ({
+    const wallets = provider.getWallets();
+
+    users = ((await ethers.getSigners()) as Signer[]).map((user, idx) => ({
       user,
       address: "",
+      wallet: wallets[idx],
     }));
 
     await Promise.all(
@@ -148,6 +152,42 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
         .zapOut(info, zap, childZap);
+
+      const returnedTokenAmount = await getERC20("stETH").balanceOf(
+        users[1].address
+      );
+      const diff = returnedTokenAmount.sub(expectedRootTokenAmount);
+      const allowedOffset = calcBigNumberPercentage(
+        returnedTokenAmount,
+        ptOffsetTolerancePercentage
+      );
+
+      expect(diff.gte(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
+    });
+
+    it.only("should permit & swap ePyvcrvSTETH to stETH", async () => {
+      const principalTokenAmount = ethers.utils.parseEther("100");
+
+      const { info, zap, childZap, expectedRootTokenAmount } =
+        await constructZapOutArgs(ePyvcrvSTETH, "stETH", principalTokenAmount);
+
+      await getERC20(ePyvcrvSTETH.name)
+        .connect(users[1].user)
+        .approve(zapCurveTokenToPrincipalToken.address, ZERO);
+
+      console.log(await ethers.provider.getTransactionCount(users[1].address));
+      const data = await constructPermitData(
+        ePyvcrvSTETH.name,
+        users[1].wallet,
+        zapCurveTokenToPrincipalToken.address
+      );
+
+      console.log(data);
+
+      await zapCurveTokenToPrincipalToken
+        .connect(users[1].user)
+        .zapOutPermit(info, zap, childZap, data);
 
       const returnedTokenAmount = await getERC20("stETH").balanceOf(
         users[1].address

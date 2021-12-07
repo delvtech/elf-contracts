@@ -1,10 +1,10 @@
+import { BigNumber, BigNumberish } from "ethers";
 import {
-  keccak256,
   defaultAbiCoder,
-  toUtf8Bytes,
+  keccak256,
   solidityPack,
+  toUtf8Bytes,
 } from "ethers/lib/utils";
-import { BigNumberish, BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import { ERC20Permit } from "typechain/ERC20Permit";
 
@@ -54,7 +54,10 @@ export async function getPermitSignature(
   const signer = ethers.provider.getSigner(sourceAddr);
 
   const name = await token.name();
+  console.log(name);
   const chainId = await signer.getChainId();
+
+  console.log(chainId);
   const domain = {
     name: name,
     version: version,

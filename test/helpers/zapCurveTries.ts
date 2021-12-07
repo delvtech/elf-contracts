@@ -1,5 +1,7 @@
 import { Signer } from "ethers";
 import { waffle } from "hardhat";
+import { ERC20Permit } from "typechain/ERC20Permit";
+import { ERC20Permit__factory } from "typechain/factories/ERC20Permit__factory";
 import { IERC20__factory } from "typechain/factories/IERC20__factory";
 import { Tranche__factory } from "typechain/factories/Tranche__factory";
 import { IERC20 } from "typechain/IERC20";
@@ -221,6 +223,21 @@ export const getERC20 = (name: string, signer?: Signer): IERC20 => {
   }
 
   return IERC20__factory.connect(
+    zapCurveTrieAddresses()[name],
+    signer ?? provider
+  );
+};
+
+export const getERC20Permit = (name: string, signer?: Signer): ERC20Permit => {
+  if (name === "ETH") {
+    throw new Error("ETH is not an ERC20");
+  }
+
+  if (!zapCurveTrieAddresses()[name]) {
+    throw new Error(`${name} does not exist`);
+  }
+
+  return ERC20Permit__factory.connect(
     zapCurveTrieAddresses()[name],
     signer ?? provider
   );

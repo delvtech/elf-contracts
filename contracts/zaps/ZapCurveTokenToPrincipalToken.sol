@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../libraries/Authorizable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
@@ -155,7 +156,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
     /// zap and childZap and also makes the transition from a dynamic-length
     /// array to a fixed-length which is required for the actual call to add
     /// liquidity to the curvePool
-    function _zapCurveLpIn(ZapCurveLpIn memory _zap, uint256[3] memory ctx)
+    function _zapCurveLpIn(ZapCurveLpIn memory _zap, uint256[3] memory _ctx)
         internal
         returns (uint256)
     {
@@ -178,7 +179,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
 
             // Setting ctxHasAmounts flag as true means that there
             // was a previous childZap we must acknowledge
-            if (!ctxHasAmounts && ctx[i] > 0) {
+            if (!ctxHasAmounts && _ctx[i] > 0) {
                 ctxHasAmounts = true;
             }
 
@@ -190,7 +191,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
 
                 if (_zap.roots[i] == _ETH_CONSTANT) {
                     // We build the context container with our amounts
-                    ctx[i] += _zap.amounts[i];
+                    _ctx[i] += _zap.amounts[i];
                 } else {
                     // In the case of swapping an ERC20 "root" we must transfer them
                     // to this contract in order to make the exchange
@@ -202,7 +203,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
 
                     // Due to rounding issues of some tokens, we find the
                     // relevant token balance of this contract
-                    ctx[i] = IERC20(_zap.roots[i]).balanceOf(address(this));
+                    _ctx[i] = IERC20(_zap.roots[i]).balanceOf(address(this));
                 }
             }
         }
@@ -222,7 +223,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         // and the first 2 indexes are only considered in the case of it being
         // length 2
         address(_zap.curvePool).functionCallWithValue(
-            abi.encodeWithSelector(_zap.funcSig, ctx, 0),
+            abi.encodeWithSelector(_zap.funcSig, _ctx, 0),
             msg.value
         );
 
@@ -436,5 +437,34 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
                 _info.recipient
             );
         }
+    }
+
+    // Memory encoding of the permit data
+    struct PermitData {
+        address who;
+        uint256 amount;
+        uint256 expiration;
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+    }
+
+    function zapOutPermit(
+        ZapOutInfo memory _info,
+        ZapCurveLpOut memory _zap,
+        ZapCurveLpOut memory _childZap,
+        PermitData memory _data
+    ) external payable notFrozen returns (uint256 amount) {
+        IERC20Permit(address(_info.principalToken)).permit(
+            msg.sender,
+            _data.who,
+            _data.amount,
+            _data.expiration,
+            _data.v,
+            _data.r,
+            _data.s
+        );
+
+        return this.zapOut(_info, _zap, _childZap);
     }
 }

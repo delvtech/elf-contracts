@@ -1,4 +1,4 @@
-import { BigNumber, Signer } from "ethers";
+import { BigNumber, Signer, Wallet } from "ethers";
 import { ethers, waffle } from "hardhat";
 import { ConvergentCurvePool__factory } from "typechain/factories/ConvergentCurvePool__factory";
 import { IERC20__factory } from "typechain/factories/IERC20__factory";
@@ -7,6 +7,7 @@ import { Vault__factory } from "typechain/factories/Vault__factory";
 import { ZapCurveTokenToPrincipalToken__factory } from "typechain/factories/ZapCurveTokenToPrincipalToken__factory";
 import { Vault } from "typechain/Vault";
 import {
+  PermitDataStruct,
   ZapCurveLpInStruct,
   ZapCurveLpOutStruct,
   ZapInInfoStruct,
@@ -15,10 +16,11 @@ import {
 import { ZERO } from "./constants";
 import { impersonate, stopImpersonating } from "./impersonate";
 import { calcBigNumberPercentage } from "./math";
-import { getFunctionSignature } from "./signatures";
+import { getFunctionSignature, getPermitSignature } from "./signatures";
 import { ONE_DAY_IN_SECONDS } from "./time";
 import {
   getERC20,
+  getERC20Permit,
   getPrincipalToken,
   getRootTokensAddresses,
   getZapContractApprovalsList,
@@ -43,7 +45,8 @@ export type ConstructZapOutArgs = (
   trie: PrincipalTokenCurveTrie,
   target: string,
   amount: BigNumber,
-  recipient?: string
+  recipient?: string,
+  setAllowance?: boolean
 ) => Promise<{
   info: ZapOutInfoStruct;
   zap: ZapCurveLpOutStruct;
@@ -255,7 +258,6 @@ export async function deploy(user: { user: Signer; address: string }) {
 
     const expectedRootTokenAmount = await estimateZapOut(
       trie,
-      target,
       balancerVault,
       info,
       zap,
@@ -352,7 +354,6 @@ async function estimateZapIn(
 
 async function estimateZapOut(
   trie: PrincipalTokenCurveTrie,
-  target: string,
   balancerVault: Vault,
   info: ZapOutInfoStruct,
   zap: ZapCurveLpOutStruct,
@@ -429,3 +430,28 @@ const whales: { [k in string]: string } = {
   DAI: "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503",
   USDC: "0xdb49552EeFB89416b9A412138c009a004f54BAd0",
 };
+
+export async function constructPermitData(
+  tokenName: string,
+  owner: Wallet,
+  spender: string
+): Promise<PermitDataStruct> {
+  const token = getERC20Permit(tokenName);
+
+  console.log(await token.name());
+  const { v, r, s } = await getPermitSignature(
+    token,
+    owner.address,
+    spender,
+    ethers.constants.MaxUint256,
+    "1"
+  );
+  return {
+    who: spender,
+    amount: ethers.constants.MaxUint256,
+    expiration: ethers.constants.MaxUint256,
+    v,
+    r,
+    s,
+  };
+}

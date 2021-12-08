@@ -3,7 +3,7 @@ import {
   TypedDataField,
   TypedDataSigner,
 } from "@ethersproject/abstract-signer";
-import { BigNumber, BigNumberish, BytesLike, Signer } from "ethers";
+import { BigNumber, BigNumberish, Signer } from "ethers";
 import {
   defaultAbiCoder,
   keccak256,
@@ -12,6 +12,7 @@ import {
 } from "ethers/lib/utils";
 import { ethers } from "hardhat";
 import { ERC20Permit } from "typechain/ERC20Permit";
+import { PermitDataStruct } from "typechain/ZapCurveTokenToPrincipalToken";
 
 export const PERMIT_TYPEHASH = keccak256(
   toUtf8Bytes(
@@ -126,16 +127,16 @@ export function getFunctionSignature(sig: string) {
   );
 }
 
-// Taken from frontend
-export interface PermitCallData {
-  tokenContract: string;
-  who: string;
-  amount: BigNumberish;
-  expiration: BigNumberish;
-  r: BytesLike;
-  s: BytesLike;
-  v: BigNumberish;
-}
+// // Taken from frontend
+// export interface PermitCallData {
+//   tokenContract: string;
+//   who: string;
+//   amount: BigNumberish;
+//   expiration: BigNumberish;
+//   r: BytesLike;
+//   s: BytesLike;
+//   v: BigNumberish;
+// }
 
 // Uses a default infinite permit expiration time
 export async function fetchPermitData(
@@ -147,7 +148,7 @@ export async function fetchPermitData(
   nonce: number,
   // '1' for every ERC20Permit.  Except USDC which is '2' ¯\_(ツ)_/¯
   version: string
-): Promise<PermitCallData | undefined> {
+): Promise<PermitDataStruct | undefined> {
   const typedSigner = signer as unknown as TypedDataSigner;
   // don't use metdata, must match exactly
 

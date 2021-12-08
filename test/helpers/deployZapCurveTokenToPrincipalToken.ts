@@ -1,4 +1,4 @@
-import { BigNumber, Signer, Wallet } from "ethers";
+import { BigNumber, Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
 import { ConvergentCurvePool__factory } from "typechain/factories/ConvergentCurvePool__factory";
 import { IERC20__factory } from "typechain/factories/IERC20__factory";
@@ -7,7 +7,6 @@ import { Vault__factory } from "typechain/factories/Vault__factory";
 import { ZapCurveTokenToPrincipalToken__factory } from "typechain/factories/ZapCurveTokenToPrincipalToken__factory";
 import { Vault } from "typechain/Vault";
 import {
-  PermitDataStruct,
   ZapCurveLpInStruct,
   ZapCurveLpOutStruct,
   ZapInInfoStruct,
@@ -16,11 +15,10 @@ import {
 import { ZERO } from "./constants";
 import { impersonate, stopImpersonating } from "./impersonate";
 import { calcBigNumberPercentage } from "./math";
-import { getFunctionSignature, getPermitSignature } from "./signatures";
+import { getFunctionSignature } from "./signatures";
 import { ONE_DAY_IN_SECONDS } from "./time";
 import {
   getERC20,
-  getERC20Permit,
   getPrincipalToken,
   getRootTokensAddresses,
   getZapContractApprovalsList,

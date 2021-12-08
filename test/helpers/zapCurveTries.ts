@@ -1,10 +1,10 @@
 import { Signer } from "ethers";
 import { waffle } from "hardhat";
+import { ERC20__factory } from "typechain/factories/ERC20__factory";
+import { ERC20 } from "typechain/ERC20";
 import { ERC20Permit } from "typechain/ERC20Permit";
 import { ERC20Permit__factory } from "typechain/factories/ERC20Permit__factory";
-import { IERC20__factory } from "typechain/factories/IERC20__factory";
 import { Tranche__factory } from "typechain/factories/Tranche__factory";
-import { IERC20 } from "typechain/IERC20";
 import { Tranche } from "typechain/Tranche";
 import { _ETH_CONSTANT } from "./constants";
 
@@ -213,7 +213,7 @@ export const getRootTokensAddresses = (
     {} as { [k in string]: string }
   );
 
-export const getERC20 = (name: string, signer?: Signer): IERC20 => {
+export const getERC20 = (name: string, signer?: Signer): ERC20 => {
   if (name === "ETH") {
     throw new Error("ETH is not an ERC20");
   }
@@ -222,7 +222,7 @@ export const getERC20 = (name: string, signer?: Signer): IERC20 => {
     throw new Error(`${name} does not exist`);
   }
 
-  return IERC20__factory.connect(
+  return ERC20__factory.connect(
     zapCurveTrieAddresses()[name],
     signer ?? provider
   );

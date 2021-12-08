@@ -14,6 +14,8 @@ contract TestERC20 is ERC20Permit {
         _setupDecimals(decimals_);
     }
 
+    uint256 public totalSupply = 0;
+
     function setBalance(address destination, uint256 amount) external {
         balanceOf[destination] = amount;
         emit Transfer(address(0), destination, amount);
@@ -26,5 +28,11 @@ contract TestERC20 is ERC20Permit {
 
     function mint(address account, uint256 amount) public {
         _mint(account, amount);
+        totalSupply += amount;
+    }
+
+    function burn(address account, uint256 amount) public {
+        _burn(account, amount);
+        totalSupply -= amount;
     }
 }

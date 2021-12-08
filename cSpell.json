@@ -59,6 +59,7 @@
         "sloads",
         "solhint",
         "SPDX",
+        "speedbump",
         "sstore",
         "staticcall",
         "streetsidesoftware",
@@ -69,6 +70,7 @@
         "twohundred",
         "typechain",
         "TYPEHASH",
+        "upgrador",
         "visualstudio",
         "vsmarketplacebadge",
         "weth",
@@ -76,9 +78,7 @@
         "Yasset",
         "ytoken",
         "yusdc",
-        "yweth",
-        "speedbump",
-        "upgrador"
+        "yweth"
     ],
     "enabledLanguageIds": [
         "asciidoc",

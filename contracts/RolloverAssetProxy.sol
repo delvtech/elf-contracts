@@ -7,6 +7,8 @@ import "./libraries/Authorizable.sol";
 import "./interfaces/ITranche.sol";
 import "./interfaces/IVault.sol";
 
+import "hardhat/console.sol";
+
 /// @author Element Finance
 /// @title Rollover Asset Proxy
 contract RolloverAssetProxy is WrappedPosition, Authorizable {
@@ -84,6 +86,7 @@ contract RolloverAssetProxy is WrappedPosition, Authorizable {
         // Set state and immutables
         minWaitTime = uint128(_minWaitTime);
         balancer = _balancer;
+        _token.approve(address(_balancer), type(uint256).max);
         baseDustThreshold = _baseDustThreshold;
         lpDustThreshold = _lpDustThreshold;
     }
@@ -105,14 +108,15 @@ contract RolloverAssetProxy is WrappedPosition, Authorizable {
         uint256 localTotalSupply = uint256(totalSupply);
         uint256 localBaseSupply = uint256(baseSupply);
 
-        if (localBaseSupply != 0) {
+        if (localBaseSupply != 0 || localTotalSupply == 0) {
             // If the underlying token supplied are not zero we are in a settlement period
             // so deposits are simply an increase in underlying and the share percent it represents.
             uint256 actualTokenBalance = token.balanceOf(address(this));
-            uint256 amountDeposited = localBaseSupply - actualTokenBalance;
+            uint256 amountDeposited = actualTokenBalance - localBaseSupply;
             // Calculate how many shares this is worth
-            uint256 shares = (localTotalSupply * amountDeposited) /
-                localBaseSupply;
+            uint256 shares = localTotalSupply == 0
+                ? amountDeposited
+                : (localTotalSupply * amountDeposited) / localBaseSupply;
             // Update the base reserves and total supply
             baseSupply = uint128(actualTokenBalance);
             totalSupply += uint128(shares);
@@ -134,10 +138,16 @@ contract RolloverAssetProxy is WrappedPosition, Authorizable {
             // Now require that the deposited amounts correctly ratio match
             // We add a factor to preserve decimals
             // TODO - Do some real analysis on this
+            console.log("got here");
+            console.log(shares);
+            console.log(depositedLP);
             require(
                 shares == (depositedLP * localTotalSupply) / lpSupply,
-                "Incorrect Ratios"
+                "Incorrect Ratio"
             );
+            // Note - Without this check if someone calls deposit and transfers underlying
+            //        to this contract it will not revert but they will get zero shares
+            require(shares != 0, "No deposit");
             // Now we calculate the implied amount this increases the value in the term
             // WARNING - This number is wrong and does not include interest.
             uint256 impliedUnderlying = (impliedBaseSupply * depositedYT) /
@@ -277,9 +287,14 @@ contract RolloverAssetProxy is WrappedPosition, Authorizable {
             "Rollover attempted at wrong time"
         );
         // Next we check that a sufficient time has passed
-        require(newTermRegistered + minWaitTime < block.timestamp);
+        require(
+            newTermRegistered + minWaitTime < block.timestamp,
+            "Rollover before time lock"
+        );
         // First register the assets in this address
         impliedBaseSupply = token.balanceOf(address(this));
+        // Need to set an allowance on the tranche contract
+        token.approve(address(tranche), _mintAmount);
         // Then we mint some amount of principal tokens, this should be calculated by caller
         // to ensure the proper ratio when minting LP.
         tranche.deposit(_mintAmount, address(this));
@@ -293,12 +308,16 @@ contract RolloverAssetProxy is WrappedPosition, Authorizable {
             address(this),
             request
         );
-        // We ensure that all but a dust amount of underlying are used
+        // We ensure that all but a dust amount of underlying and PT are used
         // Note - The usage of balanceOf here means that tokens sent to this address directly
         //        should be included in the calculation of the balancer pool join request.
         require(
             token.balanceOf(address(this)) < baseDustThreshold,
-            "Manager did not fully rollover"
+            "Manager did not fully rollover base"
+        );
+        require(
+            tranche.balanceOf(address(this)) < baseDustThreshold,
+            "Manager did not fully rollover PT"
         );
         // Set the state
         baseSupply = 0;
@@ -359,5 +378,6 @@ contract RolloverAssetProxy is WrappedPosition, Authorizable {
     /// @param _newBalancer The new AMM address
     function setBalancer(IVault _newBalancer) external onlyOwner {
         balancer = _newBalancer;
+        token.approve(address(balancer), type(uint256).max);
     }
 }

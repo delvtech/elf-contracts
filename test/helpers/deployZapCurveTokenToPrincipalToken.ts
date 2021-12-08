@@ -430,28 +430,3 @@ const whales: { [k in string]: string } = {
   DAI: "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503",
   USDC: "0xdb49552EeFB89416b9A412138c009a004f54BAd0",
 };
-
-export async function constructPermitData(
-  tokenName: string,
-  owner: Wallet,
-  spender: string
-): Promise<PermitDataStruct> {
-  const token = getERC20Permit(tokenName);
-
-  console.log(await token.name());
-  const { v, r, s } = await getPermitSignature(
-    token,
-    owner.address,
-    spender,
-    ethers.constants.MaxUint256,
-    "1"
-  );
-  return {
-    who: spender,
-    amount: ethers.constants.MaxUint256,
-    expiration: ethers.constants.MaxUint256,
-    v,
-    r,
-    s,
-  };
-}

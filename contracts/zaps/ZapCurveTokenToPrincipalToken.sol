@@ -99,6 +99,46 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         _;
     }
 
+    // Memory encoding of the permit data
+    struct PermitData {
+        IERC20Permit tokenContract;
+        address who;
+        uint256 amount;
+        uint256 expiration;
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+    }
+
+    /// @dev Takes the input permit calls and executes them
+    /// @param data The array which encodes the set of permit calls to make
+    modifier preApproval(PermitData[] memory data) {
+        // If permit calls are provided we make try to make them
+        if (data.length != 0) {
+            // We make permit calls for each indicated call
+            for (uint256 i = 0; i < data.length; i++) {
+                _permitCall(data[i]);
+            }
+        }
+        _;
+    }
+
+    /// @dev Makes permit calls indicated by a struct
+    /// @param data the struct which has the permit calldata
+    function _permitCall(PermitData memory data) internal {
+        // Make the permit call to the token in the data field using
+        // the fields provided.
+        data.tokenContract.permit(
+            msg.sender,
+            data.who,
+            data.amount,
+            data.expiration,
+            data.v,
+            data.r,
+            data.s
+        );
+    }
+
     /// @dev Allows an authorized address to freeze or unfreeze this contract
     /// @param _newState True for frozen and false for unfrozen
     function setIsFrozen(bool _newState) external onlyAuthorized {
@@ -385,8 +425,15 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
     function zapOut(
         ZapOutInfo memory _info,
         ZapCurveLpOut memory _zap,
-        ZapCurveLpOut memory _childZap
-    ) external payable notFrozen returns (uint256 amount) {
+        ZapCurveLpOut memory _childZap,
+        PermitData[] memory _permitData
+    )
+        external
+        payable
+        notFrozen
+        preApproval(_permitData)
+        returns (uint256 amount)
+    {
         // First, principalTokenAmount of principal tokens transferred
         // from sender to this contract
         IERC20(address(_info.principalToken)).safeTransferFrom(
@@ -437,34 +484,5 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
                 _info.recipient
             );
         }
-    }
-
-    // Memory encoding of the permit data
-    struct PermitData {
-        address who;
-        uint256 amount;
-        uint256 expiration;
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-    }
-
-    function zapOutPermit(
-        ZapOutInfo memory _info,
-        ZapCurveLpOut memory _zap,
-        ZapCurveLpOut memory _childZap,
-        PermitData memory _data
-    ) external payable notFrozen returns (uint256 amount) {
-        IERC20Permit(address(_info.principalToken)).permit(
-            msg.sender,
-            _data.who,
-            _data.amount,
-            _data.expiration,
-            _data.v,
-            _data.r,
-            _data.s
-        );
-
-        return this.zapOut(_info, _zap, _childZap);
     }
 }

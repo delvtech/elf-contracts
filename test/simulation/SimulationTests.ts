@@ -3,14 +3,13 @@ import { ethers } from "hardhat";
 import { Contract, BigNumber } from "ethers";
 import { impersonate, stopImpersonating } from "../helpers/impersonate";
 import { TestConvergentCurvePool } from "typechain/TestConvergentCurvePool";
-
 import testTrades from "./testTrades.json";
 
 // This simulation loads the data from ./testTrades.json and makes sure that
-// our quotes are with-in 10^9 of the quotes from the python script
+// our quotes are with-in 10^-8 (assuming BASE and BOND are both 18 point fixed)of the quotes from the python script
 describe("ConvergentCurvePoolErrSim", function () {
   const BOND_DECIMALS = 18;
-  const BASE_DECIMALS = 18;
+  const BASE_DECIMALS = 8;
 
   const inForOutType = 0;
   const outForInType = 1;
@@ -21,10 +20,11 @@ describe("ConvergentCurvePoolErrSim", function () {
 
   const SECONDS_IN_YEAR = 31536000;
   const fakeAddress = "0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c";
-  // This is 10^-9 in 18 point fixed
-  const epsilon = ethers.utils.parseUnits("1", 10);
+
+  const EPSILON = Math.max(10, BOND_DECIMALS - BASE_DECIMALS + 1);
+  const epsilon = ethers.utils.parseUnits("1", EPSILON);
   let pool: TestConvergentCurvePool;
-  let startTimestamp;
+  let startTimestamp: number;
   let erc20_base: Contract;
   let erc20_bond: Contract;
   let vault: Contract;
@@ -54,7 +54,6 @@ describe("ConvergentCurvePoolErrSim", function () {
 
     const Vault = await ethers.getContractFactory("TestVault");
     vault = await Vault.deploy();
-
     const Pool = await ethers.getContractFactory("TestConvergentCurvePool");
     pool = (await Pool.deploy(
       erc20_base.address.toString(),
@@ -67,7 +66,6 @@ describe("ConvergentCurvePoolErrSim", function () {
       "ConvergentCurveBPT",
       "BPT"
     )) as TestConvergentCurvePool;
-
     impersonate(vault.address);
   });
 
@@ -89,7 +87,7 @@ describe("ConvergentCurvePoolErrSim", function () {
         : erc20_base.address;
 
       const decimalsIn = isBaseIn ? BASE_DECIMALS : BOND_DECIMALS;
-      const decimalsOut = isBaseIn ? BASE_DECIMALS : BOND_DECIMALS;
+      const decimalsOut = isBaseIn ? BOND_DECIMALS : BASE_DECIMALS;
 
       const reserveIn = isBaseIn
         ? trade.input.x_reserves
@@ -99,7 +97,6 @@ describe("ConvergentCurvePoolErrSim", function () {
         : trade.input.x_reserves;
 
       const kind = trade.input.direction == "in" ? outForInType : inForOutType;
-
       pool
         .connect(vault.address)
         .callStatic.swapSimulation(

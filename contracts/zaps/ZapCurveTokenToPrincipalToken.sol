@@ -50,7 +50,7 @@ interface IVault {
 }
 
 contract ZapCurveTokenToPrincipalToken is Authorizable {
-    // Enables a more consistent interface when utilising ERC20 tokens
+    // Enables a more consistent interface when utilizing ERC20 tokens
     using SafeERC20 for IERC20;
     // Simplifies making low-level function calls
     using Address for address;
@@ -154,12 +154,12 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         address recipient;
         // Address of the principalToken
         IAsset principalToken;
-        // The minimum amount of principal tokens the user expects to recieve
+        // The minimum amount of principal tokens the user expects to receive
         uint256 minPtAmount;
         // The time into the future for which the trade can happen
         uint256 deadline;
         // Some curvePools have themselves a dependent lpToken "root" which
-        // this contract accomodates zapping through. This flag indicates if
+        // this contract accommodates zapping through. This flag indicates if
         // such an action is necessary
         bool needsChildZap;
     }
@@ -207,10 +207,10 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         );
 
         // Flag if the current zap has amounts. Used to short-circuit
-        // unneccessary calls
+        // unnecessary calls
         bool zapHasAmounts = false;
         // Flag for where the user has a childZap with amounts. Used to
-        // short-cicuit unneccessary calls
+        // short-circuit unnecessary calls
         bool ctxHasAmounts = false;
         for (uint8 i = 0; i < _zap.amounts.length; i++) {
             // Must check we do not unintentionally send ETH
@@ -300,7 +300,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         if (_info.needsChildZap) {
             uint256 _amount = _zapCurveLpIn(
                 _childZap,
-                // The context array is unneccessary for the childZap and so we
+                // The context array is unnecessary for the childZap and so we
                 // can just put a dud array in place of it
                 [uint256(0), uint256(0), uint256(0)]
             );
@@ -371,7 +371,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         bool targetNeedsChildZap;
     }
 
-    /// @dev Swaps an amount of curve lptokens for a single dependent root token
+    /// @dev Swaps an amount of curve lpTokens for a single dependent root token
     /// from its pool
     /// @param _zap See ZapCurveLpOut
     /// @param _lpTokenAmount This is the amount of lpTokens we are swapping

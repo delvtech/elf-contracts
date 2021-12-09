@@ -370,7 +370,7 @@ async function estimateZapOut(
     balancerVault.signer
   );
   const totalSupply: BigNumber = await convergentCurvePool.totalSupply();
-  const estmatedBaseTokenAmount: BigNumber =
+  const estimatedBaseTokenAmount: BigNumber =
     await convergentCurvePool.solveTradeInvariant(
       info.principalTokenAmount,
       xReserves.add(totalSupply),
@@ -381,7 +381,7 @@ async function estimateZapOut(
   let estimatedRootTokenAmount: BigNumber = await buildCurvePoolContract({
     address: zap.curvePool,
     targetType: trie.name !== "ePyvcrv3crypto" ? "int128" : "uint256",
-  }).calc_withdraw_one_coin(estmatedBaseTokenAmount, zap.rootTokenIdx);
+  }).calc_withdraw_one_coin(estimatedBaseTokenAmount, zap.rootTokenIdx);
 
   if (info.targetNeedsChildZap) {
     estimatedRootTokenAmount = await buildCurvePoolContract({

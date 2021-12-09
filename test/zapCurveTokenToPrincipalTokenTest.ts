@@ -11,6 +11,7 @@ import {
   ConstructZapOutArgs,
   deploy,
 } from "./helpers/deployZapCurveTokenToPrincipalToken";
+import { setBlock } from "./helpers/forking";
 import { calcBigNumberPercentage } from "./helpers/math";
 import { getPermitSignature } from "./helpers/signatures";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
@@ -26,15 +27,21 @@ const { provider } = waffle;
 
 const ptOffsetTolerancePercentage = 0.1;
 
+const ZAP_BLOCK = 13583600;
+
 describe("ZapCurveTokenToPrincipalToken", () => {
   let users: { user: Signer; address: string }[];
 
+  let initBlock: number;
   let zapCurveTokenToPrincipalToken: ZapCurveTokenToPrincipalToken;
   let constructZapInArgs: ConstructZapInArgs;
   let constructZapOutArgs: ConstructZapOutArgs;
 
   before(async () => {
+    initBlock = await provider.getBlockNumber();
     await createSnapshot(provider);
+    // Do not change block as dependencies might change
+    await setBlock(ZAP_BLOCK);
 
     users = ((await ethers.getSigners()) as Signer[]).map((user) => ({
       user,
@@ -57,6 +64,7 @@ describe("ZapCurveTokenToPrincipalToken", () => {
 
   after(async () => {
     await restoreSnapshot(provider);
+    setBlock(initBlock);
   });
 
   beforeEach(async () => {

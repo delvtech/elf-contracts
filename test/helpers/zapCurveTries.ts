@@ -183,7 +183,7 @@ export const zapCurveTrieAddresses = () =>
       ...acc,
       ...getPrincipalTokenAddress(trie),
       ...getBaseTokenAddress(trie),
-      ...getRootTokensAddresses(trie),
+      ...getRootTokenAddresses(trie),
     }),
     {} as { [k in string]: string }
   );
@@ -196,7 +196,7 @@ const getBaseTokenAddress = (trie: PrincipalTokenCurveTrie) => ({
   [trie.baseToken.name]: trie.baseToken.address,
 });
 
-export const getRootTokensAddresses = (
+export const getRootTokenAddresses = (
   trie: PrincipalTokenCurveTrie
 ): { [k in string]: string } =>
   trie.baseToken.roots.reduce(

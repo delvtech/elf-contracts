@@ -20,7 +20,7 @@ import { ONE_DAY_IN_SECONDS } from "./time";
 import {
   getERC20,
   getPrincipalToken,
-  getRootTokensAddresses,
+  getRootTokenAddresses,
   getZapContractApprovalsList,
   PrincipalTokenCurveTrie,
   RootToken,
@@ -99,7 +99,7 @@ export async function deploy(user: { user: Signer; address: string }) {
 
   const constructZapInArgs: ConstructZapInArgs = async (trie, amounts) => {
     await Promise.all(
-      Object.keys(getRootTokensAddresses(trie)).map(async (n) =>
+      Object.keys(getRootTokenAddresses(trie)).map(async (n) =>
         amounts[n] && amounts[n].eq(ZERO)
           ? await 0
           : await stealFromWhale(n, user.address)
@@ -171,7 +171,7 @@ export async function deploy(user: { user: Signer; address: string }) {
     amount,
     recipient = user.address
   ) => {
-    if (!Object.keys(getRootTokensAddresses(trie)).includes(target)) {
+    if (!Object.keys(getRootTokenAddresses(trie)).includes(target)) {
       throw new Error(`${target} is not a root token of ${trie.name}`);
     }
     await stealFromWhale(trie.baseToken.name, user.address);

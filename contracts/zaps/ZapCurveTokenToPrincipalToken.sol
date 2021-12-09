@@ -283,8 +283,15 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
     function zapIn(
         ZapInInfo memory _info,
         ZapCurveLpIn memory _zap,
-        ZapCurveLpIn memory _childZap
-    ) external payable notFrozen returns (uint256 ptAmount) {
+        ZapCurveLpIn memory _childZap,
+        PermitData[] memory _permitData
+    )
+        external
+        payable
+        notFrozen
+        preApproval(_permitData)
+        returns (uint256 ptAmount)
+    {
         // Instantiation of the context amount container which is used to track
         // amounts to be swapped in the final curve zap.
         uint256[3] memory ctx;

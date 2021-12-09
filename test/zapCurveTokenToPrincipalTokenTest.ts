@@ -1,8 +1,10 @@
 import { expect } from "chai";
 import { Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
-import { ERC20Permit } from "typechain/ERC20Permit";
-import { ZapCurveTokenToPrincipalToken } from "typechain/ZapCurveTokenToPrincipalToken";
+import {
+  PermitDataStruct,
+  ZapCurveTokenToPrincipalToken,
+} from "typechain/ZapCurveTokenToPrincipalToken";
 import { ZERO } from "./helpers/constants";
 import {
   ConstructZapInArgs,
@@ -10,7 +12,7 @@ import {
   deploy,
 } from "./helpers/deployZapCurveTokenToPrincipalToken";
 import { calcBigNumberPercentage } from "./helpers/math";
-import { fetchPermitData } from "./helpers/signatures";
+import { getPermitSignature } from "./helpers/signatures";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 import {
   ePyvcrv3crypto,
@@ -73,7 +75,7 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapIn(info, zap, childZap, {
+        .zapIn(info, zap, childZap, [], {
           value: ethers.utils.parseEther("1"),
         });
       const returnedPrincipalTokenAmount = await getPrincipalToken(
@@ -127,7 +129,7 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapIn(info, zap, childZap);
+        .zapIn(info, zap, childZap, []);
 
       const returnedPrincipalTokenAmount = await getPrincipalToken(
         "ePyvcrvSTETH"
@@ -165,55 +167,6 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
       expect(diff.lt(allowedOffset)).to.be.true;
     });
 
-    it.only("should permit & swap ePyvcrvSTETH to stETH", async () => {
-      const principalTokenAmount = ethers.utils.parseEther("100");
-
-      const { info, zap, childZap, expectedRootTokenAmount } =
-        await constructZapOutArgs(ePyvcrvSTETH, "stETH", principalTokenAmount);
-
-      await getERC20(ePyvcrvSTETH.name)
-        .connect(users[1].user)
-        .approve(zapCurveTokenToPrincipalToken.address, ZERO);
-
-      const principalToken = getERC20(ePyvcrvSTETH.name);
-      const principalTokenPermit = getERC20Permit(ePyvcrvSTETH.name);
-
-      const name = await principalToken.name();
-      const nonces = (
-        await principalTokenPermit.nonces(users[1].address)
-      ).toNumber();
-      // const nonces = await ethers.provider.getTransactionCount(
-      //   users[2].address
-      // );
-      console.log(nonces);
-      const tokenPermitData = await fetchPermitData(
-        users[1].user,
-        principalTokenPermit,
-        name,
-        users[1].address,
-        zapCurveTokenToPrincipalToken.address,
-        nonces,
-        "1"
-      );
-
-      console.log(tokenPermitData);
-      await zapCurveTokenToPrincipalToken
-        .connect(users[1].user)
-        .zapOut(info, zap, childZap, tokenPermitData ? [tokenPermitData] : []);
-
-      const returnedTokenAmount = await getERC20("stETH").balanceOf(
-        users[1].address
-      );
-      const diff = returnedTokenAmount.sub(expectedRootTokenAmount);
-      const allowedOffset = calcBigNumberPercentage(
-        returnedTokenAmount,
-        ptOffsetTolerancePercentage
-      );
-
-      expect(diff.gte(ZERO)).to.be.true;
-      expect(diff.lt(allowedOffset)).to.be.true;
-    });
-
     it("should swap stETH & ETH for ePyvcrvSTETH", async () => {
       const { info, zap, childZap, expectedPrincipalTokenAmount } =
         await constructZapInArgs(ePyvcrvSTETH, {
@@ -222,7 +175,7 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
         });
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapIn(info, zap, childZap, {
+        .zapIn(info, zap, childZap, [], {
           value: ethers.utils.parseEther("100"),
         });
 
@@ -250,7 +203,7 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapIn(info, zap, childZap);
+        .zapIn(info, zap, childZap, []);
 
       const returnedPrincipalTokenAmount = await getPrincipalToken(
         "ePyvcrv3crypto"
@@ -298,7 +251,7 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
         });
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapIn(info, zap, childZap);
+        .zapIn(info, zap, childZap, []);
 
       const returnedPrincipalTokenAmount = await getPrincipalToken(
         "ePyvcrv3crypto"
@@ -345,7 +298,7 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
         });
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapIn(info, zap, childZap);
+        .zapIn(info, zap, childZap, []);
 
       const returnedPrincipalTokenAmount = await getPrincipalToken(
         "ePyvcrv3crypto"
@@ -396,7 +349,7 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapIn(info, zap, childZap);
+        .zapIn(info, zap, childZap, []);
 
       const returnedPrincipalTokenAmount = await getPrincipalToken(
         "ePyvcrv3crypto"
@@ -423,7 +376,7 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapIn(info, zap, childZap);
+        .zapIn(info, zap, childZap, []);
 
       const returnedPrincipalTokenAmount = await getPrincipalToken(
         "ePyvCurveLUSD"
@@ -471,7 +424,7 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapIn(info, zap, childZap);
+        .zapIn(info, zap, childZap, []);
 
       const returnedPrincipalTokenAmount = await getPrincipalToken(
         "ePyvCurveLUSD"
@@ -519,7 +472,7 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapIn(info, zap, childZap);
+        .zapIn(info, zap, childZap, []);
 
       const returnedPrincipalTokenAmount = await getPrincipalToken(
         "ePyvCurveLUSD"
@@ -567,7 +520,56 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapIn(info, zap, childZap);
+        .zapIn(info, zap, childZap, []);
+
+      const returnedPrincipalTokenAmount = await getPrincipalToken(
+        "ePyvCurveLUSD"
+      ).balanceOf(users[1].address);
+
+      const diff = returnedPrincipalTokenAmount.sub(
+        expectedPrincipalTokenAmount
+      );
+      const allowedOffset = calcBigNumberPercentage(
+        returnedPrincipalTokenAmount,
+        ptOffsetTolerancePercentage
+      );
+      expect(diff.gte(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
+    });
+
+    it("should swap LUSD to ePyvCurveLUSD", async () => {
+      const { info, zap, childZap, expectedPrincipalTokenAmount } =
+        await constructZapInArgs(ePyvCurveLUSD, {
+          LUSD: ethers.utils.parseEther("5000"),
+        });
+
+      (
+        await getERC20("LUSD")
+          .connect(users[1].user)
+          .approve(zapCurveTokenToPrincipalToken.address, ZERO)
+      ).wait(1);
+
+      const { v, r, s } = await getPermitSignature(
+        getERC20Permit("LUSD"),
+        users[1].address,
+        zapCurveTokenToPrincipalToken.address,
+        ethers.constants.MaxUint256,
+        "1"
+      );
+
+      const tokenPermitData: PermitDataStruct = {
+        v,
+        r,
+        s,
+        tokenContract: getERC20("LUSD").address,
+        who: zapCurveTokenToPrincipalToken.address,
+        expiration: ethers.constants.MaxUint256,
+        amount: ethers.constants.MaxUint256,
+      };
+
+      await zapCurveTokenToPrincipalToken
+        .connect(users[1].user)
+        .zapIn(info, zap, childZap, [tokenPermitData]);
 
       const returnedPrincipalTokenAmount = await getPrincipalToken(
         "ePyvCurveLUSD"
@@ -607,6 +609,54 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
       expect(diff.lt(allowedOffset)).to.be.true;
     });
 
+    it("should permit & swap ePyvCurveLUSD to LUSD", async () => {
+      const principalTokenAmount = ethers.utils.parseEther("5000");
+
+      const { info, zap, childZap, expectedRootTokenAmount } =
+        await constructZapOutArgs(ePyvCurveLUSD, "LUSD", principalTokenAmount);
+
+      (
+        await getERC20(ePyvCurveLUSD.name)
+          .connect(users[1].user)
+          .approve(zapCurveTokenToPrincipalToken.address, ZERO)
+      ).wait(1);
+
+      const { v, r, s } = await getPermitSignature(
+        getERC20Permit(ePyvCurveLUSD.name),
+        users[1].address,
+        zapCurveTokenToPrincipalToken.address,
+        ethers.constants.MaxUint256,
+        "1",
+        1
+      );
+
+      const tokenPermitData: PermitDataStruct = {
+        v,
+        r,
+        s,
+        tokenContract: info.principalToken,
+        who: zapCurveTokenToPrincipalToken.address,
+        expiration: ethers.constants.MaxUint256,
+        amount: ethers.constants.MaxUint256,
+      };
+
+      await zapCurveTokenToPrincipalToken
+        .connect(users[1].user)
+        .zapOut(info, zap, childZap, [tokenPermitData]);
+
+      const returnedTokenAmount = await getERC20("LUSD").balanceOf(
+        users[1].address
+      );
+      const diff = returnedTokenAmount.sub(expectedRootTokenAmount);
+      const allowedOffset = calcBigNumberPercentage(
+        returnedTokenAmount,
+        ptOffsetTolerancePercentage
+      );
+
+      expect(diff.gte(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
+    });
+
     it("should swap 3Crv for ePyvCurveLUSD", async () => {
       const { info, zap, childZap, expectedPrincipalTokenAmount } =
         await constructZapInArgs(ePyvCurveLUSD, {
@@ -615,7 +665,7 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapIn(info, zap, childZap);
+        .zapIn(info, zap, childZap, []);
 
       const returnedPrincipalTokenAmount = await getPrincipalToken(
         "ePyvCurveLUSD"
@@ -664,7 +714,7 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapIn(info, zap, childZap);
+        .zapIn(info, zap, childZap, []);
 
       const returnedPrincipalTokenAmount = await getPrincipalToken(
         "ePyvCurveLUSD"
@@ -690,7 +740,7 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapIn(info, zap, childZap);
+        .zapIn(info, zap, childZap, []);
 
       const returnedPrincipalTokenAmount = await getPrincipalToken(
         "ePyvCurveLUSD"
@@ -719,7 +769,7 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapIn(info, zap, childZap);
+        .zapIn(info, zap, childZap, []);
 
       const returnedPrincipalTokenAmount = await getPrincipalToken(
         "ePyvCurveLUSD"

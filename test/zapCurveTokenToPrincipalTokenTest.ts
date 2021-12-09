@@ -26,7 +26,7 @@ const { provider } = waffle;
 
 const ptOffsetTolerancePercentage = 0.1;
 
-describe.only("ZapCurveTokenToPrincipalToken", () => {
+describe("ZapCurveTokenToPrincipalToken", () => {
   let users: { user: Signer; address: string }[];
 
   let zapCurveTokenToPrincipalToken: ZapCurveTokenToPrincipalToken;
@@ -537,7 +537,7 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
       expect(diff.lt(allowedOffset)).to.be.true;
     });
 
-    it("should swap LUSD to ePyvCurveLUSD", async () => {
+    it("should permit and swap LUSD to ePyvCurveLUSD", async () => {
       const { info, zap, childZap, expectedPrincipalTokenAmount } =
         await constructZapInArgs(ePyvCurveLUSD, {
           LUSD: ethers.utils.parseEther("5000"),

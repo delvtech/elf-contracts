@@ -5,49 +5,7 @@ import "../libraries/Authorizable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-
-interface IAsset {}
-
-interface IVault {
-    enum SwapKind {
-        GIVEN_IN,
-        GIVEN_OUT
-    }
-
-    enum PoolSpecialization {
-        GENERAL,
-        MINIMAL_SWAP_INFO,
-        TWO_TOKEN
-    }
-
-    struct SingleSwap {
-        bytes32 poolId;
-        SwapKind kind;
-        IAsset assetIn;
-        IAsset assetOut;
-        uint256 amount;
-        bytes userData;
-    }
-
-    struct FundManagement {
-        address sender;
-        bool fromInternalBalance;
-        address payable recipient;
-        bool toInternalBalance;
-    }
-
-    function swap(
-        SingleSwap memory singleSwap,
-        FundManagement memory funds,
-        uint256 limit,
-        uint256 deadline
-    ) external payable returns (uint256);
-
-    function getPool(bytes32 poolId)
-        external
-        view
-        returns (address, PoolSpecialization);
-}
+import "../interfaces/IVault.sol";
 
 contract ZapCurveTokenToPrincipalToken is Authorizable {
     // Enables a more consistent interface when utilizing ERC20 tokens

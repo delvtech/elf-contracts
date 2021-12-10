@@ -258,8 +258,8 @@ describe("ConvergentCurvePool", function () {
     const returned = result.events.filter(
       (event) => event.event == "UIntReturn"
     );
-    expect(returned[0].data).to.be.eq(fiveHundred);
-    expect(returned[1].data).to.be.eq(oneThousand);
+    expect(returned[0].data).to.be.eq(oneThousand);
+    expect(returned[1].data).to.be.eq(fiveHundred);
     // Check the LP balance
     const balance = await poolContract.balanceOf(accounts[0].address);
     expect(balance).to.be.eq(oneThousand);

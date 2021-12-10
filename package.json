@@ -12,7 +12,7 @@
     "test": "npx hardhat compile && npx hardhat test --config hardhat.config.test.ts ./test/*.ts",
     "typecheck": "npx hardhat compile && npx tsc --noEmit -p tsconfig.json",
     "sim": "sh scripts/load-sim-data.sh && npx hardhat test --config hardhat.config.test.ts ./test/simulation/*.ts",
-    "coverage": "COVERAGE=true npx hardhat --max-memory 4096 coverage --solcoverjs \".solcover.js\" --testfiles \"./test/*.ts\"",
+    "coverage": "COVERAGE=true npx hardhat --max-memory 8192 coverage --solcoverjs \".solcover.js\" --testfiles \"./test/*.ts\"",
     "test:quick": "npx hardhat test --config hardhat.config.test.ts ./test/*.ts --no-compile",
     "load-contracts": "sh scripts/load-balancer-contracts.sh"
   },

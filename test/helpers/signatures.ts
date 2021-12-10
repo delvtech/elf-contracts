@@ -49,7 +49,7 @@ export async function getPermitSignature(
   spenderAddr: string,
   spenderAmount: BigNumberish,
   version: string,
-  // If we are using a fork, the DOMAIN_SEPERATOR would sometimes be constructed
+  // If we are using a fork, the DOMAIN_SEPARATOR would sometimes be constructed
   // using the chainId of mainnet causing discrepancy
   chainId?: number
 ) {

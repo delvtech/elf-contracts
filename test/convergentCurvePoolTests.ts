@@ -33,7 +33,7 @@ const { provider } = waffle;
 // const tolerance = process.env.COVERAGE ? DEFAULT_CHAI_ALMOST_TOLERANCE : 0;
 chai.use(chaiAlmost(20e-4));
 
-describe("ConvergentCurvePool", function () {
+describe.only("ConvergentCurvePool", function () {
   const BOND_DECIMALS = 17;
   const BASE_DECIMALS = 6;
   const SECONDS_IN_YEAR = 31536000;

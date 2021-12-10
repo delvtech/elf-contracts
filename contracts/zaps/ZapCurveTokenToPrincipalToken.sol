@@ -88,6 +88,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         address[] memory spenders,
         uint256[] memory amounts
     ) external onlyAuthorized {
+        // TODO Sanity-check
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20(tokens[i]).safeApprove(spenders[i], amounts[i]);
         }
@@ -114,29 +115,29 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
     /// @param data The array which encodes the set of permit calls to make
     modifier preApproval(PermitData[] memory data) {
         // If permit calls are provided we make try to make them
-        if (data.length != 0) {
-            // We make permit calls for each indicated call
-            for (uint256 i = 0; i < data.length; i++) {
-                _permitCall(data[i]);
-            }
-        }
+        _permitCall(data);
         _;
     }
 
     /// @dev Makes permit calls indicated by a struct
     /// @param data the struct which has the permit calldata
-    function _permitCall(PermitData memory data) internal {
+    function _permitCall(PermitData[] memory data) internal {
         // Make the permit call to the token in the data field using
         // the fields provided.
-        data.tokenContract.permit(
-            msg.sender,
-            data.who,
-            data.amount,
-            data.expiration,
-            data.v,
-            data.r,
-            data.s
-        );
+        if (data.length != 0) {
+            // We make permit calls for each indicated call
+            for (uint256 i = 0; i < data.length; i++) {
+                data[i].tokenContract.permit(
+                    msg.sender,
+                    data.who,
+                    data.amount,
+                    data.expiration,
+                    data.v,
+                    data.r,
+                    data.s
+                );
+            }
+        }
     }
 
     /// @dev Allows an authorized address to freeze or unfreeze this contract

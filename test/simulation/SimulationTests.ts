@@ -8,9 +8,6 @@ import testTrades from "./testTrades.json";
 // This simulation loads the data from ./testTrades.json and makes sure that
 // our quotes are with-in 10^-8 (assuming BASE and BOND are both 18 point fixed)of the quotes from the python script
 describe("ConvergentCurvePoolErrSim", function () {
-  const BOND_DECIMALS = 18;
-  const BASE_DECIMALS = 8;
-
   const inForOutType = 0;
   const outForInType = 1;
 
@@ -21,8 +18,9 @@ describe("ConvergentCurvePoolErrSim", function () {
   const SECONDS_IN_YEAR = 31536000;
   const fakeAddress = "0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c";
 
-  const EPSILON = Math.max(10, BOND_DECIMALS - BASE_DECIMALS + 1);
-  const epsilon = ethers.utils.parseUnits("1", EPSILON);
+  let DECIMALS: number;
+  let EPSILON: number;
+  let epsilon: BigNumber;
   let pool: TestConvergentCurvePool;
   let startTimestamp: number;
   let erc20_base: Contract;
@@ -46,11 +44,14 @@ describe("ConvergentCurvePoolErrSim", function () {
   }
 
   before(async function () {
+    DECIMALS = (testTrades as any).init.decimals;
+    EPSILON = Math.max(10, 18 - DECIMALS + 1);
+    epsilon = ethers.utils.parseUnits("1", EPSILON);
     startTimestamp = await getTimestamp();
 
     const ERC20 = await ethers.getContractFactory("TestERC20");
-    erc20_bond = await ERC20.deploy("Bond", "EL1Y", BOND_DECIMALS);
-    erc20_base = await ERC20.deploy("Stablecoin", "USDC", BASE_DECIMALS);
+    erc20_bond = await ERC20.deploy("Bond", "EL1Y", DECIMALS);
+    erc20_base = await ERC20.deploy("Stablecoin", "USDC", DECIMALS);
 
     const Vault = await ethers.getContractFactory("TestVault");
     vault = await Vault.deploy();
@@ -86,9 +87,6 @@ describe("ConvergentCurvePoolErrSim", function () {
         ? erc20_bond.address
         : erc20_base.address;
 
-      const decimalsIn = isBaseIn ? BASE_DECIMALS : BOND_DECIMALS;
-      const decimalsOut = isBaseIn ? BOND_DECIMALS : BASE_DECIMALS;
-
       const reserveIn = isBaseIn
         ? trade.input.x_reserves
         : trade.input.y_reserves;
@@ -105,7 +103,7 @@ describe("ConvergentCurvePoolErrSim", function () {
             tokenOut: tokenAddressOut,
             amount: ethers.utils.parseUnits(
               trade.input.amount_in.toString(),
-              decimalsIn
+              DECIMALS
             ),
             kind: kind,
             // Misc data
@@ -116,13 +114,10 @@ describe("ConvergentCurvePoolErrSim", function () {
             to: fakeAddress,
             userData: "0x",
           },
-          ethers.utils.parseUnits(reserveIn.toString(), decimalsIn),
-          ethers.utils.parseUnits(reserveOut.toString(), decimalsOut),
+          ethers.utils.parseUnits(reserveIn.toString(), DECIMALS),
+          ethers.utils.parseUnits(reserveOut.toString(), DECIMALS),
           ethers.utils.parseUnits(trade.input.time.toString(), 18),
-          ethers.utils.parseUnits(
-            trade.output.amount_out.toString(),
-            decimalsOut
-          ),
+          ethers.utils.parseUnits(trade.output.amount_out.toString(), DECIMALS),
           ethers.utils.parseEther(trade.input.total_supply.toString())
         )
         .then(check);

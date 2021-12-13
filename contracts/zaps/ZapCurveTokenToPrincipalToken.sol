@@ -205,7 +205,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
                 // We build the context container with our amounts
                 _ctx[i] += _zap.amounts[i];
             } else {
-                uint256 beforeAmnt = IERC20(_zap.roots[i]).balanceOf(
+                uint256 beforeAmount = IERC20(_zap.roots[i]).balanceOf(
                     address(this)
                 );
 
@@ -221,7 +221,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
                 // differential token balance of this contract
                 _ctx[i] +=
                     IERC20(_zap.roots[i]).balanceOf(address(this)) -
-                    beforeAmnt;
+                    beforeAmount;
             }
         }
 
@@ -369,7 +369,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
     ) internal returns (uint256 rootAmount) {
         // Flag to detect if we are sending to recipient
         bool transferToRecipient = address(this) != _recipient;
-        uint256 beforeAmnt = _zap.rootToken == _ETH_CONSTANT
+        uint256 beforeAmount = _zap.rootToken == _ETH_CONSTANT
             ? address(this).balance
             : IERC20(_zap.rootToken).balanceOf(address(this));
 
@@ -389,7 +389,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         // ETH case
         if (_zap.rootToken == _ETH_CONSTANT) {
             // Get ETH balance of current contract
-            rootAmount = address(this).balance - beforeAmnt;
+            rootAmount = address(this).balance - beforeAmount;
             // if address does not equal this contract we send funds to recipient
             if (transferToRecipient) {
                 // Send rootAmount of ETH to the user-specified recipient
@@ -399,7 +399,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
             // Get balance of root token that was swapped
             rootAmount =
                 IERC20(_zap.rootToken).balanceOf(address(this)) -
-                beforeAmnt;
+                beforeAmount;
             // Send tokens to recipient
             if (transferToRecipient) {
                 IERC20(_zap.rootToken).safeTransferFrom(

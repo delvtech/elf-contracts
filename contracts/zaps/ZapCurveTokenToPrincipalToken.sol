@@ -61,11 +61,8 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         address[] memory spenders,
         uint256[] memory amounts
     ) external onlyAuthorized {
-        require(
-            tokens.length == spenders.length &&
-                spenders.length == amounts.length,
-            "incorrect arg lengths"
-        );
+        require(tokens.length == spenders.length, "Incorrect length");
+        require(tokens.length == amounts.length, "Incorrect length");
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20(tokens[i]).safeApprove(spenders[i], amounts[i]);
         }

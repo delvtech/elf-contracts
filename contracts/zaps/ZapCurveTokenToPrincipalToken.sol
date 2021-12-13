@@ -23,19 +23,17 @@ import "../interfaces/IVault.sol";
 /// token" or "base token". Subsequently this is then used to purchase the
 /// principal token. Selling works similarly but in the reverse direction
 contract ZapCurveTokenToPrincipalToken is Authorizable {
-    /// @notice Enables a more consistent interface when utilizing ERC20 tokens
     using SafeERC20 for IERC20;
-    /// @notice Simplifies making low-level function calls
     using Address for address;
 
-    /// @notice Store the accessibility state of the contract
+    // Store the accessibility state of the contract
     bool public isFrozen = false;
 
-    /// @notice A constant to represent ether
+    // A constant to represent ether
     address internal constant _ETH_CONSTANT =
         address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
-    // @notice Reference to the main balancer vault
+    // Reference to the main balancer vault
     IVault internal immutable _balancer;
 
     /// @notice Marks the msg.sender as authorized and sets them as the owner
@@ -46,7 +44,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         _balancer = __balancer;
     }
 
-    /// @notice Allows this contract to receive ether
+    // Allows this contract to receive ether
     receive() external payable {}
 
     /// @notice This function sets approvals on all ERC20 tokens

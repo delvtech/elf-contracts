@@ -232,6 +232,7 @@ export async function deploy(user: { user: Signer; address: string }) {
       principalToken: trie.address,
       recipient,
       minRootTokenAmount: 0,
+      minBaseTokenAmount: 0,
       deadline: Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS,
       principalTokenAmount: amount,
       targetNeedsChildZap,

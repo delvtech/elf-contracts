@@ -334,6 +334,8 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         // The recipient is the address the tokens which are to be swapped for
         // will be sent to
         address payable recipient;
+        // The minimum amount base tokens the user is expecting
+        uint256 minBaseTokenAmount;
         // The minimum amount root tokens the user is expecting
         uint256 minRootTokenAmount;
         // Timestamp into the future for which a transaction is valid for
@@ -440,7 +442,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
                 recipient: payable(address(this)),
                 toInternalBalance: false
             }),
-            0,
+            _info.minBaseTokenAmount,
             _info.deadline
         );
 

@@ -1,3 +1,7 @@
 pragma solidity ^0.8.0;
 
-interface IAsset {}
+// This interface is used instead of importing one from balancer contracts to
+// resolve version conflicts
+interface IAsset {
+
+}

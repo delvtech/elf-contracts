@@ -2,6 +2,8 @@ pragma solidity ^0.8.0;
 
 import "./IAsset.sol";
 
+// This interface is used instead of importing one from balancer contracts to
+// resolve version conflicts
 interface IVault {
     enum SwapKind {
         GIVEN_IN,

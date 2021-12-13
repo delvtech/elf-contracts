@@ -205,6 +205,10 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
                 // We build the context container with our amounts
                 _ctx[i] += _zap.amounts[i];
             } else {
+                uint256 beforeAmnt = IERC20(_zap.roots[i]).balanceOf(
+                    address(this)
+                );
+
                 // In the case of swapping an ERC20 "root" we must transfer them
                 // to this contract in order to make the exchange
                 IERC20(_zap.roots[i]).safeTransferFrom(
@@ -213,9 +217,11 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
                     _zap.amounts[i]
                 );
 
-                // Due to rounding issues of some tokens, we find the
-                // relevant token balance of this contract
-                _ctx[i] = IERC20(_zap.roots[i]).balanceOf(address(this));
+                // Due to rounding issues of some tokens, we use the
+                // differential token balance of this contract
+                _ctx[i] +=
+                    IERC20(_zap.roots[i]).balanceOf(address(this)) -
+                    beforeAmnt;
             }
         }
 
@@ -363,6 +369,9 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
     ) internal returns (uint256 rootAmount) {
         // Flag to detect if we are sending to recipient
         bool transferToRecipient = address(this) != _recipient;
+        uint256 beforeAmnt = _zap.rootToken == _ETH_CONSTANT
+            ? address(this).balance
+            : IERC20(_zap.rootToken).balanceOf(address(this));
 
         // Like in _zapCurveLpIn, we make a low-level function call to interact
         // with curve contracts due to inconsistent interface. In this instance
@@ -380,7 +389,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         // ETH case
         if (_zap.rootToken == _ETH_CONSTANT) {
             // Get ETH balance of current contract
-            rootAmount = address(this).balance;
+            rootAmount = address(this).balance - beforeAmnt;
             // if address does not equal this contract we send funds to recipient
             if (transferToRecipient) {
                 // Send rootAmount of ETH to the user-specified recipient
@@ -388,7 +397,9 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
             }
         } else {
             // Get balance of root token that was swapped
-            rootAmount = IERC20(_zap.rootToken).balanceOf(address(this));
+            rootAmount =
+                IERC20(_zap.rootToken).balanceOf(address(this)) -
+                beforeAmnt;
             // Send tokens to recipient
             if (transferToRecipient) {
                 IERC20(_zap.rootToken).safeTransferFrom(

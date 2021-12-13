@@ -367,7 +367,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         // Like in _zapCurveLpIn, we make a low-level function call to interact
         // with curve contracts due to inconsistent interface. In this instance
         // we are exchanging the LP token from a particular curve pool for one
-        // of the constituient tokens of that same pool.
+        // of the constituent tokens of that same pool.
         address(_zap.curvePool).functionCall(
             abi.encodeWithSelector(
                 _zap.funcSig,

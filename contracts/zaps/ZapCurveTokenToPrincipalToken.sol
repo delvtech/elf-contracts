@@ -188,38 +188,31 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         // short-circuit unnecessary calls
         bool ctxHasAmounts = false;
         for (uint8 i = 0; i < _zap.amounts.length; i++) {
-            // Must check we do not unintentionally send ETH
-            if (_zap.roots[i] == _ETH_CONSTANT)
+            ctxHasAmounts = !ctxHasAmounts && _ctx[i] > 0
+                ? true
+                : ctxHasAmounts;
+            zapHasAmounts = !zapHasAmounts && _zap.amounts[i] > 0
+                ? true
+                : zapHasAmounts;
+
+            if (_zap.roots[i] == _ETH_CONSTANT) {
+                // Must check we do not unintentionally send ETH
                 require(msg.value == _zap.amounts[i], "incorrect value");
 
-            // Setting ctxHasAmounts flag as true means that there
-            // was a previous childZap we must acknowledge
-            if (!ctxHasAmounts && _ctx[i] > 0) {
-                ctxHasAmounts = true;
-            }
+                // We build the context container with our amounts
+                _ctx[i] += _zap.amounts[i];
+            } else {
+                // In the case of swapping an ERC20 "root" we must transfer them
+                // to this contract in order to make the exchange
+                IERC20(_zap.roots[i]).safeTransferFrom(
+                    msg.sender,
+                    address(this),
+                    _zap.amounts[i]
+                );
 
-            if (_zap.amounts[i] > 0) {
-                // If the zapHasAmounts has not been set, we set it to true
-                if (!zapHasAmounts) {
-                    zapHasAmounts = true;
-                }
-
-                if (_zap.roots[i] == _ETH_CONSTANT) {
-                    // We build the context container with our amounts
-                    _ctx[i] += _zap.amounts[i];
-                } else {
-                    // In the case of swapping an ERC20 "root" we must transfer them
-                    // to this contract in order to make the exchange
-                    IERC20(_zap.roots[i]).safeTransferFrom(
-                        msg.sender,
-                        address(this),
-                        _zap.amounts[i]
-                    );
-
-                    // Due to rounding issues of some tokens, we find the
-                    // relevant token balance of this contract
-                    _ctx[i] = IERC20(_zap.roots[i]).balanceOf(address(this));
-                }
+                // Due to rounding issues of some tokens, we find the
+                // relevant token balance of this contract
+                _ctx[i] = IERC20(_zap.roots[i]).balanceOf(address(this));
             }
         }
 

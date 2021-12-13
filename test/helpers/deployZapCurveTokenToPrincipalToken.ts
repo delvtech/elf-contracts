@@ -115,6 +115,7 @@ export async function deploy(user: { user: Signer; address: string }) {
       ),
       roots: trie.baseToken.roots.map((root) => root.address),
       parentIdx: 0,
+      minLpAmount: 0,
     };
 
     const lpRootIdx = trie.baseToken.roots.findIndex(
@@ -137,6 +138,7 @@ export async function deploy(user: { user: Signer; address: string }) {
         ),
         roots: lpRoot.roots.map((r) => r.address),
         parentIdx: lpRootIdx,
+        minLpAmount: 0,
       };
     }
 

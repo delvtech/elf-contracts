@@ -160,6 +160,9 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         // which must be constructed on the frontend as the suite of curvePool
         // contracts have an inconsistent interface.
         bytes4 funcSig;
+        // The minimum amount of LP tokens expected to receive when adding
+        // liquidity
+        uint256 minLpAmount;
     }
 
     /// @notice This function will add liquidity to a target curve pool,
@@ -234,7 +237,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         // pool which expects a 2 length array is acceptable as the low-level
         // call will only consider the first 2 indexes
         address(_zap.curvePool).functionCallWithValue(
-            abi.encodeWithSelector(_zap.funcSig, _ctx, 0),
+            abi.encodeWithSelector(_zap.funcSig, _ctx, _zap.minLpAmount),
             msg.value
         );
 

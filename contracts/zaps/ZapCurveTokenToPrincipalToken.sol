@@ -232,7 +232,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         // this due to the lack of consistency of the interface in the
         // "add_liquidity" function. As we intend to use this function
         // across several curve pool contracts, it is necessary to use a
-        // generalised solution. By using a low-level function call as below
+        // generalized solution. By using a low-level function call as below
         // we can determine off chain the correct function signature for the
         // target curve pool.
         // In addition, we only have to specify the amount context container

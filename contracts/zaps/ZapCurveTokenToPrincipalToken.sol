@@ -7,23 +7,38 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "../interfaces/IVault.sol";
 
+/// @title ZapCurveTokenToPrincipalToken
+/// @notice Allows the user to buy and sell principal tokens using a wider
+/// array of tokens
+/// @dev This contract introduces the concept of "root tokens" which are the set
+/// of constituent tokens for a given curve pool. Each principal token is
+/// constructed by a yield-generating position which in this case will be
+/// represented by a curve LP token. This is referred to as the "base token"
+/// and in the case where the user wishes to purchase or sell a principal token,
+/// it can only be done so by using this token.
+/// What this contract intends to do is enable the user purchase or sell a
+/// position using those "root tokens" which would garner significant UX
+/// improvements. The flow in the case of purchasing is as follows, the root
+/// tokens are added as liquidity into the correct curve pool, giving a curve "LP
+/// token" or "base token". Subsequently this is then used to purchase the
+/// principal token. Selling works similarly but in the reverse direction
 contract ZapCurveTokenToPrincipalToken is Authorizable {
-    // Enables a more consistent interface when utilizing ERC20 tokens
+    /// @notice Enables a more consistent interface when utilizing ERC20 tokens
     using SafeERC20 for IERC20;
-    // Simplifies making low-level function calls
+    /// @notice Simplifies making low-level function calls
     using Address for address;
 
-    // Store the accessibility state of the contract
+    /// @notice Store the accessibility state of the contract
     bool public isFrozen = false;
 
-    // A constant to represent ether
+    /// @notice A constant to represent ether
     address internal constant _ETH_CONSTANT =
         address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
-    // Reference to the main balancer vault
+    // @notice Reference to the main balancer vault
     IVault internal immutable _balancer;
 
-    /// @dev Marks the msg.sender as authorized and sets them as the owner
+    /// @notice Marks the msg.sender as authorized and sets them as the owner
     ///      in the authorization library
     /// @param __balancer The balancer vault contract
     constructor(IVault __balancer) Authorizable() {
@@ -31,10 +46,10 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         _balancer = __balancer;
     }
 
-    /// @dev Allows this contract to receive ether
+    /// @notice Allows this contract to receive ether
     receive() external payable {}
 
-    /// @dev This function sets approvals on all ERC20 tokens
+    /// @notice This function sets approvals on all ERC20 tokens
     /// @param tokens An array of token addresses which are to be approved
     /// @param spenders An array of contract addresses, most likely curve and
     /// balancer pool addresses
@@ -56,13 +71,13 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         }
     }
 
-    /// @dev Requires that the contract is not frozen
+    /// @notice Requires that the contract is not frozen
     modifier notFrozen() {
         require(!isFrozen, "Contract frozen");
         _;
     }
 
-    // Memory encoding of the permit data
+    // @notice Memory encoding of the permit data
     struct PermitData {
         IERC20Permit tokenContract;
         address who;
@@ -73,7 +88,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         uint8 v;
     }
 
-    /// @dev Takes the input permit calls and executes them
+    /// @notice Takes the input permit calls and executes them
     /// @param data The array which encodes the set of permit calls to make
     modifier preApproval(PermitData[] memory data) {
         // If permit calls are provided we make try to make them
@@ -81,7 +96,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         _;
     }
 
-    /// @dev Makes permit calls indicated by a struct
+    /// @notice Makes permit calls indicated by a struct
     /// @param data the struct which has the permit calldata
     function _permitCall(PermitData[] memory data) internal {
         // Make the permit call to the token in the data field using
@@ -102,7 +117,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         }
     }
 
-    /// @dev Allows an authorized address to freeze or unfreeze this contract
+    /// @notice Allows an authorized address to freeze or unfreeze this contract
     /// @param _newState True for frozen and false for unfrozen
     function setIsFrozen(bool _newState) external onlyAuthorized {
         isFrozen = _newState;
@@ -152,8 +167,10 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         bytes4 funcSig;
     }
 
-    /// @dev Effectively exchanges an array of "root" tokens for an amount of
-    /// curve lpTokens
+    /// @notice This function will add liquidity to a target curve pool,
+    /// returning some amount of LP tokens as a result. This is effectively
+    /// swapping amounts of the dependent curve pool tokens for the LP token
+    /// which will be used elsewhere
     /// @param _zap ZapCurveLpIn struct
     /// @param _ctx fixed length array used as an amounts container between the
     /// zap and childZap and also makes the transition from a dynamic-length
@@ -216,15 +233,18 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
             return 0;
         }
 
-        // It is necessary to add liquidity to the respective curve pool like
-        // this due to the non-standard interface of the function in the curve
-        // contracts. Not only is there two variants of fixed length array
-        // amount inputs but it is often inconsistent whether return values
-        // exist or not
-        // Also, the context amounts container, although fixed-length of 2 or 3,
-        // because it is a low-level function call, solidity will not complain
-        // and the first 2 indexes are only considered in the case of it being
-        // length 2
+        // It is necessary to interact with the curve pool contract like
+        // this due to the lack of consistency of the interface in the
+        // "add_liquidity" function. As we intend to use this function
+        // across several curve pool contracts, it is necessary to use a
+        // generalised solution. By using a low-level function call as below
+        // we can determine off chain the correct function signature for the
+        // target curve pool.
+        // In addition, we only have to specify the amount context container
+        // once as curve only has either 2 or 3 tokens per pool. For our
+        // purposes, the case of using a fixed-length array of length 3 on a
+        // pool which expects a 2 length array is acceptable as the low-level
+        // call will only consider the first 2 indexes
         address(_zap.curvePool).functionCallWithValue(
             abi.encodeWithSelector(_zap.funcSig, _ctx, 0),
             msg.value
@@ -233,10 +253,8 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         return _zap.lpToken.balanceOf(address(this));
     }
 
-    /// @dev zapIn enables the user swap multiple dependent curve tokens into
-    /// their respective lp tokens and then immediately swaps them for
-    /// principal tokens, greatly simplifying the purchasing of principal
-    /// tokens
+    /// @notice zapIn Exchanges a number of tokens which are used in a specific
+    /// curve pool(s) for a principal token.
     /// @param _info See ZapInInfo struct
     /// @param _zap See ZapCurveLpIn struct - This is the "main" or parent zap
     /// which produces the lp token necessary to swap for the principal token
@@ -334,8 +352,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         bool targetNeedsChildZap;
     }
 
-    /// @dev Swaps an amount of curve lpTokens for a single dependent root token
-    /// from its pool
+    /// @notice Swaps an amount of curve LP tokens for a single root token
     /// @param _zap See ZapCurveLpOut
     /// @param _lpTokenAmount This is the amount of lpTokens we are swapping
     /// with
@@ -387,8 +404,8 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         }
     }
 
-    /// @dev zapOut Allows users sell their principalTokens and subsequently
-    /// swap the resultant curve lpToken for one of its dependent "root" tokens
+    /// @notice zapOut Allows users sell their principalTokens and subsequently
+    /// swap the resultant curve LP token for one of its dependent "root tokens"
     /// @param _info See ZapOutInfo
     /// @param _zap See ZapCurveLpOut
     /// @param _childZap See ZapCurveLpOut

@@ -7,6 +7,21 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "../interfaces/IVault.sol";
 
+// TODO Due to the nature of the curve contracts, there are a number of design
+// decisions made in this contract which primarily aim to generalise integration
+// with curve. Curve contracts have often an inconsistent interface to many
+// functions in their contracts which has influenced the design of this contract
+// to target curve pool functions using function signatures computed off-chain.
+// The validation of this and other features of this contract stem from this
+// problem, for instance, the curve pool contracts target their underlying
+// tokens using fixed-length dimensional arrays of length 2 or 3. We could
+// harden this contract further by utilsing the "coins" function on the curve
+// contract which would enable this contract validate that our input structure
+// is correct. However, this would also run into problems as the guarantee of
+// consistency of the "coins" function is also in question across the suite of
+// pools in the curve ecosystem. There may be a solution to mitigate this
+// problem but may be more trouble than it's worth.
+
 /// @title ZapCurveTokenToPrincipalToken
 /// @notice Allows the user to buy and sell principal tokens using a wider
 /// array of tokens

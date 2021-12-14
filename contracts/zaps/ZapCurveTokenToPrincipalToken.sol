@@ -47,29 +47,16 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
     // Allows this contract to receive ether
     receive() external payable {}
 
-    /// @notice This function sets approvals on all ERC20 tokens
-    /// @param tokens An array of token addresses which are to be approved
-    /// @param spenders An array of contract addresses, most likely curve and
-    /// balancer pool addresses
-    /// @param amounts An array of amounts for which at each index, the spender
-    /// from the same index in the spenders array is approved to use the token
-    /// at the equivalent index of the token array on behalf of this contract
-    function setApprovalsFor(
-        address[] memory tokens,
-        address[] memory spenders,
-        uint256[] memory amounts
-    ) external onlyAuthorized {
-        require(tokens.length == spenders.length, "Incorrect length");
-        require(tokens.length == amounts.length, "Incorrect length");
-        for (uint256 i = 0; i < tokens.length; i++) {
-            IERC20(tokens[i]).safeApprove(spenders[i], amounts[i]);
-        }
-    }
-
     /// @notice Requires that the contract is not frozen
     modifier notFrozen() {
         require(!isFrozen, "Contract frozen");
         _;
+    }
+
+    /// @notice Allows an authorized address to freeze or unfreeze this contract
+    /// @param _newState True for frozen and false for unfrozen
+    function setIsFrozen(bool _newState) external onlyAuthorized {
+        isFrozen = _newState;
     }
 
     // @notice Memory encoding of the permit data
@@ -112,10 +99,23 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         }
     }
 
-    /// @notice Allows an authorized address to freeze or unfreeze this contract
-    /// @param _newState True for frozen and false for unfrozen
-    function setIsFrozen(bool _newState) external onlyAuthorized {
-        isFrozen = _newState;
+    /// @notice This function sets approvals on all ERC20 tokens
+    /// @param tokens An array of token addresses which are to be approved
+    /// @param spenders An array of contract addresses, most likely curve and
+    /// balancer pool addresses
+    /// @param amounts An array of amounts for which at each index, the spender
+    /// from the same index in the spenders array is approved to use the token
+    /// at the equivalent index of the token array on behalf of this contract
+    function setApprovalsFor(
+        address[] memory tokens,
+        address[] memory spenders,
+        uint256[] memory amounts
+    ) external onlyAuthorized {
+        require(tokens.length == spenders.length, "Incorrect length");
+        require(tokens.length == amounts.length, "Incorrect length");
+        for (uint256 i = 0; i < tokens.length; i++) {
+            IERC20(tokens[i]).safeApprove(spenders[i], amounts[i]);
+        }
     }
 
     struct ZapInInfo {

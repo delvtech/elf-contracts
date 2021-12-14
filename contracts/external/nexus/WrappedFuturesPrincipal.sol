@@ -61,7 +61,7 @@ contract WrappedFuturesPrincipal is ERC20PermitWithSupply, Authorizable {
     ///         only allowed to add, Otherwise it will revert.
     /// @param  _tranche Address of the tranche which needs to add.
     function addTranche(address _tranche) external isValidTranche(_tranche) onlyOwner {
-        require(ITranche(_tranche).underlying() == baseToken, "WFP:INVALID_TRANCHE");
+        require(address(ITranche(_tranche).underlying()) == baseToken, "WFP:INVALID_TRANCHE");
         _allowedTranches.add(_tranche);
         emit TrancheAdded(_tranche);
     }

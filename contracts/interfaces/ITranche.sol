@@ -25,7 +25,7 @@ interface ITranche is IERC20Permit {
 
     function interestSupply() external view returns (uint128);
 
-    function underlying() external view returns (address);
+    function underlying() external view returns (IERC20);
 
     function unlockTimestamp() external view returns (uint256);
 }

@@ -8,14 +8,14 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "../interfaces/IVault.sol";
 
 // TODO Due to the nature of the curve contracts, there are a number of design
-// decisions made in this contract which primarily aim to generalise integration
+// decisions made in this contract which primarily aim to generalize integration
 // with curve. Curve contracts have often an inconsistent interface to many
 // functions in their contracts which has influenced the design of this contract
 // to target curve pool functions using function signatures computed off-chain.
 // The validation of this and other features of this contract stem from this
 // problem, for instance, the curve pool contracts target their underlying
 // tokens using fixed-length dimensional arrays of length 2 or 3. We could
-// harden this contract further by utilsing the "coins" function on the curve
+// harden this contract further by utilizing the "coins" function on the curve
 // contract which would enable this contract validate that our input structure
 // is correct. However, this would also run into problems as the guarantee of
 // consistency of the "coins" function is also in question across the suite of

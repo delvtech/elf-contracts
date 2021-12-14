@@ -184,19 +184,18 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
             "!(2 >= amounts.length <= 3)"
         );
 
-        // Flag if the current zap has amounts. Used to short-circuit
-        // unnecessary calls
-        bool zapHasAmounts = false;
-        // Flag for where the user has a childZap with amounts. Used to
-        // short-circuit unnecessary calls
-        bool ctxHasAmounts = false;
+        // Flag to detect if a zap to curve should be made
+        bool shouldMakeZap = false;
         for (uint8 i = 0; i < _zap.amounts.length; i++) {
-            ctxHasAmounts = !ctxHasAmounts && _ctx[i] > 0
+            bool zapIndexHasAmount = _zap.amounts[i] > 0;
+            // If either the _ctx or zap amounts array has an index with an
+            // amount > 0 we must zap curve
+            shouldMakeZap = (zapIndexHasAmount || _ctx[i] > 0)
                 ? true
-                : ctxHasAmounts;
-            zapHasAmounts = !zapHasAmounts && _zap.amounts[i] > 0
-                ? true
-                : zapHasAmounts;
+                : shouldMakeZap;
+
+            // if there is no amount at this index we can escape the loop earlier
+            if (!zapIndexHasAmount) continue;
 
             if (_zap.roots[i] == _ETH_CONSTANT) {
                 // Must check we do not unintentionally send ETH
@@ -225,8 +224,8 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
             }
         }
 
-        // When we do not have anything to swap for, we short-circuit
-        if (!zapHasAmounts && !ctxHasAmounts) {
+        // When there is nothing to swap for on curve we short-circuit
+        if (!shouldMakeZap) {
             return 0;
         }
 

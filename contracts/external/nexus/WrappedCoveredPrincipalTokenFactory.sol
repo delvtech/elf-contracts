@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.0;
 
-import { WrappedFuturesPrincipal, Authorizable, EnumerableSet } from "./WrappedFuturesPrincipal.sol";
+import { WrappedCoveredPrincipalToken, Authorizable, EnumerableSet } from "./WrappedCoveredPrincipalToken.sol";
 
-contract WrappedFuturesPrincipalFactory is Authorizable {
+contract WrappedCoveredPrincipalTokenFactory is Authorizable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // Enumerable list of wrapped tokens that get created from the factory.
-    EnumerableSet.AddressSet private _wrappedFuturesPrincipals;
+    EnumerableSet.AddressSet private _WrappedCoveredPrincipalTokens;
 
     // Emitted when new wrapped principal token get created.
-    event WrappedFuturesPrincipalCreated(
+    event WrappedCoveredPrincipalTokenCreated(
         address indexed _baseToken,
         address indexed _owner
     );
@@ -34,22 +34,22 @@ contract WrappedFuturesPrincipalFactory is Authorizable {
         _zeroAddressCheck(_owner);
         _zeroAddressCheck(_baseToken);
         address wfPrincipal = address(
-            new WrappedFuturesPrincipal(_baseToken, _owner)
+            new WrappedCoveredPrincipalToken(_baseToken, _owner)
         );
-        _wrappedFuturesPrincipals.add(wfPrincipal);
-        emit WrappedFuturesPrincipalCreated(_baseToken, _owner);
+        _WrappedCoveredPrincipalTokens.add(wfPrincipal);
+        emit WrappedCoveredPrincipalTokenCreated(_baseToken, _owner);
         return wfPrincipal;
     }
 
     /// @notice Returns the list of wrapped tokens that are whitelisted with the contract.
     ///         Order is not maintained.
     /// @return Array of addresses.
-    function allWrappedFuturesPrincipals()
+    function allWrappedCoveredPrincipalTokens()
         public
         view
         returns (address[] memory)
     {
-        return _wrappedFuturesPrincipals.values();
+        return _WrappedCoveredPrincipalTokens.values();
     }
 
     /// @notice Sanity check for the zero address check.

@@ -3,7 +3,7 @@ pragma solidity 0.8.0;
 
 import { IERC20Permit } from "../../../interfaces/IERC20Permit.sol";
 
-interface IWrappedFuturesPrincipal is IERC20Permit {
+interface IWrappedCoveredPrincipalToken is IERC20Permit {
     // Address of the base/underlying token which is used to buy the yield bearing token from the wrapped position.
     // Ex - LUSD is used to buy the Curve LUSD v2 yield bearing token
     function baseToken() external view returns (address);

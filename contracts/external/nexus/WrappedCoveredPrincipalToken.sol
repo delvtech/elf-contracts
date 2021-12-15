@@ -8,12 +8,12 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-contract WrappedFuturesPrincipal is ERC20PermitWithSupply, Authorizable {
+contract WrappedCoveredPrincipalToken is ERC20PermitWithSupply, Authorizable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
 
     // Address of the base/underlying token which is used to buy the yield bearing token from the wrapped position.
-    // Ex - LUSD is used to buy the Curve LUSD v2 yield bearing token
+    // Ex - Dai is used to buy the yvDai yield bearing token
     address public immutable baseToken;
 
     // Enumerable address list, It contains the list of allowed tranches that are covered by this contract

@@ -13,7 +13,7 @@ import "hardhat/console.sol";
 /// @title Rollover Asset Proxy
 contract RolloverAssetProxy is WrappedPosition, Authorizable {
     // The Rollover asset proxy allows users to enter and have their funds rollover
-    // to a LP in a new terms each time an old term expires.
+    // to a LP in a new term each time an old term expires.
     // The mechanics of rollover are slightly more complex than other wrapped positions
     // this is because it employs a scheduling mechanic with two types of periods: a
     // settlement period and a committed period. During the settlement period the wrapped
@@ -22,7 +22,7 @@ contract RolloverAssetProxy is WrappedPosition, Authorizable {
     // WARNING - Tranches based on this asset proxy must expire and redeem in settlement period.
     // WARNING - Committed period break the deposit method
 
-    // Governance chooses which terms to upgrade too and coordinates settlement periods so using
+    // Governance chooses which terms to upgrade to and coordinates settlement periods so using
     // this tranche includes some exposure to governance risk.
 
     // The total supply of the wrapped position tokens
@@ -138,9 +138,6 @@ contract RolloverAssetProxy is WrappedPosition, Authorizable {
             // Now require that the deposited amounts correctly ratio match
             // We add a factor to preserve decimals
             // TODO - Do some real analysis on this
-            console.log("got here");
-            console.log(shares);
-            console.log(depositedLP);
             require(
                 shares == (depositedLP * localTotalSupply) / lpSupply,
                 "Incorrect Ratio"

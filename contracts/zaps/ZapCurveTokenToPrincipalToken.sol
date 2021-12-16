@@ -74,7 +74,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable {
         isFrozen = _newState;
     }
 
-    // @notice Memory encoding of the permit data
+    /// @notice Memory encoding of the permit data
     struct PermitData {
         IERC20Permit tokenContract;
         address who;

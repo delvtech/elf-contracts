@@ -125,10 +125,8 @@ abstract contract ComptrollerInterface {
         uint256 repayAmount
     ) external virtual view returns (uint256, uint256);
 
-    function claimComp(
-        address[] memory holders,
-        CErc20Interface[] memory cTokens,
-        bool borrowers,
-        bool suppliers
-    ) external virtual;
+    // Claim all the COMP accrued by holder in specific markets
+    function claimComp(address holder, CErc20Interface[] memory cTokens)
+        external
+        virtual;
 }

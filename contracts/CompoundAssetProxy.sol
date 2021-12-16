@@ -126,15 +126,12 @@ contract CompoundAssetProxy is WrappedPosition, Authorizable {
     // TODO: add this back in when I figure out how to mock the owner funcitonality
     function collectRewards(address _destination) external onlyAuthorized() {
         // Set up input params for claimComp
-        address[] memory holder = new address[](1);
-        // Store contract address as an array
-        holder[0] = address(this);
         CErc20Interface[] memory cTokens = new CErc20Interface[](1);
         // Store cToken as an array
         cTokens[0] = ctoken;
 
         // claim the rewards
-        comptroller.claimComp(holder, cTokens, true, true);
+        comptroller.claimComp(address(this), cTokens);
         // look up the comp balance to send
         uint256 balance = comp.balanceOf(address(this));
         // send to destination address

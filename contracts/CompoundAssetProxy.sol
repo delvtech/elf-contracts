@@ -58,7 +58,7 @@ contract CompoundAssetProxy is WrappedPosition, Authorizable {
         // Load balance of contract
         uint256 amount = token.balanceOf(address(this));
 
-        // Since ctoken's mint function returns sucess codes
+        // Since ctoken's mint function returns success codes
         // we get the balance before and after minting to calculate shares
         uint256 beforeBalance = ctoken.balanceOfUnderlying(address(this));
 

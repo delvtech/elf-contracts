@@ -8,6 +8,8 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
+/// @author Element Finance
+/// @title WrappedCoveredPrincipalToken
 contract WrappedCoveredPrincipalToken is ERC20PermitWithSupply, Authorizable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;

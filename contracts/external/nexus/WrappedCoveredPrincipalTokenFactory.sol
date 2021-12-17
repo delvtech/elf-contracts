@@ -3,6 +3,8 @@ pragma solidity 0.8.0;
 
 import { WrappedCoveredPrincipalToken, Authorizable, EnumerableSet } from "./WrappedCoveredPrincipalToken.sol";
 
+/// @author Element Finance
+/// @title WrappedCoveredPrincipalTokenFactory
 contract WrappedCoveredPrincipalTokenFactory is Authorizable {
     using EnumerableSet for EnumerableSet.AddressSet;
 

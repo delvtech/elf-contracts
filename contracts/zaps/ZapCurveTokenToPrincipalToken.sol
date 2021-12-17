@@ -177,6 +177,9 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
         _;
     }
 
+    // Allow this contract to receive ether
+    receive() external payable {}
+
     /// @notice Allows an authorized address to freeze or unfreeze this contract
     /// @param _newState True for frozen and false for unfrozen
     function setIsFrozen(bool _newState) external onlyAuthorized {

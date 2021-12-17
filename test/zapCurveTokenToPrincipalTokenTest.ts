@@ -570,7 +570,7 @@ describe("ZapCurveTokenToPrincipalToken", () => {
         r,
         s,
         tokenContract: getERC20("LUSD").address,
-        who: zapCurveTokenToPrincipalToken.address,
+        spender: zapCurveTokenToPrincipalToken.address,
         expiration: ethers.constants.MaxUint256,
         amount: ethers.constants.MaxUint256,
       };
@@ -643,7 +643,7 @@ describe("ZapCurveTokenToPrincipalToken", () => {
         r,
         s,
         tokenContract: info.principalToken,
-        who: zapCurveTokenToPrincipalToken.address,
+        spender: zapCurveTokenToPrincipalToken.address,
         expiration: ethers.constants.MaxUint256,
         amount: ethers.constants.MaxUint256,
       };

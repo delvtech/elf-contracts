@@ -1,36 +1,34 @@
-import "module-alias/register";
-
 import { Signer } from "ethers";
 import { ethers } from "hardhat";
-import { TestERC20 } from "typechain/TestERC20";
-import { TestYVault } from "typechain/TestYVault";
-import { TestWrappedPosition } from "typechain/TestWrappedPosition";
-import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
-import { TestYVault__factory } from "typechain/factories/TestYVault__factory";
-import { TestWrappedPosition__factory } from "typechain/factories/TestWrappedPosition__factory";
+import "module-alias/register";
+import { DateString__factory } from "typechain/factories/DateString__factory";
 import { IERC20__factory } from "typechain/factories/IERC20__factory";
+import { InterestTokenFactory__factory } from "typechain/factories/InterestTokenFactory__factory";
+import { InterestToken__factory } from "typechain/factories/InterestToken__factory";
 import { IWETH__factory } from "typechain/factories/IWETH__factory";
 import { IYearnVault__factory } from "typechain/factories/IYearnVault__factory";
-import { Tranche__factory } from "typechain/factories/Tranche__factory";
-import { TrancheFactory__factory } from "typechain/factories/TrancheFactory__factory";
+import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
 import { TestUserProxy__factory } from "typechain/factories/TestUserProxy__factory";
-import { InterestToken__factory } from "typechain/factories/InterestToken__factory";
-import { InterestTokenFactory__factory } from "typechain/factories/InterestTokenFactory__factory";
+import { TestWrappedPosition__factory } from "typechain/factories/TestWrappedPosition__factory";
+import { TestYVault__factory } from "typechain/factories/TestYVault__factory";
+import { TrancheFactory__factory } from "typechain/factories/TrancheFactory__factory";
+import { Tranche__factory } from "typechain/factories/Tranche__factory";
 import { YVaultAssetProxy__factory } from "typechain/factories/YVaultAssetProxy__factory";
-import { ZapYearnShares__factory } from "typechain/factories/ZapYearnShares__factory";
-import { ZapYearnShares } from "typechain/ZapYearnShares";
 import { ZapTrancheHop__factory } from "typechain/factories/ZapTrancheHop__factory";
-import { ZapTrancheHop } from "typechain/ZapTrancheHop";
+import { ZapYearnShares__factory } from "typechain/factories/ZapYearnShares__factory";
 import { IERC20 } from "typechain/IERC20";
+import { InterestToken } from "typechain/InterestToken";
 import { IWETH } from "typechain/IWETH";
 import { IYearnVault } from "typechain/IYearnVault";
+import { TestERC20 } from "typechain/TestERC20";
+import { TestUserProxy } from "typechain/TestUserProxy";
+import { TestWrappedPosition } from "typechain/TestWrappedPosition";
+import { TestYVault } from "typechain/TestYVault";
 import { Tranche } from "typechain/Tranche";
 import { TrancheFactory } from "typechain/TrancheFactory";
-import { TestUserProxy } from "typechain/TestUserProxy";
-import { InterestToken } from "typechain/InterestToken";
 import { YVaultAssetProxy } from "typechain/YVaultAssetProxy";
-import { DateString__factory } from "typechain/factories/DateString__factory";
-
+import { ZapTrancheHop } from "typechain/ZapTrancheHop";
+import { ZapYearnShares } from "typechain/ZapYearnShares";
 import data from "../../artifacts/contracts/Tranche.sol/Tranche.json";
 
 export interface FixtureInterface {
@@ -90,7 +88,6 @@ export interface TrancheHopInterface {
   interestToken1: InterestToken;
   interestToken2: InterestToken;
 }
-
 const deployTestWrappedPosition = async (signer: Signer, address: string) => {
   const deployer = new TestWrappedPosition__factory(signer);
   return await deployer.deploy(address);
@@ -126,7 +123,7 @@ const deployInterestTokenFactory = async (signer: Signer) => {
   return await deployer.deploy();
 };
 
-const deployTrancheFactory = async (signer: Signer) => {
+export const deployTrancheFactory = async (signer: Signer) => {
   const interestTokenFactory = await deployInterestTokenFactory(signer);
   const deployer = new TrancheFactory__factory(signer);
   const dateLibFactory = new DateString__factory(signer);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.0;
 
-import { ERC20PermitWithSupply, ERC20Permit } from "../../libraries/ERC20PermitWithSupply.sol";
+import { ERC20PermitWithSupply, ERC20Permit, IERC20Permit } from "../../libraries/ERC20PermitWithSupply.sol";
 import { Authorizable } from "../../libraries/Authorizable.sol";
 import { ITranche } from "../../interfaces/ITranche.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -26,6 +26,16 @@ contract WrappedCoveredPrincipalToken is ERC20PermitWithSupply, Authorizable {
 
     // Emitted when new tranche get whitelisted.
     event TrancheAdded(address _tranche);
+
+    // Memory encoding of the permit data
+    struct PermitData {
+        address spender;
+        uint256 value;
+        uint256 deadline;
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+    }
 
     /// @notice Modifier to validate the tranche is whitelisted or not.
     modifier isValidTranche(address _tranche) {
@@ -92,10 +102,12 @@ contract WrappedCoveredPrincipalToken is ERC20PermitWithSupply, Authorizable {
     ///            to the contract by the `msg.sender` to make execution successful.
     /// @param  _amount Amount of covered position / wrapped token `msg.sender` wants to mint.
     /// @param  _tranche Address of the tranche which is covered by this covered position contract / wrapped token.
-    function mint(uint256 _amount, address _tranche)
-        external
-        isValidTranche(_tranche)
-    {
+    function mint(
+        uint256 _amount,
+        address _tranche,
+        PermitData calldata _permitCallData
+    ) external isValidTranche(_tranche) {
+        _usePermitData(_tranche, _permitCallData);
         // Only allow minting when the position get expired.
         require(
             ITranche(_tranche).unlockTimestamp() < block.timestamp,
@@ -109,6 +121,20 @@ contract WrappedCoveredPrincipalToken is ERC20PermitWithSupply, Authorizable {
         );
         // Mint the corresponding wrapped token to the `msg.sender`.
         _mint(msg.sender, _amount);
+    }
+
+    function _usePermitData(address _tranche, PermitData memory _d) internal {
+        if (_d.spender != address(0)) {
+            IERC20Permit(_tranche).permit(
+                msg.sender,
+                _d.spender,
+                _d.value,
+                _d.deadline,
+                _d.v,
+                _d.r,
+                _d.s
+            );
+        }
     }
 
     /// @notice Tell whether the given `_tranche` is whitelisted or not.

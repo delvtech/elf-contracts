@@ -35,12 +35,12 @@ contract WrappedCoveredPrincipalTokenFactory is Authorizable {
         // Validate the given params
         _zeroAddressCheck(_owner);
         _zeroAddressCheck(_baseToken);
-        address wfPrincipal = address(
+        address wcPrincipal = address(
             new WrappedCoveredPrincipalToken(_baseToken, _owner)
         );
-        _WrappedCoveredPrincipalTokens.add(wfPrincipal);
+        _WrappedCoveredPrincipalTokens.add(wcPrincipal);
         emit WrappedCoveredPrincipalTokenCreated(_baseToken, _owner);
-        return wfPrincipal;
+        return wcPrincipal;
     }
 
     /// @notice Returns the list of wrapped tokens that are whitelisted with the contract.

@@ -14,6 +14,7 @@
     "sim": "sh scripts/load-sim-data.sh && npx hardhat test --config hardhat.config.test.ts ./test/simulation/*.ts",
     "coverage": "COVERAGE=true NODE_OPTIONS=--max_old_space_size=8192 npx hardhat coverage --solcoverjs \".solcover.js\" --testfiles \"./test/*.ts\"",
     "test:quick": "npx hardhat test --config hardhat.config.test.ts ./test/*.ts --no-compile",
+    "unit:test": "npx hardhat test --no-compile --config hardhat.config.test.ts",
     "load-contracts": "sh scripts/load-balancer-contracts.sh"
   },
   "_moduleAliases": {

@@ -39,7 +39,7 @@ contract WrappedCoveredPrincipalToken is ERC20PermitWithSupply, Authorizable {
 
     /// @notice Modifier to validate the tranche is whitelisted or not.
     modifier isValidTranche(address _tranche) {
-        require(isAllowedTranche(_tranche), "WFP:ALREADY_EXISTS");
+        require(!isAllowedTranche(_tranche), "WFP:ALREADY_EXISTS");
         _;
     }
 
@@ -64,7 +64,7 @@ contract WrappedCoveredPrincipalToken is ERC20PermitWithSupply, Authorizable {
     {
         return
             string(
-                abi.encodePacked("Wrapped", _tokenSymbol, "Futures Principal")
+                abi.encodePacked("Wrapped", _tokenSymbol, "Covered Principal")
             );
     }
 

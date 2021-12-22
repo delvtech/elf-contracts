@@ -1,10 +1,10 @@
+import { BigNumber, BigNumberish } from "ethers";
 import {
-  keccak256,
   defaultAbiCoder,
-  toUtf8Bytes,
+  keccak256,
   solidityPack,
+  toUtf8Bytes,
 } from "ethers/lib/utils";
-import { BigNumberish, BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import { ERC20Permit } from "typechain/ERC20Permit";
 
@@ -48,17 +48,21 @@ export async function getPermitSignature(
   sourceAddr: string,
   spenderAddr: string,
   spenderAmount: BigNumberish,
-  version: string
+  version: string,
+  // If we are using a fork, the DOMAIN_SEPARATOR would sometimes be constructed
+  // using the chainId of mainnet causing discrepancy
+  chainId?: number
 ) {
   // Load a json rpc signer
   const signer = ethers.provider.getSigner(sourceAddr);
 
   const name = await token.name();
-  const chainId = await signer.getChainId();
+  const _chainId = chainId ?? (await signer.getChainId());
+
   const domain = {
     name: name,
     version: version,
-    chainId: chainId,
+    chainId: _chainId,
     verifyingContract: token.address,
   };
 
@@ -110,4 +114,10 @@ function parseSigString(signature: string) {
     s: "0x" + signature.slice(66, 130),
     v: BigNumber.from("0x" + signature.slice(130)).toNumber(),
   };
+}
+
+export function getFunctionSignature(sig: string) {
+  return ethers.utils.Interface.getSighash(
+    ethers.utils.FunctionFragment.from(sig)
+  );
 }

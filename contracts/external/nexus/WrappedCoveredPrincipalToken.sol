@@ -106,7 +106,8 @@ contract WrappedCoveredPrincipalToken is ERC20PermitWithSupply, Authorizable {
         uint256 _amount,
         address _tranche,
         PermitData calldata _permitCallData
-    ) external isValidTranche(_tranche) {
+    ) external {
+        require(isAllowedTranche(_tranche), "WFP:INVALID_TRANCHE");
         _usePermitData(_tranche, _permitCallData);
         // Only allow minting when the position get expired.
         require(

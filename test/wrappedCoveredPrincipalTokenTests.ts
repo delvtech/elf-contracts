@@ -10,8 +10,8 @@ import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import {
   deployUsdc,
-  loadFixtureWithBaseAsset,
-  FixtureInterface,
+  loadTestTrancheFixtureWithBaseAsset,
+  TrancheTestFixtureWithBaseAsset,
 } from "./helpers/deployer";
 import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
 import { advanceTime, getCurrentTimestamp } from "./helpers/time";
@@ -24,7 +24,7 @@ const { provider } = waffle;
 const initialBalance = ethers.BigNumber.from("2000000"); // 2e9
 
 describe("WrappedCoveredPrincipalToken", function () {
-  let fixture: FixtureInterface;
+  let fixture: TrancheTestFixtureWithBaseAsset;
   let factory: WrappedCoveredPrincipalTokenFactory;
   let coveredToken: WrappedCoveredPrincipalToken;
   let signers: SignerWithAddress[];
@@ -52,7 +52,7 @@ describe("WrappedCoveredPrincipalToken", function () {
       (await signers[0].getAddress()) as string
     );
     // load all related contracts
-    fixture = await loadFixtureWithBaseAsset(tempUsdc, expiration);
+    fixture = await loadTestTrancheFixtureWithBaseAsset(tempUsdc, expiration);
 
     coveredOwner = signers[1].address;
     baseToken = fixture.usdc;
@@ -94,9 +94,9 @@ describe("WrappedCoveredPrincipalToken", function () {
         adminRole
       );
       expect(await coveredToken.name()).to.equal(
-        "WrappedTESTCovered Principal"
+        "WrappedtUSDCCovered Principal"
       );
-      expect(await coveredToken.symbol()).to.equal("WTEST");
+      expect(await coveredToken.symbol()).to.equal("WtUSDC");
       expect(await coveredToken.baseToken()).to.equal(baseToken.address);
     });
   });
@@ -108,7 +108,7 @@ describe("WrappedCoveredPrincipalToken", function () {
       await createSnapshot(provider);
       await fixture.tranche
         .connect(user1)
-        .deposit(initialBalance, await user1.getAddress());
+        .deposit(initialBalance, user1Address);
       await fixture.tranche
         .connect(user2)
         .deposit(initialBalance, user2Address);
@@ -137,15 +137,18 @@ describe("WrappedCoveredPrincipalToken", function () {
     it("should fail to add wrapped position because msg.sender is not the owner", async () => {
       const tx = coveredToken
         .connect(signers[2])
-        .addWrappedPosition(fixture.position.address);
-      await expect(tx).to.be.revertedWith("Sender not owner");
+        .addWrappedPosition(fixture.positionStub.address);
+      await expect(tx).to.be.revertedWith(
+        "AccessControl: account 0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc is missing role 0x41444d494e5f524f4c4500000000000000000000000000000000000000000000"
+      );
     });
 
     it("should fail to add wrapped position because baseToken doesn't match", async () => {
       const tokenDeployer = new TestERC20__factory(signers[0]);
       const token = await tokenDeployer.deploy("Test1", "TOP", 18);
-      const fakeWrappedPosition = (await loadFixtureWithBaseAsset(token, 1e10))
-        .position;
+      const fakeWrappedPosition = (
+        await loadTestTrancheFixtureWithBaseAsset(token, 1e10)
+      ).positionStub;
       const tx = coveredToken
         .connect(signers[1])
         .addWrappedPosition(fakeWrappedPosition.address);
@@ -155,22 +158,23 @@ describe("WrappedCoveredPrincipalToken", function () {
     it("should successfully add the wrapped position", async () => {
       await coveredToken
         .connect(signers[1])
-        .addWrappedPosition(fixture.position.address);
+        .addWrappedPosition(fixture.positionStub.address);
       expect((await coveredToken.allWrappedPositions()).length).to.equal(1);
     });
 
     it("should fail to add wrapped position because it is already added", async () => {
       const tx = coveredToken
         .connect(signers[1])
-        .addWrappedPosition(fixture.position.address);
+        .addWrappedPosition(fixture.positionStub.address);
       await expect(tx).to.be.revertedWith("WFP:ALREADY_EXISTS");
     });
 
     it("should fail to mint the un allowed wrapped position", async () => {
       const tokenDeployer = new TestERC20__factory(signers[0]);
       const token = await tokenDeployer.deploy("Test1", "TOP", 18);
-      const fakeWrappedPosition = (await loadFixtureWithBaseAsset(token, 1e10))
-        .position;
+      const fakeWrappedPosition = (
+        await loadTestTrancheFixtureWithBaseAsset(token, 1e10)
+      ).positionStub;
 
       const tx = coveredToken
         .connect(user1)
@@ -188,7 +192,7 @@ describe("WrappedCoveredPrincipalToken", function () {
     it("should failed to mint the wrapped covered token because position is not expired yet", async () => {
       const tx = coveredToken
         .connect(user1)
-        .mint(tokenToMint, expiration, fixture.position.address, {
+        .mint(tokenToMint, expiration, fixture.positionStub.address, {
           spender: "0x0000000000000000000000000000000000000000",
           value: 0,
           deadline: 0,
@@ -204,7 +208,7 @@ describe("WrappedCoveredPrincipalToken", function () {
       advanceTime(provider, expirationTime.toNumber());
       const tx = coveredToken
         .connect(user1)
-        .mint(tokenToMint, expiration, fixture.position.address, {
+        .mint(tokenToMint, expiration, fixture.positionStub.address, {
           spender: "0x0000000000000000000000000000000000000000",
           value: 0,
           deadline: 0,
@@ -221,7 +225,7 @@ describe("WrappedCoveredPrincipalToken", function () {
         .approve(coveredToken.address, initialBalance);
       await coveredToken
         .connect(user1)
-        .mint(tokenToMint, expiration, fixture.position.address, {
+        .mint(tokenToMint, expiration, fixture.positionStub.address, {
           spender: "0x0000000000000000000000000000000000000000",
           value: 0,
           deadline: 0,
@@ -244,7 +248,7 @@ describe("WrappedCoveredPrincipalToken", function () {
       );
       const tx = coveredToken
         .connect(user2)
-        .mint(tokenToMint, expiration, fixture.position.address, {
+        .mint(tokenToMint, expiration, fixture.positionStub.address, {
           spender: coveredToken.address,
           value: initialBalance,
           deadline: ethers.constants.MaxUint256,
@@ -266,7 +270,7 @@ describe("WrappedCoveredPrincipalToken", function () {
       );
       await coveredToken
         .connect(user2)
-        .mint(tokenToMint, expiration, fixture.position.address, {
+        .mint(tokenToMint, expiration, fixture.positionStub.address, {
           spender: coveredToken.address,
           value: initialBalance,
           deadline: ethers.constants.MaxUint256,
@@ -279,7 +283,7 @@ describe("WrappedCoveredPrincipalToken", function () {
     });
 
     it("should verify the getters output", async () => {
-      expect(await coveredToken.isAllowedWp(fixture.position.address)).to.be
+      expect(await coveredToken.isAllowedWp(fixture.positionStub.address)).to.be
         .true;
       expect((await coveredToken.allWrappedPositions()).length).to.be.equal(1);
     });

@@ -68,6 +68,16 @@ export interface TrancheTestFixture {
   interestToken: InterestToken;
 }
 
+export interface TrancheTestFixtureWithBaseAsset {
+  signer: Signer;
+  usdc: TestERC20;
+  positionStub: TestWrappedPosition;
+  tranche: Tranche;
+  interestToken: InterestToken;
+  trancheFactory: TrancheFactory;
+  bytecodehash: string;
+}
+
 export interface YearnShareZapInterface {
   sharesZapper: ZapYearnShares;
   signer: Signer;
@@ -282,18 +292,18 @@ export async function loadUsdcPoolMainnetFixture() {
   };
 }
 
-export async function loadTestTrancheFixture() {
+export async function loadTestTrancheFixtureWithBaseAsset(
+  baseAsset: TestERC20,
+  expiration: any
+) {
   const [signer] = await ethers.getSigners();
-  const testTokenDeployer = new TestERC20__factory(signer);
-  const usdc = await testTokenDeployer.deploy("test token", "TEST", 6);
-
   const positionStub: TestWrappedPosition = await deployTestWrappedPosition(
     signer,
-    usdc.address
+    baseAsset.address
   );
   // deploy and fetch tranche contract
   const trancheFactory = await deployTrancheFactory(signer);
-  await trancheFactory.deployTranche(1e10, positionStub.address);
+  await trancheFactory.deployTranche(expiration, positionStub.address);
   const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
   const events = await trancheFactory.queryFilter(eventFilter);
   const trancheAddress = events[0] && events[0].args && events[0].args[0];
@@ -305,12 +315,33 @@ export async function loadTestTrancheFixture() {
     signer
   );
 
+  const bytecodehash = ethers.utils.solidityKeccak256(
+    ["bytes"],
+    [data.bytecode]
+  );
+
   return {
     signer,
-    usdc,
+    usdc: baseAsset,
     positionStub,
     tranche,
     interestToken,
+    trancheFactory,
+    bytecodehash,
+  };
+}
+
+export async function loadTestTrancheFixture() {
+  const [signer] = await ethers.getSigners();
+  const testTokenDeployer = new TestERC20__factory(signer);
+  const usdc = await testTokenDeployer.deploy("test token", "TEST", 6);
+  const t = await loadTestTrancheFixtureWithBaseAsset(usdc, 1e10);
+  return {
+    signer: t.signer,
+    usdc: t.usdc,
+    positionStub: t.positionStub,
+    tranche: t.tranche,
+    interestToken: t.interestToken,
   };
 }
 

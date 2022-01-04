@@ -56,14 +56,14 @@ contract CompoundAssetProxy is WrappedPosition, Authorizable {
     /// @return Tuple (the shares minted, amount underlying used)
     function _deposit() internal override returns (uint256, uint256) {
         // Load balance of contract
-        uint256 amount = token.balanceOf(address(this));
+        uint256 depositAmount = token.balanceOf(address(this));
 
         // Since ctoken's mint function returns success codes
         // we get the balance before and after minting to calculate shares
         uint256 beforeBalance = ctoken.balanceOfUnderlying(address(this));
 
         // Deposit into compound
-        uint256 mintStatus = ctoken.mint(amount);
+        uint256 mintStatus = ctoken.mint(depositAmount);
         require(mintStatus == 0, "compound mint failed");
 
         // StoGetre ctoken balance after minting
@@ -71,7 +71,7 @@ contract CompoundAssetProxy is WrappedPosition, Authorizable {
         // Calculate ctoken shares minted
         uint256 shares = afterBalance - beforeBalance;
         // Return the amount of shares the user has produced and the amount of underlying used for it.
-        return (shares, amount);
+        return (shares, depositAmount);
     }
 
     /// @notice Withdraw the number of shares

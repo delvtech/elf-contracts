@@ -54,5 +54,10 @@ interface IWrappedCoveredPrincipalToken is IERC20Permit {
     /// @dev    Only be called by the address which has the `RECLAIM_ROLE`, Should be Nexus Treasury.
     /// @param  _expiration Timestamp at which the derived tranche would get expired.
     /// @param  _wrappedPosition Address of the Wrapped position which is used to derive the tranche.
-    function reclaimPt(uint256 _expiration, address _wrappedPosition) external;
+    /// @param  _to Address whom funds gets transferred.
+    function reclaimPt(
+        uint256 _expiration,
+        address _wrappedPosition,
+        address _to
+    ) external;
 }

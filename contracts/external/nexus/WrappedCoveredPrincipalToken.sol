@@ -135,10 +135,7 @@ contract WrappedCoveredPrincipalToken is
         );
         _usePermitData(_tranche, _permitCallData);
         // Only allow minting when the position get expired.
-        require(
-            ITranche(_tranche).unlockTimestamp() < block.timestamp,
-            "WFP:POSITION_NOT_EXPIRED"
-        );
+        require(_expiration < block.timestamp, "WFP:POSITION_NOT_EXPIRED");
         // Assumed that msg.sender provides the sufficient approval the contract.
         IERC20(_tranche).safeTransferFrom(
             msg.sender,
@@ -177,17 +174,18 @@ contract WrappedCoveredPrincipalToken is
     /// @dev    Only be called by the address which has the `RECLAIM_ROLE`, Should be Nexus Treasury.
     /// @param  _expiration Timestamp at which the derived tranche would get expired.
     /// @param  _wrappedPosition Address of the Wrapped position which is used to derive the tranche.
-    function reclaimPt(uint256 _expiration, address _wrappedPosition)
-        external
-        override
-        onlyRole(RECLAIM_ROLE)
-    {
+    /// @param  _to Address whom funds gets transferred.
+    function reclaimPt(
+        uint256 _expiration,
+        address _wrappedPosition,
+        address _to
+    ) external override onlyRole(RECLAIM_ROLE) {
         require(isAllowedWp(_wrappedPosition), "WFP:INVALID_WP");
         address _tranche = address(
             _deriveTranche(_wrappedPosition, _expiration)
         );
         uint256 amount = IERC20(_tranche).balanceOf(address(this));
-        IERC20(_tranche).safeTransfer(msg.sender, amount);
+        IERC20(_tranche).safeTransfer(_to, amount);
         emit Reclaimed(_tranche, amount);
     }
 

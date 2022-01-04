@@ -123,7 +123,6 @@ contract CompoundAssetProxy is WrappedPosition, Authorizable {
 
     /// @notice Collect the comp rewards accrued
     /// @param _destination The address to send the rewards to
-    // TODO: add this back in when I figure out how to mock the owner funcitonality
     function collectRewards(address _destination) external onlyAuthorized() {
         // Set up input params for claimComp
         CErc20Interface[] memory cTokens = new CErc20Interface[](1);

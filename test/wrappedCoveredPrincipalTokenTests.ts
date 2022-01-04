@@ -8,19 +8,23 @@ import { WrappedCoveredPrincipalToken__factory } from "typechain/factories/Wrapp
 import { TestERC20 } from "typechain/TestERC20";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
-import { loadTestTrancheFixture, TrancheTestFixture } from "./helpers/deployer";
-import { TestTranche__factory } from "typechain/factories/TestTranche__factory";
+import {
+  deployUsdc,
+  loadFixtureWithBaseAsset,
+  FixtureInterface,
+} from "./helpers/deployer";
 import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
-import { advanceTime } from "./helpers/time";
+import { advanceTime, getCurrentTimestamp } from "./helpers/time";
 import { getPermitSignature } from "./helpers/signatures";
 import { ERC20Permit } from "typechain/ERC20Permit";
+import data from "../artifacts/contracts/Tranche.sol/Tranche.json";
 
 const { provider } = waffle;
 
 const initialBalance = ethers.BigNumber.from("2000000"); // 2e9
 
 describe("WrappedCoveredPrincipalToken", function () {
-  let fixture: TrancheTestFixture;
+  let fixture: FixtureInterface;
   let factory: WrappedCoveredPrincipalTokenFactory;
   let coveredToken: WrappedCoveredPrincipalToken;
   let signers: SignerWithAddress[];
@@ -30,10 +34,12 @@ describe("WrappedCoveredPrincipalToken", function () {
   let user2: Signer;
   let user1Address: string;
   let user2Address: string;
+  let expiration: number;
 
   before(async function () {
     await createSnapshot(provider);
     signers = await ethers.getSigners();
+    expiration = (await getCurrentTimestamp(provider)) + 10000;
     const factoryDeployer = new WrappedCoveredPrincipalTokenFactory__factory(
       signers[0]
     );
@@ -41,12 +47,23 @@ describe("WrappedCoveredPrincipalToken", function () {
       signers[0]
     );
 
+    const tempUsdc = await deployUsdc(
+      signers[0],
+      (await signers[0].getAddress()) as string
+    );
     // load all related contracts
-    fixture = await loadTestTrancheFixture();
+    fixture = await loadFixtureWithBaseAsset(tempUsdc, expiration);
 
     coveredOwner = signers[1].address;
     baseToken = fixture.usdc;
-    factory = await factoryDeployer.deploy(signers[0].address);
+    const bytecodehash = ethers.utils.solidityKeccak256(
+      ["bytes"],
+      [data.bytecode]
+    );
+    factory = await factoryDeployer.deploy(
+      fixture.trancheFactory.address,
+      bytecodehash
+    );
     await factory.create(baseToken.address, coveredOwner);
     coveredToken = coveredTokenDeployer.attach(
       (await factory.allWrappedCoveredPrincipalTokens())[0]
@@ -69,12 +86,17 @@ describe("WrappedCoveredPrincipalToken", function () {
 
   describe("Validate Constructor", async () => {
     it("Should initialize correctly", async () => {
-      expect(await coveredToken.owner()).to.equal(coveredOwner);
-      expect(await coveredToken.isAuthorized(coveredOwner)).to.true;
+      const adminRole = await coveredToken.ADMIN_ROLE();
+      const reclaimRole = await coveredToken.RECLAIM_ROLE();
+      expect(await coveredToken.hasRole(adminRole, coveredOwner)).to.true;
+      expect(await coveredToken.getRoleAdmin(adminRole)).to.be.equal(adminRole);
+      expect(await coveredToken.getRoleAdmin(reclaimRole)).to.be.equal(
+        adminRole
+      );
       expect(await coveredToken.name()).to.equal(
         "WrappedTESTCovered Principal"
       );
-      expect(await coveredToken.symbol()).to.equal("ep:WTEST");
+      expect(await coveredToken.symbol()).to.equal("WTEST");
       expect(await coveredToken.baseToken()).to.equal(baseToken.address);
     });
   });
@@ -112,47 +134,47 @@ describe("WrappedCoveredPrincipalToken", function () {
       await restoreSnapshot(provider);
     });
 
-    it("should fail to add tranche because msg.sender is not the owner", async () => {
+    it("should fail to add wrapped position because msg.sender is not the owner", async () => {
       const tx = coveredToken
         .connect(signers[2])
-        .addTranche(fixture.tranche.address);
+        .addWrappedPosition(fixture.position.address);
       await expect(tx).to.be.revertedWith("Sender not owner");
     });
 
-    it("should fail to add tranche because baseToken doesn't match", async () => {
-      const trancheDeployer = new TestTranche__factory(signers[0]);
+    it("should fail to add wrapped position because baseToken doesn't match", async () => {
       const tokenDeployer = new TestERC20__factory(signers[0]);
       const token = await tokenDeployer.deploy("Test1", "TOP", 18);
-      const fakeTranche = await trancheDeployer.deploy(token.address, 478);
+      const fakeWrappedPosition = (await loadFixtureWithBaseAsset(token, 1e10))
+        .position;
       const tx = coveredToken
         .connect(signers[1])
-        .addTranche(fakeTranche.address);
-      await expect(tx).to.be.revertedWith("WFP:INVALID_TRANCHE");
+        .addWrappedPosition(fakeWrappedPosition.address);
+      await expect(tx).to.be.revertedWith("WFP:INVALID_WP");
     });
 
-    it("should successfully add the tranche", async () => {
+    it("should successfully add the wrapped position", async () => {
       await coveredToken
         .connect(signers[1])
-        .addTranche(fixture.tranche.address);
-      expect((await coveredToken.allTranches()).length).to.equal(1);
+        .addWrappedPosition(fixture.position.address);
+      expect((await coveredToken.allWrappedPositions()).length).to.equal(1);
     });
 
-    it("should fail to add tranche because tranche is already added", async () => {
+    it("should fail to add wrapped position because it is already added", async () => {
       const tx = coveredToken
         .connect(signers[1])
-        .addTranche(fixture.tranche.address);
+        .addWrappedPosition(fixture.position.address);
       await expect(tx).to.be.revertedWith("WFP:ALREADY_EXISTS");
     });
 
-    it("should fail to mint the un allowed tranche", async () => {
-      const trancheDeployer = new TestTranche__factory(signers[0]);
+    it("should fail to mint the un allowed wrapped position", async () => {
       const tokenDeployer = new TestERC20__factory(signers[0]);
       const token = await tokenDeployer.deploy("Test1", "TOP", 18);
-      const fakeTranche = await trancheDeployer.deploy(token.address, 478);
+      const fakeWrappedPosition = (await loadFixtureWithBaseAsset(token, 1e10))
+        .position;
 
       const tx = coveredToken
         .connect(user1)
-        .mint(tokenToMint, fakeTranche.address, {
+        .mint(tokenToMint, 1e10, fakeWrappedPosition.address, {
           spender: "0x0000000000000000000000000000000000000000",
           value: 0,
           deadline: 0,
@@ -160,13 +182,13 @@ describe("WrappedCoveredPrincipalToken", function () {
           r: ethers.utils.hexZeroPad("0x1f", 32),
           s: ethers.utils.hexZeroPad("0x1f", 32),
         });
-      await expect(tx).to.be.revertedWith("WFP:INVALID_TRANCHE");
+      await expect(tx).to.be.revertedWith("WFP:INVALID_WP");
     });
 
     it("should failed to mint the wrapped covered token because position is not expired yet", async () => {
       const tx = coveredToken
         .connect(user1)
-        .mint(tokenToMint, fixture.tranche.address, {
+        .mint(tokenToMint, expiration, fixture.position.address, {
           spender: "0x0000000000000000000000000000000000000000",
           value: 0,
           deadline: 0,
@@ -182,7 +204,7 @@ describe("WrappedCoveredPrincipalToken", function () {
       advanceTime(provider, expirationTime.toNumber());
       const tx = coveredToken
         .connect(user1)
-        .mint(tokenToMint, fixture.tranche.address, {
+        .mint(tokenToMint, expiration, fixture.position.address, {
           spender: "0x0000000000000000000000000000000000000000",
           value: 0,
           deadline: 0,
@@ -199,7 +221,7 @@ describe("WrappedCoveredPrincipalToken", function () {
         .approve(coveredToken.address, initialBalance);
       await coveredToken
         .connect(user1)
-        .mint(tokenToMint, fixture.tranche.address, {
+        .mint(tokenToMint, expiration, fixture.position.address, {
           spender: "0x0000000000000000000000000000000000000000",
           value: 0,
           deadline: 0,
@@ -222,7 +244,7 @@ describe("WrappedCoveredPrincipalToken", function () {
       );
       const tx = coveredToken
         .connect(user2)
-        .mint(tokenToMint, fixture.tranche.address, {
+        .mint(tokenToMint, expiration, fixture.position.address, {
           spender: coveredToken.address,
           value: initialBalance,
           deadline: ethers.constants.MaxUint256,
@@ -244,7 +266,7 @@ describe("WrappedCoveredPrincipalToken", function () {
       );
       await coveredToken
         .connect(user2)
-        .mint(tokenToMint, fixture.tranche.address, {
+        .mint(tokenToMint, expiration, fixture.position.address, {
           spender: coveredToken.address,
           value: initialBalance,
           deadline: ethers.constants.MaxUint256,
@@ -257,12 +279,9 @@ describe("WrappedCoveredPrincipalToken", function () {
     });
 
     it("should verify the getters output", async () => {
-      expect(await coveredToken.isAllowedTranche(fixture.tranche.address)).to.be
+      expect(await coveredToken.isAllowedWp(fixture.position.address)).to.be
         .true;
-      expect((await coveredToken.allTranches()).length).to.be.equal(1);
-      expect(await coveredToken.getPrice(fixture.tranche.address)).to.equal(
-        ethers.BigNumber.from("1")
-      );
+      expect((await coveredToken.allWrappedPositions()).length).to.be.equal(1);
     });
   });
 });

@@ -4,31 +4,35 @@ import { WrappedCoveredPrincipalTokenFactory } from "typechain/WrappedCoveredPri
 import { WrappedCoveredPrincipalTokenFactory__factory } from "typechain/factories/WrappedCoveredPrincipalTokenFactory__factory";
 import { TestERC20__factory } from "typechain/factories/TestERC20__factory";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
+import { loadFixture, FixtureInterface } from "./helpers/deployer";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import data from "../artifacts/contracts/Tranche.sol/Tranche.json";
 
 const { provider } = waffle;
 
 describe("WrappedCoveredPrincipalTokenFactory", function () {
   let factory: WrappedCoveredPrincipalTokenFactory;
   let signers: SignerWithAddress[];
+  let fixture: FixtureInterface;
 
   before(async function () {
     await createSnapshot(provider);
     signers = await ethers.getSigners();
+    fixture = await loadFixture();
+    const bytecodehash = ethers.utils.solidityKeccak256(
+      ["bytes"],
+      [data.bytecode]
+    );
     const deployer = new WrappedCoveredPrincipalTokenFactory__factory(
       signers[0]
     );
-    factory = await deployer.deploy(signers[1].address);
+    factory = await deployer.deploy(
+      fixture.trancheFactory.address,
+      bytecodehash
+    );
   });
   after(async () => {
     await restoreSnapshot(provider);
-  });
-
-  describe("Validate Constructor", async () => {
-    it("Should have a correct owner", async () => {
-      expect(await factory.owner()).to.equal(signers[1].address);
-      expect(await factory.isAuthorized(signers[1].address)).to.true;
-    });
   });
 
   describe("Create Wrapped PrincipalToken", async () => {
@@ -40,13 +44,6 @@ describe("WrappedCoveredPrincipalTokenFactory", function () {
       signers = await ethers.getSigners();
       deployer = new TestERC20__factory(signers[0]);
       contractOwner = await ethers.provider.getSigner(signers[1].address);
-    });
-
-    it("should fail to create because msg.sender is not the owner", async () => {
-      const owner = signers[2].address;
-      const baseToken = await deployer.deploy("Token", "TKN", 18);
-      const tx = factory.create(baseToken.address, owner);
-      await expect(tx).to.be.revertedWith("Sender not owner");
     });
 
     it("should fail to create because of zero address of owner", async () => {

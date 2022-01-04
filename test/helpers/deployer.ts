@@ -93,7 +93,7 @@ const deployTestWrappedPosition = async (signer: Signer, address: string) => {
   return await deployer.deploy(address);
 };
 
-const deployUsdc = async (signer: Signer, owner: string) => {
+export const deployUsdc = async (signer: Signer, owner: string) => {
   const deployer = new TestERC20__factory(signer);
   return await deployer.deploy(owner, "tUSDC", 6);
 };
@@ -135,24 +135,25 @@ export const deployTrancheFactory = async (signer: Signer) => {
   return deployTx;
 };
 
-export async function loadFixture() {
+export async function loadFixtureWithBaseAsset(
+  baseAsset: TestERC20,
+  expiry: any
+) {
   // The mainnet weth address won't work unless mainnet deployed
   const wethAddress = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
   const [signer] = await ethers.getSigners();
-  const signerAddress = (await signer.getAddress()) as string;
-  const usdc = await deployUsdc(signer, signerAddress);
-  const yusdc = await deployYusdc(signer, usdc.address, 6);
+  const yusdc = await deployYusdc(signer, baseAsset.address, 6);
   const position: YVaultAssetProxy = await deployYasset(
     signer,
     yusdc.address,
-    usdc.address,
+    baseAsset.address,
     "eyUSDC",
     "eyUSDC"
   );
 
   // deploy and fetch tranche contract
   const trancheFactory = await deployTrancheFactory(signer);
-  await trancheFactory.deployTranche(1e10, position.address);
+  await trancheFactory.deployTranche(expiry, position.address);
   const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
   const events = await trancheFactory.queryFilter(eventFilter);
   const trancheAddress = events[0] && events[0].args && events[0].args[0];
@@ -177,7 +178,7 @@ export async function loadFixture() {
   );
   return {
     signer,
-    usdc,
+    usdc: baseAsset,
     yusdc,
     position,
     tranche,
@@ -185,6 +186,13 @@ export async function loadFixture() {
     proxy,
     trancheFactory,
   };
+}
+
+export async function loadFixture() {
+  const [signer] = await ethers.getSigners();
+  const signerAddress = (await signer.getAddress()) as string;
+  const usdc = await deployUsdc(signer, signerAddress);
+  return await loadFixtureWithBaseAsset(usdc, 1e10);
 }
 
 export async function loadEthPoolMainnetFixture() {

@@ -3,8 +3,8 @@ pragma solidity >=0.5.16;
 
 import "./interfaces/IERC20.sol";
 import "./WrappedPosition.sol";
-import "./interfaces/CTokenInterfaces.sol";
-import "./interfaces/ComptrollerInterface.sol";
+import "./interfaces/external/CTokenInterfaces.sol";
+import "./interfaces/external/ComptrollerInterface.sol";
 import "./libraries/Authorizable.sol";
 
 /// @author Element Finance

@@ -57,7 +57,7 @@ contract RolloverAssetProxy is WrappedPosition, Authorizable {
     uint256 public immutable baseDustThreshold;
     uint256 public immutable lpDustThreshold;
 
-    /// @notice - Constructs the contract and sets stat variables
+    /// @notice - Constructs the contract and sets state variables
     /// @param _governance The address which can add or remove an approved upgrador
     /// @param _upgrador The first address which can cycle terms
     /// @param _balancer The address of the balancer vault

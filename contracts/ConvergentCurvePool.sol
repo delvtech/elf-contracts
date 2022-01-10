@@ -61,6 +61,11 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     // The max percent fee for governance, immutable after compilation
     uint256 public constant FEE_BOUND = 3e17;
 
+    // Timestamp at which last time `cumulativeBalancesRatio` gets updated.
+    uint256 public blockTimestampLast;
+    // Cumulative ratio scaled by 18 decimals.
+    uint256 public cumulativeBalancesRatio;
+
     // State saying if the contract is paused
 
     /// @notice This event allows the frontend to track the fees
@@ -74,6 +79,12 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         uint256 collectedBond,
         uint256 remainingBase,
         uint256 remainingBond
+    );
+
+    event Sync(
+        uint256 bondBalanceCached,
+        uint256 underlyingBalanceCached,
+        uint256 cumulativeBalancesRatio
     );
 
     /// @dev We need need to set the immutables on contract creation
@@ -159,6 +170,43 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         return _poolId;
     }
 
+    // To support oracle.
+
+    function update() public {
+        // Get pool tokens balances
+        (IERC20[] memory tokens, uint256[] memory balances, ) = _vault
+            .getPoolTokens(_poolId);
+        // It is assumed that the balances retrieved from the pool is always one trade before as funds in pool will only get
+        // updated after the successful swap/mint/burn.
+        (uint256 bondBalance, uint256 underlyingBalance) = address(tokens[0]) ==
+            address(underlying)
+            ? (balances[1], balances[0])
+            : (balances[0], balances[1]);
+
+        uint256 blockTimestamp = block.timestamp;
+        uint256 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
+        if (timeElapsed > 0 && bondBalance != 0 && underlyingBalance != 0) {
+            // We multiply by 1e18 here so that r = t * y/x is a fixed point factor with 18 decimals
+            uint256 scaledBondBalance = uint256(bondBalance) * 1e18;
+            cumulativeBalancesRatio +=
+                (scaledBondBalance * timeElapsed) /
+                underlyingBalance;
+        }
+        emit Sync(
+            bondBalance,
+            underlyingBalance,
+            blockTimestampLast = blockTimestamp
+        );
+    }
+
+    function getCurrentCumulativeRatio()
+        external
+        view
+        returns (uint256, uint256)
+    {
+        return (cumulativeBalancesRatio, blockTimestampLast);
+    }
+
     // Trade Functionality
 
     /// @dev Called by the Vault on swaps to get a price quote
@@ -178,11 +226,12 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         // But we want theme in 18 point
         uint256 amount;
         bool isOutputSwap = swapRequest.kind == IVault.SwapKind.GIVEN_IN;
-        if (isOutputSwap) {
-            amount = _tokenToFixed(swapRequest.amount, swapRequest.tokenIn);
-        } else {
-            amount = _tokenToFixed(swapRequest.amount, swapRequest.tokenOut);
-        }
+
+        IERC20 token = isOutputSwap
+            ? swapRequest.tokenIn
+            : swapRequest.tokenOut;
+        amount = _tokenToFixed(swapRequest.amount, token);
+
         currentBalanceTokenIn = _tokenToFixed(
             currentBalanceTokenIn,
             swapRequest.tokenIn
@@ -201,7 +250,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             currentBalanceTokenOut,
             swapRequest.tokenOut
         );
-
+        update();
         // We switch on if this is an input or output case
         if (isOutputSwap) {
             // We get quote
@@ -295,6 +344,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         // We now have make the outputs have the correct decimals
         _denormalizeSortedArray(amountsIn);
         _denormalizeSortedArray(dueProtocolFeeAmounts);
+        update();
     }
 
     /// @dev Hook for leaving the pool that must be called from the vault.
@@ -359,7 +409,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         // We need to convert the balancer outputs to token decimals instead of 18
         _denormalizeSortedArray(amountsOut);
         _denormalizeSortedArray(dueProtocolFeeAmounts);
-        return (amountsOut, dueProtocolFeeAmounts);
+        update();
     }
 
     /// @dev Returns the balances so that they'll be in the order [underlying, bond].

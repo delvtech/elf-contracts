@@ -66,6 +66,24 @@ const config: HardhatUserConfig = {
             },
           },
         },
+      "contracts/oracle/SimpleOracle.sol": {
+        version: "0.8.7",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 400,
+          },
+        },
+      },
+      "contracts/interfaces/IConvergentCurvePool.sol": {
+        version: "0.8.7",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 400,
+          },
+        },
+      },
     },
   },
   mocha: { timeout: 0 },

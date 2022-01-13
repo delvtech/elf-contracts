@@ -15,6 +15,10 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
     uint256 public percentFeeGov;
     address public governance;
 
+    // Mapping to keep track of the pool address corresponds to the tranche (i.e bond).
+    // bond address => pool address.
+    mapping(address => address) public trancheToPool;
+
     /// @notice This event tracks pool creations from this factory
     /// @param pool the address of the pool
     /// @param bondToken The token of the bond token in this pool
@@ -53,6 +57,7 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
         string memory _symbol,
         address _pauser
     ) external returns (address) {
+        require(trancheToPool[_bond] != address(0), "Pool already exists");
         address pool = address(
             new ConvergentCurvePool(
                 IERC20(_underlying),
@@ -70,6 +75,8 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
         );
         // Register the pool with the vault
         _register(pool);
+        // Register the pool corresponds to given bond.
+        trancheToPool[_bond] = pool;
         // Emit a creation event
         emit CCPoolCreated(pool, _bond);
         return pool;

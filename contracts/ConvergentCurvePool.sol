@@ -62,9 +62,9 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     uint256 public constant FEE_BOUND = 3e17;
 
     // Timestamp at which last time `cumulativeBalancesRatio` gets updated.
-    uint256 public blockTimestampLast;
+    uint32 private _blockTimestampLast;
     // Cumulative ratio scaled by 18 decimals.
-    uint256 public cumulativeBalancesRatio;
+    uint224 private _cumulativeBalancesRatio;
 
     // State saying if the contract is paused
 
@@ -172,6 +172,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
 
     // To support oracle.
 
+    /// @notice Synchronize the bond and underlying balance and calculate the `_cumulativeBalancesRatio`.
     function update() public {
         // Get pool tokens balances
         (IERC20[] memory tokens, uint256[] memory balances, ) = _vault
@@ -183,28 +184,39 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             ? (balances[1], balances[0])
             : (balances[0], balances[1]);
 
-        uint256 blockTimestamp = block.timestamp;
-        uint256 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
+        uint32 blockTimestamp = uint32(block.timestamp);
+        uint32 timeElapsed = blockTimestamp - _blockTimestampLast; // overflow is desired
         if (timeElapsed > 0 && bondBalance != 0 && underlyingBalance != 0) {
             // We multiply by 1e18 here so that r = t * y/x is a fixed point factor with 18 decimals
             uint256 scaledBondBalance = uint256(bondBalance) * 1e18;
-            cumulativeBalancesRatio +=
-                (scaledBondBalance * timeElapsed) /
-                underlyingBalance;
+            _cumulativeBalancesRatio += _toU224(
+                (scaledBondBalance * uint256(timeElapsed)) / underlyingBalance
+            );
         }
         emit Sync(
             bondBalance,
             underlyingBalance,
-            blockTimestampLast = blockTimestamp
+            _blockTimestampLast = blockTimestamp
         );
     }
 
+    /// @notice Returns required matrix to help oracles for deriving prices.
+    /// @return uint256 Timestamp at which balances of assets get updated last.
+    /// @return uint256 Cumulative balance ratio.
     function getCurrentCumulativeRatio()
         external
         view
         returns (uint256, uint256)
     {
-        return (cumulativeBalancesRatio, blockTimestampLast);
+        return (
+            uint256(_blockTimestampLast),
+            uint256(_cumulativeBalancesRatio)
+        );
+    }
+
+    function _toU224(uint256 value) internal pure returns (uint224) {
+        require(value <= uint224(-1), "Overflow during uint224 conversion");
+        return uint224(value);
     }
 
     // Trade Functionality

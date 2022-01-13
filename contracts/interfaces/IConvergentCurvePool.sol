@@ -6,8 +6,9 @@ interface IConvergentCurvePool {
 
     function bond() external view returns (address);
 
-    function blockTimestampLast() external returns (uint256);
-
+    /// @notice Returns required matrix to help oracles for deriving prices.
+    /// @return uint256 Timestamp at which balances of assets get updated last.
+    /// @return uint256 Cumulative balance ratio.
     function getCurrentCumulativeRatio()
         external
         view

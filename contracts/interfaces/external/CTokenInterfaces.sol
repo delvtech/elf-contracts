@@ -362,6 +362,7 @@ interface CErc20Storage {
      * @notice Underlying asset for this CToken
      */
     // address public underlying;
+    function underlying() external returns (address);
 }
 
 interface CErc20Interface is CErc20Storage {

@@ -50,6 +50,8 @@ contract CompoundAssetProxy is WrappedPosition, Authorizable {
             IERC20(_ctoken).decimals() == 8,
             "breaks our assumption in exchange rate"
         );
+        // Check that the underlying token is the same as ctoken's underlying
+        require(address(_token) == CErc20Storage(_ctoken).underlying());
     }
 
     /// @notice Makes the actual ctoken deposit
@@ -116,9 +118,12 @@ contract CompoundAssetProxy is WrappedPosition, Authorizable {
         // Load exchange rate
         uint256 exchangeRate = ctoken.exchangeRateStored();
 
+        // Calculate mantissa for the scaled exchange rate
+        // 18 point decimal fix + difference in decimals between underlying and ctoken
+        uint256 mantissa = 18 + underlyingDecimals - 8;
+
         // Multiply _amount by exchange rate & correct for decimals
-        // We assume 8 decimals in the ctoken + 18 point decimal fix = 26
-        return ((_amount * exchangeRate) / (10**(26 - underlyingDecimals)));
+        return ((_amount * exchangeRate) / (10**mantissa));
     }
 
     /// @notice Collect the comp rewards accrued

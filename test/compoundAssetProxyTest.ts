@@ -49,6 +49,7 @@ describe("Compound Asset Proxy", () => {
 
     await fixture.usdc.connect(usdcWhale).transfer(users[0].address, 2e11); // 200k usdc
     await fixture.usdc.connect(usdcWhale).transfer(users[1].address, 2e11); // 200k usdc
+    await fixture.usdc.connect(usdcWhale).transfer(users[2].address, 2e11); // 200k usdc
 
     await testFixture.usdc.connect(usdcWhale).transfer(users[3].address, 2e11); // 200k usdc
 
@@ -74,6 +75,7 @@ describe("Compound Asset Proxy", () => {
         .connect(users[0].user)
         .deposit(users[0].address, 2e6);
       const balance = await fixture.position.balanceOf(users[0].address);
+      console.log(`Balance: ${balance}`);
       // Allows a 0.01% conversion error
       expect(balance).to.be.at.least(subError(ethers.BigNumber.from(2e6)));
     });
@@ -91,7 +93,7 @@ describe("Compound Asset Proxy", () => {
       // todo: not reverting with the right string, so reverting somewhere else
     });
   });
-  describe("withdraw", () => {
+  describe.only("withdraw", () => {
     it("withdraws correctly", async () => {
       const shareBalance = await fixture.position.balanceOf(users[0].address);
       await fixture.position
@@ -102,9 +104,17 @@ describe("Compound Asset Proxy", () => {
     it("fails to withdraw more shares than in balance", async () => {
       // withdraw 10 shares from user with balance 0
       const tx = fixture.position
-        .connect(users[2].user)
-        .withdraw(users[2].address, 10, 0);
+        .connect(users[4].user)
+        .withdraw(users[4].address, 10, 0);
       await expect(tx).to.be.reverted;
+    });
+    // test withdrawUnderlying to verify _underlying calculation
+    it("withdrawUnderlying correctly", async () => {
+      const shareBalance = await fixture.position.balanceOf(users[0].address);
+      await fixture.position
+        .connect(users[2].user)
+        .withdrawUnderlying(users[2].address, shareBalance, 0);
+      expect(await fixture.position.balanceOf(users[2].address)).to.equal(0);
     });
     it("reverts with compound redeem failure", async () => {
       const tx = testFixture.position

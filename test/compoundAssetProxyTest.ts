@@ -75,7 +75,6 @@ describe("Compound Asset Proxy", () => {
         .connect(users[0].user)
         .deposit(users[0].address, 2e6);
       const balance = await fixture.position.balanceOf(users[0].address);
-      console.log(`Balance: ${balance}`);
       // Allows a 0.01% conversion error
       expect(balance).to.be.at.least(subError(ethers.BigNumber.from(2e6)));
     });
@@ -93,7 +92,7 @@ describe("Compound Asset Proxy", () => {
       // todo: not reverting with the right string, so reverting somewhere else
     });
   });
-  describe.only("withdraw", () => {
+  describe("withdraw", () => {
     it("withdraws correctly", async () => {
       const shareBalance = await fixture.position.balanceOf(users[0].address);
       await fixture.position

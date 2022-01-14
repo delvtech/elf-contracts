@@ -29,7 +29,7 @@ contract TestCAssetProxy is WrappedPosition {
         uint256 mintStatus = ctoken.mint(amount);
         require(mintStatus == 0, "compound mint failed");
 
-        // StoGetre ctoken balance after minting
+        // Store ctoken balance after minting
         uint256 afterBalance = ctoken.balanceOfUnderlying(address(this));
         // Calculate ctoken shares minted
         uint256 shares = afterBalance - beforeBalance;
@@ -43,7 +43,7 @@ contract TestCAssetProxy is WrappedPosition {
         address _destination,
         uint256
     ) internal override returns (uint256) {
-        // Since ctoken's redeem function returns sucess codes
+        // Since ctoken's redeem function returns success codes
         // we get the balance before and after minting to calculate amount
         uint256 beforeBalance = token.balanceOf(address(this));
 

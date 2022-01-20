@@ -67,6 +67,7 @@ describe("ConvergentCurvePool", function () {
 
     // TODO: figure out what this is.
     data: unknown;
+    args: Array<any>;
   }
 
   // A partially extended interface for the post mining transaction receipt
@@ -540,7 +541,6 @@ describe("ConvergentCurvePool", function () {
 
       const startTimestamp = await getTimestamp();
       const expirationTime = startTimestamp + SECONDS_IN_YEAR;
-
       poolContract = await curvePoolDeployer.deploy(
         baseAssetContract.address,
         bondAssetContract.address,
@@ -564,6 +564,37 @@ describe("ConvergentCurvePool", function () {
         testVault.address,
         tokenSigner
       );
+    });
+
+    it("Check oracle data update during swap", async () => {
+      const currentTimestamp = await getTimestamp();
+      const expectedCumulativeBalanceRatio = BigNumber.from(reserveBond)
+        .mul(currentTimestamp + 1)
+        .mul(ethers.utils.parseUnits("1", 18))
+        .div(BigNumber.from(reserveUnderlying));
+
+      await aliasedVault.onSwap(
+        {
+          tokenIn: baseAssetContract.address,
+          tokenOut: bondAssetContract.address,
+          amount: ethers.utils.parseUnits("100", BASE_DECIMALS),
+          kind: inForOutType,
+          // Misc data
+          poolId:
+            "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
+          lastChangeBlock: BigNumber.from(0),
+          from: fakeAddress,
+          to: fakeAddress,
+          userData: "0x",
+        },
+        reserveUnderlying,
+        reserveBond
+      );
+
+      // Check for oracle variable updates.
+      const oracleData = await poolContract.getCurrentCumulativeRatio();
+      expect(oracleData[1]).to.be.equal(expectedCumulativeBalanceRatio);
+      expect(oracleData[0]).to.be.equal(currentTimestamp + 1); // Somehow there is change in blocktimestamp is observed.
     });
 
     // This test calls through the test balancer vault to use the join/leave pool interface
@@ -603,6 +634,12 @@ describe("ConvergentCurvePool", function () {
       // Check the returned fees
       expect(data[1][0]).to.be.eq(ethers.utils.parseUnits("1", BASE_DECIMALS));
       expect(data[1][1]).to.be.eq(ethers.utils.parseUnits("1", BOND_DECIMALS));
+      const currentTimestamp = await getTimestamp();
+      const expectedCumulativeBalanceRatio = BigNumber.from(reserves[bondIndex])
+        .mul(currentTimestamp + 1)
+        .mul(ethers.utils.parseUnits("1", 18))
+        .div(BigNumber.from(reserves[baseIndex]));
+
       // We run the call but state changing
       await aliasedVault.onJoinPool(
         poolId,
@@ -614,6 +651,12 @@ describe("ConvergentCurvePool", function () {
         ethers.utils.parseEther("0.1"),
         ethers.utils.defaultAbiCoder.encode(["uint256[]"], [lp_deposit])
       );
+
+      // Check for oracle variable updates.
+      const oracleData = await poolContract.getCurrentCumulativeRatio();
+      expect(oracleData[1]).to.be.equal(expectedCumulativeBalanceRatio);
+      expect(oracleData[0]).to.be.equal(currentTimestamp + 1); // Somehow there is change in blocktimestamp is observed.
+
       // We check the state
       expect(await poolContract.feesUnderlying()).to.be.eq(0);
       expect(await poolContract.feesBond()).to.be.eq(0);
@@ -638,6 +681,7 @@ describe("ConvergentCurvePool", function () {
       expect(data[1][0]).to.be.eq(0);
       expect(data[1][1]).to.be.eq(0);
     });
+
     it("Allows the governance to collect realized fees", async () => {
       const poolId = await poolContract.getPoolId();
       // First create some pretend fees
@@ -658,6 +702,13 @@ describe("ConvergentCurvePool", function () {
       const lp_deposit: BigNumberish[] = [0, 0];
       lp_deposit[bondIndex] = ethers.utils.parseUnits("5", BOND_DECIMALS);
       lp_deposit[baseIndex] = ethers.utils.parseUnits("10", BASE_DECIMALS);
+
+      const currentTimestamp = await getTimestamp();
+      const expectedCumulativeBalanceRatio = BigNumber.from(reserves[bondIndex])
+        .mul(currentTimestamp + 1)
+        .mul(ethers.utils.parseUnits("1", 18))
+        .div(BigNumber.from(reserves[baseIndex]));
+
       // This call changes the state
       await aliasedVault.onJoinPool(
         poolId,
@@ -669,6 +720,12 @@ describe("ConvergentCurvePool", function () {
         ethers.utils.parseEther("0.1"),
         ethers.utils.defaultAbiCoder.encode(["uint256[]"], [lp_deposit])
       );
+
+      // Check for oracle variable updates.
+      const oracleData = await poolContract.getCurrentCumulativeRatio();
+      expect(oracleData[1]).to.be.equal(expectedCumulativeBalanceRatio);
+      expect(oracleData[0]).to.be.equal(currentTimestamp + 1); // Somehow there is change in blocktimestamp is observed.
+
       // now we simulate a withdraw to see what the return values are
       const data = await aliasedVault.callStatic.onExitPool(
         poolId,
@@ -687,6 +744,7 @@ describe("ConvergentCurvePool", function () {
         ethers.utils.parseUnits("0.5", BASE_DECIMALS)
       );
     });
+
     it("Blocks invalid vault calls", async () => {
       const poolId = await poolContract.getPoolId();
       // First create some pretend fees
@@ -812,7 +870,28 @@ describe("ConvergentCurvePool", function () {
 
     it("Deploys pools", async () => {
       const seconds = Math.round(new Date().getTime() / 1000);
-      await poolFactory.create(
+      const result = await mineTx(
+        poolFactory.create(
+          baseAssetContract.address,
+          bondAssetContract.address,
+          seconds + SECONDS_IN_YEAR / 2,
+          SECONDS_IN_YEAR,
+          1,
+          "fake pool",
+          "FP",
+          elementSigner.address
+        )
+      );
+
+      const poolCreatedEvent = result.events.filter(
+        (event) => event.event == "CCPoolCreated"
+      );
+
+      expect(
+        await poolFactory.trancheToPool(bondAssetContract.address)
+      ).to.be.eq(poolCreatedEvent[0].args[0]);
+      // Fail to create the same one
+      const tx = poolFactory.create(
         baseAssetContract.address,
         bondAssetContract.address,
         seconds + SECONDS_IN_YEAR / 2,
@@ -822,6 +901,7 @@ describe("ConvergentCurvePool", function () {
         "FP",
         elementSigner.address
       );
+      await expect(tx).to.be.revertedWith("Pool already exists");
     });
     it("Allows changing fees", async () => {
       await poolFactory.setGovFee(twentyPercent);

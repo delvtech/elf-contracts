@@ -57,7 +57,7 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
         string memory _symbol,
         address _pauser
     ) external returns (address) {
-        require(trancheToPool[_bond] != address(0), "Pool already exists");
+        require(trancheToPool[_bond] == address(0), "Pool already exists");
         address pool = address(
             new ConvergentCurvePool(
                 IERC20(_underlying),

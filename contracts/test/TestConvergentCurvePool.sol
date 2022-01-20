@@ -177,4 +177,11 @@ contract TestConvergentCurvePool is ConvergentCurvePool {
     ) public pure returns (uint256) {
         return _normalize(amount, decimalsBefore, decimalsAfter);
     }
+
+    /// Allow to update the `CumulativeBalanceRatio`.
+    function demoUpdate(uint256 bondBalance, uint256 underlyingBalance)
+        external
+    {
+        _update(bondBalance, underlyingBalance);
+    }
 }

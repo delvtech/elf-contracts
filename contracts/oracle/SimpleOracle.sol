@@ -99,7 +99,7 @@ contract SimpleOracle {
             if (token != underlying) {
                 revert InvalidToken();
             }
-            amountOut = (amountIn * amountIn) / 1e18;
+            amountOut = (amountIn * avgCumulativeBalancesRatio) / 1e18;
         }
     }
 }

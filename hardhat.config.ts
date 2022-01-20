@@ -66,6 +66,15 @@ const config: HardhatUserConfig = {
             },
           },
         },
+      "contracts/test/TestVault.sol": {
+        version: "0.8.7",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 400,
+          },
+        },
+      },
       "contracts/oracle/SimpleOracle.sol": {
         version: "0.8.7",
         settings: {

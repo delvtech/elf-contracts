@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.7.1;
+pragma solidity 0.8.7;
+
+import { IERC20 } from "../interfaces/IERC20.sol";
+import { IConvergentCurvePool } from "../interfaces/IConvergentCurvePool.sol";
 
 // A contract who's whole purpose is to not trigger call failure reverts
 contract TestVault {
@@ -17,7 +20,7 @@ contract TestVault {
 
     function registerPool(PoolSpecialization) external returns (bytes32) {
         pool = msg.sender;
-        return (bytes32)("0x00");
+        return (bytes32)("0x01");
     }
 
     /* solhint-disable no-empty-blocks */
@@ -26,6 +29,27 @@ contract TestVault {
         address[] memory,
         address[] memory
     ) external {}
+
+    /* solhint-disable no-empty-blocks */
+    function getPoolTokens(bytes32 poolId)
+        external
+        view
+        returns (
+            IERC20[] memory tokens,
+            uint256[] memory balances,
+            uint256 lastChangeBlock
+        )
+    {
+        IConvergentCurvePool pool_ = IConvergentCurvePool(pool);
+        uint256[] memory tokenBalances = new uint256[](2);
+        IERC20[] memory _tokens = new IERC20[](2);
+        _tokens[0] = IERC20(pool_.underlying());
+        _tokens[1] = IERC20(pool_.bond());
+        tokenBalances[0] = uint256(5);
+        tokenBalances[1] = uint256(5);
+        lastChangeBlock = 0;
+        return (_tokens, tokenBalances, lastChangeBlock);
+    }
 
     /* solhint-enable no-empty-blocks */
 

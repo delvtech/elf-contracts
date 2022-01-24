@@ -38,20 +38,20 @@ git clone git@github.com:element-fi/elf-contracts.git
 
 ```
 cd elf-contracts
-yarn install
-yarn run load-contracts
+npm install
+npm run load-contracts
 ```
 
 ### 3. Build
 
 ```
-yarn run build
+npm run build
 ```
 
 ### 4. Test
 
 ```
-yarn run test
+npm run test
 ```
 
 ## Contract Addresses

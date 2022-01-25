@@ -68,6 +68,16 @@ export interface TrancheTestFixture {
   interestToken: InterestToken;
 }
 
+export interface TrancheTestFixtureWithBaseAsset {
+  signer: Signer;
+  usdc: TestERC20;
+  positionStub: TestWrappedPosition;
+  tranche: Tranche;
+  interestToken: InterestToken;
+  trancheFactory: TrancheFactory;
+  bytecodehash: string;
+}
+
 export interface YearnShareZapInterface {
   sharesZapper: ZapYearnShares;
   signer: Signer;
@@ -93,7 +103,7 @@ const deployTestWrappedPosition = async (signer: Signer, address: string) => {
   return await deployer.deploy(address);
 };
 
-const deployUsdc = async (signer: Signer, owner: string) => {
+export const deployUsdc = async (signer: Signer, owner: string) => {
   const deployer = new TestERC20__factory(signer);
   return await deployer.deploy(owner, "tUSDC", 6);
 };
@@ -135,24 +145,25 @@ export const deployTrancheFactory = async (signer: Signer) => {
   return deployTx;
 };
 
-export async function loadFixture() {
+export async function loadFixtureWithBaseAsset(
+  baseAsset: TestERC20,
+  expiry: any
+) {
   // The mainnet weth address won't work unless mainnet deployed
   const wethAddress = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
   const [signer] = await ethers.getSigners();
-  const signerAddress = (await signer.getAddress()) as string;
-  const usdc = await deployUsdc(signer, signerAddress);
-  const yusdc = await deployYusdc(signer, usdc.address, 6);
+  const yusdc = await deployYusdc(signer, baseAsset.address, 6);
   const position: YVaultAssetProxy = await deployYasset(
     signer,
     yusdc.address,
-    usdc.address,
+    baseAsset.address,
     "eyUSDC",
     "eyUSDC"
   );
 
   // deploy and fetch tranche contract
   const trancheFactory = await deployTrancheFactory(signer);
-  await trancheFactory.deployTranche(1e10, position.address);
+  await trancheFactory.deployTranche(expiry, position.address);
   const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
   const events = await trancheFactory.queryFilter(eventFilter);
   const trancheAddress = events[0] && events[0].args && events[0].args[0];
@@ -177,7 +188,7 @@ export async function loadFixture() {
   );
   return {
     signer,
-    usdc,
+    usdc: baseAsset,
     yusdc,
     position,
     tranche,
@@ -185,6 +196,13 @@ export async function loadFixture() {
     proxy,
     trancheFactory,
   };
+}
+
+export async function loadFixture() {
+  const [signer] = await ethers.getSigners();
+  const signerAddress = (await signer.getAddress()) as string;
+  const usdc = await deployUsdc(signer, signerAddress);
+  return await loadFixtureWithBaseAsset(usdc, 1e10);
 }
 
 export async function loadEthPoolMainnetFixture() {
@@ -274,18 +292,18 @@ export async function loadUsdcPoolMainnetFixture() {
   };
 }
 
-export async function loadTestTrancheFixture() {
+export async function loadTestTrancheFixtureWithBaseAsset(
+  baseAsset: TestERC20,
+  expiration: any
+) {
   const [signer] = await ethers.getSigners();
-  const testTokenDeployer = new TestERC20__factory(signer);
-  const usdc = await testTokenDeployer.deploy("test token", "TEST", 6);
-
   const positionStub: TestWrappedPosition = await deployTestWrappedPosition(
     signer,
-    usdc.address
+    baseAsset.address
   );
   // deploy and fetch tranche contract
   const trancheFactory = await deployTrancheFactory(signer);
-  await trancheFactory.deployTranche(1e10, positionStub.address);
+  await trancheFactory.deployTranche(expiration, positionStub.address);
   const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
   const events = await trancheFactory.queryFilter(eventFilter);
   const trancheAddress = events[0] && events[0].args && events[0].args[0];
@@ -297,12 +315,33 @@ export async function loadTestTrancheFixture() {
     signer
   );
 
+  const bytecodehash = ethers.utils.solidityKeccak256(
+    ["bytes"],
+    [data.bytecode]
+  );
+
   return {
     signer,
-    usdc,
+    usdc: baseAsset,
     positionStub,
     tranche,
     interestToken,
+    trancheFactory,
+    bytecodehash,
+  };
+}
+
+export async function loadTestTrancheFixture() {
+  const [signer] = await ethers.getSigners();
+  const testTokenDeployer = new TestERC20__factory(signer);
+  const usdc = await testTokenDeployer.deploy("test token", "TEST", 6);
+  const t = await loadTestTrancheFixtureWithBaseAsset(usdc, 1e10);
+  return {
+    signer: t.signer,
+    usdc: t.usdc,
+    positionStub: t.positionStub,
+    tranche: t.tranche,
+    interestToken: t.interestToken,
   };
 }
 

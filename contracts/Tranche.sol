@@ -15,7 +15,7 @@ import "./libraries/DateString.sol";
 contract Tranche is ERC20Permit, ITranche {
     IInterestToken public immutable override interestToken;
     IWrappedPosition public immutable position;
-    IERC20 public immutable underlying;
+    IERC20 public immutable override underlying;
     uint8 internal immutable _underlyingDecimals;
 
     // The outstanding amount of underlying which
@@ -25,7 +25,7 @@ contract Tranche is ERC20Permit, ITranche {
     // The total supply of interest tokens
     uint128 public override interestSupply;
     // The timestamp when tokens can be redeemed.
-    uint256 public immutable unlockTimestamp;
+    uint256 public immutable override unlockTimestamp;
     // The amount of slippage allowed on the Principal token redemption [0.1 basis points]
     uint256 internal constant _SLIPPAGE_BP = 1e13;
     // The speedbump variable records the first timestamp where redemption was attempted to be

@@ -656,8 +656,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         uint256 localFeeBond = uint256(feesBond);
         dueProtocolFees = new uint256[](2);
         // Calculate the balancer fee [this also implicitly returns this data]
-        dueProtocolFees[bondIndex] = localFeeUnderlying.mulDown(balancerFee);
-        dueProtocolFees[baseIndex] = localFeeBond.mulDown(balancerFee);
+        dueProtocolFees[baseIndex] = localFeeUnderlying.mulDown(balancerFee);
+        dueProtocolFees[bondIndex] = localFeeBond.mulDown(balancerFee);
         //  Calculate the governance fee from total LP
         uint256 govFeeBase = localFeeUnderlying.mulDown(percentFeeGov);
         uint256 govFeeBond = localFeeBond.mulDown(percentFeeGov);

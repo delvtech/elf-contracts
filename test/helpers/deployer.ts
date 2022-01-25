@@ -34,10 +34,6 @@ import { CompoundAssetProxy__factory } from "typechain/factories/CompoundAssetPr
 import { CTokenInterface__factory } from "typechain/factories/CTokenInterface__factory";
 import { CompoundAssetProxy } from "typechain/CompoundAssetProxy";
 import { CTokenInterface } from "typechain/CTokenInterface";
-import { TestCAssetProxy } from "typechain/TestCAssetProxy";
-import { TestCToken__factory } from "typechain/factories/TestCToken__factory";
-import { TestCAssetProxy__factory } from "typechain/factories/TestCAssetProxy__factory";
-import { TestCToken } from "typechain/TestCToken";
 
 export interface FixtureInterface {
   signer: Signer;
@@ -56,14 +52,6 @@ export interface CFixtureInterface {
   cusdc: CTokenInterface;
   usdc: IERC20;
   comp: IERC20;
-  proxy: TestUserProxy;
-}
-
-export interface TestCFixtureInterface {
-  signer: Signer;
-  position: TestCAssetProxy;
-  cusdc: TestCToken;
-  usdc: IERC20;
   proxy: TestUserProxy;
 }
 
@@ -165,17 +153,6 @@ const deployCasset = async (
   );
 };
 
-const deployTestCasset = async (
-  signer: Signer,
-  cToken: string,
-  underlying: string,
-  name: string,
-  symbol: string
-) => {
-  const cDeployer = new TestCAssetProxy__factory(signer);
-  return await cDeployer.deploy(cToken, underlying, name, symbol);
-};
-
 const deployInterestTokenFactory = async (signer: Signer) => {
   const deployer = new InterestTokenFactory__factory(signer);
   return await deployer.deploy();
@@ -246,52 +223,6 @@ export async function loadCFixture(signer: Signer) {
   );
 
   return { signer, position, cusdc, usdc, comp, proxy };
-}
-
-export async function loadTestCFixture(signer: Signer) {
-  const wethAddress = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
-  const owner = signer;
-  const cusdcAddress = "0x39aa39c021dfbae8fac545936693ac917d5e7563";
-  const usdcAddress = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
-  const cusdc = TestCToken__factory.connect(cusdcAddress, owner);
-  const usdc = IERC20__factory.connect(usdcAddress, owner);
-
-  // deploy casset
-  const position: TestCAssetProxy = await deployTestCasset(
-    owner,
-    cusdcAddress,
-    usdcAddress,
-    "cusdc",
-    "element cusdc"
-  );
-
-  // deploy and fetch tranche contract
-  const trancheFactory = await deployTrancheFactory(owner);
-  await trancheFactory.deployTranche(1e10, position.address);
-  const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
-  const events = await trancheFactory.queryFilter(eventFilter);
-  const trancheAddress = events[0] && events[0].args && events[0].args[0];
-  const tranche = Tranche__factory.connect(trancheAddress, owner);
-
-  const interestTokenAddress = await tranche.interestToken();
-  const interestToken = InterestToken__factory.connect(
-    interestTokenAddress,
-    owner
-  );
-
-  // Setup the proxy
-  const bytecodehash = ethers.utils.solidityKeccak256(
-    ["bytes"],
-    [data.bytecode]
-  );
-  const proxyFactory = new TestUserProxy__factory(signer);
-  const proxy = await proxyFactory.deploy(
-    wethAddress,
-    trancheFactory.address,
-    bytecodehash
-  );
-
-  return { signer, position, cusdc, usdc, proxy };
 }
 
 export async function loadFixture() {

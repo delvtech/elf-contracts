@@ -276,11 +276,11 @@ abstract contract CTokenInterface is CTokenStorage {
 
     function allowance(address owner, address spender)
         external
-        virtual
         view
+        virtual
         returns (uint256);
 
-    function balanceOf(address owner) external virtual view returns (uint256);
+    function balanceOf(address owner) external view virtual returns (uint256);
 
     function balanceOfUnderlying(address owner)
         external
@@ -289,8 +289,8 @@ abstract contract CTokenInterface is CTokenStorage {
 
     function getAccountSnapshot(address account)
         external
-        virtual
         view
+        virtual
         returns (
             uint256,
             uint256,
@@ -298,9 +298,9 @@ abstract contract CTokenInterface is CTokenStorage {
             uint256
         );
 
-    function borrowRatePerBlock() external virtual view returns (uint256);
+    function borrowRatePerBlock() external view virtual returns (uint256);
 
-    function supplyRatePerBlock() external virtual view returns (uint256);
+    function supplyRatePerBlock() external view virtual returns (uint256);
 
     function totalBorrowsCurrent() external virtual returns (uint256);
 
@@ -311,15 +311,15 @@ abstract contract CTokenInterface is CTokenStorage {
 
     function borrowBalanceStored(address account)
         public
-        virtual
         view
+        virtual
         returns (uint256);
 
     function exchangeRateCurrent() public virtual returns (uint256);
 
-    function exchangeRateStored() public virtual view returns (uint256);
+    function exchangeRateStored() public view virtual returns (uint256);
 
-    function getCash() external virtual view returns (uint256);
+    function getCash() external view virtual returns (uint256);
 
     function accrueInterest() public virtual returns (uint256);
 

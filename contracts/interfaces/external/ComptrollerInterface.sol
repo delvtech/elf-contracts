@@ -123,7 +123,7 @@ abstract contract ComptrollerInterface {
         address cTokenBorrowed,
         address cTokenCollateral,
         uint256 repayAmount
-    ) external virtual view returns (uint256, uint256);
+    ) external view virtual returns (uint256, uint256);
 
     // Claim all the COMP accrued by holder in specific markets
     function claimComp(address holder, CErc20Interface[] memory cTokens)

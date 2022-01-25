@@ -2,12 +2,7 @@ import { expect } from "chai";
 import { Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
 
-import {
-  CFixtureInterface,
-  loadCFixture,
-  loadTestCFixture,
-  TestCFixtureInterface,
-} from "./helpers/deployer";
+import { CFixtureInterface, loadCFixture } from "./helpers/deployer";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 
 import { impersonate, stopImpersonating } from "./helpers/impersonate";
@@ -18,7 +13,6 @@ const { provider } = waffle;
 describe("Compound Asset Proxy", () => {
   let users: { user: Signer; address: string }[];
   let fixture: CFixtureInterface;
-  let testFixture: TestCFixtureInterface;
   // address of a large usdc holder to impersonate. 69 million usdc as of block 11860000
   const usdcWhaleAddress = "0xAe2D4617c862309A3d75A0fFB358c7a5009c673F";
 
@@ -29,7 +23,6 @@ describe("Compound Asset Proxy", () => {
     const signers = await ethers.getSigners();
     // load all related contracts
     fixture = await loadCFixture(signers[0]);
-    testFixture = await loadTestCFixture(signers[3]);
 
     // begin to populate the user array by assigning each index a signer
     users = signers.map(function (user) {
@@ -51,8 +44,6 @@ describe("Compound Asset Proxy", () => {
     await fixture.usdc.connect(usdcWhale).transfer(users[1].address, 2e11); // 200k usdc
     await fixture.usdc.connect(usdcWhale).transfer(users[2].address, 2e11); // 200k usdc
 
-    await testFixture.usdc.connect(usdcWhale).transfer(users[3].address, 2e11); // 200k usdc
-
     stopImpersonating(usdcWhaleAddress);
 
     await fixture.usdc
@@ -61,9 +52,6 @@ describe("Compound Asset Proxy", () => {
     await fixture.usdc
       .connect(users[1].user)
       .approve(fixture.position.address, 10e11);
-    await testFixture.usdc
-      .connect(users[3].user)
-      .approve(testFixture.position.address, 10e11);
   });
   after(async () => {
     // revert back to initial state after all tests pass
@@ -83,13 +71,6 @@ describe("Compound Asset Proxy", () => {
         .connect(users[1].user)
         .deposit(users[1].address, 10e12);
       await expect(tx).to.be.reverted;
-    });
-    it("reverts with compound mint failure", async () => {
-      const tx = testFixture.position
-        .connect(users[3].user)
-        .deposit(users[3].address, 10);
-      await expect(tx).to.be.reverted;
-      // todo: not reverting with the right string, so reverting somewhere else
     });
   });
   describe("withdraw", () => {
@@ -114,13 +95,6 @@ describe("Compound Asset Proxy", () => {
         .connect(users[2].user)
         .withdrawUnderlying(users[2].address, shareBalance, 0);
       expect(await fixture.position.balanceOf(users[2].address)).to.equal(0);
-    });
-    it("reverts with compound redeem failure", async () => {
-      const tx = testFixture.position
-        .connect(users[3].user)
-        .withdraw(users[3].address, 10, 0);
-      await expect(tx).to.be.reverted;
-      // todo: not reverting with the right string, so reverting somewhere else
     });
   });
   describe("rewards", () => {

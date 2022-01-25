@@ -111,8 +111,8 @@ contract CompoundAssetProxy is WrappedPosition, Authorizable {
     /// @return Value of shares in underlying token
     function _underlying(uint256 _amount)
         internal
-        override
         view
+        override
         returns (uint256)
     {
         // Load exchange rate
@@ -128,7 +128,7 @@ contract CompoundAssetProxy is WrappedPosition, Authorizable {
 
     /// @notice Collect the comp rewards accrued
     /// @param _destination The address to send the rewards to
-    function collectRewards(address _destination) external onlyAuthorized() {
+    function collectRewards(address _destination) external onlyAuthorized {
         // Set up input params for claimComp
         CErc20Interface[] memory cTokens = new CErc20Interface[](1);
         // Store cToken as an array

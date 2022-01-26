@@ -33,14 +33,14 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
 
     // The fees recorded during swaps, this is the total fees collected by LPs on all trades.
     // These will be 18 point not token decimal encoded
-    uint128 public feesUnderlying;
-    uint128 public feesBond;
+    uint120 public feesUnderlying;
+    uint120 public feesBond;
+    // A bool to indicate if the contract is paused, stored with 'fees bond'
+    bool public paused;
     // The fees which have been allocated to pay governance, a percent of LP fees on trades
     // Since we don't have access to transfer they must be stored so governance can collect them later
     uint128 public governanceFeesUnderlying;
     uint128 public governanceFeesBond;
-    // A bool to indicate if the contract is paused, stored with 'fees bond'
-    bool public paused;
     // A mapping of who can pause
     mapping(address => bool) public pausers;
     // Stored records of governance tokens
@@ -349,11 +349,12 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             // Governance withdraws the fees which have been paid to them
             amountsOut[baseIndex] = uint256(governanceFeesUnderlying);
             amountsOut[bondIndex] = uint256(governanceFeesBond);
+            // We now have to zero the governance fees
+            governanceFeesUnderlying = 0;
+            governanceFeesBond = 0;
         } else {
             // Calculate the user's proportion of the reserves
             amountsOut = _burnLP(lpOut, currentBalances, sender);
-            // Balancer fees collected are zero
-            dueProtocolFeeAmounts = new uint256[](2);
         }
 
         // We need to convert the balancer outputs to token decimals instead of 18
@@ -473,7 +474,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountOut.sub(amountIn)
                 );
                 // we record that fee collected from the underlying
-                feesUnderlying += uint128(impliedYieldFee);
+                feesUnderlying += uint120(impliedYieldFee);
                 // and return the adjusted input quote
                 return amountIn.add(impliedYieldFee);
             } else {
@@ -502,7 +503,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
                     amountIn.sub(amountOut)
                 );
                 // we record the collected underlying fee
-                feesUnderlying += uint128(impliedYieldFee);
+                feesUnderlying += uint120(impliedYieldFee);
                 // and then return the updated output quote
                 return amountOut.sub(impliedYieldFee);
             }
@@ -673,8 +674,8 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             .sub(dueProtocolFees[bondIndex])
             .sub(governanceFeesBond);
         // Since all fees have been accounted for we reset the LP fees collected to zero
-        feesUnderlying = uint128(0);
-        feesBond = uint128(0);
+        feesUnderlying = uint120(0);
+        feesBond = uint120(0);
     }
 
     /// @dev Turns a token which is either 'bond' or 'underlying' into 18 point decimal

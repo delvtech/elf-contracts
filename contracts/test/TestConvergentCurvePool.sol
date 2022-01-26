@@ -93,7 +93,7 @@ contract TestConvergentCurvePool is ConvergentCurvePool {
     }
 
     // Allows tests to specify fees without making trades
-    function setFees(uint128 amountUnderlying, uint120 amountBond) public {
+    function setFees(uint120 amountUnderlying, uint120 amountBond) public {
         feesUnderlying = amountUnderlying;
         feesBond = amountBond;
     }

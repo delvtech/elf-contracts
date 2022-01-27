@@ -300,11 +300,19 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         amount = _tokenToFixed(swapRequest.amount, token);
 
         // Figure out the balances of the tokens
-        (uint256 bondBalance, uint256 underlyingBalance) = address(
-            swapRequest.tokenIn
-        ) == address(underlying)
-            ? (currentBalanceTokenOut, currentBalanceTokenIn)
-            : (currentBalanceTokenIn, currentBalanceTokenOut);
+        uint256 bondBalance;
+        uint256 underlyingBalance;
+        if (address(swapRequest.tokenIn) == address(underlying)) {
+            (bondBalance, underlyingBalance) = (
+                currentBalanceTokenOut,
+                currentBalanceTokenIn
+            );
+        } else {
+            (bondBalance, underlyingBalance) = (
+                currentBalanceTokenIn,
+                currentBalanceTokenOut
+            );
+        }
         _sync(bondBalance, underlyingBalance);
 
         currentBalanceTokenIn = _tokenToFixed(

@@ -22,6 +22,8 @@ import { Vault } from "typechain/Vault";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 import { TestConvergentCurvePool__factory } from "typechain/factories/TestConvergentCurvePool__factory";
 import { impersonate, stopImpersonating } from "./helpers/impersonate";
+import { TestConvergentCurvePoolFactory__factory } from "typechain/factories/TestConvergentCurvePoolFactory__factory";
+import { mineTx } from "./helpers/event";
 
 const { provider } = waffle;
 
@@ -59,27 +61,6 @@ describe("ConvergentCurvePool", function () {
 
   async function getTimestamp() {
     return (await ethers.provider.getBlock("latest")).timestamp;
-  }
-
-  // An interface to allow us to access the ethers log return
-  interface LogData {
-    event: string;
-
-    // TODO: figure out what this is.
-    data: unknown;
-    args: Array<any>;
-  }
-
-  // A partially extended interface for the post mining transaction receipt
-  interface PostExecutionTransactionReceipt
-    extends providers.TransactionReceipt {
-    events: LogData[];
-  }
-
-  async function mineTx(
-    tx: Promise<providers.TransactionResponse>
-  ): Promise<PostExecutionTransactionReceipt> {
-    return (await tx).wait() as Promise<PostExecutionTransactionReceipt>;
   }
 
   function newBigNumber(data: number): BigNumber {
@@ -535,22 +516,34 @@ describe("ConvergentCurvePool", function () {
 
       const elementAddress = await tokenSigner.getAddress();
       const baseAssetSymbol = await baseAssetContract.symbol();
-      const curvePoolDeployer = new TestConvergentCurvePool__factory(
+      const curvePoolFactory = new TestConvergentCurvePoolFactory__factory(
         tokenSigner
       );
+      const curvePoolFactoryDeployer = await curvePoolFactory.deploy();
 
       const startTimestamp = await getTimestamp();
       const expirationTime = startTimestamp + SECONDS_IN_YEAR;
-      poolContract = await curvePoolDeployer.deploy(
-        baseAssetContract.address,
-        bondAssetContract.address,
-        expirationTime,
-        SECONDS_IN_YEAR,
-        testVault.address,
-        ethers.utils.parseEther("0.05"),
-        balancerSigner.address,
-        `Element ${baseAssetSymbol} - fy${baseAssetSymbol}`,
-        `${baseAssetSymbol}-fy${baseAssetSymbol}`
+      const result = await mineTx(
+        curvePoolFactoryDeployer.create(
+          baseAssetContract.address,
+          bondAssetContract.address,
+          expirationTime,
+          SECONDS_IN_YEAR,
+          testVault.address,
+          ethers.utils.parseEther("0.05"),
+          balancerSigner.address,
+          `Element ${baseAssetSymbol} - fy${baseAssetSymbol}`,
+          `${baseAssetSymbol}-fy${baseAssetSymbol}`
+        )
+      );
+
+      const poolCreatedEvent = result.events.filter(
+        (event) => event.event == "CCPoolCreated"
+      );
+
+      poolContract = TestConvergentCurvePool__factory.connect(
+        poolCreatedEvent[0].args[0],
+        tokenSigner
       );
 
       beforeEach(async () => {
@@ -636,6 +629,7 @@ describe("ConvergentCurvePool", function () {
       expect(data[1][1]).to.be.eq(ethers.utils.parseUnits("1", BOND_DECIMALS));
       const currentTimestamp = await getTimestamp();
       const expectedCumulativeBalanceRatio = BigNumber.from(reserves[bondIndex])
+        .add(await aliasedVault.totalSupply())
         .mul(currentTimestamp + 1)
         .mul(ethers.utils.parseUnits("1", 18))
         .div(BigNumber.from(reserves[baseIndex]));
@@ -705,6 +699,7 @@ describe("ConvergentCurvePool", function () {
 
       const currentTimestamp = await getTimestamp();
       const expectedCumulativeBalanceRatio = BigNumber.from(reserves[bondIndex])
+        .add(await aliasedVault.totalSupply())
         .mul(currentTimestamp + 1)
         .mul(ethers.utils.parseUnits("1", 18))
         .div(BigNumber.from(reserves[baseIndex]));

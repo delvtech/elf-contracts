@@ -3,6 +3,8 @@ import { ethers } from "hardhat";
 import { Contract, BigNumber } from "ethers";
 import { impersonate, stopImpersonating } from "../helpers/impersonate";
 import { TestConvergentCurvePool } from "typechain/TestConvergentCurvePool";
+import { TestConvergentCurvePool__factory } from "typechain/factories/TestConvergentCurvePool__factory";
+import { mineTx } from "test/helpers/event";
 
 import testTrades from "./testTrades.json";
 
@@ -55,18 +57,37 @@ describe("ConvergentCurvePoolErrSim", function () {
     const Vault = await ethers.getContractFactory("TestVault");
     vault = await Vault.deploy();
 
-    const Pool = await ethers.getContractFactory("TestConvergentCurvePool");
-    pool = (await Pool.deploy(
-      erc20_base.address.toString(),
-      erc20_bond.address.toString(),
-      startTimestamp + SECONDS_IN_YEAR,
-      SECONDS_IN_YEAR,
-      vault.address.toString(),
-      ethers.utils.parseEther((testTrades as any).init.percent_fee.toString()),
-      fakeAddress,
-      "ConvergentCurveBPT",
-      "BPT"
-    )) as TestConvergentCurvePool;
+    const PoolFactory = await ethers.getContractFactory(
+      "TestConvergentCurvePoolFactory"
+    );
+    const curvePoolFactoryDeployer = await PoolFactory.deploy();
+
+    const result = await mineTx(
+      curvePoolFactoryDeployer.create(
+        erc20_base.address.toString(),
+        erc20_bond.address.toString(),
+        startTimestamp + SECONDS_IN_YEAR,
+        SECONDS_IN_YEAR,
+        vault.address.toString(),
+        ethers.utils.parseEther(
+          (testTrades as any).init.percent_fee.toString()
+        ),
+        fakeAddress,
+        "ConvergentCurveBPT",
+        "BPT"
+      )
+    );
+
+    const poolCreatedEvent = result.events.filter(
+      (event) => event.event == "CCPoolCreated"
+    );
+
+    const [signer] = await ethers.getSigners();
+
+    pool = TestConvergentCurvePool__factory.connect(
+      poolCreatedEvent[0].args[0],
+      signer
+    );
 
     impersonate(vault.address);
   });

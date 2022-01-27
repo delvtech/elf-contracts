@@ -14,6 +14,7 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
     // Defaults to 0 and must be enabled by governance
     uint256 public percentFeeGov;
     address public governance;
+    uint256 public oraclePeriod;
 
     // Mapping to keep track of the pool address corresponds to the tranche (i.e bond).
     // bond address => pool address.
@@ -35,6 +36,7 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
         _authorize(_governance);
         setOwner(_governance);
         governance = _governance;
+        oraclePeriod = 30 minutes; // <TBD>
     }
 
     /// @notice Deploys a new `ConvergentPool`.

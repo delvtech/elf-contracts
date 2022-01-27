@@ -179,9 +179,7 @@ contract TestConvergentCurvePool is ConvergentCurvePool {
     }
 
     /// Allow to update the `CumulativeBalanceRatio`.
-    function demoUpdate(uint256 bondBalance, uint256 underlyingBalance)
-        external
-    {
-        _update(bondBalance, underlyingBalance);
+    function demoSync(uint256 bondBalance, uint256 underlyingBalance) external {
+        _sync(bondBalance, underlyingBalance);
     }
 }

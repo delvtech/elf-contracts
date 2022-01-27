@@ -21,4 +21,19 @@ interface IConvergentCurvePool {
     /// @dev Returns the poolId for this pool
     /// @return The poolId for this pool
     function getPoolId() external view returns (bytes32);
+
+    ///@notice Update the cumulative ratio and calculates the avg cumulative ratio for a given period.
+    function update() external;
+
+    /// @notice Synchronize the bond and underlying balance and calculate the `_cumulativeBalancesRatio`.
+    function sync() external;
+
+    /// @notice Get the amount of out token user receive corresponds to `amountIn`.
+    /// @param  token Address of the token that is treated as the base token for the price.
+    /// @param  amountIn Amount of the token corresponds to `amountOut` get calculated.
+    /// @return amountOut Amount of token B user will get corresponds to given amountIn.
+    function consult(address token, uint256 amountIn)
+        external
+        view
+        returns (uint256 amountOut);
 }

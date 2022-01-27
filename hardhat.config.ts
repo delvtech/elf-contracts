@@ -5,6 +5,7 @@ import "@typechain/ethers-v5";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "tsconfig-paths/register";
+import "@primitivefi/hardhat-marmite";
 
 import { HardhatUserConfig } from "hardhat/config";
 

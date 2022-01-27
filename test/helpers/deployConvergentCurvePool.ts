@@ -2,8 +2,10 @@ import { Signer } from "ethers";
 import { parseEther } from "ethers/lib/utils";
 import { THIRTY_DAYS_IN_SECONDS } from "test/helpers/time";
 import { TestConvergentCurvePool__factory } from "typechain/factories/TestConvergentCurvePool__factory";
+import { TestConvergentCurvePoolFactory__factory } from "typechain/factories/TestConvergentCurvePoolFactory__factory";
 import { TestERC20 } from "typechain/TestERC20";
 import { Vault } from "typechain/Vault";
+import { mineTx } from "./event";
 
 const defaultOptions = {
   swapFee: ".003",
@@ -31,23 +33,36 @@ export async function deployConvergentCurvePool(
   };
   const elementAddress = await signer.getAddress();
   const baseAssetSymbol = await baseAssetContract.symbol();
-  const curvePoolDeployer = new TestConvergentCurvePool__factory(signer);
 
   const dateInMilliseconds = Date.now();
   const dateInSeconds = dateInMilliseconds / 1000;
   const defaultExpiration = Math.round(dateInSeconds + durationInSeconds);
   const expiration = providedExpiration ?? defaultExpiration;
 
-  const poolContract = await curvePoolDeployer.deploy(
-    baseAssetContract.address,
-    yieldAssetContract.address,
-    expiration,
-    durationInSeconds,
-    vaultContract.address,
-    parseEther(swapFee),
-    elementAddress,
-    `Element ${baseAssetSymbol} - fy${baseAssetSymbol}`,
-    `${baseAssetSymbol}-fy${baseAssetSymbol}`
+  const curvePoolFactory = new TestConvergentCurvePoolFactory__factory(signer);
+  const curvePoolFactoryDeployer = await curvePoolFactory.deploy();
+
+  const result = await mineTx(
+    curvePoolFactoryDeployer.create(
+      baseAssetContract.address,
+      yieldAssetContract.address,
+      expiration,
+      durationInSeconds,
+      vaultContract.address,
+      parseEther(swapFee),
+      elementAddress,
+      `Element ${baseAssetSymbol} - fy${baseAssetSymbol}`,
+      `${baseAssetSymbol}-fy${baseAssetSymbol}`
+    )
+  );
+
+  const poolCreatedEvent = result.events.filter(
+    (event) => event.event == "CCPoolCreated"
+  );
+
+  const poolContract = TestConvergentCurvePool__factory.connect(
+    poolCreatedEvent[0].args[0],
+    signer
   );
 
   // grab last poolId from last event

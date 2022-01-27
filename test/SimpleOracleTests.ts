@@ -6,12 +6,14 @@ import { TestConvergentCurvePool } from "typechain/TestConvergentCurvePool";
 import { TestERC20 } from "typechain/TestERC20";
 import { TestVault } from "typechain/TestVault";
 import { TestConvergentCurvePool__factory } from "typechain/factories/TestConvergentCurvePool__factory";
+import { TestConvergentCurvePoolFactory__factory } from "typechain/factories/TestConvergentCurvePoolFactory__factory";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { ethers, waffle } from "hardhat";
 import { SimpleOracle__factory } from "typechain/factories/SimpleOracle__factory";
 import { SimpleOracle } from "typechain/SimpleOracle";
 import chai, { expect } from "chai";
 import { advanceTime } from "./helpers/time";
+import { mineTx } from "./helpers/event";
 
 const { provider } = waffle;
 
@@ -60,23 +62,38 @@ describe("Oracle Tests", async () => {
     const testVaultDeployer = await new TestVault__factory(tokenSigner);
     testVault = await testVaultDeployer.deploy();
 
-    const curvePoolDeployer = new TestConvergentCurvePool__factory(tokenSigner);
     startTimestamp = await getTimestamp();
     expirationTime = startTimestamp + SECONDS_IN_YEAR;
 
-    poolContract = await curvePoolDeployer.deploy(
-      baseAssetContract.address,
-      bondAssetContract.address,
-      expirationTime,
-      SECONDS_IN_YEAR,
-      testVault.address,
-      ethers.utils.parseEther("0.05"),
-      balancerSigner.address,
-      `Element USDC - fyUSDC`,
-      `USDC-fyUSDC`
+    const curvePoolFactory = new TestConvergentCurvePoolFactory__factory(
+      tokenSigner
+    );
+    const curvePoolFactoryDeployer = await curvePoolFactory.deploy();
+
+    const result = await mineTx(
+      curvePoolFactoryDeployer.create(
+        baseAssetContract.address,
+        bondAssetContract.address,
+        expirationTime,
+        SECONDS_IN_YEAR,
+        testVault.address,
+        ethers.utils.parseEther("0.05"),
+        balancerSigner.address,
+        `Element USDC - fyUSDC`,
+        `USDC-fyUSDC`
+      )
     );
 
-    await poolContract.demoUpdate(
+    const poolCreatedEvent = result.events.filter(
+      (event) => event.event == "CCPoolCreated"
+    );
+
+    poolContract = TestConvergentCurvePool__factory.connect(
+      poolCreatedEvent[0].args[0],
+      tokenSigner
+    );
+
+    await poolContract.demoSync(
       ethers.utils.parseUnits("1000", BOND_DECIMALS),
       ethers.utils.parseUnits("600", BASE_DECIMALS)
     );
@@ -105,7 +122,7 @@ describe("Oracle Tests", async () => {
 
   it("should successfully update and consult to get the prices", async () => {
     await advanceTime(provider, 100 * 60); // 31 minutes.
-    await poolContract.demoUpdate(
+    await poolContract.demoSync(
       ethers.utils.parseUnits("1200", BOND_DECIMALS),
       ethers.utils.parseUnits("500", BASE_DECIMALS)
     );

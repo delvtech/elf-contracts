@@ -8,6 +8,7 @@ import "./balancer-core-v2/lib/math/FixedPoint.sol";
 import "./balancer-core-v2/vault/interfaces/IMinimalSwapInfoPool.sol";
 import "./balancer-core-v2/vault/interfaces/IVault.sol";
 import "./balancer-core-v2/pools/BalancerPoolToken.sol";
+import "./interfaces/IConvergentCurvePoolFactory.sol";
 
 // SECURITY - A governance address can freeze trading and deposits but has no access to user funds
 //            and cannot stop withdraws.
@@ -49,6 +50,15 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     uint256 public immutable percentFee;
     // The percent of LP fees that is payed to governance
     uint256 public immutable percentFeeGov;
+    // Time period to which weighted price get calculated.
+    uint256 public immutable oraclePeriod;
+
+    // Last timestamp at which avg cumulative balance ratio get updated.
+    uint256 public blockTimestampLast;
+    // Last cumulativeBalancesRatio value.
+    uint256 public cumulativeBalancesRatioLast;
+    // Avg of cumulative balance ratio.
+    uint256 public avgCumulativeBalancesRatio;
 
     // Store constant token indexes for ascending sorted order
     // In this case despite these being internal it's cleaner
@@ -150,10 +160,13 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         expiration = _expiration;
         unitSeconds = _unitSeconds;
         governance = _governance;
+        oraclePeriod = IConvergentCurvePoolFactory(msg.sender).oraclePeriod();
         // Calculate the preset indexes for ordering
         bool underlyingFirst = _underlying < _bond;
         baseIndex = underlyingFirst ? 0 : 1;
         bondIndex = underlyingFirst ? 1 : 0;
+        // Set the timestamp at which pool balance were updated.
+        blockTimestampLast = block.timestamp;
     }
 
     // Balancer Interface required Getters
@@ -175,7 +188,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
     /////////////////////
 
     /// @notice Synchronize the bond and underlying balance and calculate the `_cumulativeBalancesRatio`.
-    function update() external {
+    function sync() external {
         // Get pool tokens balances
         (IERC20[] memory tokens, uint256[] memory balances, ) = _vault
             .getPoolTokens(_poolId);
@@ -185,18 +198,18 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
             address(underlying)
             ? (balances[1], balances[0])
             : (balances[0], balances[1]);
-        _update(bondBalance, underlyingBalance);
+        _sync(bondBalance, underlyingBalance);
     }
 
     /// @notice Synchronize the bond and underlying balance and calculate the `_cumulativeBalancesRatio`.
     /// @param bondBalance Reserve of bond token.
     /// @param underlyingBalance Reserve of underlying token.
-    function _update(uint256 bondBalance, uint256 underlyingBalance) internal {
+    function _sync(uint256 bondBalance, uint256 underlyingBalance) internal {
         uint32 blockTimestamp = uint32(block.timestamp);
         uint32 timeElapsed = blockTimestamp - _blockTimestampLast; // overflow is desired
         if (timeElapsed > 0 && bondBalance != 0 && underlyingBalance != 0) {
             // We multiply by 1e18 here so that r = t * y/x is a fixed point factor with 18 decimals
-            uint256 scaledBondBalance = uint256(bondBalance) * 1e18;
+            uint256 scaledBondBalance = (bondBalance + totalSupply()) * 1e18;
             _cumulativeBalancesRatio += _toU224(
                 (scaledBondBalance * uint256(timeElapsed)) / underlyingBalance
             );
@@ -208,11 +221,43 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         );
     }
 
+    ///@notice Update the cumulative ratio and calculates the avg cumulative ratio for a given period.
+    function update() external {
+        (
+            uint256 blockTimestamp,
+            uint256 cumulativeBalancesRatio
+        ) = getCurrentCumulativeRatio();
+        uint256 timeElapsed = blockTimestamp - blockTimestampLast;
+        require(timeElapsed > oraclePeriod, "Period not elapsed");
+        avgCumulativeBalancesRatio =
+            (cumulativeBalancesRatio - cumulativeBalancesRatioLast) /
+            timeElapsed;
+        cumulativeBalancesRatioLast = cumulativeBalancesRatio;
+        blockTimestampLast = blockTimestamp;
+    }
+
+    /// @notice Get the amount of out token user receive corresponds to `amountIn`.
+    /// @param  token Address of the token that is treated as the base token for the price.
+    /// @param  amountIn Amount of the token corresponds to `amountOut` get calculated.
+    /// @return amountOut Amount of token B user will get corresponds to given amountIn.
+    function consult(address token, uint256 amountIn)
+        external
+        view
+        returns (uint256 amountOut)
+    {
+        if (token == address(bond)) {
+            amountOut = (amountIn * 1e18) / avgCumulativeBalancesRatio;
+        } else {
+            require(token == address(underlying), "Invalid token");
+            amountOut = (amountIn * avgCumulativeBalancesRatio) / 1e18;
+        }
+    }
+
     /// @notice Returns required matrix to help oracles for deriving prices.
     /// @return uint256 Timestamp at which balances of assets get updated last.
     /// @return uint256 Cumulative balance ratio.
     function getCurrentCumulativeRatio()
-        external
+        public
         view
         returns (uint256, uint256)
     {
@@ -260,7 +305,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         ) == address(underlying)
             ? (currentBalanceTokenOut, currentBalanceTokenIn)
             : (currentBalanceTokenIn, currentBalanceTokenOut);
-        _update(bondBalance, underlyingBalance);
+        _sync(bondBalance, underlyingBalance);
 
         currentBalanceTokenIn = _tokenToFixed(
             currentBalanceTokenIn,
@@ -377,7 +422,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         // We now have make the outputs have the correct decimals
         _denormalizeSortedArray(amountsIn);
         _denormalizeSortedArray(dueProtocolFeeAmounts);
-        _update(cachedBondBalance, cachedUnderlyingBalance);
+        _sync(cachedBondBalance, cachedUnderlyingBalance);
     }
 
     /// @dev Hook for leaving the pool that must be called from the vault.
@@ -444,7 +489,7 @@ contract ConvergentCurvePool is IMinimalSwapInfoPool, BalancerPoolToken {
         // We need to convert the balancer outputs to token decimals instead of 18
         _denormalizeSortedArray(amountsOut);
         _denormalizeSortedArray(dueProtocolFeeAmounts);
-        _update(cachedBondBalance, cachedUnderlyingBalance);
+        _sync(cachedBondBalance, cachedUnderlyingBalance);
     }
 
     /// @dev Returns the balances so that they'll be in the order [underlying, bond].

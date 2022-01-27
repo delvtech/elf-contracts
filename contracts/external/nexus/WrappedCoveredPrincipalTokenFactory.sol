@@ -20,7 +20,8 @@ contract WrappedCoveredPrincipalTokenFactory {
     // Emitted when new wrapped principal token get created.
     event WrappedCoveredPrincipalTokenCreated(
         address indexed _baseToken,
-        address indexed _owner
+        address indexed _owner,
+        address _wcPrincipalToken
     );
 
     /// @notice Initializing the owner of the contract.
@@ -49,7 +50,11 @@ contract WrappedCoveredPrincipalTokenFactory {
             )
         );
         _WrappedCoveredPrincipalTokens.add(wcPrincipal);
-        emit WrappedCoveredPrincipalTokenCreated(_baseToken, _owner);
+        emit WrappedCoveredPrincipalTokenCreated(
+            _baseToken,
+            _owner,
+            wcPrincipal
+        );
         return wcPrincipal;
     }
 

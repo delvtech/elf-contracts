@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../interfaces/IVault.sol";
+import "../interfaces/ICurvePool.sol";
 
 // TODO Due to the nature of the curve contracts, there are a number of design
 // decisions made in this contract which primarily aim to generalize integration
@@ -119,14 +120,14 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
         // The contract address of the curve pools lpToken
         IERC20 lpToken;
         // This is the index of the target root we are swapping for
-        int128 rootTokenIdx;
+        uint256 rootTokenIdx;
         // Address of the rootToken we are swapping for
         address rootToken;
         // This is the function signature of the curvePool's
         // "remove_liquidity_one_coin" function which similar to the
         // "add_liquidity" curvePool function in the zapIn, there is
         // an inconsistent interface when interacting with curve pools
-        bytes4 funcSig;
+        bool isSigUint256;
     }
 
     struct ZapOutInfo {
@@ -473,18 +474,18 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
             ? address(this).balance
             : _getBalanceOf(IERC20(_zap.rootToken));
 
-        // Like in _zapCurveLpIn, we make a low-level function call to interact
-        // with curve contracts due to inconsistent interface. In this instance
-        // we are exchanging the LP token from a particular curve pool for one
-        // of the constituent tokens of that same pool.
-        address(_zap.curvePool).functionCall(
-            abi.encodeWithSelector(
-                _zap.funcSig,
+        // comment
+        _zap.isSigUint256
+            ? ICurvePool(_zap.curvePool).remove_liquidity_one_coin(
                 _lpTokenAmount,
                 _zap.rootTokenIdx,
                 _minRootTokenAmount
             )
-        );
+            : ICurvePool(_zap.curvePool).remove_liquidity_one_coin(
+                _lpTokenAmount,
+                int128(int256(_zap.rootTokenIdx)),
+                _minRootTokenAmount
+            );
 
         // ETH case
         if (_zap.rootToken == _ETH_CONSTANT) {

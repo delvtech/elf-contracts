@@ -240,7 +240,9 @@ export async function deploy(user: { user: Signer; address: string }) {
 
     const zap: ZapCurveLpOutStruct = {
       curvePool: trie.baseToken.pool,
-      funcSig: getFunctionSignature(trie.baseToken.zapOutFuncSig),
+      isSigUint256:
+        trie.baseToken.zapOutFuncSig ===
+        "remove_liquidity_one_coin(uint256,uint256,uint256)",
       lpToken: trie.baseToken.address,
       rootTokenIdx: zapTokenIdx,
       rootToken: trie.baseToken.roots[zapTokenIdx].address,
@@ -251,7 +253,9 @@ export async function deploy(user: { user: Signer; address: string }) {
         ? zap
         : {
             curvePool: childZapRoot.pool,
-            funcSig: getFunctionSignature(childZapRoot.zapOutFuncSig),
+            isSigUint256:
+              trie.baseToken.zapOutFuncSig ===
+              "remove_liquidity_one_coin(uint256,uint256,uint256)",
             lpToken: childZapRoot.address,
             rootTokenIdx: childZapTokenIdx,
             rootToken: childZapRoot.roots[childZapTokenIdx].address,

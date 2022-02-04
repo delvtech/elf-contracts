@@ -144,7 +144,13 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
         preApproval(_permitData)
         returns (uint256)
     {
-        _zap.amounts[_childZap.parentIdx] += _zapCurveLpIn(_childZap);
+        _zap.amounts[_childZap.parentIdx] += _curvePoolSwapTokensToLp(
+            _childZap.curvePool,
+            _childZap.lpToken,
+            _childZap.amounts,
+            _childZap.roots,
+            _childZap.minLpAmount
+        );
         return _zapIn(_info, _zap);
     }
 
@@ -158,7 +164,13 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
                     poolId: _info.balancerPoolId,
                     assetIn: address(_zap.lpToken),
                     assetOut: _info.principalToken,
-                    amount: _zapCurveLpIn(_zap),
+                    amount: _curvePoolSwapTokensToLp(
+                        _zap.curvePool,
+                        _zap.lpToken,
+                        _zap.amounts,
+                        _zap.roots,
+                        _zap.minLpAmount
+                    ),
                     recipient: _info.recipient,
                     minAmount: _info.minPtAmount,
                     deadline: _info.deadline
@@ -166,49 +178,50 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
             );
     }
 
-    function _zapCurveLpIn(ZapCurveLpIn memory _zap)
-        internal
-        returns (uint256)
-    {
+    function _curvePoolSwapTokensToLp(
+        address _pool, // curve pool address
+        address _poolToken, // lp token of curve pool
+        uint256[] memory _amounts,
+        address[] memory _tokens,
+        uint256 _minAmount // min amount of lp to be returned
+    ) internal returns (uint256) {
         require(
-            _zap.amounts.length == 2 || _zap.amounts.length == 3,
-            "!(2 >= amounts.length <= 3)"
+            (_amounts.length == 2 || _amounts.length == 3) &&
+                (_tokens.length == _amounts.length),
+            "invalid input"
         );
 
-        bool sendingEth = false;
-        for (uint8 i = 0; i < _zap.amounts.length; i++) {
-            if (_zap.roots[i] == _ETH_CONSTANT) {
-                require(msg.value == _zap.amounts[i], "incorrect value");
-                sendingEth = true;
+        bool tokenIsEther = false;
+        for (uint8 i = 0; i < _amounts.length; i++) {
+            if (_tokens[i] == _ETH_CONSTANT) {
+                require(msg.value == _amounts[i], "incorrect value");
+                tokenIsEther = true;
             } else {
-                uint256 beforeAmount = _getBalanceOf(IERC20(_zap.roots[i]));
+                uint256 beforeAmount = _getBalanceOf(IERC20(_tokens[i]));
 
-                IERC20(_zap.roots[i]).safeTransferFrom(
+                IERC20(_tokens[i]).safeTransferFrom(
                     msg.sender,
                     address(this),
-                    _zap.amounts[i]
+                    _amounts[i]
                 );
                 // This mutates by reference
-                _zap.amounts[i] =
-                    _getBalanceOf(IERC20(_zap.roots[i])) -
-                    beforeAmount;
+                _amounts[i] = _getBalanceOf(IERC20(_tokens[i])) - beforeAmount;
             }
         }
 
-        uint256 beforeLpTokenBalance = _getBalanceOf(IERC20(_zap.lpToken));
+        uint256 beforeLpTokenBalance = _getBalanceOf(IERC20(_poolToken));
 
-        _zap.amounts.length == 2
-            ? ICurvePool(_zap.curvePool).add_liquidity{
-                value: sendingEth ? msg.value : 0
-            }([_zap.amounts[0], _zap.amounts[1]], _zap.minLpAmount)
-            : ICurvePool(_zap.curvePool).add_liquidity{
-                value: sendingEth ? msg.value : 0
-            }(
-                [_zap.amounts[0], _zap.amounts[1], _zap.amounts[2]],
-                _zap.minLpAmount
-            );
+        if (_amounts.length == 2) {
+            ICurvePool(_pool).add_liquidity{
+                value: tokenIsEther ? msg.value : 0
+            }([_amounts[0], _amounts[1]], _minAmount);
+        } else {
+            ICurvePool(_pool).add_liquidity{
+                value: tokenIsEther ? msg.value : 0
+            }([_amounts[0], _amounts[1], _amounts[2]], _minAmount);
+        }
 
-        return _getBalanceOf(IERC20(_zap.lpToken)) - beforeLpTokenBalance;
+        return _getBalanceOf(IERC20(_poolToken)) - beforeLpTokenBalance;
     }
 
     function zapOut(
@@ -240,22 +253,27 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
         returns (uint256)
     {
         return
-            _zapCurveLpOut(
-                _childZap,
-                _zapOut(
-                    ZapOutInfo({
-                        balancerPoolId: _info.balancerPoolId,
-                        principalToken: _info.principalToken,
-                        principalTokenAmount: _info.principalTokenAmount,
-                        recipient: payable(address(this)),
-                        minBaseTokenAmount: _info.minBaseTokenAmount,
-                        minRootTokenAmount: 0,
-                        deadline: _info.deadline
-                    }),
-                    _zap
-                ),
-                _info.minRootTokenAmount,
-                _info.recipient
+            _curvePoolSwapLpToToken(
+                CurvePoolSwapLpToToken({
+                    pool: _childZap.curvePool,
+                    token: _childZap.rootToken,
+                    tokenIdx: _childZap.rootTokenIdx,
+                    isSigUint256: _childZap.isSigUint256,
+                    amount: _zapOut(
+                        ZapOutInfo({
+                            balancerPoolId: _info.balancerPoolId,
+                            principalToken: _info.principalToken,
+                            principalTokenAmount: _info.principalTokenAmount,
+                            recipient: payable(address(this)),
+                            minBaseTokenAmount: _info.minBaseTokenAmount,
+                            minRootTokenAmount: 0,
+                            deadline: _info.deadline
+                        }),
+                        _zap
+                    ),
+                    minAmount: _info.minRootTokenAmount,
+                    recipient: _info.recipient
+                })
             );
     }
 
@@ -269,62 +287,78 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
             _info.principalTokenAmount
         );
 
-        uint256 baseTokenAmount = _balancerSwap(
-            BalancerSwap({
-                poolId: _info.balancerPoolId,
-                assetIn: _info.principalToken,
-                assetOut: _zap.lpToken,
-                amount: _info.principalTokenAmount,
-                recipient: address(this),
-                minAmount: _info.minBaseTokenAmount,
-                deadline: _info.deadline // maybe this at end?
-            })
-        );
-
         return
-            _zapCurveLpOut(
-                _zap,
-                baseTokenAmount,
-                _info.minRootTokenAmount,
-                _info.recipient
+            _curvePoolSwapLpToToken(
+                CurvePoolSwapLpToToken({
+                    pool: _zap.curvePool,
+                    token: _zap.rootToken,
+                    tokenIdx: _zap.rootTokenIdx,
+                    isSigUint256: _zap.isSigUint256,
+                    amount: _balancerSwap(
+                        BalancerSwap({
+                            poolId: _info.balancerPoolId,
+                            assetIn: _info.principalToken,
+                            assetOut: _zap.lpToken,
+                            amount: _info.principalTokenAmount,
+                            recipient: address(this),
+                            minAmount: _info.minBaseTokenAmount,
+                            deadline: _info.deadline
+                        })
+                    ),
+                    minAmount: _info.minRootTokenAmount,
+                    recipient: _info.recipient
+                })
             );
     }
 
-    function _zapCurveLpOut(
-        ZapCurveLpOut memory _zap,
-        uint256 _lpTokenAmount,
-        uint256 _minRootTokenAmount,
-        address payable _recipient
-    ) internal returns (uint256 rootAmount) {
-        bool transferToRecipient = address(this) != _recipient;
-        uint256 beforeAmount = _zap.rootToken == _ETH_CONSTANT
+    struct CurvePoolSwapLpToToken {
+        address pool; // curve pool
+        address token; // token the lpToken will be swapped for
+        uint256 tokenIdx; // index of token in coins array of pool
+        bool isSigUint256; // great to get rid of this
+        uint256 amount; // amount of lp tokens to be swapped for a given pool token
+        uint256 minAmount; // minimum amount of pool tokens to be swapped for
+        address recipient;
+    }
+
+    function _curvePoolSwapLpToToken(CurvePoolSwapLpToToken memory _swap)
+        internal
+        returns (uint256 tokenAmountReceived)
+    {
+        bool transferToRecipient = address(this) != _swap.recipient;
+        bool tokenIsEther = _swap.token == _ETH_CONSTANT;
+        uint256 beforeAmount = tokenIsEther
             ? address(this).balance
-            : _getBalanceOf(IERC20(_zap.rootToken));
+            : _getBalanceOf(IERC20(_swap.token));
 
-        _zap.isSigUint256
-            ? ICurvePool(_zap.curvePool).remove_liquidity_one_coin(
-                _lpTokenAmount,
-                _zap.rootTokenIdx,
-                _minRootTokenAmount
-            )
-            : ICurvePool(_zap.curvePool).remove_liquidity_one_coin(
-                _lpTokenAmount,
-                int128(int256(_zap.rootTokenIdx)),
-                _minRootTokenAmount
+        if (_swap.isSigUint256) {
+            ICurvePool(_swap.pool).remove_liquidity_one_coin(
+                _swap.amount,
+                _swap.tokenIdx,
+                _swap.minAmount
             );
+        } else {
+            ICurvePool(_swap.pool).remove_liquidity_one_coin(
+                _swap.amount,
+                int128(int256(_swap.tokenIdx)),
+                _swap.minAmount
+            );
+        }
 
-        if (_zap.rootToken == _ETH_CONSTANT) {
-            rootAmount = address(this).balance - beforeAmount;
+        if (tokenIsEther) {
+            tokenAmountReceived = address(this).balance - beforeAmount;
             if (transferToRecipient) {
-                _recipient.transfer(rootAmount);
+                payable(_swap.recipient).transfer(tokenAmountReceived);
             }
         } else {
-            rootAmount = _getBalanceOf(IERC20(_zap.rootToken)) - beforeAmount;
+            tokenAmountReceived =
+                _getBalanceOf(IERC20(_swap.token)) -
+                beforeAmount;
             if (transferToRecipient) {
-                IERC20(_zap.rootToken).safeTransferFrom(
+                IERC20(_swap.token).safeTransferFrom(
                     address(this),
-                    _recipient,
-                    rootAmount
+                    _swap.recipient,
+                    tokenAmountReceived
                 );
             }
         }
@@ -341,28 +375,28 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
     }
 
     // always
-    function _balancerSwap(BalancerSwap memory _balancerSwap)
+    function _balancerSwap(BalancerSwap memory _swap)
         internal
         returns (uint256)
     {
         return
             _balancer.swap(
                 IVault.SingleSwap({
-                    poolId: _balancerSwap.poolId,
+                    poolId: _swap.poolId,
                     kind: IVault.SwapKind.GIVEN_IN,
-                    assetIn: IAsset(_balancerSwap.assetIn),
-                    assetOut: IAsset(_balancerSwap.assetOut),
-                    amount: _balancerSwap.amount,
+                    assetIn: IAsset(_swap.assetIn),
+                    assetOut: IAsset(_swap.assetOut),
+                    amount: _swap.amount,
                     userData: "0x00"
                 }),
                 IVault.FundManagement({
                     sender: address(this),
                     fromInternalBalance: false,
-                    recipient: payable(_balancerSwap.recipient),
+                    recipient: payable(_swap.recipient),
                     toInternalBalance: false
                 }),
-                _balancerSwap.minAmount,
-                _balancerSwap.deadline
+                _swap.minAmount,
+                _swap.deadline
             );
     }
 

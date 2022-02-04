@@ -42,7 +42,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
     struct ZapCurveLpOut {
         address curvePool;
         address lpToken;
-        uint256 rootTokenIdx;
+        int128 rootTokenIdx;
         address rootToken;
         bool isSigUint256;
     }
@@ -358,7 +358,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
         address pool; // curve pool to change
         address poolToken;
         address token;
-        uint256 tokenIdx;
+        int128 tokenIdx;
         bool isSigUint256;
         uint256 deadline;
         uint256 minAmountToken;
@@ -399,16 +399,6 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
             );
     }
 
-    struct CurvePoolSwapPoolTokenToToken {
-        address pool; // curve pool
-        address token; // token the lpToken will be swapped for
-        uint256 tokenIdx; // index of token in coins array of pool
-        bool isSigUint256; // great to get rid of this
-        address recipient;
-        uint256 amountPoolToken; // amount of lp tokens to be swapped for a given pool token
-        uint256 minAmountToken; // minimum amount of tokens to be swapped for
-    }
-
     // @external
     // @nonreentrant('lock')
     // def remove_liquidity_one_coin(token_amount: uint256, i: uint256, min_amount: uint256):
@@ -436,6 +426,19 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
     //     ERC20(_coins[i]).transfer(msg.sender, dy)
 
     //     log RemoveLiquidityOne(msg.sender, token_amount, i, dy)
+
+    ///////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////
+
+    struct CurvePoolSwapPoolTokenToToken {
+        address pool; // curve pool
+        address token; // token the lpToken will be swapped for
+        int128 tokenIdx; // index of token in coins array of pool
+        bool isSigUint256; // great to get rid of this
+        address recipient;
+        uint256 amountPoolToken; // amount of lp tokens to be swapped for a given pool token
+        uint256 minAmountToken; // minimum amount of tokens to be swapped for
+    }
 
     function _curvePoolSwapPoolTokenToToken(
         CurvePoolSwapPoolTokenToToken memory _swap

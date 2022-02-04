@@ -154,7 +154,7 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
       expect(diff.lt(allowedOffset)).to.be.true;
     });
 
-    it("should swap ePyvcrvSTETH to stETH", async () => {
+    it.only("should swap ePyvcrvSTETH to stETH", async () => {
       const principalTokenAmount = ethers.utils.parseEther("100");
       const { info, zap, expectedRootTokenAmount } = await constructZapOutArgs(
         ePyvcrvSTETH,
@@ -248,6 +248,7 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
       const returnedTokenAmount = await getERC20("USDT").balanceOf(
         users[1].address
       );
+
       const diff = returnedTokenAmount.sub(expectedRootTokenAmount);
       const allowedOffset = calcBigNumberPercentage(
         returnedTokenAmount,
@@ -282,7 +283,7 @@ describe.only("ZapCurveTokenToPrincipalToken", () => {
       expect(diff.lt(allowedOffset)).to.be.true;
     });
 
-    it("should swap ePyvcrv3crypto to WBTC", async () => {
+    it.only("should swap ePyvcrv3crypto to WBTC", async () => {
       const principalTokenAmount = ethers.utils.parseEther("10");
 
       const { info, zap, expectedRootTokenAmount } = await constructZapOutArgs(

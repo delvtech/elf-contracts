@@ -23,14 +23,14 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
     struct ZapInInfo {
         bytes32 balancerPoolId;
         address recipient;
-        IAsset principalToken;
+        address principalToken;
         uint256 minPtAmount;
         uint256 deadline;
     }
 
     struct ZapCurveLpIn {
         address curvePool;
-        IERC20 lpToken;
+        address lpToken;
         uint256[] amounts;
         address[] roots;
         uint256 parentIdx;
@@ -39,7 +39,7 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
 
     struct ZapCurveLpOut {
         address curvePool;
-        IERC20 lpToken;
+        address lpToken;
         uint256 rootTokenIdx;
         address rootToken;
         bool isSigUint256;
@@ -47,14 +47,12 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
 
     struct ZapOutInfo {
         bytes32 balancerPoolId;
-        IAsset principalToken;
+        address principalToken;
         uint256 principalTokenAmount;
         address payable recipient;
         uint256 minBaseTokenAmount;
         uint256 minRootTokenAmount;
         uint256 deadline;
-        // TODO Remove this
-        bool targetNeedsChildZap;
     }
 
     struct PermitData {
@@ -128,15 +126,9 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
         nonReentrant
         notFrozen
         preApproval(_permitData)
-        returns (uint256 ptAmount)
+        returns (uint256)
     {
-        uint256 baseTokenAmount = _zapCurveLpIn(_zap);
-
-        ptAmount = _zapBalancerSwap(
-            _info,
-            address(_zap.lpToken),
-            baseTokenAmount
-        );
+        return _zapIn(_info, _zap);
     }
 
     function zapInWithChild(
@@ -150,45 +142,30 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
         nonReentrant
         notFrozen
         preApproval(_permitData)
-        returns (uint256 ptAmount)
+        returns (uint256)
     {
         _zap.amounts[_childZap.parentIdx] += _zapCurveLpIn(_childZap);
-        uint256 baseTokenAmount = _zapCurveLpIn(_zap);
-
-        ptAmount = _zapBalancerSwap(
-            _info,
-            address(_zap.lpToken),
-            baseTokenAmount
-        );
+        return _zapIn(_info, _zap);
     }
 
-    function _zapBalancerSwap(
-        ZapInInfo memory _info,
-        address baseToken,
-        uint256 amount
-    ) internal returns (uint256) {
+    function _zapIn(ZapInInfo memory _info, ZapCurveLpIn memory _zap)
+        internal
+        returns (uint256)
+    {
         return
-            _balancer.swap(
-                IVault.SingleSwap({
+            _balancerSwap(
+                BalancerSwap({
                     poolId: _info.balancerPoolId,
-                    kind: IVault.SwapKind.GIVEN_IN,
-                    assetIn: IAsset(baseToken),
+                    assetIn: address(_zap.lpToken),
                     assetOut: _info.principalToken,
-                    amount: amount,
-                    userData: "0x00"
-                }),
-                IVault.FundManagement({
-                    sender: address(this),
-                    fromInternalBalance: false,
-                    recipient: payable(_info.recipient),
-                    toInternalBalance: false
-                }),
-                _info.minPtAmount,
-                _info.deadline
+                    amount: _zapCurveLpIn(_zap),
+                    recipient: _info.recipient,
+                    minAmount: _info.minPtAmount,
+                    deadline: _info.deadline
+                })
             );
     }
 
-    // TODO Only make call if _zap has positive amounts
     function _zapCurveLpIn(ZapCurveLpIn memory _zap)
         internal
         returns (uint256)
@@ -218,23 +195,38 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
             }
         }
 
-        uint256 beforeLpTokenBalance = _getBalanceOf(_zap.lpToken);
+        uint256 beforeLpTokenBalance = _getBalanceOf(IERC20(_zap.lpToken));
 
-        uint256 ethAmount = sendingEth ? msg.value : 0;
         _zap.amounts.length == 2
-            ? ICurvePool(_zap.curvePool).add_liquidity{ value: ethAmount }(
-                [_zap.amounts[0], _zap.amounts[1]],
-                _zap.minLpAmount
-            )
-            : ICurvePool(_zap.curvePool).add_liquidity{ value: ethAmount }(
+            ? ICurvePool(_zap.curvePool).add_liquidity{
+                value: sendingEth ? msg.value : 0
+            }([_zap.amounts[0], _zap.amounts[1]], _zap.minLpAmount)
+            : ICurvePool(_zap.curvePool).add_liquidity{
+                value: sendingEth ? msg.value : 0
+            }(
                 [_zap.amounts[0], _zap.amounts[1], _zap.amounts[2]],
                 _zap.minLpAmount
             );
 
-        return _getBalanceOf(_zap.lpToken) - beforeLpTokenBalance;
+        return _getBalanceOf(IERC20(_zap.lpToken)) - beforeLpTokenBalance;
     }
 
     function zapOut(
+        ZapOutInfo memory _info,
+        ZapCurveLpOut memory _zap,
+        PermitData[] memory _permitData
+    )
+        external
+        payable
+        nonReentrant
+        notFrozen
+        preApproval(_permitData)
+        returns (uint256)
+    {
+        return _zapOut(_info, _zap);
+    }
+
+    function zapOutWithChild(
         ZapOutInfo memory _info,
         ZapCurveLpOut memory _zap,
         ZapCurveLpOut memory _childZap,
@@ -245,7 +237,31 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
         nonReentrant
         notFrozen
         preApproval(_permitData)
-        returns (uint256 amount)
+        returns (uint256)
+    {
+        return
+            _zapCurveLpOut(
+                _childZap,
+                _zapOut(
+                    ZapOutInfo({
+                        balancerPoolId: _info.balancerPoolId,
+                        principalToken: _info.principalToken,
+                        principalTokenAmount: _info.principalTokenAmount,
+                        recipient: payable(address(this)),
+                        minBaseTokenAmount: _info.minBaseTokenAmount,
+                        minRootTokenAmount: 0,
+                        deadline: _info.deadline
+                    }),
+                    _zap
+                ),
+                _info.minRootTokenAmount,
+                _info.recipient
+            );
+    }
+
+    function _zapOut(ZapOutInfo memory _info, ZapCurveLpOut memory _zap)
+        internal
+        returns (uint256)
     {
         IERC20(address(_info.principalToken)).safeTransferFrom(
             msg.sender,
@@ -253,40 +269,25 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
             _info.principalTokenAmount
         );
 
-        uint256 baseTokenAmount = _balancer.swap(
-            IVault.SingleSwap({
+        uint256 baseTokenAmount = _balancerSwap(
+            BalancerSwap({
                 poolId: _info.balancerPoolId,
-                kind: IVault.SwapKind.GIVEN_IN,
                 assetIn: _info.principalToken,
-                assetOut: IAsset(address(_zap.lpToken)),
+                assetOut: _zap.lpToken,
                 amount: _info.principalTokenAmount,
-                userData: "0x00"
-            }),
-            IVault.FundManagement({
-                sender: address(this),
-                fromInternalBalance: false,
-                recipient: payable(address(this)),
-                toInternalBalance: false
-            }),
-            _info.minBaseTokenAmount,
-            _info.deadline
+                recipient: address(this),
+                minAmount: _info.minBaseTokenAmount,
+                deadline: _info.deadline // maybe this at end?
+            })
         );
 
-        amount = _zapCurveLpOut(
-            _zap,
-            baseTokenAmount,
-            _info.targetNeedsChildZap ? 0 : _info.minRootTokenAmount,
-            _info.targetNeedsChildZap ? payable(address(this)) : _info.recipient
-        );
-
-        if (_info.targetNeedsChildZap) {
-            amount = _zapCurveLpOut(
-                _childZap,
-                amount,
+        return
+            _zapCurveLpOut(
+                _zap,
+                baseTokenAmount,
                 _info.minRootTokenAmount,
                 _info.recipient
             );
-        }
     }
 
     function _zapCurveLpOut(
@@ -327,6 +328,42 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
                 );
             }
         }
+    }
+
+    struct BalancerSwap {
+        bytes32 poolId;
+        address assetIn;
+        address assetOut;
+        uint256 amount;
+        address recipient;
+        uint256 minAmount;
+        uint256 deadline;
+    }
+
+    // always
+    function _balancerSwap(BalancerSwap memory _balancerSwap)
+        internal
+        returns (uint256)
+    {
+        return
+            _balancer.swap(
+                IVault.SingleSwap({
+                    poolId: _balancerSwap.poolId,
+                    kind: IVault.SwapKind.GIVEN_IN,
+                    assetIn: IAsset(_balancerSwap.assetIn),
+                    assetOut: IAsset(_balancerSwap.assetOut),
+                    amount: _balancerSwap.amount,
+                    userData: "0x00"
+                }),
+                IVault.FundManagement({
+                    sender: address(this),
+                    fromInternalBalance: false,
+                    recipient: payable(_balancerSwap.recipient),
+                    toInternalBalance: false
+                }),
+                _balancerSwap.minAmount,
+                _balancerSwap.deadline
+            );
     }
 
     function _getBalanceOf(IERC20 _token) internal view returns (uint256) {

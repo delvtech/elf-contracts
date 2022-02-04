@@ -29,7 +29,7 @@ const ptOffsetTolerancePercentage = 0.1;
 
 const ZAP_BLOCK = 13583600;
 
-describe("ZapCurveTokenToPrincipalToken", () => {
+describe.only("ZapCurveTokenToPrincipalToken", () => {
   let users: { user: Signer; address: string }[];
 
   let initBlock: number;
@@ -105,16 +105,15 @@ describe("ZapCurveTokenToPrincipalToken", () => {
       const principalTokenAmount = ethers.utils.parseEther("100");
 
       const user2PreBalance = await provider.getBalance(users[2].address);
-      const { info, zap, childZap, expectedRootTokenAmount } =
-        await constructZapOutArgs(
-          ePyvcrvSTETH,
-          "ETH",
-          principalTokenAmount,
-          users[2].address
-        );
+      const { info, zap, expectedRootTokenAmount } = await constructZapOutArgs(
+        ePyvcrvSTETH,
+        "ETH",
+        principalTokenAmount,
+        users[2].address
+      );
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapOut(info, zap, childZap, []);
+        .zapOut(info, zap, []);
 
       const user2PostBalance = await provider.getBalance(users[2].address);
 
@@ -157,11 +156,14 @@ describe("ZapCurveTokenToPrincipalToken", () => {
 
     it("should swap ePyvcrvSTETH to stETH", async () => {
       const principalTokenAmount = ethers.utils.parseEther("100");
-      const { info, zap, childZap, expectedRootTokenAmount } =
-        await constructZapOutArgs(ePyvcrvSTETH, "stETH", principalTokenAmount);
+      const { info, zap, expectedRootTokenAmount } = await constructZapOutArgs(
+        ePyvcrvSTETH,
+        "stETH",
+        principalTokenAmount
+      );
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapOut(info, zap, childZap, []);
+        .zapOut(info, zap, []);
 
       const returnedTokenAmount = await getERC20("stETH").balanceOf(
         users[1].address
@@ -234,11 +236,14 @@ describe("ZapCurveTokenToPrincipalToken", () => {
     it("should swap ePyvcrv3crypto to USDT", async () => {
       const principalTokenAmount = ethers.utils.parseEther("10");
 
-      const { info, zap, childZap, expectedRootTokenAmount } =
-        await constructZapOutArgs(ePyvcrv3crypto, "USDT", principalTokenAmount);
+      const { info, zap, expectedRootTokenAmount } = await constructZapOutArgs(
+        ePyvcrv3crypto,
+        "USDT",
+        principalTokenAmount
+      );
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapOut(info, zap, childZap, []);
+        .zapOut(info, zap, []);
 
       const returnedTokenAmount = await getERC20("USDT").balanceOf(
         users[1].address
@@ -280,12 +285,15 @@ describe("ZapCurveTokenToPrincipalToken", () => {
     it("should swap ePyvcrv3crypto to WBTC", async () => {
       const principalTokenAmount = ethers.utils.parseEther("10");
 
-      const { info, zap, childZap, expectedRootTokenAmount } =
-        await constructZapOutArgs(ePyvcrv3crypto, "WBTC", principalTokenAmount);
+      const { info, zap, expectedRootTokenAmount } = await constructZapOutArgs(
+        ePyvcrv3crypto,
+        "WBTC",
+        principalTokenAmount
+      );
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapOut(info, zap, childZap, []);
+        .zapOut(info, zap, []);
 
       const returnedTokenAmount = await getERC20("WBTC").balanceOf(
         users[1].address
@@ -328,12 +336,15 @@ describe("ZapCurveTokenToPrincipalToken", () => {
     it("should swap ePyvcrv3crypto to WETH", async () => {
       const principalTokenAmount = ethers.utils.parseEther("10");
 
-      const { info, zap, childZap, expectedRootTokenAmount } =
-        await constructZapOutArgs(ePyvcrv3crypto, "WETH", principalTokenAmount);
+      const { info, zap, expectedRootTokenAmount } = await constructZapOutArgs(
+        ePyvcrv3crypto,
+        "WETH",
+        principalTokenAmount
+      );
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapOut(info, zap, childZap, []);
+        .zapOut(info, zap, []);
 
       const returnedTokenAmount = await getERC20("WETH").balanceOf(
         users[1].address
@@ -410,7 +421,7 @@ describe("ZapCurveTokenToPrincipalToken", () => {
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapOut(info, zap, childZap, []);
+        .zapOutWithChild(info, zap, childZap, []);
 
       const returnedTokenAmount = await getERC20("DAI").balanceOf(
         users[1].address
@@ -458,7 +469,7 @@ describe("ZapCurveTokenToPrincipalToken", () => {
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapOut(info, zap, childZap, []);
+        .zapOutWithChild(info, zap, childZap, []);
 
       const returnedTokenAmount = await getERC20("USDC").balanceOf(
         users[1].address
@@ -506,7 +517,7 @@ describe("ZapCurveTokenToPrincipalToken", () => {
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapOut(info, zap, childZap, []);
+        .zapOutWithChild(info, zap, childZap, []);
 
       const returnedTokenAmount = await getERC20("USDT").balanceOf(
         users[1].address
@@ -598,12 +609,15 @@ describe("ZapCurveTokenToPrincipalToken", () => {
     it("should swap ePyvCurveLUSD to LUSD", async () => {
       const principalTokenAmount = ethers.utils.parseEther("5000");
 
-      const { info, zap, childZap, expectedRootTokenAmount } =
-        await constructZapOutArgs(ePyvCurveLUSD, "LUSD", principalTokenAmount);
+      const { info, zap, expectedRootTokenAmount } = await constructZapOutArgs(
+        ePyvCurveLUSD,
+        "LUSD",
+        principalTokenAmount
+      );
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapOut(info, zap, childZap, []);
+        .zapOut(info, zap, []);
 
       const returnedTokenAmount = await getERC20("LUSD").balanceOf(
         users[1].address
@@ -621,8 +635,11 @@ describe("ZapCurveTokenToPrincipalToken", () => {
     it("should permit & swap ePyvCurveLUSD to LUSD", async () => {
       const principalTokenAmount = ethers.utils.parseEther("5000");
 
-      const { info, zap, childZap, expectedRootTokenAmount } =
-        await constructZapOutArgs(ePyvCurveLUSD, "LUSD", principalTokenAmount);
+      const { info, zap, expectedRootTokenAmount } = await constructZapOutArgs(
+        ePyvCurveLUSD,
+        "LUSD",
+        principalTokenAmount
+      );
 
       (
         await getERC20(ePyvCurveLUSD.name)
@@ -651,7 +668,7 @@ describe("ZapCurveTokenToPrincipalToken", () => {
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapOut(info, zap, childZap, [tokenPermitData]);
+        .zapOut(info, zap, [tokenPermitData]);
 
       const returnedTokenAmount = await getERC20("LUSD").balanceOf(
         users[1].address
@@ -694,12 +711,15 @@ describe("ZapCurveTokenToPrincipalToken", () => {
     it("should swap ePyvCurveLUSD to 3Crv", async () => {
       const principalTokenAmount = ethers.utils.parseEther("5000");
 
-      const { info, zap, childZap, expectedRootTokenAmount } =
-        await constructZapOutArgs(ePyvCurveLUSD, "3Crv", principalTokenAmount);
+      const { info, zap, expectedRootTokenAmount } = await constructZapOutArgs(
+        ePyvCurveLUSD,
+        "3Crv",
+        principalTokenAmount
+      );
 
       await zapCurveTokenToPrincipalToken
         .connect(users[1].user)
-        .zapOut(info, zap, childZap, []);
+        .zapOut(info, zap, []);
 
       const returnedTokenAmount = await getERC20("3Crv").balanceOf(
         users[1].address

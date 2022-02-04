@@ -194,7 +194,6 @@ export async function deploy(user: { user: Signer; address: string }) {
     if (userPrincipalTokenBalance.lt(amount))
       throw new Error("Not enough pt's minted");
 
-    let targetNeedsChildZap = true;
     const zapTokenIdx = trie.baseToken.roots.findIndex(
       (root) =>
         root.name === target ||
@@ -219,10 +218,6 @@ export async function deploy(user: { user: Signer; address: string }) {
       throw new Error("Could not assign zapTokenIdx");
     }
 
-    if (childZapRoot === undefined) {
-      targetNeedsChildZap = false;
-    }
-
     const info: ZapOutInfoStruct = {
       balancerPoolId: trie.balancerPoolId,
       principalToken: trie.address,
@@ -231,7 +226,6 @@ export async function deploy(user: { user: Signer; address: string }) {
       minBaseTokenAmount: 0,
       deadline: Math.round(Date.now() / 1000) + ONE_DAY_IN_SECONDS,
       principalTokenAmount: amount,
-      targetNeedsChildZap,
     };
 
     const zap: ZapCurveLpOutStruct = {
@@ -387,7 +381,7 @@ async function estimateZapOut(
     targetType: trie.name !== "ePyvcrv3crypto" ? "int128" : "uint256",
   }).calc_withdraw_one_coin(estimatedBaseTokenAmount, zap.rootTokenIdx);
 
-  if (info.targetNeedsChildZap) {
+  if (childZap.lpToken !== zap.lpToken) {
     estimatedRootTokenAmount = await buildCurvePoolContract({
       address: childZap.curvePool,
       targetType: trie.name !== "ePyvcrv3crypto" ? "int128" : "uint256",

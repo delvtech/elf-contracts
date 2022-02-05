@@ -456,14 +456,14 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
         console.log("minAmountToken", _swap.minAmountToken);
         // if (_swap.isSigUint256) {
         //     ICurvePool(_swap.pool).remove_liquidity_one_coin(
-        //         _swap.amount,
+        //         _swap.amountPoolToken,
         //         uint256(int256(_swap.tokenIdx)),
-        //         _swap.minAmount
+        //         _swap.minAmountToken
         //     );
         // } else {
         ICurvePool(_swap.pool).remove_liquidity_one_coin(
             _swap.amountPoolToken,
-            _swap.tokenIdx,
+            uint256(int256(_swap.tokenIdx)),
             _swap.minAmountToken
         );
         //       }

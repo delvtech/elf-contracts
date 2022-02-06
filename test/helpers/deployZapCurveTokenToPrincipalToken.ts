@@ -63,6 +63,7 @@ export async function deploy(user: { user: Signer; address: string }) {
     "0xEe4e158c03A10CBc8242350d74510779A364581C",
     user.user
   );
+
   const deployer = new ZapCurveTokenToPrincipalToken__factory(authSigner);
   const zapCurveTokenToPrincipalToken = await deployer.deploy(
     balancerVault.address

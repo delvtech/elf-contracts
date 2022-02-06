@@ -8,14 +8,19 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../interfaces/IVault.sol";
 import "../interfaces/ICurvePool.sol";
+import "../interfaces/IConvergentCurvePool.sol";
 
-contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
+contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Address for address;
 
     bool public isFrozen;
 
-    address[] public _3CRV_POOL_TOKENS;
+    address[] public _3CRV_POOL_TOKENS = [
+        address(0x6B175474E89094C44Da98b954EedeAC495271d0F), // DAI
+        address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48), // USDC
+        address(0xdAC17F958D2ee523a2206206994597C13D831ec7) // USDT
+    ];
     address internal constant _3CRV_POOL =
         address(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
     address internal constant _3CRV_POOL_TOKEN =
@@ -65,16 +70,6 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
         _authorize(msg.sender);
         _balancer = __balancer;
         isFrozen = false;
-
-        _3CRV_POOL_TOKENS[0] = address(
-            0x6B175474E89094C44Da98b954EedeAC495271d0F
-        ); // DAI
-        _3CRV_POOL_TOKENS[1] = address(
-            0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
-        ); // USDC
-        _3CRV_POOL_TOKENS[2] = address(
-            0xdAC17F958D2ee523a2206206994597C13D831ec7
-        ); // USDT
     }
 
     modifier notFrozen() {
@@ -133,7 +128,11 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
         return _zapIn(_zap);
     }
 
-    function Swap3CrvAndZapIn(
+    function estimateZapIn(ZapIn memory _zap) external view returns (uint256) {
+        return _estimateZapIn(_zap);
+    }
+
+    function swap3CrvAndZapIn(
         ZapIn memory _zap,
         uint256[] memory _3CrvTokenAmounts,
         PermitData[] memory _permitData
@@ -156,6 +155,16 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
         return _zapIn(_zap);
     }
 
+    function estimateSwap3CrvAndZapIn(
+        ZapIn memory _zap,
+        uint256[] memory _3CrvTokenAmounts
+    ) external view returns (uint256) {
+        _zap.amounts[
+            METAPOOL_3CRV_IDX
+        ] += _estimateCurvePoolSwapTokensToPoolToken(_3CRV_POOL, _zap.amounts);
+        return _estimateZapIn(_zap);
+    }
+
     function _zapIn(ZapIn memory _zap) internal returns (uint256) {
         return
             _balancerSwap(
@@ -175,6 +184,18 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
             );
     }
 
+    function _estimateZapIn(ZapIn memory _zap) internal view returns (uint256) {
+        return
+            _estimateBalancerSwap(
+                _zap.balancerPoolId,
+                _estimateCurvePoolSwapTokensToPoolToken(
+                    _zap.pool,
+                    _zap.amounts
+                ),
+                true
+            );
+    }
+
     function zapOut(ZapOut memory _zap, PermitData[] memory _permitData)
         external
         payable
@@ -184,6 +205,14 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
         returns (uint256)
     {
         return _zapOut(_zap, msg.sender);
+    }
+
+    function estimateZapOut(ZapOut memory _zap)
+        external
+        view
+        returns (uint256)
+    {
+        return _estimateZapOut(_zap);
     }
 
     function zapOutAndSwap3Crv(
@@ -212,6 +241,19 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
                 msg.sender,
                 _zapOut(_zap, address(this)),
                 minAmountToken
+            );
+    }
+
+    function estimateZapOutAndSwap3Crv(
+        ZapOut memory _zap,
+        uint256 _3CrvTokenIdx
+    ) external view returns (uint256) {
+        return
+            _estimateCurvePoolSwapPoolTokenToToken(
+                _3CRV_POOL,
+                _estimateZapOut(_zap),
+                _3CrvTokenIdx,
+                false
             );
     }
 
@@ -244,6 +286,24 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
                 _recipient,
                 amountPoolToken,
                 _zap.minAmountToken
+            );
+    }
+
+    function _estimateZapOut(ZapOut memory _zap)
+        internal
+        view
+        returns (uint256)
+    {
+        return
+            _estimateCurvePoolSwapPoolTokenToToken(
+                _zap.pool,
+                _estimateBalancerSwap(
+                    _zap.balancerPoolId,
+                    _zap.amountPrincipalToken,
+                    false
+                ),
+                _zap.tokenIdx,
+                _zap.isSigUint256
             );
     }
 
@@ -367,6 +427,67 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
                 _minAmountAssetOut,
                 _deadline
             );
+    }
+
+    function _estimateBalancerSwap(
+        bytes32 _poolId,
+        uint256 _amount,
+        bool isZapIn
+    ) internal view returns (uint256) {
+        (address ccPoolAddress, ) = _balancer.getPool(_poolId);
+        (, uint256[] memory reserves, ) = _balancer.getPoolTokens(_poolId);
+        uint256 totalSupply = IConvergentCurvePool(ccPoolAddress).totalSupply();
+
+        uint256 xReserves = isZapIn ? reserves[0] : reserves[0] + totalSupply;
+        uint256 yReserves = isZapIn ? reserves[1] + totalSupply : reserves[1];
+        return
+            IConvergentCurvePool(ccPoolAddress).solveTradeInvariant(
+                _amount,
+                xReserves,
+                yReserves,
+                isZapIn
+            );
+    }
+
+    function _estimateCurvePoolSwapTokensToPoolToken(
+        address _pool,
+        uint256[] memory _amounts
+    ) internal view returns (uint256) {
+        require(
+            (_amounts.length == 2 || _amounts.length == 3),
+            "invalid input"
+        );
+
+        if (_amounts.length == 2) {
+            return
+                ICurvePool(_pool).calc_token_amount(
+                    [_amounts[0], _amounts[1]],
+                    true
+                );
+        } else {
+            return
+                ICurvePool(_pool).calc_token_amount(
+                    [_amounts[0], _amounts[1], _amounts[2]],
+                    true
+                );
+        }
+    }
+
+    function _estimateCurvePoolSwapPoolTokenToToken(
+        address _pool,
+        uint256 _amount,
+        uint256 _tokenIdx,
+        bool _isSigUint256
+    ) internal view returns (uint256) {
+        if (_isSigUint256) {
+            return ICurvePool(_pool).calc_withdraw_one_coin(_amount, _tokenIdx);
+        } else {
+            return
+                ICurvePool(_pool).calc_withdraw_one_coin(
+                    _amount,
+                    int128(int256(_tokenIdx))
+                );
+        }
     }
 
     function _getBalanceOf(IERC20 _token) internal view returns (uint256) {

@@ -1,14 +1,15 @@
 import { expect } from "chai";
 import { Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
+import { ERC20Permit__factory } from "typechain/factories/ERC20Permit__factory";
 import { IERC20__factory } from "typechain/factories/IERC20__factory";
-import { UserProxy__factory } from "typechain/factories/UserProxy__factory";
 import { Vault__factory } from "typechain/factories/Vault__factory";
 import { ZapSwapCurveToken__factory } from "typechain/factories/ZapSwapCurveToken__factory";
 import {
   ZapInStruct,
   ZapOutStruct,
   ZapSwapCurveToken,
+  PermitDataStruct,
 } from "typechain/ZapSwapCurveToken";
 import { _ETH_CONSTANT } from "./helpers/constants";
 import { setBlock } from "./helpers/forking";
@@ -16,6 +17,7 @@ import manipulateTokenBalance, {
   ContractLanguage,
 } from "./helpers/manipulateTokenBalance";
 import { calcBigNumberPercentage } from "./helpers/math";
+import { getPermitSignature } from "./helpers/signatures";
 import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 import { ONE_HOUR_IN_SECONDS } from "./helpers/time";
 
@@ -45,6 +47,12 @@ const CRVTRICRYPTO = "0xc4AD29ba4B3c580e6D59105FFf484999997675Ff";
 const CRVTRICRYPTO_POOL = "0xD51a44d3FaE010294C616388b506AcdA1bfAAE46";
 const EP_CRV3CRYPTO = "0x285328906D0D33cb757c1E471F5e2176683247c2";
 
+enum _3CRV_TOKEN_IDX {
+  DAI = 0,
+  USDC = 1,
+  USDT = 2,
+}
+
 export async function deploy(user: { user: Signer; address: string }) {
   const [authSigner] = await ethers.getSigners();
 
@@ -52,11 +60,6 @@ export async function deploy(user: { user: Signer; address: string }) {
     "0xBA12222222228d8Ba445958a75a0704d566BF2C8",
     user.user
   );
-
-  // const proxy = UserProxy__factory.connect(
-  //   "0xEe4e158c03A10CBc8242350d74510779A364581C",
-  //   user.user
-  // );
 
   const deployer = new ZapSwapCurveToken__factory(authSigner);
   const zapSwapCurveToken = await deployer.deploy(balancerVault.address);
@@ -126,7 +129,7 @@ export async function deploy(user: { user: Signer; address: string }) {
 
 const DEADLINE = Math.round(Date.now() / 1000) + ONE_HOUR_IN_SECONDS;
 
-describe("ZapCurveTokenToPrincipalToken", () => {
+describe("ZapSwapCurveToken", () => {
   let users: { user: Signer; address: string }[];
 
   let initBlock: number;
@@ -165,7 +168,7 @@ describe("ZapCurveTokenToPrincipalToken", () => {
     await restoreSnapshot(provider);
   });
 
-  describe.only("ETH:STETH <-> ePyvcrvSTETH", () => {
+  describe("ETH:STETH <-> ePyvcrvSTETH", () => {
     const balancerPoolId =
       "0xb03c6b351a283bc1cd26b9cf6d7b0c4556013bdb0002000000000000000000ab";
 
@@ -325,7 +328,7 @@ describe("ZapCurveTokenToPrincipalToken", () => {
       expect(output.lt(upperBound) && output.gt(lowerBound)).to.be.true;
     });
 
-    it.only("should swap ETH & STETH for ePyvcrvSTETH", async () => {
+    it("should swap ETH & STETH for ePyvcrvSTETH", async () => {
       const amount = ethers.utils.parseEther("100");
 
       await manipulateTokenBalance(
@@ -353,12 +356,593 @@ describe("ZapCurveTokenToPrincipalToken", () => {
 
       await zapSwapCurveToken
         .connect(users[1].user)
-        .zapIn({ ...zap, minAmount: lowerBound }, [], { value: amount });
+        .zapIn({ ...zap, minAmount: lowerBound }, [], {
+          value: amount,
+        });
 
       const output = await IERC20__factory.connect(
         EP_CRVSTETH,
         provider
       ).balanceOf(users[1].address);
+
+      expect(output.lt(upperBound) && output.gt(lowerBound)).to.be.true;
+    });
+  });
+
+  describe.only("LUSD:3Crv:DAI:USDC:USDT <-> ePyvCurveLUSD", () => {
+    const balancerPoolId =
+      "0x893b30574bf183d69413717f30b17062ec9dfd8b000200000000000000000061";
+    it("should swap DAI for ePyvCurveLUSD", async () => {
+      const amount = ethers.utils.parseEther("5000");
+
+      await manipulateTokenBalance(
+        DAI,
+        ContractLanguage.Solidity,
+        amount,
+        users[1].address
+      );
+
+      const zap: ZapInStruct = {
+        pool: LUSD3CRV_POOL,
+        poolToken: LUSD3CRV,
+        amounts: [ethers.constants.Zero, ethers.constants.Zero],
+        tokens: [LUSD, _3CRV],
+        minAmount: 0,
+        balancerPoolId,
+        principalToken: EP_CURVELUSD,
+        deadline: DEADLINE,
+      };
+
+      const _3CrvTokenAmounts = [
+        amount,
+        ethers.constants.Zero,
+        ethers.constants.Zero,
+      ];
+      const estimatedOutput = await zapSwapCurveToken.estimateSwap3CrvAndZapIn(
+        zap,
+        _3CrvTokenAmounts
+      );
+      const slippageOffset = calcBigNumberPercentage(estimatedOutput, 0.075);
+      const lowerBound = estimatedOutput.sub(slippageOffset);
+      const upperBound = estimatedOutput.add(slippageOffset);
+
+      await zapSwapCurveToken
+        .connect(users[1].user)
+        .swap3CrvAndZapIn(
+          { ...zap, minAmount: lowerBound },
+          _3CrvTokenAmounts,
+          []
+        );
+      const output = await IERC20__factory.connect(
+        EP_CURVELUSD,
+        provider
+      ).balanceOf(users[1].address);
+
+      expect(output.lt(upperBound) && output.gt(lowerBound)).to.be.true;
+    });
+
+    it("should swap ePyvCurveLUSD for DAI", async () => {
+      const amount = ethers.utils.parseEther("5000");
+
+      await manipulateTokenBalance(
+        EP_CURVELUSD,
+        ContractLanguage.Solidity,
+        amount,
+        users[1].address
+      );
+
+      const zap: ZapOutStruct = {
+        pool: LUSD3CRV_POOL,
+        poolToken: LUSD3CRV,
+        amountPrincipalToken: amount,
+        token: _3CRV,
+        tokenIdx: 1,
+        isSigUint256: false,
+        minAmountToken: 0,
+        balancerPoolId,
+        principalToken: EP_CURVELUSD,
+        deadline: DEADLINE,
+      };
+
+      const estimatedOutput = await zapSwapCurveToken.estimateZapOutAndSwap3Crv(
+        zap,
+        _3CRV_TOKEN_IDX.DAI
+      );
+      const slippageOffset = calcBigNumberPercentage(estimatedOutput, 0.075);
+      const lowerBound = estimatedOutput.sub(slippageOffset);
+      const upperBound = estimatedOutput.add(slippageOffset);
+
+      await zapSwapCurveToken
+        .connect(users[1].user)
+        .zapOutAndSwap3Crv(
+          { ...zap, minAmountToken: lowerBound },
+          _3CRV_TOKEN_IDX.DAI,
+          []
+        );
+
+      const output = await IERC20__factory.connect(DAI, provider).balanceOf(
+        users[1].address
+      );
+
+      expect(output.lt(upperBound) && output.gt(lowerBound)).to.be.true;
+    });
+
+    it("should swap USDC for ePyvCurveLUSD", async () => {
+      const amount = ethers.utils.parseUnits("5000", 8);
+
+      await manipulateTokenBalance(
+        USDC,
+        ContractLanguage.Solidity,
+        amount,
+        users[1].address
+      );
+
+      const zap: ZapInStruct = {
+        pool: LUSD3CRV_POOL,
+        poolToken: LUSD3CRV,
+        amounts: [ethers.constants.Zero, ethers.constants.Zero],
+        tokens: [LUSD, _3CRV],
+        minAmount: 0,
+        balancerPoolId,
+        principalToken: EP_CURVELUSD,
+        deadline: DEADLINE,
+      };
+
+      const _3CrvTokenAmounts = [
+        ethers.constants.Zero,
+        amount,
+        ethers.constants.Zero,
+      ];
+      const estimatedOutput = await zapSwapCurveToken.estimateSwap3CrvAndZapIn(
+        zap,
+        _3CrvTokenAmounts
+      );
+      const slippageOffset = calcBigNumberPercentage(estimatedOutput, 0.075);
+      const lowerBound = estimatedOutput.sub(slippageOffset);
+      const upperBound = estimatedOutput.add(slippageOffset);
+
+      await zapSwapCurveToken
+        .connect(users[1].user)
+        .swap3CrvAndZapIn(
+          { ...zap, minAmount: lowerBound },
+          _3CrvTokenAmounts,
+          []
+        );
+      const output = await IERC20__factory.connect(
+        EP_CURVELUSD,
+        provider
+      ).balanceOf(users[1].address);
+
+      expect(output.lt(upperBound) && output.gt(lowerBound)).to.be.true;
+    });
+
+    it("should swap ePyvCurveLUSD for USDC", async () => {
+      const amount = ethers.utils.parseEther("5000");
+
+      await manipulateTokenBalance(
+        EP_CURVELUSD,
+        ContractLanguage.Solidity,
+        amount,
+        users[1].address
+      );
+
+      const zap: ZapOutStruct = {
+        pool: LUSD3CRV_POOL,
+        poolToken: LUSD3CRV,
+        amountPrincipalToken: amount,
+        token: _3CRV,
+        tokenIdx: 1,
+        isSigUint256: false,
+        minAmountToken: 0,
+        balancerPoolId,
+        principalToken: EP_CURVELUSD,
+        deadline: DEADLINE,
+      };
+
+      const estimatedOutput = await zapSwapCurveToken.estimateZapOutAndSwap3Crv(
+        zap,
+        _3CRV_TOKEN_IDX.USDC
+      );
+
+      const slippageOffset = calcBigNumberPercentage(estimatedOutput, 0.075);
+      const lowerBound = estimatedOutput.sub(slippageOffset);
+      const upperBound = estimatedOutput.add(slippageOffset);
+
+      await zapSwapCurveToken
+        .connect(users[1].user)
+        .zapOutAndSwap3Crv(
+          { ...zap, minAmountToken: lowerBound },
+          _3CRV_TOKEN_IDX.USDC,
+          []
+        );
+
+      const output = await IERC20__factory.connect(USDC, provider).balanceOf(
+        users[1].address
+      );
+
+      expect(output.lt(upperBound) && output.gt(lowerBound)).to.be.true;
+    });
+
+    it("should swap USDT for ePyvCurveLUSD", async () => {
+      const amount = ethers.utils.parseUnits("5000", 6);
+
+      await manipulateTokenBalance(
+        USDT,
+        ContractLanguage.Solidity,
+        amount,
+        users[1].address
+      );
+
+      const zap: ZapInStruct = {
+        pool: LUSD3CRV_POOL,
+        poolToken: LUSD3CRV,
+        amounts: [ethers.constants.Zero, ethers.constants.Zero],
+        tokens: [LUSD, _3CRV],
+        minAmount: 0,
+        balancerPoolId,
+        principalToken: EP_CURVELUSD,
+        deadline: DEADLINE,
+      };
+
+      const _3CrvTokenAmounts = [
+        ethers.constants.Zero,
+        ethers.constants.Zero,
+        amount,
+      ];
+      const estimatedOutput = await zapSwapCurveToken.estimateSwap3CrvAndZapIn(
+        zap,
+        _3CrvTokenAmounts
+      );
+      const slippageOffset = calcBigNumberPercentage(estimatedOutput, 0.075);
+      const lowerBound = estimatedOutput.sub(slippageOffset);
+      const upperBound = estimatedOutput.add(slippageOffset);
+
+      await zapSwapCurveToken
+        .connect(users[1].user)
+        .swap3CrvAndZapIn(
+          { ...zap, minAmount: lowerBound },
+          _3CrvTokenAmounts,
+          []
+        );
+      const output = await IERC20__factory.connect(
+        EP_CURVELUSD,
+        provider
+      ).balanceOf(users[1].address);
+
+      expect(output.lt(upperBound) && output.gt(lowerBound)).to.be.true;
+    });
+
+    it("should swap ePyvCurveLUSD for USDC", async () => {
+      const amount = ethers.utils.parseEther("5000");
+
+      await manipulateTokenBalance(
+        EP_CURVELUSD,
+        ContractLanguage.Solidity,
+        amount,
+        users[1].address
+      );
+
+      const zap: ZapOutStruct = {
+        pool: LUSD3CRV_POOL,
+        poolToken: LUSD3CRV,
+        amountPrincipalToken: amount,
+        token: _3CRV,
+        tokenIdx: 1,
+        isSigUint256: false,
+        minAmountToken: 0,
+        balancerPoolId,
+        principalToken: EP_CURVELUSD,
+        deadline: DEADLINE,
+      };
+
+      const estimatedOutput = await zapSwapCurveToken.estimateZapOutAndSwap3Crv(
+        zap,
+        _3CRV_TOKEN_IDX.USDT
+      );
+
+      const slippageOffset = calcBigNumberPercentage(estimatedOutput, 0.075);
+      const lowerBound = estimatedOutput.sub(slippageOffset);
+      const upperBound = estimatedOutput.add(slippageOffset);
+
+      await zapSwapCurveToken
+        .connect(users[1].user)
+        .zapOutAndSwap3Crv(
+          { ...zap, minAmountToken: lowerBound },
+          _3CRV_TOKEN_IDX.USDC,
+          []
+        );
+
+      const output = await IERC20__factory.connect(USDC, provider).balanceOf(
+        users[1].address
+      );
+
+      expect(output.lt(upperBound) && output.gt(lowerBound)).to.be.true;
+    });
+
+    it("should swap LUSD for ePyvCurveLUSD", async () => {
+      const amount = ethers.utils.parseEther("5000");
+
+      await manipulateTokenBalance(
+        LUSD,
+        ContractLanguage.Solidity,
+        amount,
+        users[1].address
+      );
+
+      const zap: ZapInStruct = {
+        pool: LUSD3CRV_POOL,
+        poolToken: LUSD3CRV,
+        amounts: [amount, ethers.constants.Zero],
+        tokens: [LUSD, _3CRV],
+        minAmount: 0,
+        balancerPoolId,
+        principalToken: EP_CURVELUSD,
+        deadline: DEADLINE,
+      };
+
+      const estimatedOutput = await zapSwapCurveToken.estimateZapIn(zap);
+
+      const slippageOffset = calcBigNumberPercentage(estimatedOutput, 0.075);
+      const lowerBound = estimatedOutput.sub(slippageOffset);
+      const upperBound = estimatedOutput.add(slippageOffset);
+
+      await zapSwapCurveToken
+        .connect(users[1].user)
+        .zapIn({ ...zap, minAmount: lowerBound }, []);
+
+      const output = await IERC20__factory.connect(
+        EP_CURVELUSD,
+        provider
+      ).balanceOf(users[1].address);
+
+      expect(output.lt(upperBound) && output.gt(lowerBound)).to.be.true;
+    });
+
+    it("should permit & swap LUSD for ePyvCurveLUSD", async () => {
+      const amount = ethers.utils.parseEther("5000");
+
+      (
+        await IERC20__factory.connect(LUSD, users[1].user).approve(
+          zapSwapCurveToken.address,
+          ethers.constants.Zero
+        )
+      ).wait(1);
+
+      await manipulateTokenBalance(
+        LUSD,
+        ContractLanguage.Solidity,
+        amount,
+        users[1].address
+      );
+
+      const { v, r, s } = await getPermitSignature(
+        ERC20Permit__factory.connect(LUSD, users[1].user),
+        users[1].address,
+        zapSwapCurveToken.address,
+        ethers.constants.MaxUint256,
+        "1"
+      );
+
+      const tokenPermitData: PermitDataStruct = {
+        v,
+        r,
+        s,
+        tokenContract: LUSD,
+        spender: zapSwapCurveToken.address,
+        expiration: ethers.constants.MaxUint256,
+        amount: ethers.constants.MaxUint256,
+      };
+
+      const zap: ZapInStruct = {
+        pool: LUSD3CRV_POOL,
+        poolToken: LUSD3CRV,
+        amounts: [amount, ethers.constants.Zero],
+        tokens: [LUSD, _3CRV],
+        minAmount: 0,
+        balancerPoolId,
+        principalToken: EP_CURVELUSD,
+        deadline: DEADLINE,
+      };
+
+      const estimatedOutput = await zapSwapCurveToken.estimateZapIn(zap);
+
+      const slippageOffset = calcBigNumberPercentage(estimatedOutput, 0.075);
+      const lowerBound = estimatedOutput.sub(slippageOffset);
+      const upperBound = estimatedOutput.add(slippageOffset);
+
+      await zapSwapCurveToken
+        .connect(users[1].user)
+        .zapIn({ ...zap, minAmount: lowerBound }, [tokenPermitData]);
+
+      const output = await IERC20__factory.connect(
+        EP_CURVELUSD,
+        provider
+      ).balanceOf(users[1].address);
+
+      expect(output.lt(upperBound) && output.gt(lowerBound)).to.be.true;
+    });
+
+    it("should swap ePyvCurveLUSD for LUSD", async () => {
+      const amount = ethers.utils.parseEther("5000");
+
+      await manipulateTokenBalance(
+        EP_CURVELUSD,
+        ContractLanguage.Solidity,
+        amount,
+        users[1].address
+      );
+
+      const zap: ZapOutStruct = {
+        pool: LUSD3CRV_POOL,
+        poolToken: LUSD3CRV,
+        amountPrincipalToken: amount,
+        token: LUSD,
+        tokenIdx: 0,
+        isSigUint256: false,
+        minAmountToken: 0,
+        balancerPoolId,
+        principalToken: EP_CURVELUSD,
+        deadline: DEADLINE,
+      };
+
+      const estimatedOutput = await zapSwapCurveToken.estimateZapOut(zap);
+
+      const slippageOffset = calcBigNumberPercentage(estimatedOutput, 0.075);
+      const lowerBound = estimatedOutput.sub(slippageOffset);
+      const upperBound = estimatedOutput.add(slippageOffset);
+
+      await zapSwapCurveToken
+        .connect(users[1].user)
+        .zapOut({ ...zap, minAmountToken: lowerBound }, []);
+
+      const output = await IERC20__factory.connect(LUSD, provider).balanceOf(
+        users[1].address
+      );
+
+      expect(output.lt(upperBound) && output.gt(lowerBound)).to.be.true;
+    });
+
+    it("should permit & swap ePyvCurveLUSD for LUSD", async () => {
+      const amount = ethers.utils.parseEther("5000");
+
+      (
+        await IERC20__factory.connect(EP_CURVELUSD, users[1].user).approve(
+          zapSwapCurveToken.address,
+          ethers.constants.Zero
+        )
+      ).wait(1);
+
+      await manipulateTokenBalance(
+        EP_CURVELUSD,
+        ContractLanguage.Solidity,
+        amount,
+        users[1].address
+      );
+
+      const { v, r, s } = await getPermitSignature(
+        ERC20Permit__factory.connect(EP_CURVELUSD, users[1].user),
+        users[1].address,
+        zapSwapCurveToken.address,
+        ethers.constants.MaxUint256,
+        "1",
+        1
+      );
+
+      const tokenPermitData: PermitDataStruct = {
+        v,
+        r,
+        s,
+        tokenContract: EP_CURVELUSD,
+        spender: zapSwapCurveToken.address,
+        expiration: ethers.constants.MaxUint256,
+        amount: ethers.constants.MaxUint256,
+      };
+
+      const zap: ZapOutStruct = {
+        pool: LUSD3CRV_POOL,
+        poolToken: LUSD3CRV,
+        amountPrincipalToken: amount,
+        token: LUSD,
+        tokenIdx: 0,
+        isSigUint256: false,
+        minAmountToken: 0,
+        balancerPoolId,
+        principalToken: EP_CURVELUSD,
+        deadline: DEADLINE,
+      };
+
+      const estimatedOutput = await zapSwapCurveToken.estimateZapOut(zap);
+
+      const slippageOffset = calcBigNumberPercentage(estimatedOutput, 0.075);
+      const lowerBound = estimatedOutput.sub(slippageOffset);
+      const upperBound = estimatedOutput.add(slippageOffset);
+
+      await zapSwapCurveToken
+        .connect(users[1].user)
+        .zapOut({ ...zap, minAmountToken: lowerBound }, [tokenPermitData]);
+
+      const output = await IERC20__factory.connect(LUSD, provider).balanceOf(
+        users[1].address
+      );
+
+      expect(output.lt(upperBound) && output.gt(lowerBound)).to.be.true;
+    });
+
+    it("should swap 3CRV for ePyvCurveLUSD", async () => {
+      const amount = ethers.utils.parseEther("5000");
+
+      await manipulateTokenBalance(
+        _3CRV,
+        ContractLanguage.Vyper,
+        amount,
+        users[1].address
+      );
+
+      const zap: ZapInStruct = {
+        pool: LUSD3CRV_POOL,
+        poolToken: LUSD3CRV,
+        amounts: [ethers.constants.Zero, amount],
+        tokens: [LUSD, _3CRV],
+        minAmount: 0,
+        balancerPoolId,
+        principalToken: EP_CURVELUSD,
+        deadline: DEADLINE,
+      };
+
+      const estimatedOutput = await zapSwapCurveToken.estimateZapIn(zap);
+
+      const slippageOffset = calcBigNumberPercentage(estimatedOutput, 0.075);
+      const lowerBound = estimatedOutput.sub(slippageOffset);
+      const upperBound = estimatedOutput.add(slippageOffset);
+
+      await zapSwapCurveToken
+        .connect(users[1].user)
+        .zapIn({ ...zap, minAmount: lowerBound }, []);
+
+      const output = await IERC20__factory.connect(
+        EP_CURVELUSD,
+        provider
+      ).balanceOf(users[1].address);
+
+      expect(output.lt(upperBound) && output.gt(lowerBound)).to.be.true;
+    });
+
+    it("should swap ePyvCurveLUSD for 3CRV", async () => {
+      const amount = ethers.utils.parseEther("5000");
+
+      await manipulateTokenBalance(
+        EP_CURVELUSD,
+        ContractLanguage.Solidity,
+        amount,
+        users[1].address
+      );
+
+      const zap: ZapOutStruct = {
+        pool: LUSD3CRV_POOL,
+        poolToken: LUSD3CRV,
+        amountPrincipalToken: amount,
+        token: _3CRV,
+        tokenIdx: 1,
+        isSigUint256: false,
+        minAmountToken: 0,
+        balancerPoolId,
+        principalToken: EP_CURVELUSD,
+        deadline: DEADLINE,
+      };
+
+      const estimatedOutput = await zapSwapCurveToken.estimateZapOut(zap);
+
+      const slippageOffset = calcBigNumberPercentage(estimatedOutput, 0.075);
+      const lowerBound = estimatedOutput.sub(slippageOffset);
+      const upperBound = estimatedOutput.add(slippageOffset);
+
+      await zapSwapCurveToken
+        .connect(users[1].user)
+        .zapOut({ ...zap, minAmountToken: lowerBound }, []);
+
+      const output = await IERC20__factory.connect(_3CRV, provider).balanceOf(
+        users[1].address
+      );
 
       expect(output.lt(upperBound) && output.gt(lowerBound)).to.be.true;
     });

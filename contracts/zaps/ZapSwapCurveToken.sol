@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.0;
-import "hardhat/console.sol";
 
 import "../libraries/Authorizable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
@@ -17,7 +16,7 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
 
     bool public isFrozen;
 
-    address[] public _3CRV_POOL_TOKENS = [
+    address[] public TOKENS_3CRV_POOL = [
         address(0x6B175474E89094C44Da98b954EedeAC495271d0F), // DAI
         address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48), // USDC
         address(0xdAC17F958D2ee523a2206206994597C13D831ec7) // USDT
@@ -27,7 +26,7 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
     address internal constant _3CRV_POOL_TOKEN =
         address(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490);
 
-    uint256 internal constant METAPOOL_3CRV_IDX = 1;
+    uint256 internal constant _METAPOOL_3CRV_IDX = 1;
     address internal constant _ETH_CONSTANT =
         address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
@@ -149,7 +148,7 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
             _3CRV_POOL,
             _3CRV_POOL_TOKEN,
             _3CrvTokenAmounts,
-            _3CRV_POOL_TOKENS,
+            TOKENS_3CRV_POOL,
             0,
             0
         );
@@ -161,7 +160,7 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
         uint256[] memory _3CrvTokenAmounts
     ) external view returns (uint256) {
         _zap.amounts[
-            METAPOOL_3CRV_IDX
+            _METAPOOL_3CRV_IDX
         ] += _estimateCurvePoolSwapTokensToPoolToken(
             _3CRV_POOL,
             _3CrvTokenAmounts
@@ -248,7 +247,7 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
         return
             _curvePoolSwapPoolTokenToToken(
                 _3CRV_POOL,
-                _3CRV_POOL_TOKENS[_3CrvTokenIdx],
+                TOKENS_3CRV_POOL[_3CrvTokenIdx],
                 _3CrvTokenIdx,
                 false,
                 msg.sender,
@@ -357,7 +356,7 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
 
         // We can add the _3CrvTokenAmount here from a previous swap
         // where not relevant should be left as 0
-        _amounts[METAPOOL_3CRV_IDX] += _3CrvPoolTokenAmount;
+        _amounts[_METAPOOL_3CRV_IDX] += _3CrvPoolTokenAmount;
 
         uint256 beforeLpTokenBalance = _getBalanceOf(IERC20(_poolToken));
 

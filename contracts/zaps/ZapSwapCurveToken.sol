@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.0;
+import "hardhat/console.sol";
 
 import "../libraries/Authorizable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
@@ -125,7 +126,7 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
         preApproval(_permitData)
         returns (uint256)
     {
-        return _zapIn(_zap);
+        return _zapIn(_zap, 0);
     }
 
     function estimateZapIn(ZapIn memory _zap) external view returns (uint256) {
@@ -144,15 +145,15 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
         preApproval(_permitData)
         returns (uint256)
     {
-        _zap.amounts[METAPOOL_3CRV_IDX] += _curvePoolSwapTokensToPoolToken(
+        uint256 _3CrvPoolTokenAmount = _curvePoolSwapTokensToPoolToken(
             _3CRV_POOL,
             _3CRV_POOL_TOKEN,
             _3CrvTokenAmounts,
             _3CRV_POOL_TOKENS,
+            0,
             0
         );
-
-        return _zapIn(_zap);
+        return _zapIn(_zap, _3CrvPoolTokenAmount);
     }
 
     function estimateSwap3CrvAndZapIn(
@@ -168,19 +169,25 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
         return _estimateZapIn(_zap);
     }
 
-    function _zapIn(ZapIn memory _zap) internal returns (uint256) {
+    function _zapIn(ZapIn memory _zap, uint256 _3CrvPoolTokenAmount)
+        internal
+        returns (uint256)
+    {
+        uint256 baseTokenAmount = _curvePoolSwapTokensToPoolToken(
+            _zap.pool,
+            _zap.poolToken,
+            _zap.amounts,
+            _zap.tokens,
+            0,
+            _3CrvPoolTokenAmount
+        );
+
         return
             _balancerSwap(
                 _zap.balancerPoolId,
                 _zap.poolToken,
                 _zap.principalToken,
-                _curvePoolSwapTokensToPoolToken(
-                    _zap.pool,
-                    _zap.poolToken,
-                    _zap.amounts,
-                    _zap.tokens,
-                    0
-                ),
+                baseTokenAmount,
                 _zap.minAmount,
                 msg.sender,
                 _zap.deadline
@@ -188,13 +195,15 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
     }
 
     function _estimateZapIn(ZapIn memory _zap) internal view returns (uint256) {
+        uint256 estimatedBaseTokenAmount = _estimateCurvePoolSwapTokensToPoolToken(
+                _zap.pool,
+                _zap.amounts
+            );
+
         return
             _estimateBalancerSwap(
                 _zap.balancerPoolId,
-                _estimateCurvePoolSwapTokensToPoolToken(
-                    _zap.pool,
-                    _zap.amounts
-                ),
+                estimatedBaseTokenAmount,
                 true
             );
     }
@@ -235,6 +244,7 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
         uint256 minAmountToken = _zap.minAmountToken;
         _zap.minAmountToken = 0;
 
+        uint256 _3CrvPoolTokenAmount = _zapOut(_zap, address(this));
         return
             _curvePoolSwapPoolTokenToToken(
                 _3CRV_POOL,
@@ -242,7 +252,7 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
                 _3CrvTokenIdx,
                 false,
                 msg.sender,
-                _zapOut(_zap, address(this)),
+                _3CrvPoolTokenAmount,
                 minAmountToken
             );
     }
@@ -251,10 +261,11 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
         ZapOut memory _zap,
         uint256 _3CrvTokenIdx
     ) external view returns (uint256) {
+        uint256 estimated3CrvPoolTokenAmount = _estimateZapOut(_zap);
         return
             _estimateCurvePoolSwapPoolTokenToToken(
                 _3CRV_POOL,
-                _estimateZapOut(_zap),
+                estimated3CrvPoolTokenAmount,
                 _3CrvTokenIdx,
                 false
             );
@@ -270,7 +281,7 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
             _zap.amountPrincipalToken
         );
 
-        uint256 amountPoolToken = _balancerSwap(
+        uint256 baseTokenAmount = _balancerSwap(
             _zap.balancerPoolId,
             _zap.principalToken,
             _zap.poolToken,
@@ -287,7 +298,7 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
                 _zap.tokenIdx,
                 _zap.isSigUint256,
                 _recipient,
-                amountPoolToken,
+                baseTokenAmount,
                 _zap.minAmountToken
             );
     }
@@ -297,14 +308,15 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
         view
         returns (uint256)
     {
+        uint256 estimatedBaseTokenAmount = _estimateBalancerSwap(
+            _zap.balancerPoolId,
+            _zap.amountPrincipalToken,
+            false
+        );
         return
             _estimateCurvePoolSwapPoolTokenToToken(
                 _zap.pool,
-                _estimateBalancerSwap(
-                    _zap.balancerPoolId,
-                    _zap.amountPrincipalToken,
-                    false
-                ),
+                estimatedBaseTokenAmount,
                 _zap.tokenIdx,
                 _zap.isSigUint256
             );
@@ -315,7 +327,8 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
         address _poolToken,
         uint256[] memory _amounts,
         address[] memory _tokens,
-        uint256 _minAmount
+        uint256 _minAmount,
+        uint256 _3CrvPoolTokenAmount
     ) internal returns (uint256) {
         require(
             (_amounts.length == 2 || _amounts.length == 3) &&
@@ -325,21 +338,26 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
 
         bool tokenIsEther = false;
         for (uint8 i = 0; i < _amounts.length; i++) {
+            bool idxHasAmount = _amounts[i] > 0;
+            if (!idxHasAmount) continue;
+
             if (_tokens[i] == _ETH_CONSTANT) {
                 require(msg.value == _amounts[i], "incorrect value");
                 tokenIsEther = true;
             } else {
                 uint256 beforeAmount = _getBalanceOf(IERC20(_tokens[i]));
-
                 IERC20(_tokens[i]).safeTransferFrom(
                     msg.sender,
                     address(this),
                     _amounts[i]
                 );
-                // This mutates by reference
                 _amounts[i] = _getBalanceOf(IERC20(_tokens[i])) - beforeAmount;
             }
         }
+
+        // We can add the _3CrvTokenAmount here from a previous swap
+        // where not relevant should be left as 0
+        _amounts[METAPOOL_3CRV_IDX] += _3CrvPoolTokenAmount;
 
         uint256 beforeLpTokenBalance = _getBalanceOf(IERC20(_poolToken));
 
@@ -352,7 +370,6 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
                 value: tokenIsEther ? msg.value : 0
             }([_amounts[0], _amounts[1], _amounts[2]], _minAmount);
         }
-
         return _getBalanceOf(IERC20(_poolToken)) - beforeLpTokenBalance;
     }
 

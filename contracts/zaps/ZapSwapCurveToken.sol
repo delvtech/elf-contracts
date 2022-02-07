@@ -161,7 +161,10 @@ contract ZapSwapCurveToken is Authorizable, ReentrancyGuard {
     ) external view returns (uint256) {
         _zap.amounts[
             METAPOOL_3CRV_IDX
-        ] += _estimateCurvePoolSwapTokensToPoolToken(_3CRV_POOL, _zap.amounts);
+        ] += _estimateCurvePoolSwapTokensToPoolToken(
+            _3CRV_POOL,
+            _3CrvTokenAmounts
+        );
         return _estimateZapIn(_zap);
     }
 

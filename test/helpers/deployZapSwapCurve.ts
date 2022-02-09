@@ -4,14 +4,14 @@ import { ConvergentCurvePool__factory } from "typechain/factories/ConvergentCurv
 import { IERC20__factory } from "typechain/factories/IERC20__factory";
 import { UserProxy__factory } from "typechain/factories/UserProxy__factory";
 import { Vault__factory } from "typechain/factories/Vault__factory";
-import { ZapCurveTokenToPrincipalToken__factory } from "typechain/factories/ZapCurveTokenToPrincipalToken__factory";
+import { ZapSwapCurve__factory } from "typechain/factories/ZapSwapCurve__factory";
 import { Vault } from "typechain/Vault";
 import {
   ZapCurveLpInStruct,
   ZapCurveLpOutStruct,
   ZapInInfoStruct,
   ZapOutInfoStruct,
-} from "typechain/ZapCurveTokenToPrincipalToken";
+} from "typechain/ZapSwapCurve";
 import { ZERO } from "./constants";
 import { impersonate, stopImpersonating } from "./impersonate";
 import { calcBigNumberPercentage } from "./math";
@@ -64,7 +64,7 @@ export async function deploy(user: { user: Signer; address: string }) {
     "0xEe4e158c03A10CBc8242350d74510779A364581C",
     user.user
   );
-  const deployer = new ZapCurveTokenToPrincipalToken__factory(authSigner);
+  const deployer = new ZapSwapCurve__factory(authSigner);
   const zapCurveTokenToPrincipalToken = await deployer.deploy(
     balancerVault.address
   );
@@ -101,7 +101,7 @@ export async function deploy(user: { user: Signer; address: string }) {
     await Promise.all(
       Object.keys(getRootTokenAddresses(trie)).map(async (n) =>
         amounts[n] && amounts[n].eq(ZERO)
-          ? await 0
+          ? 0
           : await stealFromWhale(n, user.address)
       )
     );

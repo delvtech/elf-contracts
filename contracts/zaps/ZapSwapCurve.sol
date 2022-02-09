@@ -368,26 +368,6 @@ contract ZapSwapCurve is Authorizable, ReentrancyGuard {
             );
         }
 
-        //********************************/
-        // TO BE REMOVED
-        //********************************/
-        // // It is necessary to interact with the curve pool contract like
-        // // this due to the lack of consistency of the interface in the
-        // // "add_liquidity" function. As we intend to use this function
-        // // across several curve pool contracts, it is necessary to use a
-        // // generalized solution. By using a low-level function call as below
-        // // we can determine off chain the correct function signature for the
-        // // target curve pool.
-        // // In addition, we only have to specify the amount context container
-        // // once as curve only has either 2 or 3 tokens per pool. For our
-        // // purposes, the case of using a fixed-length array of length 3 on a
-        // // pool which expects a 2 length array is acceptable as the low-level
-        // // call will only consider the first 2 indexes
-        // address(_zap.curvePool).functionCallWithValue(
-        //     abi.encodeWithSelector(_zap.funcSig, _ctx, _zap.minLpAmount),
-        //     msg.value
-        // );
-
         return _getBalanceOf(_zap.lpToken) - beforeLpTokenBalance;
     }
 
@@ -496,21 +476,6 @@ contract ZapSwapCurve is Authorizable, ReentrancyGuard {
                 _minRootTokenAmount
             );
         }
-        //********************************/
-        // TO BE REMOVED
-        //********************************/
-        // // Like in _zapCurveLpIn, we make a low-level function call to interact
-        // // with curve contracts due to inconsistent interface. In this instance
-        // // we are exchanging the LP token from a particular curve pool for one
-        // // of the constituent tokens of that same pool.
-        // address(_zap.curvePool).functionCall(
-        //     abi.encodeWithSelector(
-        //         _zap.funcSig,
-        //         _lpTokenAmount,
-        //         _zap.rootTokenIdx,
-        //         _minRootTokenAmount
-        //     )
-        // );
 
         // ETH case
         if (_zap.rootToken == _ETH_CONSTANT) {

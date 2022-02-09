@@ -21,24 +21,4 @@ interface ICurvePool {
         int128 idx,
         uint256 minAmount
     ) external payable;
-
-    function calc_token_amount(uint256[2] memory amounts, bool isDeposit)
-        external
-        view
-        returns (uint256);
-
-    function calc_token_amount(uint256[3] memory amounts, bool isDeposit)
-        external
-        view
-        returns (uint256);
-
-    function calc_withdraw_one_coin(uint256 amount, int128 selector)
-        external
-        view
-        returns (uint256);
-
-    function calc_withdraw_one_coin(uint256 amount, uint256 selector)
-        external
-        view
-        returns (uint256);
 }

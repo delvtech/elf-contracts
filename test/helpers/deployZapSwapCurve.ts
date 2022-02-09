@@ -15,7 +15,6 @@ import {
 import { ZERO } from "./constants";
 import { impersonate, stopImpersonating } from "./impersonate";
 import { calcBigNumberPercentage } from "./math";
-import { getFunctionSignature } from "./signatures";
 import { ONE_DAY_IN_SECONDS } from "./time";
 import {
   getERC20,
@@ -108,7 +107,6 @@ export async function deploy(user: { user: Signer; address: string }) {
 
     const zap: ZapCurveLpInStruct = {
       curvePool: trie.baseToken.pool,
-      funcSig: getFunctionSignature(trie.baseToken.zapInFuncSig),
       lpToken: trie.baseToken.address,
       amounts: trie.baseToken.roots.map((root) =>
         BigNumber.isBigNumber(amounts[root.name]) ? amounts[root.name] : ZERO
@@ -131,7 +129,6 @@ export async function deploy(user: { user: Signer; address: string }) {
       ] as RootToken<RootTokenKind.LpToken>;
       childZap = {
         curvePool: lpRoot.pool,
-        funcSig: getFunctionSignature(lpRoot.zapInFuncSig),
         lpToken: lpRoot.address,
         amounts: lpRoot.roots.map((r) =>
           BigNumber.isBigNumber(amounts[r.name]) ? amounts[r.name] : ZERO
@@ -240,7 +237,7 @@ export async function deploy(user: { user: Signer; address: string }) {
 
     const zap: ZapCurveLpOutStruct = {
       curvePool: trie.baseToken.pool,
-      funcSig: getFunctionSignature(trie.baseToken.zapOutFuncSig),
+      curveRemoveLiqFnIsUint256: trie.name === "ePyvcrv3crypto",
       lpToken: trie.baseToken.address,
       rootTokenIdx: zapTokenIdx,
       rootToken: trie.baseToken.roots[zapTokenIdx].address,
@@ -251,7 +248,7 @@ export async function deploy(user: { user: Signer; address: string }) {
         ? zap
         : {
             curvePool: childZapRoot.pool,
-            funcSig: getFunctionSignature(childZapRoot.zapOutFuncSig),
+            curveRemoveLiqFnIsUint256: false,
             lpToken: childZapRoot.address,
             rootTokenIdx: childZapTokenIdx,
             rootToken: childZapRoot.roots[childZapTokenIdx].address,

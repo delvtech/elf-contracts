@@ -26,7 +26,7 @@ const ptOffsetTolerancePercentage = 0.1;
 
 const ZAP_BLOCK = 13583600;
 
-describe("ZapSwapCurve", () => {
+describe.only("ZapSwapCurve", () => {
   let users: { user: Signer; address: string }[];
 
   let initBlock: number;

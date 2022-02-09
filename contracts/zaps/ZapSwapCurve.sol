@@ -43,7 +43,7 @@ import "../interfaces/IVault.sol";
 /// Ex- Alice bought (x) amount curve LP token (let's say crvLUSD token) using LUSD (root token)
 /// purchased (x) amount can be used to purchase the principal token by putting that amount
 /// in the wrapped position contract.
-contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
+contract ZapSwapCurve is Authorizable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Address for address;
 

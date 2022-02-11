@@ -1,16 +1,13 @@
 import { expect } from "chai";
 import { Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
-import {
-  PermitDataStruct,
-  ZapCurveTokenToPrincipalToken,
-} from "typechain/ZapCurveTokenToPrincipalToken";
+import { PermitDataStruct, ZapSwapCurve } from "typechain/ZapSwapCurve";
 import { ZERO } from "./helpers/constants";
 import {
   ConstructZapInArgs,
   ConstructZapOutArgs,
   deploy,
-} from "./helpers/deployZapCurveTokenToPrincipalToken";
+} from "./helpers/deployZapSwapCurve";
 import { setBlock } from "./helpers/forking";
 import { calcBigNumberPercentage } from "./helpers/math";
 import { getPermitSignature } from "./helpers/signatures";
@@ -29,11 +26,11 @@ const ptOffsetTolerancePercentage = 0.1;
 
 const ZAP_BLOCK = 13583600;
 
-describe("ZapCurveTokenToPrincipalToken", () => {
+describe("ZapSwapCurve", () => {
   let users: { user: Signer; address: string }[];
 
   let initBlock: number;
-  let zapCurveTokenToPrincipalToken: ZapCurveTokenToPrincipalToken;
+  let zapCurveTokenToPrincipalToken: ZapSwapCurve;
   let constructZapInArgs: ConstructZapInArgs;
   let constructZapOutArgs: ConstructZapOutArgs;
 

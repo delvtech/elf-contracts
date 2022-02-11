@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../interfaces/IVault.sol";
+import "../interfaces/ICurvePool.sol";
 
 // TODO Due to the nature of the curve contracts, there are a number of design
 // decisions made in this contract which primarily aim to generalize integration
@@ -43,7 +44,7 @@ import "../interfaces/IVault.sol";
 /// Ex- Alice bought (x) amount curve LP token (let's say crvLUSD token) using LUSD (root token)
 /// purchased (x) amount can be used to purchase the principal token by putting that amount
 /// in the wrapped position contract.
-contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
+contract ZapSwapCurve is Authorizable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -99,10 +100,6 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
         // index in the amounts array of the main "zap" the resultant
         // number of lpTokens should be added to
         uint256 parentIdx;
-        // This is the function signature for the "add_liquidity" function
-        // which must be constructed on the frontend as the suite of curvePool
-        // contracts have an inconsistent interface.
-        bytes4 funcSig;
         // The minimum amount of LP tokens expected to receive when adding
         // liquidity
         uint256 minLpAmount;
@@ -122,11 +119,9 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
         int128 rootTokenIdx;
         // Address of the rootToken we are swapping for
         address rootToken;
-        // This is the function signature of the curvePool's
-        // "remove_liquidity_one_coin" function which similar to the
-        // "add_liquidity" curvePool function in the zapIn, there is
-        // an inconsistent interface when interacting with curve pools
-        bytes4 funcSig;
+        // This is the selector for deciding between the two differing curve
+        // interfaces for the add
+        bool curveRemoveLiqFnIsUint256;
     }
 
     struct ZapOutInfo {
@@ -361,22 +356,17 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
         }
         uint256 beforeLpTokenBalance = _getBalanceOf(_zap.lpToken);
 
-        // It is necessary to interact with the curve pool contract like
-        // this due to the lack of consistency of the interface in the
-        // "add_liquidity" function. As we intend to use this function
-        // across several curve pool contracts, it is necessary to use a
-        // generalized solution. By using a low-level function call as below
-        // we can determine off chain the correct function signature for the
-        // target curve pool.
-        // In addition, we only have to specify the amount context container
-        // once as curve only has either 2 or 3 tokens per pool. For our
-        // purposes, the case of using a fixed-length array of length 3 on a
-        // pool which expects a 2 length array is acceptable as the low-level
-        // call will only consider the first 2 indexes
-        address(_zap.curvePool).functionCallWithValue(
-            abi.encodeWithSelector(_zap.funcSig, _ctx, _zap.minLpAmount),
-            msg.value
-        );
+        if (_zap.amounts.length == 2) {
+            ICurvePool(_zap.curvePool).add_liquidity{ value: msg.value }(
+                [_ctx[0], _ctx[1]],
+                _zap.minLpAmount
+            );
+        } else {
+            ICurvePool(_zap.curvePool).add_liquidity{ value: msg.value }(
+                [_ctx[0], _ctx[1], _ctx[2]],
+                _zap.minLpAmount
+            );
+        }
 
         return _getBalanceOf(_zap.lpToken) - beforeLpTokenBalance;
     }
@@ -473,18 +463,19 @@ contract ZapCurveTokenToPrincipalToken is Authorizable, ReentrancyGuard {
             ? address(this).balance
             : _getBalanceOf(IERC20(_zap.rootToken));
 
-        // Like in _zapCurveLpIn, we make a low-level function call to interact
-        // with curve contracts due to inconsistent interface. In this instance
-        // we are exchanging the LP token from a particular curve pool for one
-        // of the constituent tokens of that same pool.
-        address(_zap.curvePool).functionCall(
-            abi.encodeWithSelector(
-                _zap.funcSig,
+        if (_zap.curveRemoveLiqFnIsUint256) {
+            ICurvePool(_zap.curvePool).remove_liquidity_one_coin(
+                _lpTokenAmount,
+                uint256(int256(_zap.rootTokenIdx)),
+                _minRootTokenAmount
+            );
+        } else {
+            ICurvePool(_zap.curvePool).remove_liquidity_one_coin(
                 _lpTokenAmount,
                 _zap.rootTokenIdx,
                 _minRootTokenAmount
-            )
-        );
+            );
+        }
 
         // ETH case
         if (_zap.rootToken == _ETH_CONSTANT) {

@@ -4,18 +4,17 @@ import { ConvergentCurvePool__factory } from "typechain/factories/ConvergentCurv
 import { IERC20__factory } from "typechain/factories/IERC20__factory";
 import { UserProxy__factory } from "typechain/factories/UserProxy__factory";
 import { Vault__factory } from "typechain/factories/Vault__factory";
-import { ZapCurveTokenToPrincipalToken__factory } from "typechain/factories/ZapCurveTokenToPrincipalToken__factory";
+import { ZapSwapCurve__factory } from "typechain/factories/ZapSwapCurve__factory";
 import { Vault } from "typechain/Vault";
 import {
   ZapCurveLpInStruct,
   ZapCurveLpOutStruct,
   ZapInInfoStruct,
   ZapOutInfoStruct,
-} from "typechain/ZapCurveTokenToPrincipalToken";
+} from "typechain/ZapSwapCurve";
 import { ZERO } from "./constants";
 import { impersonate, stopImpersonating } from "./impersonate";
 import { calcBigNumberPercentage } from "./math";
-import { getFunctionSignature } from "./signatures";
 import { ONE_DAY_IN_SECONDS } from "./time";
 import {
   getERC20,
@@ -64,7 +63,7 @@ export async function deploy(user: { user: Signer; address: string }) {
     "0xEe4e158c03A10CBc8242350d74510779A364581C",
     user.user
   );
-  const deployer = new ZapCurveTokenToPrincipalToken__factory(authSigner);
+  const deployer = new ZapSwapCurve__factory(authSigner);
   const zapCurveTokenToPrincipalToken = await deployer.deploy(
     balancerVault.address
   );
@@ -101,14 +100,13 @@ export async function deploy(user: { user: Signer; address: string }) {
     await Promise.all(
       Object.keys(getRootTokenAddresses(trie)).map(async (n) =>
         amounts[n] && amounts[n].eq(ZERO)
-          ? await 0
+          ? 0
           : await stealFromWhale(n, user.address)
       )
     );
 
     const zap: ZapCurveLpInStruct = {
       curvePool: trie.baseToken.pool,
-      funcSig: getFunctionSignature(trie.baseToken.zapInFuncSig),
       lpToken: trie.baseToken.address,
       amounts: trie.baseToken.roots.map((root) =>
         BigNumber.isBigNumber(amounts[root.name]) ? amounts[root.name] : ZERO
@@ -131,7 +129,6 @@ export async function deploy(user: { user: Signer; address: string }) {
       ] as RootToken<RootTokenKind.LpToken>;
       childZap = {
         curvePool: lpRoot.pool,
-        funcSig: getFunctionSignature(lpRoot.zapInFuncSig),
         lpToken: lpRoot.address,
         amounts: lpRoot.roots.map((r) =>
           BigNumber.isBigNumber(amounts[r.name]) ? amounts[r.name] : ZERO
@@ -240,7 +237,7 @@ export async function deploy(user: { user: Signer; address: string }) {
 
     const zap: ZapCurveLpOutStruct = {
       curvePool: trie.baseToken.pool,
-      funcSig: getFunctionSignature(trie.baseToken.zapOutFuncSig),
+      curveRemoveLiqFnIsUint256: trie.name === "ePyvcrv3crypto",
       lpToken: trie.baseToken.address,
       rootTokenIdx: zapTokenIdx,
       rootToken: trie.baseToken.roots[zapTokenIdx].address,
@@ -251,7 +248,7 @@ export async function deploy(user: { user: Signer; address: string }) {
         ? zap
         : {
             curvePool: childZapRoot.pool,
-            funcSig: getFunctionSignature(childZapRoot.zapOutFuncSig),
+            curveRemoveLiqFnIsUint256: false,
             lpToken: childZapRoot.address,
             rootTokenIdx: childZapTokenIdx,
             rootToken: childZapRoot.roots[childZapTokenIdx].address,

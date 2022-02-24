@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { Signer } from "ethers";
 import { ethers, waffle } from "hardhat";
+import { ERC20__factory } from "typechain/factories/ERC20__factory";
 import { PermitDataStruct, ZapSwapCurve } from "typechain/ZapSwapCurve";
 import { ZERO } from "./helpers/constants";
 import {
@@ -315,6 +316,56 @@ describe("ZapSwapCurve", () => {
       const allowedOffset = calcBigNumberPercentage(
         returnedPrincipalTokenAmount,
         ptOffsetTolerancePercentage
+      );
+
+      expect(diff.gte(ZERO)).to.be.true;
+      expect(diff.lt(allowedOffset)).to.be.true;
+    });
+
+    it.only("should swap ETH as WETH for ePyvcrv3crypto", async () => {
+      const { info, zap, childZap, expectedPrincipalTokenAmount } =
+        await constructZapInArgs(ePyvcrv3crypto, {
+          WETH: ethers.utils.parseEther("2"),
+        });
+
+      const awethBalance = await ERC20__factory.connect(
+        zap.roots[2],
+        users[1].user
+      ).balanceOf(users[1].address);
+
+      console.log(awethBalance.toString());
+      await zapCurveTokenToPrincipalToken
+        .connect(users[1].user)
+        .zapIn(
+          info,
+          { ...zap, curvePool: "0x3993d34e7e99Abf6B6f367309975d1360222D446" },
+          childZap,
+          [],
+          {
+            value: ethers.utils.parseEther("2"),
+          }
+        );
+
+      const returnedPrincipalTokenAmount = await getPrincipalToken(
+        "ePyvcrv3crypto"
+      ).balanceOf(users[1].address);
+
+      const diff = returnedPrincipalTokenAmount.sub(
+        expectedPrincipalTokenAmount
+      );
+      const allowedOffset = calcBigNumberPercentage(
+        returnedPrincipalTokenAmount,
+        ptOffsetTolerancePercentage
+      );
+
+      const wethBalance = await ERC20__factory.connect(
+        zap.roots[2],
+        users[1].user
+      ).balanceOf(users[1].address);
+
+      // ensuring we are only using ETH
+      expect(wethBalance.toString()).to.be.equal(
+        ethers.utils.parseEther("2").toString()
       );
 
       expect(diff.gte(ZERO)).to.be.true;

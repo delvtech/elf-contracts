@@ -148,7 +148,7 @@ const emptyZapCurveOut: ZapCurveLpOutStruct = {
   rootToken: ethers.constants.AddressZero,
 };
 
-describe.only("ZapSwapCurve", () => {
+describe("ZapSwapCurve", () => {
   let users: { user: Signer; address: string }[];
   let initBlock: number;
   let zapSwapCurve: ZapSwapCurve;

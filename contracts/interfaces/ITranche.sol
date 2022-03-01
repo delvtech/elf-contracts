@@ -24,4 +24,8 @@ interface ITranche is IERC20Permit {
     function interestToken() external view returns (IInterestToken);
 
     function interestSupply() external view returns (uint128);
+
+    function underlying() external view returns (IERC20);
+
+    function unlockTimestamp() external view returns (uint256);
 }

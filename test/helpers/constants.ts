@@ -1,6 +1,6 @@
-import { ethers, waffle } from "hardhat";
+import { ethers } from "hardhat";
 
 export const _ETH_CONSTANT = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 
 export const ONE_ETH = ethers.constants.WeiPerEther;
-export const ZERO = ethers.constants.Zero;
+export const { Zero } = ethers.constants;

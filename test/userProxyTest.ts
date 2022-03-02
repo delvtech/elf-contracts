@@ -54,13 +54,6 @@ describe("UserProxyTests", function () {
     await usdcFixture.usdc.connect(usdcWhale).transfer(signers[0].address, 100);
     await usdcFixture.usdc.approve(usdcFixture.yusdc.address, 100);
     await usdcFixture.yusdc.deposit(100, signers[0].address);
-
-    // Make a gas reserve deposit to test that logic
-    const twohundred = ethers.utils.parseUnits("200", 6);
-    await usdcFixture.usdc
-      .connect(usdcWhale)
-      .approve(usdcFixture.position.address, twohundred.mul(2));
-    await usdcFixture.position.connect(usdcWhale).reserveDeposit(twohundred);
   });
   after(async () => {
     // revert back to initial state after all tests pass

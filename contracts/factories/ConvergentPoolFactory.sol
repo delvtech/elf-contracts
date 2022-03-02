@@ -41,6 +41,7 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
     /// @param _percentFee The fee percent of each trades implied yield paid to gov.
     /// @param _name The name of the balancer v2 lp token for this pool
     /// @param _symbol The symbol of the balancer v2 lp token for this pool
+    /// @param _pauser An address with the power to stop trading and deposits
     /// @return The new pool address
     function create(
         address _underlying,
@@ -49,7 +50,8 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
         uint256 _unitSeconds,
         uint256 _percentFee,
         string memory _name,
-        string memory _symbol
+        string memory _symbol,
+        address _pauser
     ) external returns (address) {
         address pool = address(
             new ConvergentCurvePool(
@@ -62,7 +64,8 @@ contract ConvergentPoolFactory is BasePoolFactory, Authorizable {
                 percentFeeGov,
                 governance,
                 _name,
-                _symbol
+                _symbol,
+                _pauser
             )
         );
         // Register the pool with the vault

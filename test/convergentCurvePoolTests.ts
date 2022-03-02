@@ -809,7 +809,9 @@ describe("ConvergentCurvePool", function () {
     });
 
     it("Deploys pools", async () => {
-      const seconds = Math.round(new Date().getTime() / 1000);
+      const date = new Date("November 1, 2021 00:00:00");
+      const seconds = Math.round(date.getTime() / 1000);
+
       await poolFactory.create(
         baseAssetContract.address,
         bondAssetContract.address,

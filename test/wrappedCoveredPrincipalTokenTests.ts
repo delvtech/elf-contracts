@@ -128,6 +128,10 @@ describe("WrappedCoveredPrincipalToken", function () {
       expect(await fixture.tranche.balanceOf(user2Address)).to.equal(
         initialBalance
       );
+
+      await coveredToken
+        .connect(signers[1])
+        .addWrappedPosition(fixture.positionStub.address);
     });
 
     after(async () => {
@@ -137,7 +141,7 @@ describe("WrappedCoveredPrincipalToken", function () {
     it("should fail to add wrapped position because msg.sender is not the owner", async () => {
       const tx = coveredToken
         .connect(signers[2])
-        .addWrappedPosition(fixture.positionStub.address);
+        .addWrappedPosition(signers[2].address);
       await expect(tx).to.be.revertedWith(
         "AccessControl: account 0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc is missing role 0x41444d494e5f524f4c4500000000000000000000000000000000000000000000"
       );
@@ -155,12 +159,13 @@ describe("WrappedCoveredPrincipalToken", function () {
       await expect(tx).to.be.revertedWith("WFP:INVALID_WP");
     });
 
-    it("should successfully add the wrapped position", async () => {
-      await coveredToken
-        .connect(signers[1])
-        .addWrappedPosition(fixture.positionStub.address);
-      expect((await coveredToken.allWrappedPositions()).length).to.equal(1);
-    });
+    // it("should successfully add the wrapped position", async () => {
+    //   await coveredToken
+    //     .connect(signers[1])
+    //     .addWrappedPosition(fixture.positionStub.address);
+    //   expect((await coveredToken.allWrappedPositions()).length).to.equal(1);
+    //   expect(await coveredToken.isAllowedWp(fixture.positionStub.address)).to.equal(true);
+    // });
 
     it("should fail to add wrapped position because it is already added", async () => {
       const tx = coveredToken
@@ -203,83 +208,92 @@ describe("WrappedCoveredPrincipalToken", function () {
       await expect(tx).to.be.revertedWith("WFP:POSITION_NOT_EXPIRED");
     });
 
-    it("should failed to mint the wrapped covered token because allowance not provided", async () => {
-      const expirationTime = (await fixture.tranche.unlockTimestamp()).add(1);
-      advanceTime(provider, expirationTime.toNumber());
-      const tx = coveredToken
-        .connect(user1)
-        .mint(tokenToMint, expiration, fixture.positionStub.address, {
-          spender: "0x0000000000000000000000000000000000000000",
-          value: 0,
-          deadline: 0,
-          v: 0,
-          r: ethers.utils.hexZeroPad("0x1f", 32),
-          s: ethers.utils.hexZeroPad("0x1f", 32),
-        });
-      await expect(tx).to.be.revertedWith("ERC20: insufficient-allowance");
-    });
+    describe("Tests after time advance", async () => {
+      before(async () => {
+        const expirationTime = (await fixture.tranche.unlockTimestamp()).add(1);
+        advanceTime(provider, expirationTime.toNumber());
+      });
 
-    it("should successfully mint the wrapped covered token", async () => {
-      await fixture.tranche
-        .connect(user1)
-        .approve(coveredToken.address, initialBalance);
-      await coveredToken
-        .connect(user1)
-        .mint(tokenToMint, expiration, fixture.positionStub.address, {
-          spender: "0x0000000000000000000000000000000000000000",
-          value: 0,
-          deadline: 0,
-          v: 0,
-          r: ethers.utils.hexZeroPad("0x1f", 32),
-          s: ethers.utils.hexZeroPad("0x1f", 32),
-        });
-      expect(await coveredToken.balanceOf(user1Address)).to.equal(tokenToMint);
-      expect(await fixture.tranche.balanceOf(user1Address)).to.equal(0);
-    });
+      it("should failed to mint the wrapped covered token because allowance not provided", async () => {
+        const tx = coveredToken
+          .connect(user1)
+          .mint(tokenToMint, expiration, fixture.positionStub.address, {
+            spender: "0x0000000000000000000000000000000000000000",
+            value: 0,
+            deadline: 0,
+            v: 0,
+            r: ethers.utils.hexZeroPad("0x1f", 32),
+            s: ethers.utils.hexZeroPad("0x1f", 32),
+          });
+        await expect(tx).to.be.revertedWith("ERC20: insufficient-allowance");
+      });
 
-    it("should failed to mint the wrapped covered token as allowance not provide because of invalid permit data", async () => {
-      const token = fixture.tranche as ERC20Permit;
-      const sig = await getPermitSignature(
-        token,
-        user1Address,
-        coveredToken.address,
-        initialBalance,
-        "1"
-      );
-      const tx = coveredToken
-        .connect(user2)
-        .mint(tokenToMint, expiration, fixture.positionStub.address, {
-          spender: coveredToken.address,
-          value: initialBalance,
-          deadline: ethers.constants.MaxUint256,
-          v: sig.v,
-          r: sig.r,
-          s: sig.s,
-        });
-      await expect(tx).to.be.revertedWith("ERC20: invalid-permit");
-    });
+      it("should successfully mint the wrapped covered token", async () => {
+        await fixture.tranche
+          .connect(user1)
+          .approve(coveredToken.address, initialBalance);
+        await coveredToken
+          .connect(user1)
+          .mint(tokenToMint, expiration, fixture.positionStub.address, {
+            spender: "0x0000000000000000000000000000000000000000",
+            value: 0,
+            deadline: 0,
+            v: 0,
+            r: ethers.utils.hexZeroPad("0x1f", 32),
+            s: ethers.utils.hexZeroPad("0x1f", 32),
+          });
+        expect(await coveredToken.balanceOf(user1Address)).to.equal(
+          tokenToMint
+        );
+        expect(await fixture.tranche.balanceOf(user1Address)).to.equal(0);
+      });
 
-    it("should successfully mint the wrapped covered token using permit data", async () => {
-      const token = fixture.tranche as ERC20Permit;
-      const sig = await getPermitSignature(
-        token,
-        user2Address,
-        coveredToken.address,
-        initialBalance,
-        "1"
-      );
-      await coveredToken
-        .connect(user2)
-        .mint(tokenToMint, expiration, fixture.positionStub.address, {
-          spender: coveredToken.address,
-          value: initialBalance,
-          deadline: ethers.constants.MaxUint256,
-          v: sig.v,
-          r: sig.r,
-          s: sig.s,
-        });
-      expect(await coveredToken.balanceOf(user2Address)).to.equal(tokenToMint);
-      expect(await fixture.tranche.balanceOf(user2Address)).to.equal(0);
+      it("should failed to mint the wrapped covered token as allowance not provide because of invalid permit data", async () => {
+        const token = fixture.tranche as ERC20Permit;
+        const sig = await getPermitSignature(
+          token,
+          user1Address,
+          coveredToken.address,
+          initialBalance,
+          "1"
+        );
+        const tx = coveredToken
+          .connect(user2)
+          .mint(tokenToMint, expiration, fixture.positionStub.address, {
+            spender: coveredToken.address,
+            value: initialBalance,
+            deadline: ethers.constants.MaxUint256,
+            v: sig.v,
+            r: sig.r,
+            s: sig.s,
+          });
+        await expect(tx).to.be.revertedWith("ERC20: invalid-permit");
+      });
+
+      it("should successfully mint the wrapped covered token using permit data", async () => {
+        const token = fixture.tranche as ERC20Permit;
+        const sig = await getPermitSignature(
+          token,
+          user2Address,
+          coveredToken.address,
+          initialBalance,
+          "1"
+        );
+        await coveredToken
+          .connect(user2)
+          .mint(tokenToMint, expiration, fixture.positionStub.address, {
+            spender: coveredToken.address,
+            value: initialBalance,
+            deadline: ethers.constants.MaxUint256,
+            v: sig.v,
+            r: sig.r,
+            s: sig.s,
+          });
+        expect(await coveredToken.balanceOf(user2Address)).to.equal(
+          tokenToMint
+        );
+        expect(await fixture.tranche.balanceOf(user2Address)).to.equal(0);
+      });
     });
 
     it("should verify the getters output", async () => {

@@ -299,72 +299,17 @@ describe("ConvergentCurvePool", function () {
     expect(totalSupply).to.be.eq(oneThousand.add(sixteenHundred));
   });
 
-  it("Internally Mints LP correctly for Governance", async function () {
-    await resetPool();
-    let govBalanceStart = await poolContract.balanceOf(elementAddress);
-    const ten = ethers.utils.parseUnits("10", 18);
-    const five = ethers.utils.parseUnits("5", 18);
-    // We set the accumulated fees
-    await mineTx(poolContract.setFees(ten, five));
-    // Set the current total supply to 100 lp tokens
-    await mineTx(poolContract.setLPBalance(elementAddress, ten.mul(ten)));
-    govBalanceStart = await poolContract.balanceOf(elementAddress);
-    // Mint governance lp
-    await mineTx(poolContract.mintGovLP([ten.mul(ten), five.mul(ten)]));
-    // We now check that all of the fees were consume
-    const feesUnderlying = await poolContract.feesUnderlying();
-    const feesBond = await poolContract.feesBond();
-    expect(newBigNumber(0)).to.be.eq(feesUnderlying);
-    expect(newBigNumber(0)).to.be.eq(feesBond);
-    // We check that the governance address got ten lp tokens
-    const govBalanceNew = await poolContract.balanceOf(elementAddress);
-    expect(ethers.utils.parseUnits("0.5", 18).add(govBalanceStart)).to.be.eq(
-      govBalanceNew
-    );
-  });
-
-  // We test the mint functionality where the bond should be fully consumed
-  it("Internally Mints LP correctly for the bond max", async function () {
+  // We test the burn functionality where the bond should be fully consumed
+  it("Internally Burns LP correctly for the underlying max", async function () {
     await resetPool();
     const oneThousand = ethers.utils.parseUnits("1000", 18);
     // Set the current total supply to 1000 lp tokens
     await mineTx(poolContract.setLPBalance(accounts[0].address, oneThousand));
-    // We want a min of 500 underlying and 100 bond
-    const fiveHundred = ethers.utils.parseUnits("500", 18);
-    const result = await mineTx(
-      poolContract.burnLP(
-        fiveHundred,
-        fiveHundred.div(5),
-        [oneThousand, fiveHundred],
-        accounts[0].address
-      )
-    );
-    // The call should have released 500 underlying and 250 bond
-    const returned = result.events.filter(
-      (event) => event.event == "UIntReturn"
-    );
-    expect(returned[0].data).to.be.eq(fiveHundred);
-    expect(returned[1].data).to.be.eq(fiveHundred.div(2));
-    // The call should have burned 50% of the LP tokens to produce this
-    const balance = await poolContract.balanceOf(accounts[0].address);
-    expect(balance).to.be.eq(fiveHundred);
-    const totalSupply = await poolContract.totalSupply();
-    expect(totalSupply).to.be.eq(fiveHundred);
-  });
-
-  // We test the mint functionality where the bond should be fully consumed
-  it("Internally Mints LP correctly for the underlying max", async function () {
-    await resetPool();
-    const oneThousand = ethers.utils.parseUnits("1000", 18);
-    // Set the current total supply to 1000 lp tokens
-    await mineTx(poolContract.setLPBalance(accounts[0].address, oneThousand));
-    // We want a min of 250 underlying and 250 bond
     const fiveHundred = ethers.utils.parseUnits("500", 18);
     const twoFifty = fiveHundred.div(2);
     const result = await mineTx(
       poolContract.burnLP(
-        twoFifty,
-        twoFifty,
+        fiveHundred,
         [oneThousand, fiveHundred],
         accounts[0].address
       )
@@ -603,10 +548,17 @@ describe("ConvergentCurvePool", function () {
         SECONDS_IN_YEAR,
         testVault.address,
         ethers.utils.parseEther("0.05"),
-        elementAddress,
+        balancerSigner.address,
         `Element ${baseAssetSymbol} - fy${baseAssetSymbol}`,
         `${baseAssetSymbol}-fy${baseAssetSymbol}`
       );
+
+      beforeEach(async () => {
+        await createSnapshot(provider);
+      });
+      afterEach(async () => {
+        await restoreSnapshot(provider);
+      });
 
       aliasedVault = TestConvergentCurvePool__factory.connect(
         testVault.address,
@@ -650,9 +602,7 @@ describe("ConvergentCurvePool", function () {
       );
       // Check the returned fees
       expect(data[1][0]).to.be.eq(ethers.utils.parseUnits("1", BASE_DECIMALS));
-      expect(data[1][1]).to.be.eq(
-        ethers.utils.parseUnits("0.5", BOND_DECIMALS)
-      );
+      expect(data[1][1]).to.be.eq(ethers.utils.parseUnits("1", BOND_DECIMALS));
       // We run the call but state changing
       await aliasedVault.onJoinPool(
         poolId,
@@ -666,9 +616,12 @@ describe("ConvergentCurvePool", function () {
       );
       // We check the state
       expect(await poolContract.feesUnderlying()).to.be.eq(0);
-      expect(await poolContract.feesBond()).to.be.eq(
-        ethers.utils.parseEther("5")
+      expect(await poolContract.feesBond()).to.be.eq(0);
+      // Note swap fee = 0.05 implies 1/20 as ratio
+      expect(await poolContract.governanceFeesUnderlying()).to.be.eq(
+        ten.div(20)
       );
+      expect(await poolContract.governanceFeesBond()).to.be.eq(ten.div(20));
       // We run another trade to ensure fees are not charged when no lp
       // is minted
       data = await aliasedVault.callStatic.onJoinPool(
@@ -684,6 +637,55 @@ describe("ConvergentCurvePool", function () {
       // Check the returned fees
       expect(data[1][0]).to.be.eq(0);
       expect(data[1][1]).to.be.eq(0);
+    });
+    it("Allows the governance to collect realized fees", async () => {
+      const poolId = await poolContract.getPoolId();
+      // First create some pretend fees
+      const ten = ethers.utils.parseUnits("10", 18);
+      // Mint some lp to avoid init case
+      await poolContract.setLPBalance(tokenSigner.address, 1);
+      // We set the accumulated fees
+      await poolContract.setFees(ten, ten);
+
+      const bondFirst = BigNumber.from(bondAssetContract.address).lt(
+        BigNumber.from(baseAssetContract.address)
+      );
+      const bondIndex = bondFirst ? 0 : 1;
+      const baseIndex = bondFirst ? 1 : 0;
+      const reserves: BigNumberish[] = [0, 0];
+      reserves[bondIndex] = ethers.utils.parseUnits("50", BOND_DECIMALS);
+      reserves[baseIndex] = ethers.utils.parseUnits("100", BASE_DECIMALS);
+      const lp_deposit: BigNumberish[] = [0, 0];
+      lp_deposit[bondIndex] = ethers.utils.parseUnits("5", BOND_DECIMALS);
+      lp_deposit[baseIndex] = ethers.utils.parseUnits("10", BASE_DECIMALS);
+      // This call changes the state
+      await aliasedVault.onJoinPool(
+        poolId,
+        fakeAddress,
+        tokenSigner.address,
+        // Pool reserves are [100, 50]
+        reserves,
+        0,
+        ethers.utils.parseEther("0.1"),
+        ethers.utils.defaultAbiCoder.encode(["uint256[]"], [lp_deposit])
+      );
+      // now we simulate a withdraw to see what the return values are
+      const data = await aliasedVault.callStatic.onExitPool(
+        poolId,
+        await poolContract.governance(),
+        fakeAddress,
+        reserves,
+        0,
+        ethers.utils.parseEther("0.1"),
+        ethers.utils.defaultAbiCoder.encode(["uint256"], [0])
+      );
+      // we check that the amounts out are the whole fees
+      expect(data[0][bondIndex]).to.be.eq(
+        ethers.utils.parseUnits("0.5", BOND_DECIMALS)
+      );
+      expect(data[0][baseIndex]).to.be.eq(
+        ethers.utils.parseUnits("0.5", BASE_DECIMALS)
+      );
     });
     it("Blocks invalid vault calls", async () => {
       const poolId = await poolContract.getPoolId();
@@ -819,7 +821,8 @@ describe("ConvergentCurvePool", function () {
         SECONDS_IN_YEAR,
         1,
         "fake pool",
-        "FP"
+        "FP",
+        elementSigner.address
       );
     });
     it("Allows changing fees", async () => {
@@ -838,6 +841,60 @@ describe("ConvergentCurvePool", function () {
     it("Blocks non owner changes to governance address", async () => {
       const tx = poolFactory.connect(accounts[1]).setGov(fakeAddress);
       await expect(tx).to.be.revertedWith("Sender not owner");
+    });
+  });
+
+  describe("Pause function", async () => {
+    beforeEach(async () => {
+      createSnapshot(provider);
+    });
+    afterEach(async () => {
+      restoreSnapshot(provider);
+    });
+    it("Only lets gov set pause status", async () => {
+      await poolContract.setPauser(balancerSigner.address, true);
+      const tx = poolContract
+        .connect(balancerSigner)
+        .setPauser(balancerSigner.address, true);
+      await expect(tx).to.be.revertedWith("Sender not Owner");
+    });
+    it("Only let's pausers pause", async () => {
+      await poolContract.pause(true);
+      const tx = poolContract.connect(balancerSigner).pause(false);
+      await expect(tx).to.be.revertedWith("Sender not Authorized");
+    });
+    it("Blocks trades and deposits on a paused pool", async () => {
+      await poolContract.pause(true);
+
+      let tx = poolContract.onJoinPool(
+        "0xb6749d30a0b09b310151e2cd2db8f72dd34aab4bbc60cf3e8dbca13b4d9369ad",
+        fakeAddress,
+        tokenSigner.address,
+        // Pool reserves are [100, 50]
+        [0, 0],
+        0,
+        ethers.utils.parseEther("0.1"),
+        "0x"
+      );
+      await expect(tx).to.be.revertedWith("Paused");
+      tx = poolContract.onSwap(
+        {
+          tokenIn: baseAssetContract.address,
+          tokenOut: bondAssetContract.address,
+          amount: ethers.utils.parseUnits("100", BASE_DECIMALS),
+          kind: inForOutType,
+          // Misc data
+          poolId:
+            "0xf4cc12715b126dabd383d98cfad15b0b6c3814ad57c5b9e22d941b5fcd3e4e43",
+          lastChangeBlock: BigNumber.from(0),
+          from: fakeAddress,
+          to: fakeAddress,
+          userData: "0x",
+        },
+        reserveUnderlying,
+        reserveBond
+      );
+      await expect(tx).to.be.revertedWith("Paused");
     });
   });
 });

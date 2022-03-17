@@ -7,8 +7,6 @@ import "./libraries/Authorizable.sol";
 import "./interfaces/ITranche.sol";
 import "./interfaces/IVault.sol";
 
-import "hardhat/console.sol";
-
 /// @author Element Finance
 /// @title Rollover Asset Proxy
 contract RolloverAssetProxy is WrappedPosition, Authorizable {
@@ -150,8 +148,8 @@ contract RolloverAssetProxy is WrappedPosition, Authorizable {
             uint256 impliedUnderlying = (impliedBaseSupply * depositedYT) /
                 ytSupply;
             // State updates
-            ytSupply = uint128(actualLPBalance);
-            lpSupply = uint128(actualYTBalance);
+            ytSupply = uint128(actualYTBalance);
+            lpSupply = uint128(actualLPBalance);
             totalSupply += uint128(shares);
             impliedBaseSupply += impliedUnderlying;
             // Return the shares to be minted and the implied underlying this is worth

@@ -18,20 +18,20 @@ contract TestBalancerVault is IVault {
     mapping(bytes32 => TestERC20) public lpTokens;
     mapping(bytes32 => TwoTokens) public componentTokens;
     mapping(bytes32 => TwoNumbers) public balances;
-    uint256 poolCount = 0;
+    uint256 _poolCount = 0;
 
     function makePool(address token1, address token2)
         external
         returns (bytes32 poolID)
     {
         TestERC20 lpToken = new TestERC20("test", "test", 18);
-        poolCount++;
-        lpTokens[bytes32(poolCount)] = lpToken;
-        componentTokens[bytes32(poolCount)] = TwoTokens(
+        _poolCount++;
+        lpTokens[bytes32(_poolCount)] = lpToken;
+        componentTokens[bytes32(_poolCount)] = TwoTokens(
             TestERC20(token1),
             TestERC20(token2)
         );
-        return bytes32(poolCount);
+        return bytes32(_poolCount);
     }
 
     function getPool(bytes32 poolId)

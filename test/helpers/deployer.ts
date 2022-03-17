@@ -14,9 +14,11 @@ import { IYearnVault__factory } from "typechain/factories/IYearnVault__factory";
 import { Tranche__factory } from "typechain/factories/Tranche__factory";
 import { TrancheFactory__factory } from "typechain/factories/TrancheFactory__factory";
 import { TestUserProxy__factory } from "typechain/factories/TestUserProxy__factory";
+import { UserProxy__factory } from "typechain/factories/UserProxy__factory";
 import { InterestToken__factory } from "typechain/factories/InterestToken__factory";
 import { InterestTokenFactory__factory } from "typechain/factories/InterestTokenFactory__factory";
 import { YVaultAssetProxy__factory } from "typechain/factories/YVaultAssetProxy__factory";
+import { YVaultV4AssetProxy__factory } from "typechain/factories/YVaultV4AssetProxy__factory";
 import { ZapYearnShares__factory } from "typechain/factories/ZapYearnShares__factory";
 import { ZapYearnShares } from "typechain/ZapYearnShares";
 import { ZapTrancheHop__factory } from "typechain/factories/ZapTrancheHop__factory";
@@ -27,9 +29,12 @@ import { IYearnVault } from "typechain/IYearnVault";
 import { Tranche } from "typechain/Tranche";
 import { TrancheFactory } from "typechain/TrancheFactory";
 import { TestUserProxy } from "typechain/TestUserProxy";
+import { UserProxy } from "typechain/UserProxy";
 import { InterestToken } from "typechain/InterestToken";
 import { YVaultAssetProxy } from "typechain/YVaultAssetProxy";
 import { DateString__factory } from "typechain/factories/DateString__factory";
+import { RolloverZap } from "typechain/RolloverZap";
+import { RolloverAssetProxy } from "typechain/RolloverAssetProxy";
 
 import data from "../../artifacts/contracts/Tranche.sol/Tranche.json";
 
@@ -59,6 +64,15 @@ export interface UsdcPoolMainnetInterface {
   yusdc: IYearnVault;
   position: YVaultAssetProxy;
   tranche: Tranche;
+  proxy: TestUserProxy;
+}
+export interface UsdcPoolRolloverZapMainnetInterface {
+  signer: Signer;
+  usdc: IERC20;
+  yusdc: IYearnVault;
+  position: YVaultAssetProxy;
+  tranche: Tranche;
+  trancheRollover: Tranche;
   proxy: TestUserProxy;
 }
 
@@ -273,6 +287,56 @@ export async function loadUsdcPoolMainnetFixture() {
     yusdc,
     position,
     tranche,
+    proxy,
+  };
+}
+export async function loadUsdcPoolRolloverZapMainnetFixture(
+  rolloverPosition: string
+) {
+  const usdcAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+  const yusdcAddress = "0xa354F35829Ae975e850e23e9615b11Da1B3dC4DE";
+  const wethAddress = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+
+  const trancheAddress = "0x52C9886d5D87B0f06EbACBEff750B5Ffad5d17d9";
+  const wrappedPositionAddress = "0x62d9855c399fDE8226840eA12D9F1Dd693a49B6A";
+  const [signer] = await ethers.getSigners();
+
+  const usdc = IERC20__factory.connect(usdcAddress, signer);
+  const yusdc = IYearnVault__factory.connect(yusdcAddress, signer);
+
+  const position = YVaultV4AssetProxy__factory.connect(
+    wrappedPositionAddress,
+    signer
+  );
+  const tranche = Tranche__factory.connect(trancheAddress, signer);
+  const trancheFactory = await deployTrancheFactory(signer);
+  await trancheFactory.deployTranche(1e10, rolloverPosition);
+  const eventFilter = trancheFactory.filters.TrancheCreated(null, null, null);
+  const events = await trancheFactory.queryFilter(eventFilter);
+  const trancheAddressRollover =
+    events[0] && events[0].args && events[0].args[0];
+  const trancheRollover = Tranche__factory.connect(
+    trancheAddressRollover,
+    signer
+  );
+  const bytecodehash = ethers.utils.solidityKeccak256(
+    ["bytes"],
+    [data.bytecode]
+  );
+  const proxyFactory = new TestUserProxy__factory(signer);
+  const proxy = await proxyFactory.deploy(
+    wethAddress,
+    "0x62F161BF3692E4015BefB05A03a94A40f520d1c0",
+    bytecodehash
+  );
+
+  return {
+    signer,
+    usdc,
+    yusdc,
+    position,
+    tranche,
+    trancheRollover,
     proxy,
   };
 }

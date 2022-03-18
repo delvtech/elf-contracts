@@ -7,7 +7,7 @@ import { boolean } from "hardhat/internal/core/params/argumentTypes";
 
 const { provider } = waffle;
 
-describe.only("Deployment Validator", () => {
+describe("Deployment Validator", () => {
   let deploymentValidator: DeploymentValidator;
   let signers: SignerWithAddress[];
 

@@ -70,6 +70,13 @@ describe("Deployment Validator", () => {
         .checkPoolValidation(mockPoolAddress);
       expect(result).to.be.equal(true);
     });
+    it("validate pool fails for unauthorized owner", async () => {
+      const mockPoolAddress = "0x814C447a9F58A2b823504Fe2775bA48c843925B6";
+      const tx = deploymentValidator
+        .connect(signers[1])
+        .validatePoolAddress(mockPoolAddress);
+      await expect(tx).to.be.revertedWith("Sender not Authorized");
+    });
     it("validate pool returns false unregistered address", async () => {
       const mockPoolAddress = "0x8dc82c95B8901Db35390Aa4096B643d7724F278D";
       const result = await deploymentValidator
@@ -85,10 +92,28 @@ describe("Deployment Validator", () => {
       await deploymentValidator
         .connect(signers[0])
         .validateAddresses(mockWPAddress, mockPoolAddress);
-      const result = await deploymentValidator
+      // check pair validation
+      const result1 = await deploymentValidator
         .connect(signers[0])
         .checkPairValidation(mockWPAddress, mockPoolAddress);
-      expect(result).to.be.equal(true);
+      expect(result1).to.be.equal(true);
+      // check individual mapping validation
+      const result2 = await deploymentValidator
+        .connect(signers[0])
+        .checkWPValidation(mockWPAddress);
+      expect(result2).to.be.equal(true);
+      const result3 = await deploymentValidator
+        .connect(signers[0])
+        .checkPoolValidation(mockPoolAddress);
+      expect(result3).to.be.equal(true);
+    });
+    it("validate pool/wp pair fails for unauthorized owner", async () => {
+      const mockWPAddress = "0x6F643Ba6894D8C50c476A3539e1D1690B2194018";
+      const mockPoolAddress = "0x814C447a9F58A2b823504Fe2775bA48c843925B6";
+      const tx = deploymentValidator
+        .connect(signers[1])
+        .validateAddresses(mockWPAddress, mockPoolAddress);
+      await expect(tx).to.be.revertedWith("Sender not Authorized");
     });
     it("validation returns false unregistered addresses", async () => {
       const mockWPAddress = "0xb47E7a1fD90630CfC0868d90Cb8F518578010cFe";

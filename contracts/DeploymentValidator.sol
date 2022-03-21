@@ -23,7 +23,7 @@ contract DeploymentValidator is IDeploymentValidator, Authorizable {
     /// @notice adds a wrapped position address to the mapping
     /// @param wrappedPosition The wrapped position contract address
     function validateWPAddress(address wrappedPosition)
-        external
+        public
         override
         onlyAuthorized
     {
@@ -33,11 +33,7 @@ contract DeploymentValidator is IDeploymentValidator, Authorizable {
 
     /// @notice adds a wrapped position address to the mapping
     /// @param pool the pool contract address
-    function validatePoolAddress(address pool)
-        external
-        override
-        onlyAuthorized
-    {
+    function validatePoolAddress(address pool) public override onlyAuthorized {
         // add address to mapping to indicating it was deployed by Element
         pools[pool] = true;
     }
@@ -50,7 +46,11 @@ contract DeploymentValidator is IDeploymentValidator, Authorizable {
         override
         onlyAuthorized
     {
-        // has together the contract addresses
+        // add to pool validation mapping
+        validatePoolAddress(pool);
+        // add to wp validation mapping
+        validateWPAddress(wrappedPosition);
+        // hash together the contract addresses
         bytes32 data = keccak256(abi.encodePacked(wrappedPosition, pool));
         // add the hashed pair into the mapping
         pairs[data] = true;

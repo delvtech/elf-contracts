@@ -6,8 +6,7 @@ export const setBlock = async (block: number) => {
     params: [
       {
         forking: {
-          jsonRpcUrl:
-            "https://eth-mainnet.alchemyapi.io/v2/kwjMP-X-Vajdk1ItCfU-56Uaq1wwhamK",
+          jsonRpcUrl: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_MAINNET_API_KEY}`,
           blockNumber: block,
         },
       },

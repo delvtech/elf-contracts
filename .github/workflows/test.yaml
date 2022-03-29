@@ -18,7 +18,9 @@ jobs:
         - name: compile
           run: npx hardhat compile
         - name: test
-          run: npm run test
+          run:
+            export ALCHEMY_MAINNET_API_KEY=${{secrets.ALCHEMY_MAINNET_API_KEY}}
+            npm run test
     sim:
       runs-on: ubuntu-latest
       steps:
@@ -28,7 +30,9 @@ jobs:
         - name: compile
           run: npx hardhat compile
         - name: simulation
-          run: npm run sim
+          run:
+            export ALCHEMY_MAINNET_API_KEY=${{secrets.ALCHEMY_MAINNET_API_KEY}}
+            npm run sim
     typecheck:
       runs-on: ubuntu-latest
       steps:

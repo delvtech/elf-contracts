@@ -15,7 +15,7 @@ jobs:
         - name: Install dependencies
           run: npm ci && npm run load-contracts
         - name: Coverage
-          run: npm run build && npm run coverage
+          run: export ALCHEMY_MAINNET_API_KEY=${{secrets.ALCHEMY_MAINNET_API_KEY}} && npm run build && npm run coverage
         - name: Edit lcov.info
           run: cat coverage/lcov.info | sed '/.*\/balancer-core-v2\/.*/,/TN:/d' | sed '/.*\/test\/.*/,/TN:/d' | sed '/.*\/zaps\/.*/,/TN:/d' > coverage/tmp.info && mv coverage/tmp.info coverage/lcov.info
         - name: Coveralls

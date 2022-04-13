@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.0;
 
-import { WrappedConvexPosition } from "./WrappedConvexPosition.sol";
+// Wrapped Position's constructor takes a specific IERC20 contract so we import and rename it here
+// We import IERC20 from OZ so we can use `safe{func}` functions.
+import { WrappedPosition, IERC20 as WIERC20 } from "./WrappedPosition.sol";
 import "./libraries/Authorizable.sol";
 import "./interfaces/external/IConvexBooster.sol";
 import "./interfaces/external/IConvexBaseRewardPool.sol";
@@ -19,11 +21,15 @@ interface IERC20Decimals {
  * @notice Proxy for depositing Curve LP shares into Convex's system, and providing a shares based abstraction of ownership
  * @notice Integrating with Curve is quite messy due to non-standard interfaces. Some of the logic below is specific to 3CRV-LUSD
  */
-contract ConvexAssetProxy is WrappedConvexPosition, Authorizable {
+contract ConvexAssetProxy is WrappedPosition, Authorizable {
     using SafeERC20 for IERC20;
     /************************************************
      *  STORAGE
      ***********************************************/
+    /// @notice The total supply of shares
+    /// This is needed here since ERC20.sol in WrappedPosition does not track totalSupply
+    uint256 public totalSupply;
+
     /// @notice whether this proxy is paused or not
     bool public paused;
 
@@ -140,7 +146,7 @@ contract ConvexAssetProxy is WrappedConvexPosition, Authorizable {
         string memory _symbol,
         address _governance,
         address _pauser
-    ) WrappedConvexPosition(_token, _name, _symbol) Authorizable() {
+    ) WrappedPosition(WIERC20(_token), _name, _symbol) Authorizable() {
         // Authorize the pauser
         _authorize(_pauser);
         // set the owner
@@ -209,6 +215,8 @@ contract ConvexAssetProxy is WrappedConvexPosition, Authorizable {
             // Reach this case if we have no shares
             sharesToMint = amount;
         }
+        // Update our totalSupply
+        totalSupply += sharesToMint;
 
         // Deposit underlying tokens
         // Last boolean indicates whether we want the Booster to auto-stake our deposit tokens in the reward contract for us
@@ -232,8 +240,11 @@ contract ConvexAssetProxy is WrappedConvexPosition, Authorizable {
     ) internal override notPaused returns (uint256) {
         // We need to withdraw from the rewards contract & send to the destination
         // Boolean indicates that we don't want to collect rewards (this saves the user gas)
-        uint256 amountUnderlyingToWithdraw = _sharesToUnderlying(_shares);
+        uint256 amountUnderlyingToWithdraw = _underlying(_shares);
         rewardsContract.withdrawAndUnwrap(amountUnderlyingToWithdraw, false);
+
+        // Update our totalSupply
+        totalSupply -= _shares;
 
         // Transfer underlying LP tokens to user
         token.transfer(_destination, amountUnderlyingToWithdraw);
@@ -247,7 +258,7 @@ contract ConvexAssetProxy is WrappedConvexPosition, Authorizable {
      * @param _shares The amount of shares you want to know the value of
      * @return Value of shares in underlying token
      */
-    function _sharesToUnderlying(uint256 _shares)
+    function _underlying(uint256 _shares)
         internal
         view
         override

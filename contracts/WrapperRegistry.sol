@@ -3,13 +3,8 @@ pragma solidity ^0.8.0;
 
 import "./libraries/Authorizable.sol";
 
-contract VaultWrapperRegistry is Authorizable {
-    struct VaultWrapperPair {
-        address vault;
-        address wrapper;
-    }
-
-    VaultWrapperPair[] public pairs;
+contract WrapperRegistry is Authorizable {
+    address[] public wrappers;
 
     /// @notice Constructs this contract and stores needed data
     /// @param _owner The contract owner authorized to validate addresses
@@ -19,18 +14,14 @@ contract VaultWrapperRegistry is Authorizable {
     }
 
     /// @notice adds a vault + wrapper pair of addresses to state array
-    /// @param vault the vault contract address
     /// @param wrapper the wrapped position contract address
-    function validatePairs(address vault, address wrapper)
-        external
-        onlyAuthorized
-    {
-        pairs.push(VaultWrapperPair(vault, wrapper));
+    function registerWrapper(address wrapper) external onlyAuthorized {
+        wrappers.push(wrapper);
     }
 
     /// @notice shows the entire array of vault/wrapper pairs
     /// @return the entire array of struct pairs
-    function viewRegistry() external view returns (VaultWrapperPair[] memory) {
-        return pairs;
+    function viewRegistry() external view returns (address[] memory) {
+        return wrappers;
     }
 }

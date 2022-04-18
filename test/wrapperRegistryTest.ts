@@ -7,7 +7,7 @@ import { createSnapshot, restoreSnapshot } from "./helpers/snapshots";
 
 const { provider } = waffle;
 
-describe.only("Wrapper Registry", () => {
+describe("Wrapper Registry", () => {
   let wrapperRegistry: WrapperRegistry;
   let signers: SignerWithAddress[];
 

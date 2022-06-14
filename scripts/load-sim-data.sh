@@ -3,10 +3,10 @@
 version=$(python -V 2>&1 | grep -Po '(?<=Python )\d')
 if [[ "$version" = 3 ]]
 then
-    echo "Valid version"
+    echo "calling python"
     alias py="python"
 else
-    echo "Invalid version"
+    echo "calling python3"
     alias py="python3"
 fi
 

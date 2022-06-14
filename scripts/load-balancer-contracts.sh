@@ -5,7 +5,7 @@ rm -rf balancer-core-v2
 # link/clone and build contracts
 if [ ! -z "$1" ] && [ $1="local" ]; then
     ln -sf ../../balancer-core-v2 .
-elif [ -d "/contracts/balancer-core-v2" ]; then
+elif [ ! -d "./contracts/balancer-core-v2" ]; then
     echo "Downloading contracts..."
     git clone https://github.com/balancer-labs/balancer-core-v2.git
     cd balancer-core-v2 \

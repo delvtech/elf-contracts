@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=$(python -V 2>&1 | grep -Po '(?<=Python )\d')
+version=$(python -V 2>&1 | head -c 8 | tail -c 1)
 if [[ "$version" = 3 ]]
 then
     echo "calling python"

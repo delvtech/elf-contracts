@@ -49,6 +49,7 @@ npm run build
 ```
 
 ### 4. Test
+testing requires an alchemy API key exported in your environment (`cp .env.sample .env` then edit the `.env` file with your API key and `source .env` to set environment variable)
 
 ```
 npm run test

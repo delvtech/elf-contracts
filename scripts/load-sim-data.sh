@@ -13,7 +13,7 @@ fi
 rm -rf test/simulation/analysis
 
 echo "Downloading analysis repo..."
-git clone https://github.com/delv-tech/analysis.git ./test/simulation/analysis
+git clone https://github.com/delvtech/analysis.git ./test/simulation/analysis
 
 echo "Generate sim data"
 py ./test/simulation/analysis/scripts/TestTradesSim.py

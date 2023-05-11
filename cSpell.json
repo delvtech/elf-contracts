@@ -85,7 +85,8 @@
         "ytoken",
         "yusdc",
         "yweth",
-        "speedbump"
+        "speedbump", 
+        "Metapool"
     ],
     "enabledLanguageIds": [
         "asciidoc",
